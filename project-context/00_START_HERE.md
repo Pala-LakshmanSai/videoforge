@@ -1,5 +1,13 @@
 # VideoForge: start here
 
+## Windows worker monitoring — 2026-09-26
+
+MI_Notebook worker 0.1.40 completed good steward through render, technical check and
+advancing 1920x1080 Chrome playback. No blocker or application fix was needed. Ongoing
+thread monitoring is active; human final approval remains pending. Exact source, artifact,
+authority and monitoring limits are in `windows_good_steward_monitoring_2026_09_26`
+in `CURRENT_STATE.yaml`.
+
 ## Avatar neck join repair — 2026-09-26
 
 Local source `a85a5673` anchors the moving lower Fal crop to the pinned torso before

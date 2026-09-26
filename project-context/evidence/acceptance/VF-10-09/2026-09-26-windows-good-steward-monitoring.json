@@ -1,0 +1,52 @@
+{
+  "checkpoint": "V2-09",
+  "project_id": "65c8a8d3-0759-4397-9d51-4bbcdda18bf1",
+  "production_source_commit": "7c29e97d315160fb58de7dd028a1ad25dd59e7c4",
+  "worker_release": "0.1.40",
+  "windows_installer_sha256": "ab8a547f4e82288b8f5989581c0ba121e8ca80be32c577622fe7b18cdb97ae2f",
+  "windows_installer_bytes": 279577982,
+  "execution_bundle_sha256": "6d60ec214ebb7d643a300c0097eda4a7f7bd9ee054e65fc24f921256062c383a",
+  "platform": "WINDOWS_X86_64",
+  "install_exit_code": 0,
+  "startup_shortcut_verified": true,
+  "authenticated_pairing_verified": true,
+  "online_status_verified": true,
+  "accepted_images": 32,
+  "accepted_avatar_clips": 10,
+  "accepted_audio_spans": 10,
+  "reported_stage_seconds": {
+    "prepare": 4,
+    "transcription": 34,
+    "context": 2,
+    "scene_planning": 0,
+    "prompts": 111,
+    "audio_spans": 62,
+    "images": 133,
+    "avatar": 166,
+    "assembly_including_technical_check": 655
+  },
+  "render_and_technical_check": "COMPLETE",
+  "chrome_playback": {
+    "width": 1920,
+    "height": 1080,
+    "duration_seconds": 159.2,
+    "advanced_to_seconds": 16.436438,
+    "media_error": null
+  },
+  "review_flags": "No flags returned",
+  "human_approval": "PENDING",
+  "observed_blockers": [],
+  "fixes_or_new_releases": [],
+  "monitoring": {
+    "active_page_sampling_interval_seconds": 1,
+    "underlying_page_refresh_is_slower": true,
+    "automation_id": "watch-videoforge-worker-and-projects",
+    "requested_heartbeat_interval_seconds": 1,
+    "guaranteed_end_to_end_response_seconds": null
+  },
+  "monitoring_paid_generation_calls": 0,
+  "project_ui_estimated_cost_usd": 0.3,
+  "settled_debit_verified": false,
+  "paid_compute_started_by_monitor": false,
+  "live_global_provider_inventory_refreshed": false
+}

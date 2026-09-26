@@ -1,4 +1,35 @@
 schema_version: "2.0"
+windows_good_steward_monitoring_2026_09_26:
+  checkpoint: V2-09
+  status: FINAL_TECHNICAL_AND_CHROME_PLAYBACK_PASS
+  project_id: 65c8a8d3-0759-4397-9d51-4bbcdda18bf1
+  production_source_commit: 7c29e97d315160fb58de7dd028a1ad25dd59e7c4
+  worker_release: 0.1.40
+  worker_execution_bundle_sha256: sha256:6d60ec214ebb7d643a300c0097eda4a7f7bd9ee054e65fc24f921256062c383a
+  platform: WINDOWS_X86_64
+  result: >-
+    MI_Notebook installed from the exact checksum-verified public release, paired through
+    authenticated Chrome and reported Online. The user-started good steward project completed
+    transcription, 32 prompts/images, 10 audio spans/avatar clips, local render and technical
+    check. Chrome loaded 1920x1080 media lasting 159.2 seconds; playback advanced to 16.436 seconds
+    without a media error. Review reports no flags. Human final approval remains pending.
+  monitoring: >-
+    Active page sampling used approximately one-second intervals; underlying page/server
+    refreshes are slower. Recurring thread heartbeat watch-videoforge-worker-and-projects
+    is saved with a one-second requested interval. Execution latency and app availability
+    prevent a guaranteed one-second end-to-end response. No blocker was observed or patched.
+  authority: >-
+    User authorized ongoing worker/project monitoring, blocker fixes, tested production
+    deployments and immutable worker updates. No new paid-generation retry, provider/model
+    change, paid-compute activation or additional spend authority was requested or inferred.
+  evidence: evidence/acceptance/VF-10-09/2026-09-26-windows-good-steward-monitoring.json
+  validation: >-
+    Chrome media readiness/playback, Online worker, JSON evidence, tracked secret scan and
+    diff checks pass. Full context validators could not run: Ruby and repository Ajv are
+    absent in this Windows worktree. No application code or deployment was changed.
+  remaining_gates: Human creative approval; future unseen defects are not ruled out.
+  provider_spend: Monitoring made no paid-generation calls; UI estimate USD0.30 is not settled debit.
+  paid_compute_shutdown: No paid compute activated; existing global inventory was not queried.
 fal_avatar_neck_seam_repair_2026_09_26:
   checkpoint: V2-09
   status: RELEASE_AUTHORIZED_FUTURE_VIDEOS_ONLY
