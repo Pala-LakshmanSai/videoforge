@@ -8,6 +8,7 @@ from typing import Any
 
 TIMESTAMP_TOLERANCE_MS = 250
 CHUNK_TRAILING_TOLERANCE_MS = 2000
+MAX_ZERO_DURATION_REPAIR_MS = 100
 PHRASE_PAUSE_BOUNDARY_MS = 600
 MAX_WORDS_PER_PHRASE = 12
 MAX_PHRASE_DURATION_MS = 4500
@@ -133,14 +134,18 @@ def _canonical_words(
 
     words: list[dict[str, object]] = []
     previous_end = 0
-    previous_zero_duration_repaired = False
+    zero_duration_origin: int | None = None
     for index, candidate in enumerate(candidates):
         start_ms = candidate.start_ms
         end_ms = candidate.end_ms
+        repaired_zero_duration = end_ms == start_ms
         if start_ms < 0 or end_ms < start_ms:
             raise WhisperOutputError(f"word {index} has invalid timestamps")
         if index > 0 and start_ms < previous_end:
-            if previous_zero_duration_repaired and previous_end - start_ms <= 10:
+            if (
+                zero_duration_origin == start_ms
+                and previous_end - start_ms <= MAX_ZERO_DURATION_REPAIR_MS
+            ):
                 start_ms = previous_end
             else:
                 raise WhisperOutputError(f"word {index} overlaps or moves backward")
@@ -150,7 +155,6 @@ def _canonical_words(
             raise WhisperOutputError(f"word {index} starts too far after the chunk duration")
         if start_ms >= source_duration_ms:
             raise WhisperOutputError(f"word {index} starts after the source duration")
-        repaired_zero_duration = end_ms == start_ms
         if repaired_zero_duration:
             end_ms = min(source_duration_ms, start_ms + 10)
         if not allow_trailing_overhang and end_ms > source_duration_ms + TIMESTAMP_TOLERANCE_MS:
@@ -169,7 +173,7 @@ def _canonical_words(
             }
         )
         previous_end = end_ms
-        previous_zero_duration_repaired = repaired_zero_duration
+        zero_duration_origin = candidate.start_ms if repaired_zero_duration else None
     return words
 
 

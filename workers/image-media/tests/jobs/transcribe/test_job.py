@@ -21,6 +21,7 @@ from videoforge_image_media.jobs.transcribe import (  # noqa: E402
     WhisperTool,
 )
 from videoforge_image_media.jobs.transcribe.job import _write_result  # noqa: E402
+from videoforge_image_media.jobs.transcribe.parser import parse_whisper_words  # noqa: E402
 
 
 def _sha256(data: bytes) -> str:
@@ -488,6 +489,24 @@ class TranscriptionJobTest(unittest.TestCase):
         second["offsets"]["from"] = 600
         result, _, _, _ = self._run(process=FakeProcessRunner(raw_document=raw_document))
         self.assert_error(result, "ASR_OUTPUT_INVALID")
+
+    def test_repeated_zero_duration_words_keep_monotonic_timestamps(self) -> None:
+        raw_document = _whisper_output()
+        raw_document["transcription"] = [
+            {"offsets": {"from": 0, "to": 100}, "text": " first"},
+            {"offsets": {"from": 100, "to": 100}, "text": " second"},
+            {"offsets": {"from": 100, "to": 100}, "text": " third"},
+            {"offsets": {"from": 100, "to": 250}, "text": " fourth"},
+        ]
+        raw_path = self.root / "repeated-zero-duration.json"
+        raw_path.write_text(json.dumps(raw_document), encoding="utf-8")
+
+        words = parse_whisper_words(raw_path, source_duration_ms=250)
+
+        self.assertEqual(
+            [(word["start_ms"], word["end_ms"]) for word in words],
+            [(0, 100), (100, 110), (110, 120), (120, 250)],
+        )
 
     def test_timestamp_beyond_duration_tolerance_is_rejected(self) -> None:
         raw_document = _whisper_output()

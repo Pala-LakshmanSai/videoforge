@@ -1,4 +1,28 @@
 schema_version: "2.0"
+china_voiceover_asr_repair_2026_09_26:
+  checkpoint: V2-09
+  status: LOCAL_RELEASE_CANDIDATE_NOT_PUBLISHED
+  project_id: e9d1b862-59bd-4548-ad6d-7566d1905e0e
+  revision_id: 078f690a-8703-4275-8e27-ee04abdbe884
+  result: >-
+    Project china has three failed Stage 2 ASR attempts on installed Mac worker 0.1.37,
+    each with ASR_OUTPUT_INVALID. The exact saved 28m24s voiceover, pinned whisper.cpp
+    executable/model, and three chunk windows reproduce the parser failure locally:
+    chunk 1 has consecutive zero-duration words at the same timestamp, and the second
+    fails after the first 10ms repair. The parser now repairs a bounded same-origin run
+    while preserving strict rejection of unrelated overlap. Worker 0.1.38 source and
+    release workflow are prepared locally; the installed worker remains 0.1.37.
+  validation: >-
+    Exact source audio and installed whisper tools produced three local chunk JSON outputs.
+    All three parse; 5121 reconciled words and 784 phrases build into a transcript.
+    Focused transcription/personal-worker suite passed 84/84; touched Python Ruff passes.
+  remaining_gates: >-
+    Publish and install the exact 0.1.38 bundle, confirm its online identity in Chrome,
+    then retry this same safe local ASR stage once and observe durable transcript and
+    downstream progress. No live retry was made with the broken 0.1.37 worker.
+    A five-minute project heartbeat monitors state changes without mutation.
+  provider_spend: No paid provider calls; local FFmpeg and whisper.cpp reproduction only.
+  paid_compute_shutdown: No paid compute was started for this repair; GPU inventory was not queried.
 fal_avatar_blend_repair_2026_09_26:
   checkpoint: V2-09
   status: LOCAL_SOURCE_VERIFIED_NOT_PUBLISHED
