@@ -1,39 +1,46 @@
 schema_version: "2.0"
 china_voiceover_asr_repair_2026_09_26:
   checkpoint: V2-09
-  status: PRODUCTION_RELEASE_IN_PROGRESS
+  status: PRODUCTION_PUBLISHED_MAC_INSTALLED_VERIFIED
   project_id: e9d1b862-59bd-4548-ad6d-7566d1905e0e
   revision_id: 078f690a-8703-4275-8e27-ee04abdbe884
-  result: >-
-    Project china has three failed Stage 2 ASR attempts on installed Mac worker 0.1.37,
-    each with ASR_OUTPUT_INVALID. The exact saved 28m24s voiceover, pinned whisper.cpp
-    executable/model, and three chunk windows reproduce the parser failure locally:
-    chunk 1 has consecutive zero-duration words at the same timestamp, and the second
-    fails after the first 10ms repair. The parser now repairs a bounded same-origin run
-    while preserving strict rejection of unrelated overlap. Worker 0.1.38 source and
-    release workflow are prepared locally; the installed worker remains 0.1.37.
-  validation: >-
-    Exact source audio and installed whisper tools produced three local chunk JSON outputs.
-    All three parse; 5121 reconciled words and 784 phrases build into a transcript.
-    Focused transcription/personal-worker suite passed 84/84; touched Python Ruff passes.
-  release_authority: User explicitly authorized production publication of both platforms and installation on this Mac; user will install Windows.
   worker_source_commit: f430fae54c5ae1239bebbfc27f1799a6c5bb6c79
+  production_source_commit: 58a124a60a8d238306391a8c3a0364926ad04a77
+  cloudflare_version: 6695f1b3-84ce-4d98-a06a-174e9e3d9b91
+  worker_release: 0.1.38
   worker_execution_bundle_sha256: sha256:f374e4d414518f6557628dcd1b4f71b31fd998457548349018c7ebd8105625c2
   worker_release_run_id: 36213316707
+  evidence: evidence/acceptance/VF-10-09/2026-09-26-asr-worker-release.json
+  result: >-
+    The old Mac worker 0.1.37 failed all three china ASR attempts as ASR_OUTPUT_INVALID.
+    Its parser shifted the second consecutive zero-duration word start past the unchanged end.
+    Worker 0.1.38 repairs bounded same-origin timestamps and is published for Windows x64 and
+    macOS universal2. The verified Mac package is installed, its Standard LaunchAgent runs,
+    and production confirms ONLINE with the exact new execution bundle.
+    Real Chrome offers both 0.1.38 installer links. All original terminal attempts remain.
   recovery_policy: >-
     Invalid ASR output from an older pinned execution bundle no longer spends the current
-    bundle's three-attempt limit. All original terminal attempts remain; total ceiling stays twelve.
-    Exact production read-only state query returned current-budget count zero, total three, FAILED.
+    bundle's three-attempt limit. Total ceiling stays twelve. The exact production query
+    returns current-budget count zero on 0.1.38, count three on the old bundle, total three, FAILED.
+  validation: >-
+    Installed Mac executable transcribed the retained 1703784ms normalized voiceover in
+    51.86s, SUCCEEDED with 5121 words/784 phrases. Both CI builds and frozen render smokes pass.
+    Transcription 33/33 and personal-worker 46/46 tests pass; product routes 88 pass with one
+    unrelated source-string assertion also failing on unchanged f430fae5. Web typecheck,
+    touched ESLint, production build/bundle guard, installer bytes/SHA and Mac signature pass.
+  release_authority: >-
+    User authorized production publication and both worker updates, then specified installation
+    on this Mac and user-controlled installation/testing on a separate Windows computer.
   remaining_gates: >-
-    Publish and install the exact 0.1.38 bundle, confirm its online identity in Chrome,
-    then retry this same safe local ASR stage once and observe durable transcript and
-    downstream progress. No live retry was made with the broken 0.1.37 worker.
-    A five-minute project heartbeat monitors state changes without mutation.
-  provider_spend: No paid provider calls; local FFmpeg and whisper.cpp reproduction only.
-  paid_compute_shutdown: No paid compute was started for this repair; GPU inventory was not queried.
+    User installs/tests Windows 0.1.38. Live china retry and downstream generation have not
+    been executed in this release; the saved project is ready for a bounded retry.
+  provider_spend: No new paid provider calls; installed proof used local FFmpeg and whisper.cpp only.
+  paid_compute_shutdown: >-
+    No paid compute started. Production GPU transport remains DISABLED_UNQUALIFIED;
+    live GPU inventory was not queried. Prior Mac package is retained locally for rollback.
 fal_avatar_blend_repair_2026_09_26:
   checkpoint: V2-09
-  status: LOCAL_SOURCE_VERIFIED_NOT_PUBLISHED
+  status: WORKER_PUBLISHED_MAC_INSTALLED_FRESH_VISUAL_GATE_OPEN
   source_commit: 3d2cdf74
   result: >-
     The retained Helen kitchen Fal clip and pinned Avatar Hub source reproduce a visible
@@ -51,8 +58,8 @@ fal_avatar_blend_repair_2026_09_26:
     The wider worker suite passed 160/161: one unrelated Mage overlay hash assertion
     already fails against unchanged HEAD mage_serverless.py bytes.
   remaining_gates: >-
-    Worker 0.1.37 remains installed and unchanged. Release packaging/publication,
-    installed Chrome playback, and visual acceptance on a fresh project are unverified.
+    Worker 0.1.38 now carries this repair in both published installers and is installed on Mac.
+    Fresh installed-worker project playback/visual acceptance and Windows installation remain unverified.
     No new provider clip was generated; native missing pixels and mouth detail cannot be recovered.
   provider_spend: No provider requests or paid generation in this local repair.
   paid_compute_shutdown: No paid compute was started by this local repair; live inventory was not queried.

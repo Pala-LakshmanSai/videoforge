@@ -1,0 +1,80 @@
+{
+  "checkpoint": "V2-09",
+  "status": "PRODUCTION_PUBLISHED_MAC_INSTALLED_VERIFIED",
+  "worker_source_commit": "f430fae54c5ae1239bebbfc27f1799a6c5bb6c79",
+  "production_source_commit": "58a124a60a8d238306391a8c3a0364926ad04a77",
+  "cloudflare_version": "6695f1b3-84ce-4d98-a06a-174e9e3d9b91",
+  "release_run_id": 36213316707,
+  "release_tag": "media-worker-v0.1.38",
+  "release_manifest": {
+    "execution_bundle_sha256": "sha256:f374e4d414518f6557628dcd1b4f71b31fd998457548349018c7ebd8105625c2",
+    "macos": {
+      "sha256": "sha256:a91207b46f905c699b15b0d41533a7dfff42b80fad2bde73063bc219cd1c7b70",
+      "size_bytes": 414221533,
+      "trust": "AD_HOC_BETA",
+      "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.38/VideoForge-Worker-0.1.38.dmg"
+    },
+    "minimum_protocol_version": 1,
+    "schema_version": "videoforge-media-worker-release/v1",
+    "version": "0.1.38",
+    "whisper_model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+    "windows": {
+      "sha256": "sha256:9027b3f8dfcdde3378795889d98f7a65422fbbb041839c9611cfc2bfce24b87d",
+      "size_bytes": 279576653,
+      "trust": "UNSIGNED_BETA",
+      "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.38/VideoForge-Worker-0.1.38-Setup.exe"
+    }
+  },
+  "mac_installation": {
+    "signature_verified": true,
+    "installer_sha256_verified": true,
+    "installer_size_verified": true,
+    "launch_agent": "com.videoforge.personal-media-worker",
+    "process_type": "Standard",
+    "device_status": "ONLINE",
+    "worker_version": "0.1.38",
+    "execution_bundle_sha256": "sha256:f374e4d414518f6557628dcd1b4f71b31fd998457548349018c7ebd8105625c2",
+    "previous_package_retained_for_rollback": true
+  },
+  "installed_asr_proof": {
+    "provider_free": true,
+    "retained_normalized_voiceover_duration_ms": 1703784,
+    "execution": "installed executable --execute-media transcribe with bundled whisper/FFmpeg",
+    "elapsed_seconds": 51.86,
+    "status": "SUCCEEDED",
+    "word_count": 5121,
+    "phrase_count": 784,
+    "evidence_path": ".videoforge/voiceover-stage-20260926/installed-038-proof/stdout-v2.json",
+    "failed_harness_attempt": "First local proof used the wrong fixture object prefix; it failed to resolve the source. Correct private-bucket prefix and a fresh local attempt passed."
+  },
+  "validations": {
+    "transcribe_unit_tests_passed": 33,
+    "personal_worker_unit_tests_passed": 46,
+    "product_route_tests_passed": 88,
+    "product_route_tests_failed_preexisting": 1,
+    "preexisting_failure": "preparation-owned adaptive plan binding source-string assertion; reproduced on unchanged f430fae5",
+    "web_typecheck": "PASS",
+    "touched_eslint": "PASS",
+    "production_build": "PASS",
+    "production_bundle_guard": "PASS",
+    "windows_build_and_frozen_render_smoke": "PASS",
+    "macos_universal2_build_and_frozen_render_smoke": "PASS",
+    "chrome": "both release links 0.1.38; installed Mac Online",
+    "exact_recovery_query_on_production": {
+      "new_bundle_attempt_count": 0,
+      "same_bundle_attempt_count": 3,
+      "total_attempt_count": 3,
+      "latest_state": "FAILED"
+    }
+  },
+  "authority": "User authorized production publication and both worker updates; later specified Mac installation here and self-installation on Windows.",
+  "live_project_retried": false,
+  "paid_generation_requests": 0,
+  "paid_compute_started": false,
+  "gpu_transport": "DISABLED_UNQUALIFIED",
+  "provider_inventory_queried": false,
+  "remaining_gates": [
+    "User installs/tests Windows 0.1.38",
+    "Live china project retry and downstream generation not performed in this release"
+  ]
+}

@@ -1,5 +1,13 @@
 # VideoForge: start here
 
+## ASR worker release — 2026-09-26
+
+Worker 0.1.38 fixes consecutive zero-duration Whisper timestamps and is published for Windows
+and macOS. Production Settings serves both exact new installers; this Mac is installed and Online.
+Its installed executable transcribed the retained 28-minute voiceover successfully. The original
+china project retains its three failed attempts and is ready for bounded retry; live recovery and
+user-controlled Windows installation remain open. See `china_voiceover_asr_repair_2026_09_26`.
+
 ## Current generation transition — 2026-09-26
 
 The replacement NAPAA project completed on its fifth local render with all 327 saved prompts,
