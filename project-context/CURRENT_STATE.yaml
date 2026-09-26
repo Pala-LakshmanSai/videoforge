@@ -1,13 +1,14 @@
 schema_version: "2.0"
 china_found_render_and_retry_repair_2026_09_26:
   checkpoint: V2-09
-  status: RENDER_COMPLETE_RETRY_DOWNLOAD_FIX_VALIDATED_DEPLOYMENT_PENDING
+  status: PRODUCTION_FIXED_FINAL_TECHNICAL_CHROME_DOWNLOAD_PASS
   project_id: a8132134-d81b-414f-b838-850adacc85a6
   revision_id: 0a89de42-064a-4175-a7a2-d528cfb5f767
   worker_source_commit: af53d01e6b5c449499aea343156d19445e08df28
   worker_release: 0.1.39
   worker_execution_bundle_sha256: sha256:1df5d302b1b10d61c00206963366c5c9f5eca2d70a08ff0c554414b6ace4bcda
-  cloudflare_version: 6fcb6ad3-6194-4f8b-a892-42b52a4d0779
+  source_commit: 80b4f1050b8faac45a855aae6d64c37e9b8963cd
+  cloudflare_version: 37e48c02-3114-42cb-8c31-4cfdf45d03c2
   render_attempt_id: d00bab80-f2ee-440d-ae57-682196bbf6ca
   final_output_sha256: sha256:a5230228ebbd801a798ea0c41bd23da402ce878a341e8fec16938e5dd65984fe
   final_receipt_sha256: sha256:bb24969c77abc78f093c0d2805b0438c1899fc1ba22726feb43d498f278e442c
@@ -23,9 +24,11 @@ china_found_render_and_retry_repair_2026_09_26:
     retrieval continues for known submitted siblings while blocked paid jobs cannot resubmit.
     Stable authenticated range media removes expiring preview downloads and compares the MP4
     and JSON result-document authorities separately. Provider-free tests/preflight pass.
+    Migration 0211 applied; source 80b4f105 deployed. Chrome downloaded 344114328 bytes with
+    matching final SHA-256 to Downloads/videoforge-output (3).mp4. Human approval is pending.
   evidence: evidence/acceptance/VF-10-09/2026-09-26-china-found-render.json
   audit: evidence/acceptance/VF-10-09/2026-09-26-stage-retry-audit.md
-  remaining_gates: Retry/download production deployment, user approval/download, user-installed Windows parity.
+  remaining_gates: Human creative approval and user-installed Windows parity.
   provider_spend: Repairs made zero paid calls; prompts reported USD2.0596 under USD8; API USD3.11 is an estimate, settled debit unverified.
   paid_compute_shutdown: No GPU activated, project has zero serverless attempts, provider lease RELEASED; live provider inventory not queried.
   monitoring: Paused after final receipt, technical probe and Chrome playback passed.
@@ -54,19 +57,16 @@ china_found_planning_repair_2026_09_26:
   observed_at: "2026-09-26T03:30:59Z"
   evidence: evidence/acceptance/VF-10-09/2026-09-26-china-found-planning.json
   production_result: >-
-    Same-project periodic continuation saved the plan on the new release. Chrome shows stage 4
-    COMPLETE and stage 5 RUNNING. The original ASR/context were preserved; prompt run
-    f92e848f-a3dd-41f9-b007-3c15db2aecd8 has 328 scenes, 33 batches and USD8 reservation.
-    Mac worker 0.1.38 is ONLINE. No browser Retry was needed after deployment.
-  monitoring: >-
-    Existing heartbeat videoforge-china-voiceover-monitor now targets this project on the current
-    task every five minutes, through final receipt/technical checks and Chrome playback. It may
-    fix proven blockers within existing authority; accepted/uncertain paid work is never replayed.
+    Same-project continuation saved the plan and completed all 328 prompts/99 spans/328 images/
+    99 avatar clips. Worker 0.1.39 render-only recovery completed the 28:23.8 MP4 with exact final
+    receipt, technical probe, Chrome playback and checksum-matched browser download verified.
+  monitoring: Paused after verified final technical/receipt/Chrome completion.
   authority: User authorized blocker fixes, production deployment and continuing this existing run.
-  remaining_gates: Prompt/provider stages, local assembly, final artifact/Chrome playback and human approval.
+  remaining_gates: Human creative approval and Windows self-installation.
   provider_spend: >-
     Repair/deployment made zero paid calls. The user-started project resumed its bounded paid
-    prompt pipeline under its existing USD8 reservation; final settled cost is not yet known.
+    prompt pipeline under its existing USD8 reservation; USD2.0596 prompt cost is reported,
+    while the USD3.11 Kie/Fal published-rate estimate is not verified settled debit.
   paid_compute_shutdown: No GPU activated; ordinary generation remains KIE_FAL.
 china_voiceover_asr_repair_2026_09_26:
   checkpoint: V2-09

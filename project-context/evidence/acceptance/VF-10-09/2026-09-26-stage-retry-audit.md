@@ -1,6 +1,8 @@
 # V2-09 stage retry audit — 2026-09-26
 
-Status: provider-free source/regression proof complete; production deployment pending.
+Status: deployed source `80b4f105` / Cloudflare `37e48c02`; production migration 0211 applied.
+Chrome downloaded 344,114,328 bytes through the stable authenticated stream; SHA-256 matches
+the accepted final MP4 `a5230228…65984fe`. Creative approval remains pending.
 Worker 0.1.39 is already published on both platforms and installed/Online on this Mac.
 The same `china found` project finished its second local render; final receipt, technical
 probe and advancing Chrome playback pass. Exact identities are in
@@ -41,10 +43,13 @@ probe and advancing Chrome playback pass. Exact identities are in
 - 23 focused UI retry/download tests; five MP4 stream/range/checksum tests pass.
 - Twelve legacy/new local recovery migration tests pass, plus the final 0211 legacy-replay
   regression. Production migration preflight applies 0211 in a transaction and rolls back.
-- Web TypeScript, touched ESLint and diff checks pass.
-- Expanded historical ASR/span database fixture suites have eleven existing fixture failures
-  (missing digest/admitted-account helper); unchanged af53d01e baseline reproduces them.
-  Four separate prompt recovery suites pass. Do not claim full repository green.
+- Web TypeScript, touched ESLint, production build/bundle guard and diff checks pass.
+- Full UI/product run: 219 pass, three existing failures (two timer labels and one source-string
+  prompt binding assertion). No new failure on the changed retry/download surfaces.
+- Expanded historical database fixture suites have eleven existing failures
+  (missing digest/admitted-account helpers and a stale 0187 manifest-tail assertion);
+  unchanged af53d01e baseline reproduces nine ASR/span and two prompt failures.
+  Two prompt fixture failures also reproduce on unchanged af53d01e; five prompt checks pass. Do not claim full repository green.
 - Production retains historical ledger entries omitted from the current manifest and lacks
   obsolete 0148. Every shared entry hash matches; migration execution freezes the exact
   193-entry live baseline and appends only 0211. Historical entries are not rewritten.

@@ -1,6 +1,6 @@
 {
   "checkpoint": "V2-09",
-  "status": "FINAL_TECHNICAL_AND_CHROME_PLAYBACK_PASS",
+  "status": "PRODUCTION_RETRY_DOWNLOAD_FIXED_FINAL_TECHNICAL_CHROME_DOWNLOAD_PASS",
   "project_id": "a8132134-d81b-414f-b838-850adacc85a6",
   "project_revision_id": "0a89de42-064a-4175-a7a2-d528cfb5f767",
   "failed_render_attempt_id": "e5d3172a-533a-4bab-9947-86b5033d63bb",
@@ -183,11 +183,10 @@
     "reason": "HOSTED_API_OUTPUTS_ACCEPTED"
   },
   "remaining_gates": [
-    "download fix production verification",
-    "human approval",
+    "human creative review/approval",
     "user-controlled Windows installation"
   ],
-  "updated_at": "2026-09-26T05:44:46.784109+00:00",
+  "updated_at": "2026-09-26T05:50:59.293946+00:00",
   "production_cloudflare_version": "6fcb6ad3-6194-4f8b-a892-42b52a4d0779",
   "retry_attempt_id": "d00bab80-f2ee-440d-ae57-682196bbf6ca",
   "terminal_at": "2026-09-26T05:32:59.713403Z",
@@ -257,5 +256,47 @@
     "project_serverless_attempts": 0,
     "provider_lease": "RELEASED",
     "live_provider_inventory": "NOT_QUERIED"
+  },
+  "app_source_commit": "80b4f1050b8faac45a855aae6d64c37e9b8963cd",
+  "app_cloudflare_version": "37e48c02-3114-42cb-8c31-4cfdf45d03c2",
+  "migration_211": {
+    "state": "APPLIED",
+    "sha256": "sha256:2b539a7f5370f5f9455891652c2a2e05d961b27a0acf0744419c262623cf714a",
+    "preflight": "ROLLED_BACK_PASS",
+    "live_baseline_entries": 193
+  },
+  "download_fix": {
+    "stable_authenticated_preview": true,
+    "approved_download_binds_json_and_mp4_authorities_separately": true,
+    "range_support": true,
+    "chrome_download_path": "/Users/lakshmansai/Downloads/videoforge-output (3).mp4",
+    "downloaded_bytes": 344114328,
+    "downloaded_sha256": "sha256:a5230228ebbd801a798ea0c41bd23da402ce878a341e8fec16938e5dd65984fe",
+    "checksum_match": true,
+    "formal_approval_gate": "PENDING",
+    "direct_preview_download": "PASS",
+    "chrome_seek_seconds": 810.405864,
+    "chrome_seek_decode_ready_state": 4,
+    "chrome_seek_media_error": null
+  },
+  "retry_audit": {
+    "report": "2026-09-26-stage-retry-audit.md",
+    "hosted_stage_tests_pass": 120,
+    "focused_ui_tests_pass": 23,
+    "mp4_route_tests_pass": 5,
+    "local_render_migration_tests_pass": 12,
+    "web_typecheck": "PASS",
+    "touched_eslint": "PASS",
+    "production_build": "PASS",
+    "production_bundle_guard": "PASS",
+    "full_ui_product_tests": {
+      "pass": 219,
+      "preexisting_failures": 3
+    },
+    "expanded_historical_db_fixtures": {
+      "pass": 8,
+      "preexisting_failures": 11,
+      "unchanged_af53d01e_baseline_reproduced": true
+    }
   }
 }
