@@ -310,7 +310,7 @@ async function createConnectCommand(
     return json(
       {
         expires_at: expiresAt,
-        macos: `curl -fsSL '${mac}' | bash`,
+        macos: `bash -c 'set -eu; umask 077; script=$(mktemp); cleanup() { rm -f -- "$script"; }; trap cleanup EXIT; if ! curl -fsSL --proto "=https" --tlsv1.2 --retry 2 --connect-timeout 30 --max-time 60 "${mac}" -o "$script"; then echo "Could not download the connection script. Get a fresh command in VideoForge Settings and try again." >&2; exit 1; fi; bash "$script"'`,
         windows: `powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${windowsEncoded}`,
       },
       201,

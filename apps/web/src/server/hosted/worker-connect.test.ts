@@ -1,4 +1,8 @@
 import { beforeEach, expect, it, vi } from "vitest";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { HostedRuntimeConfiguration } from "./configuration";
 import { handlePersonalWorkerRequest } from "./personal-worker";
 import { workerConnectScript } from "./worker-connect-scripts";
@@ -166,7 +170,7 @@ it("requires same-origin signed-in command creation", async () => {
   expect(response?.status).toBe(201);
   const commands = (await response?.json()) as { macos: string; windows: string };
   expect(commands).toMatchObject({
-    macos: expect.stringContaining("| bash"),
+    macos: expect.stringContaining("bash -c 'set -eu;"),
     windows: expect.stringContaining("powershell.exe -NoProfile"),
   });
   // This outer command has no variables or quotes for CMD/parent PowerShell to expand.
@@ -178,12 +182,46 @@ it("requires same-origin signed-in command creation", async () => {
     /^\$ErrorActionPreference='Stop'; \[Net\.ServicePointManager\]::SecurityProtocol=\[Net\.SecurityProtocolType\]::Tls12; \$s=\(Invoke-WebRequest -UseBasicParsing 'https:\/\/app\.example\.test\/api\/v2\/media-worker\/connect\.ps1\?token=[a-f0-9]{64}'\)\.Content; Invoke-Expression \$s$/u,
   );
 });
-it("installer scripts pin exact bytes/hash, protect tokens and refuse active-worker replacement", () => {
+it.runIf(process.platform !== "win32")(
+  "does not execute a partially downloaded or expired connection script",
+  async () => {
+    const response = await handlePersonalWorkerRequest(
+      new Request("https://app.example.test/api/v2/media-worker/connect-command", {
+        method: "POST",
+        headers: { origin: config.publicOrigin },
+      }),
+      {},
+      { waitUntil() {} },
+      config,
+    );
+    const commands = (await response?.json()) as { macos: string };
+    const directory = mkdtempSync(join(tmpdir(), "vf-connect-download-"));
+    const marker = join(directory, "executed");
+    try {
+      // Simulate curl writing executable bytes before a failed transfer.
+      writeFileSync(
+        join(directory, "curl"),
+        `#!/bin/bash\nwhile [ "$1" != -o ]; do shift; done\nshift\nprintf '%s\\n' 'touch "${marker}"' > "$1"\nexit 22\n`,
+        { mode: 0o700 },
+      );
+      const result = spawnSync("/bin/bash", ["-c", commands.macos], {
+        env: { ...process.env, PATH: `${directory}:/usr/bin:/bin`, TMPDIR: directory },
+        encoding: "utf8",
+      });
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("Get a fresh command");
+      expect(existsSync(marker)).toBe(false);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  },
+);
+it("installer scripts pin exact bytes/hash and reuse running workers without replacement", () => {
   for (const platform of ["MACOS", "WINDOWS"] as const) {
     const script = workerConnectScript(config, "d".repeat(64), platform);
     expect(script).not.toContain("@@");
     expect(script).toContain("--connect-file");
-    expect(script).toContain("worker is already running");
+    expect(script).toContain("Your existing worker is running; current work was preserved");
     expect(script).not.toContain("Stop-Process");
     expect(script).not.toContain("pkill");
     expect(script).toContain(platform === "MACOS" ? "shasum -a 256" : "Get-FileHash");

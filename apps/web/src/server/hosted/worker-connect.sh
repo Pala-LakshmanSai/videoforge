@@ -9,9 +9,15 @@ trap cleanup EXIT
 target="$HOME/Applications/VideoForge Worker.app"
 executable="$target/Contents/MacOS/VideoForge Worker"
 service="gui/$(id -u)/com.videoforge.personal-media-worker"
-# Do not interrupt active work. Obsolete workers exit themselves on UPDATE_REQUIRED.
+printf '%s' '@@TOKEN@@' > "$work/connect-token"
+# Verify account ownership without replacing or restarting an active worker.
 if pgrep -f "^$executable" >/dev/null; then
-  echo 'The worker is already running. Let current work finish and close it before installing an update.' >&2; exit 1
+  echo 'Checking the running VideoForge Worker…'
+  if ! "$executable" --connect-file "$work/connect-token"; then
+    echo 'Connection was not changed. Check the account in Settings and copy a fresh command. If an update is required, let current work finish and reopen the worker.' >&2; exit 1
+  fi
+  echo 'Connected. Your existing worker is running; current work was preserved.'
+  exit 0
 fi
 echo 'Downloading VideoForge Worker @@VERSION@@…'
 curl --fail --location --proto '=https' --tlsv1.2 --retry 2 --connect-timeout 30 '@@URL@@' -o "$work/worker.dmg"
@@ -27,7 +33,6 @@ ditto "$work/mount/VideoForge Worker.app" "$work/new.app"
 codesign --verify --deep --strict "$work/new.app"
 if [ -d "$target" ]; then mv "$target" "$work/previous.app"; fi
 mv "$work/new.app" "$target"
-printf '%s' '@@TOKEN@@' > "$work/connect-token"
 if ! "$executable" --connect-file "$work/connect-token"; then
   echo 'Connection failed. Get a fresh command from VideoForge Settings and try again.' >&2; exit 1
 fi
