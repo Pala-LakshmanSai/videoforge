@@ -1,0 +1,55 @@
+{
+  "checkpoint": "V2-09",
+  "source_commit": "a85a5673",
+  "status": "LOCAL_REPAIR_VERIFIED_RELEASE_PENDING",
+  "cause": "The static wide portrait and moving square crop disagree at the collar. The previous central bottom blend was only about eight native pixels, leaving a split or duplicated shirt boundary.",
+  "fix": "Reference-to-frame DIS optical flow on the lower 192 native rows at half resolution; bounded 24px displacement, smooth correction over rows 384..480, 32px central bottom blend. Upper 384 native rows remain byte-identical. Shared full/split Fal path; no avatar identity branching.",
+  "validation": {
+    "clips": 118,
+    "sampled_frames": 354,
+    "identities": "Simon and Helen; 99 China found clips plus 19 earlier clips",
+    "all_sampled_lower_join_errors_improved": true,
+    "mean_absolute_pixel_error_before": 17.95729509965474,
+    "mean_absolute_pixel_error_after": 5.433236474026993,
+    "mean_anchor_ms": 2.9742816666140826,
+    "metric_scope": "Reference mismatch on native rows 480:504, columns 96:416; diagnostic, not a perceptual guarantee. Timing uses two OpenCV threads and excludes decoding/encoding.",
+    "focused_tests": "8 Fal mapping/anchor plus 28 render/filtergraph/job tests pass",
+    "ruff": "pass",
+    "full_clip_decode_frames": {
+      "china": 128,
+      "simon": 127,
+      "helen": 168
+    },
+    "limitations": "Two real portrait identities tested. Unseen avatars, extreme motion and native provider distortions are not guaranteed. Real Chrome verification unavailable in this session because browser execution tool is not exposed."
+  },
+  "artifacts": {
+    "china-before-after.mp4": {
+      "path": ".videoforge/neck-seam-20260926/china-before-after.mp4",
+      "sha256": "01a1c944f5f32e9709d6604d986d16c48c7bf856a20cef74a9f9e07440139c23",
+      "bytes": 436633
+    },
+    "china-after.mp4": {
+      "path": ".videoforge/neck-seam-20260926/china-after.mp4",
+      "sha256": "80bb036840b2234b5dd3bdf1ba844b69262c7d77182c6b622137d6b4a87cd512",
+      "bytes": 1096707
+    },
+    "simon1-after.mp4": {
+      "path": ".videoforge/neck-seam-20260926/simon1-after.mp4",
+      "sha256": "70123024ef3e86f8223d00502280b7e323d954a1ed3474c83d4150406a300a24",
+      "bytes": 1060619
+    },
+    "helenn1-after.mp4": {
+      "path": ".videoforge/neck-seam-20260926/helenn1-after.mp4",
+      "sha256": "1f95d72df289a5a8b67b803bf4354e2989cc2b1bad9b147678524df9aa9cd9d1",
+      "bytes": 1131643
+    }
+  },
+  "remaining_gates": [
+    "Approval for worker publication and Mac installation",
+    "Full corrected China found copy",
+    "Installed-worker and real Chrome acceptance",
+    "User-controlled Windows installation"
+  ],
+  "provider_spend": "Zero provider calls or spend. Saved local media only.",
+  "paid_compute_shutdown": "No paid compute started. Live global inventory not queried."
+}

@@ -1,5 +1,12 @@
 # VideoForge: start here
 
+## Avatar neck join repair — 2026-09-26
+
+Local source `a85a5673` anchors the moving lower Fal crop to the pinned torso before
+blending. Retained China found/Simon/Helen checks pass; publication and the corrected
+full China found copy remain pending. See `fal_avatar_neck_seam_repair_2026_09_26`
+in `CURRENT_STATE.yaml`; the existing accepted MP4 is unchanged.
+
 ## Current project monitoring — 2026-09-26
 
 `china found` has finished its same-project render on worker 0.1.39: final receipt,
