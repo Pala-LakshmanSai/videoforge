@@ -2,6 +2,7 @@
 
 import unittest
 import hashlib
+import os
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -51,10 +52,19 @@ class FalWideMappingTests(unittest.TestCase):
             image = np.random.default_rng(8).integers(0, 256, (540, 960, 3), dtype=np.uint8)
             cv2.imwrite(str(source), image)
             encoded = source.read_bytes()
+            initial_stat = source.stat()
             original_decode = cv2.imdecode
 
             def changed_source(value, flags):
                 source.write_bytes(b"x" * len(encoded))
+                # Fast same-size writes can retain their timestamp on Windows CI.
+                # Explicitly advance it so this tests detection rather than clock precision.
+                os.utime(source, ns=(initial_stat.st_atime_ns,
+                                     initial_stat.st_mtime_ns + 2_000_000_000))
+                changed_stat = source.stat()
+                self.assertEqual(changed_stat.st_size, initial_stat.st_size)
+                self.assertGreaterEqual(changed_stat.st_mtime_ns - initial_stat.st_mtime_ns,
+                                        2_000_000_000)
                 return original_decode(value, flags)
 
             with patch("cv2.imdecode", side_effect=changed_source), \
