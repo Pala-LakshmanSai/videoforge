@@ -5,10 +5,29 @@ import unittest
 import cv2
 import numpy as np
 
-from videoforge_image_media.jobs.render.fal_wide import _clipped_crop_bounds, _perspective_maps
+from videoforge_image_media.jobs.render.fal_wide import (
+    _blend_mask, _clipped_crop_bounds, _fit_similarity, _perspective_maps,
+)
 
 
 class FalWideMappingTests(unittest.TestCase):
+    def test_registration_preserves_face_proportions_and_rejects_weak_fit(self) -> None:
+        x, y = np.meshgrid(np.arange(0, 512, 64), np.arange(0, 512, 64))
+        source = np.stack((x, y), axis=-1).astype(np.float32).reshape(-1, 1, 2)
+        expected = np.array([[1.5, -0.2, 500], [0.2, 1.5, 20], [0, 0, 1]])
+        target = cv2.perspectiveTransform(source, expected).astype(np.float32)
+        target[0] += 80  # One bad feature must not stretch the face.
+        actual = _fit_similarity(source, target)
+        np.testing.assert_allclose(actual, expected, atol=0.01)
+        with self.assertRaisesRegex(ValueError, "geometry is uncertain"):
+            _fit_similarity(source[:10], target[:10])
+
+    def test_blend_keeps_shoulder_and_neck_single(self) -> None:
+        mask = _blend_mask()
+        self.assertGreater(mask[450, 256], 0.9)  # Keep moving shirt at center.
+        self.assertEqual(mask[450, 20], 0)  # Side join stays inside shirt.
+        self.assertGreater(mask[500, 256], mask[500, 70])  # Fade lower hair, not neck.
+
     def test_small_edge_overrun_clips_without_changing_registered_scale(self) -> None:
         # Real clip 39 projects 58 pixels above the source, with strong feature registration.
         self.assertEqual(_clipped_crop_bounds(478, -58, 1400, 822), (478, 0, 1400, 822))

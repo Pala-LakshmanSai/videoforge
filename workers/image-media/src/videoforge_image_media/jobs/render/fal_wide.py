@@ -33,6 +33,38 @@ def _clipped_crop_bounds(x0: int, y0: int, x1: int, y1: int) -> tuple[int, int, 
     return clipped
 
 
+def _blend_mask():
+    """Keep the lower side seam inside the shirt and fade lower hair separately."""
+    import numpy as np
+
+    yy, xx = np.mgrid[0:512, 0:512]
+    inset = np.clip((yy / 512 - 0.508) / 0.234, 0, 1) * (512 * 0.156)
+    side = np.minimum((xx - inset) / (512 * 0.039),
+                      (511 - xx - inset) / (512 * 0.039))
+    hair = np.clip((np.abs(xx - 256) / 512 - 0.117) / 0.156, 0, 1)
+    bottom = 512 * (0.016 + 0.140 * hair)
+    vertical = np.minimum(yy / (512 * 0.016), (511 - yy) / bottom)
+    return np.clip(np.minimum(side, vertical), 0, 1).astype(np.float32)
+
+
+def _fit_similarity(src, dst):
+    """Register without stretching either face axis independently."""
+    import cv2
+    import numpy as np
+
+    affine, inliers = cv2.estimateAffinePartial2D(
+        src, dst, method=cv2.RANSAC, ransacReprojThreshold=3.0
+    )
+    if affine is None or inliers is None or int(inliers.sum()) < 20:
+        raise ValueError("Fal crop source geometry is uncertain")
+    transform = np.vstack((affine, [0, 0, 1]))
+    fitted = cv2.perspectiveTransform(src, transform).reshape(-1, 2)
+    residual = np.linalg.norm(fitted - dst.reshape(-1, 2), axis=1)
+    if np.percentile(residual[inliers.ravel() != 0], 95) > 3:
+        raise ValueError("Fal crop source geometry is uncertain")
+    return transform
+
+
 def compose_fal_wide(square: Path, source: Path, output: Path, ffmpeg: Path) -> None:
     """Register the native crop using source features; fail if geometry is uncertain."""
     import cv2
@@ -72,21 +104,17 @@ def compose_fal_wide(square: Path, source: Path, output: Path, ffmpeg: Path) -> 
             raise ValueError("Fal crop has too few source matches")
         src = np.float32([source_points[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
         dst = np.float32([background_points[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
-        homography, inliers = cv2.findHomography(src, dst, cv2.RANSAC, 3.0)
-        if homography is None or inliers is None or int(inliers.sum()) < 20:
-            raise ValueError("Fal crop source geometry is uncertain")
+        registration = _fit_similarity(src, dst)
         corners = cv2.perspectiveTransform(
-            np.float32([[[0, 0], [512, 0], [512, 512], [0, 512]]]), homography
+            np.float32([[[0, 0], [512, 0], [512, 512], [0, 512]]]), registration
         )[0]
         x0, y0 = np.floor(corners.min(axis=0)).astype(int)
         x1, y1 = np.ceil(corners.max(axis=0)).astype(int)
         x0, y0, x1, y1 = _clipped_crop_bounds(x0, y0, x1, y1)
-        transform = np.array([[1, 0, -x0], [0, 1, -y0], [0, 0, 1]]) @ homography
+        transform = np.array([[1, 0, -x0], [0, 1, -y0], [0, 0, 1]]) @ registration
         region_width, region_height = x1 - x0, y1 - y0
         maps = _perspective_maps(transform, (region_width, region_height))
-        yy, xx = np.mgrid[0:512, 0:512]
-        mask = np.minimum.reduce([xx, yy, 511 - xx, 511 - yy]).astype(np.float32)
-        alpha = cv2.warpPerspective(np.clip(mask / 60, 0, 1), transform,
+        alpha = cv2.warpPerspective(_blend_mask(), transform,
                                     (region_width, region_height))[:, :, None]
         backdrop = background[y0:y1, x0:x1].astype(np.float32) * (1 - alpha)
 
