@@ -297,7 +297,6 @@ async function handleHostedQueue(
                  AND completed_render.workspace_id=project.workspace_id
                  AND completed_render.project_id=project.id
                  AND completed_render.kind='RENDER' AND completed_render.state='SUCCEEDED'
-                 AND completed_render.retention_deleted_at IS NULL
             )
           ORDER BY updated_at DESC,project.id DESC`,
         [accountId, workspaceId],

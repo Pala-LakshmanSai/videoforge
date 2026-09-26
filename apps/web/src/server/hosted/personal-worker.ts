@@ -303,11 +303,15 @@ async function createConnectCommand(
     const base = new URL(config.publicOrigin).origin;
     const mac = `${base}/api/v2/media-worker/connect.sh?token=${token}`;
     const win = `${base}/api/v2/media-worker/connect.ps1?token=${token}`;
+    // EncodedCommand prevents a parent PowerShell from expanding $s/$ErrorActionPreference.
+    // The URL origin and token are ASCII; PowerShell expects UTF-16LE Base64.
+    const windowsScript = `$ErrorActionPreference='Stop'; [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $s=(Invoke-WebRequest -UseBasicParsing '${win}').Content; Invoke-Expression $s`;
+    const windowsEncoded = btoa([...windowsScript].map((character) => `${character}\0`).join(""));
     return json(
       {
         expires_at: expiresAt,
         macos: `curl -fsSL '${mac}' | bash`,
-        windows: `powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& { $ErrorActionPreference='Stop'; $s=(Invoke-WebRequest -UseBasicParsing '${win}').Content; Invoke-Expression $s }"`,
+        windows: `powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${windowsEncoded}`,
       },
       201,
     );

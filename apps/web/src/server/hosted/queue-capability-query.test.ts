@@ -165,6 +165,21 @@ describe("hosted queue capability query", () => {
         await database.query<Record<string, unknown>>(await queueQuery(), [accountId, workspaceId])
       ).rows.find((row) => row.project_id === idleProjectId);
       expect(terminal?.state).toBe("WAITING");
+      // Removing a finished output must not put its completed project back in the queue.
+      await database.query("UPDATE hosted_cpu_job_attempts SET state='SUCCEEDED' WHERE project_id=$1", [
+        runningProjectId,
+      ]);
+      let finished = await database.query<Record<string, unknown>>(await queueQuery(), [
+        accountId, workspaceId,
+      ]);
+      expect(finished.rows.some((row) => row.project_id === runningProjectId)).toBe(false);
+      await database.query("UPDATE hosted_cpu_job_attempts SET retention_deleted_at=now() WHERE project_id=$1", [
+        runningProjectId,
+      ]);
+      finished = await database.query<Record<string, unknown>>(await queueQuery(), [
+        accountId, workspaceId,
+      ]);
+      expect(finished.rows.some((row) => row.project_id === runningProjectId)).toBe(false);
     } finally {
       await database.close();
     }

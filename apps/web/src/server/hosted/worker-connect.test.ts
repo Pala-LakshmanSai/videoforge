@@ -164,10 +164,19 @@ it("requires same-origin signed-in command creation", async () => {
     config,
   );
   expect(response?.status).toBe(201);
-  expect(await response?.json()).toMatchObject({
+  const commands = (await response?.json()) as { macos: string; windows: string };
+  expect(commands).toMatchObject({
     macos: expect.stringContaining("| bash"),
     windows: expect.stringContaining("powershell.exe -NoProfile"),
   });
+  // This outer command has no variables or quotes for CMD/parent PowerShell to expand.
+  expect(commands.windows).toMatch(
+    /^powershell\.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand [A-Za-z0-9+/]+=*$/u,
+  );
+  const decoded = Buffer.from(commands.windows.split(" ").at(-1)!, "base64").toString("utf16le");
+  expect(decoded).toMatch(
+    /^\$ErrorActionPreference='Stop'; \[Net\.ServicePointManager\]::SecurityProtocol=\[Net\.SecurityProtocolType\]::Tls12; \$s=\(Invoke-WebRequest -UseBasicParsing 'https:\/\/app\.example\.test\/api\/v2\/media-worker\/connect\.ps1\?token=[a-f0-9]{64}'\)\.Content; Invoke-Expression \$s$/u,
+  );
 });
 it("installer scripts pin exact bytes/hash, protect tokens and refuse active-worker replacement", () => {
   for (const platform of ["MACOS", "WINDOWS"] as const) {
