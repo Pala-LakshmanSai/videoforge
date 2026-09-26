@@ -42,9 +42,47 @@ def _blend_mask():
     side = np.minimum((xx - inset) / (512 * 0.039),
                       (511 - xx - inset) / (512 * 0.039))
     hair = np.clip((np.abs(xx - 256) / 512 - 0.117) / 0.156, 0, 1)
-    bottom = 512 * (0.016 + 0.140 * hair)
+    bottom = 32 + 48 * hair
     vertical = np.minimum(yy / (512 * 0.016), (511 - yy) / bottom)
     return np.clip(np.minimum(side, vertical), 0, 1).astype(np.float32)
+
+
+class _LowerCropAnchor:
+    """Join the moving collar to the still torso without crossfading two collars."""
+
+    def __init__(self, reference):
+        import cv2
+        import numpy as np
+
+        self.reference = cv2.cvtColor(
+            cv2.resize(reference[320:], (256, 96), interpolation=cv2.INTER_AREA),
+            cv2.COLOR_BGR2GRAY,
+        )
+        self.flow = cv2.DISOpticalFlow_create(cv2.DISOPTICAL_FLOW_PRESET_MEDIUM)
+        self.yy, self.xx = np.mgrid[384:512, 0:512].astype(np.float32)
+        weight = np.clip((self.yy - 384) / 96, 0, 1)
+        self.weight = weight * weight * (3 - 2 * weight)
+
+    def apply(self, frame):
+        import cv2
+        import numpy as np
+
+        moving = cv2.cvtColor(
+            cv2.resize(frame[320:], (256, 96), interpolation=cv2.INTER_AREA),
+            cv2.COLOR_BGR2GRAY,
+        )
+        # Reference-to-frame flow samples the moving pixels at the still collar's
+        # position. Work only near the lower join; speech/face pixels stay intact.
+        flow = self.flow.calc(self.reference, moving, None)
+        flow = cv2.resize(flow, (512, 192), interpolation=cv2.INTER_LINEAR) * 2
+        flow = cv2.GaussianBlur(flow, (0, 0), 3)[64:]
+        # Bound deformation even when texture is weak or generation changes clothing.
+        flow = np.clip(np.nan_to_num(flow), -24, 24) * self.weight[:, :, None]
+        lower = cv2.remap(frame, self.xx + flow[:, :, 0], self.yy + flow[:, :, 1],
+                          cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+        result = frame.copy()
+        result[384:] = lower
+        return result
 
 
 def _fit_similarity(src, dst):
@@ -140,6 +178,8 @@ def compose_fal_wide(square: Path, source: Path, output: Path, ffmpeg: Path) -> 
         transform = np.array([[1, 0, -x0], [0, 1, -y0], [0, 0, 1]]) @ registration
         region_width, region_height = x1 - x0, y1 - y0
         maps = _perspective_maps(transform, (region_width, region_height))
+        reference = cv2.warpPerspective(background, np.linalg.inv(registration), (512, 512))
+        lower_anchor = _LowerCropAnchor(reference)
         alpha = cv2.warpPerspective(_blend_mask(), transform,
                                     (region_width, region_height))[:, :, None]
         backdrop = background[y0:y1, x0:x1].astype(np.float32) * (1 - alpha)
@@ -159,6 +199,7 @@ def compose_fal_wide(square: Path, source: Path, output: Path, ffmpeg: Path) -> 
                 ok, frame = capture.read()
                 if not ok:
                     break
+                frame = lower_anchor.apply(frame)
                 warped = cv2.remap(frame, *maps, cv2.INTER_CUBIC)
                 wide[y0:y1, x0:x1] = (warped.astype(np.float32) * alpha + backdrop).astype(np.uint8)
                 process.stdin.write(memoryview(wide))

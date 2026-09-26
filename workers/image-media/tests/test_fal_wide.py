@@ -7,11 +7,33 @@ import cv2
 import numpy as np
 
 from videoforge_image_media.jobs.render.fal_wide import (
-    _blend_mask, _clipped_crop_bounds, _fit_similarity, _perspective_maps, _register_crop,
+    _LowerCropAnchor, _blend_mask, _clipped_crop_bounds, _fit_similarity,
+    _perspective_maps, _register_crop,
 )
 
 
 class FalWideMappingTests(unittest.TestCase):
+    def test_lower_join_tracks_collar_without_changing_face_or_input(self) -> None:
+        reference = np.zeros((512, 512, 3), dtype=np.uint8)
+        random = np.random.default_rng(42)
+        reference[:] = cv2.GaussianBlur(
+            random.integers(0, 256, reference.shape, dtype=np.uint8), (5, 5), 0
+        )
+        cv2.line(reference, (180, 420), (250, 511), (255, 255, 255), 12)
+        cv2.line(reference, (320, 420), (250, 511), (255, 255, 255), 12)
+        for dx, dy in [(10, -6), (-8, 5), (0, 0)]:
+            with self.subTest(dx=dx, dy=dy):
+                moving = cv2.warpAffine(reference, np.float32([[1, 0, dx], [0, 1, dy]]),
+                                        (512, 512), borderMode=cv2.BORDER_REFLECT)
+                original = moving.copy()
+                fixed = _LowerCropAnchor(reference).apply(moving)
+                np.testing.assert_array_equal(moving, original)
+                np.testing.assert_array_equal(fixed[:384], moving[:384])
+                region = np.s_[480:504, 100:400]
+                before = np.abs(moving[region].astype(float) - reference[region]).mean()
+                after = np.abs(fixed[region].astype(float) - reference[region]).mean()
+                self.assertLess(after, max(1, before * 0.3))
+
     def test_registration_preserves_face_proportions_and_rejects_weak_fit(self) -> None:
         x, y = np.meshgrid(np.arange(0, 512, 64), np.arange(0, 512, 64))
         source = np.stack((x, y), axis=-1).astype(np.float32).reshape(-1, 1, 2)
