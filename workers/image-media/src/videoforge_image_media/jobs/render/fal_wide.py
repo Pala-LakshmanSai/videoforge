@@ -65,6 +65,55 @@ def _fit_similarity(src, dst):
     return transform
 
 
+def _register_crop(capture, background):
+    """Try bounded alignment frames without weakening source or crop checks."""
+    import cv2
+    import numpy as np
+
+    detector = cv2.ORB_create(nfeatures=5000)
+    background_points, background_descriptors = detector.detectAndCompute(
+        cv2.cvtColor(background, cv2.COLOR_BGR2GRAY), None
+    )
+    if background_descriptors is None:
+        raise ValueError("Fal crop has no source features")
+    first_failure = None
+    # Speech can move source features at 500ms. The initial frame often retains them.
+    for sample_ms in (500, 0, 200, 1000):
+        capture.set(cv2.CAP_PROP_POS_MSEC, sample_ms)
+        ok, sample = capture.read()
+        if not ok:
+            continue
+        if sample.shape[:2] != (512, 512):
+            raise ValueError("Fal square clip geometry drifted")
+        try:
+            source_points, source_descriptors = detector.detectAndCompute(
+                cv2.cvtColor(sample, cv2.COLOR_BGR2GRAY), None
+            )
+            if source_descriptors is None:
+                raise ValueError("Fal crop has no source features")
+            pairs = cv2.BFMatcher(cv2.NORM_HAMMING).knnMatch(
+                source_descriptors, background_descriptors, k=2
+            )
+            matches = [first for first, second in pairs
+                       if first.distance < 0.75 * second.distance]
+            if len(matches) < 25:
+                raise ValueError("Fal crop has too few source matches")
+            src = np.float32([source_points[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
+            dst = np.float32([background_points[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
+            registration = _fit_similarity(src, dst)
+            corners = cv2.perspectiveTransform(
+                np.float32([[[0, 0], [512, 0], [512, 512], [0, 512]]]), registration
+            )[0]
+            x0, y0 = np.floor(corners.min(axis=0)).astype(int)
+            x1, y1 = np.ceil(corners.max(axis=0)).astype(int)
+            bounds = _clipped_crop_bounds(x0, y0, x1, y1)
+            return registration, bounds
+        except ValueError as error:
+            if first_failure is None:
+                first_failure = error
+    raise first_failure or ValueError("Fal square clip has no alignment frame or wrong frame rate")
+
+
 def compose_fal_wide(square: Path, source: Path, output: Path, ffmpeg: Path) -> None:
     """Register the native crop using source features; fail if geometry is uncertain."""
     import cv2
@@ -87,30 +136,7 @@ def compose_fal_wide(square: Path, source: Path, output: Path, ffmpeg: Path) -> 
         if (square_width, square_height) != (512, 512):
             raise ValueError("Fal square clip geometry drifted")
         native_frame_count = round(capture.get(cv2.CAP_PROP_FRAME_COUNT))
-        detector = cv2.ORB_create(nfeatures=5000)
-        source_points, source_descriptors = detector.detectAndCompute(
-            cv2.cvtColor(sample, cv2.COLOR_BGR2GRAY), None
-        )
-        background_points, background_descriptors = detector.detectAndCompute(
-            cv2.cvtColor(background, cv2.COLOR_BGR2GRAY), None
-        )
-        if source_descriptors is None or background_descriptors is None:
-            raise ValueError("Fal crop has no source features")
-        pairs = cv2.BFMatcher(cv2.NORM_HAMMING).knnMatch(
-            source_descriptors, background_descriptors, k=2
-        )
-        matches = [first for first, second in pairs if first.distance < 0.75 * second.distance]
-        if len(matches) < 25:
-            raise ValueError("Fal crop has too few source matches")
-        src = np.float32([source_points[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
-        dst = np.float32([background_points[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
-        registration = _fit_similarity(src, dst)
-        corners = cv2.perspectiveTransform(
-            np.float32([[[0, 0], [512, 0], [512, 512], [0, 512]]]), registration
-        )[0]
-        x0, y0 = np.floor(corners.min(axis=0)).astype(int)
-        x1, y1 = np.ceil(corners.max(axis=0)).astype(int)
-        x0, y0, x1, y1 = _clipped_crop_bounds(x0, y0, x1, y1)
+        registration, (x0, y0, x1, y1) = _register_crop(capture, background)
         transform = np.array([[1, 0, -x0], [0, 1, -y0], [0, 0, 1]]) @ registration
         region_width, region_height = x1 - x0, y1 - y0
         maps = _perspective_maps(transform, (region_width, region_height))

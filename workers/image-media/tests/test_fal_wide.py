@@ -1,12 +1,13 @@
 """The cached warp must preserve the accepted crop geometry and native detail."""
 
 import unittest
+from unittest.mock import Mock
 
 import cv2
 import numpy as np
 
 from videoforge_image_media.jobs.render.fal_wide import (
-    _blend_mask, _clipped_crop_bounds, _fit_similarity, _perspective_maps,
+    _blend_mask, _clipped_crop_bounds, _fit_similarity, _perspective_maps, _register_crop,
 )
 
 
@@ -21,6 +22,26 @@ class FalWideMappingTests(unittest.TestCase):
         np.testing.assert_allclose(actual, expected, atol=0.01)
         with self.assertRaisesRegex(ValueError, "geometry is uncertain"):
             _fit_similarity(source[:10], target[:10])
+
+    def test_moving_alignment_frame_falls_back_to_source_frame(self) -> None:
+        random = np.random.default_rng(21)
+        background = random.integers(0, 256, (1080, 1920, 3), dtype=np.uint8)
+        source_frame = background[200:712, 600:1112].copy()
+        capture = Mock()
+        capture.read.side_effect = [(True, np.zeros_like(source_frame)), (True, source_frame)]
+        transform, bounds = _register_crop(capture, background)
+        np.testing.assert_allclose(transform, [[1, 0, 600], [0, 1, 200], [0, 0, 1]], atol=0.1)
+        self.assertLessEqual(abs(bounds[0] - 600), 1)
+        self.assertLessEqual(abs(bounds[1] - 200), 1)
+        self.assertEqual([call.args[1] for call in capture.set.call_args_list], [500, 0])
+
+    def test_all_uncertain_frames_remain_terminal(self) -> None:
+        background = np.random.default_rng(21).integers(0, 256, (1080, 1920, 3), dtype=np.uint8)
+        capture = Mock()
+        capture.read.return_value = (True, np.zeros((512, 512, 3), dtype=np.uint8))
+        with self.assertRaisesRegex(ValueError, "no source features"):
+            _register_crop(capture, background)
+        self.assertEqual(capture.read.call_count, 4)
 
     def test_blend_keeps_shoulder_and_neck_single(self) -> None:
         mask = _blend_mask()
