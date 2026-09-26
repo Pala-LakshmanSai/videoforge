@@ -1,5 +1,13 @@
 # VideoForge: start here
 
+## Production release parity — 2026-09-26
+
+Production web/shared-package code equals current source. The live exact worker manifest,
+Windows/Mac 0.1.41 downloads and installed MI_Notebook agree and include all recent fixes.
+Public artifact hashes/sizes and release CI pass; no missing app deployment or rebuild remains.
+See `production_release_parity_2026_09_26` in `CURRENT_STATE.yaml` for precise identities,
+verification limits and evidence.
+
 ## Windows console repair — 2026-09-26
 
 Worker 0.1.41 is published from `755553c9` and suppresses Windows console creation for
@@ -15,16 +23,18 @@ across 288 native samples. Ongoing monitoring is active. See
 
 MI_Notebook worker 0.1.40 completed good steward through render, technical check and
 advancing 1920x1080 Chrome playback. No blocker or application fix was needed. Ongoing
-thread monitoring is active; human final approval remains pending. Exact source, artifact,
+thread monitoring is active; the subsequent release audit observed the user's final approval
+complete without taking an approval action. Exact source, artifact,
 authority and monitoring limits are in `windows_good_steward_monitoring_2026_09_26`
 in `CURRENT_STATE.yaml`.
 
 ## Avatar neck join repair — 2026-09-26
 
 Local source `a85a5673` anchors the moving lower Fal crop to the pinned torso before
-blending. Retained China found/Simon/Helen checks pass; publication and the corrected
-full China found copy remain pending. See `fal_avatar_neck_seam_repair_2026_09_26`
-in `CURRENT_STATE.yaml`; the existing accepted MP4 is unchanged.
+blending. Retained China found/Simon/Helen checks pass; both current 0.1.41 installers
+include this fix and MI_Notebook is installed/Online. Separate Mac installation and
+human visual assessment are unverified here. See `fal_avatar_neck_seam_repair_2026_09_26`
+in `CURRENT_STATE.yaml`; no China found rerender is authorized.
 
 ## Current project monitoring — 2026-09-26
 

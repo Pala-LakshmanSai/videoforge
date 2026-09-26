@@ -1,0 +1,68 @@
+{
+  "schema_version": "videoforge-production-release-parity/v1",
+  "checkpoint": "V2-09",
+  "status": "VERIFIED_CURRENT_WEB_WORKER_AND_BOTH_INSTALLERS",
+  "verified_at": "2026-09-26T10:49:12Z",
+  "audited_head": "da2df8d4",
+  "production": {
+    "origin": "https://videoforge.buzz",
+    "worker_name": "videoforge-production-runtime",
+    "cloudflare_version_prefix": "e41061aa",
+    "active_traffic_percent": 100,
+    "web_source_commit": "7c29e97d315160fb58de7dd028a1ad25dd59e7c4",
+    "apps_web_git_tree_at_live_and_audited_head": "71db78e5a1306cb507e7611ca88d2c3b9c6e8af2",
+    "packages_git_tree_at_live_and_audited_head": "e43aa08d6a31e527c8336cdf359f01d3ecf471b0",
+    "deploy_directory_difference": [],
+    "manifest_equals_public_release_json": true,
+    "additional_application_deployment_needed": false,
+    "api_status": "HEALTHY",
+    "gpu_transport": "DISABLED_UNQUALIFIED",
+    "queue_in_progress": 0,
+    "queue_waiting": 0,
+    "chrome_worker": "MI_Notebook Windows v0.1.41 Online",
+    "existing_good_steward_project_status": "Approved; stage 11 COMPLETE",
+    "approval_action_taken_by_audit": false
+  },
+  "release": {
+    "tag": "media-worker-v0.1.41",
+    "source_commit": "755553c9e33dadcc9861ef169b3f50eb77fa2e18",
+    "execution_bundle_sha256": "sha256:5ca3ee04573656ff364b8169d1e01835d4362cdc3fb5c20c609838cfaac76974",
+    "runtime_desktop_release_source_difference_from_audited_head": [],
+    "github_run": "https://github.com/Pala-LakshmanSai/videoforge/actions/runs/36233272893",
+    "ci_jobs": {"windows-x64": "success", "macos-universal2": "success", "Publish immutable worker downloads": "success"},
+    "manifest_asset_sha256": "sha256:40494d29773c91cb547cd571650d1d550712a2a8182aa9771e4857de990e6c4d",
+    "windows": {
+      "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.41/VideoForge-Worker-0.1.41-Setup.exe",
+      "size_bytes": 279579548,
+      "sha256": "sha256:429b66b0aaf877b95cfe80411a7661a226ed96fdff5628a6c959c43efe9a7d49",
+      "download_http_status": 200,
+      "github_asset_digest_and_size_match_manifest": true,
+      "local_download_checksum_verified": true
+    },
+    "macos": {
+      "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.41/VideoForge-Worker-0.1.41.dmg",
+      "size_bytes": 414226627,
+      "sha256": "sha256:53920cb4ac56f01c1b132bf63a2f6ecc62685cfee01316c03f7356ca016a371b",
+      "download_http_status": 200,
+      "github_asset_digest_and_size_match_manifest": true,
+      "local_download_checksum_verified": false
+    }
+  },
+  "included_fix_ancestry_verified": {
+    "windows_console_creation": "755553c9",
+    "collar_anchoring": "a85a5673",
+    "alternate_avatar_alignment_frames": "af53d01e",
+    "stage_retry_and_stable_final_download": "80b4f105",
+    "sub_frame_transcript_scene_planning": "16d66140",
+    "bounded_asr_recovery_after_worker_upgrade": "58a124a6",
+    "repeated_zero_duration_word_recovery": "f430fae5",
+    "prompt_compaction_release": "0a5f7001"
+  },
+  "installed_native_acceptance_evidence": "2026-09-26-windows-console-repair.json",
+  "validation_limits": ["Full context validation requires missing Ruby and Ajv 8.20.0", "Canonical pnpm verification requires repository-pinned Node/pnpm engines", "Other devices' installed versions were not verified", "No new paid end-to-end generation was run"],
+  "provider_calls": 0,
+  "paid_generation_retries": 0,
+  "new_paid_compute_activated": false,
+  "live_global_provider_inventory_queried": false,
+  "remaining_release_currency_gates": []
+}

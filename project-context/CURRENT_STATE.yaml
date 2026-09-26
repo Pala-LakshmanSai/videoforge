@@ -1,4 +1,35 @@
 schema_version: "2.0"
+production_release_parity_2026_09_26:
+  checkpoint: V2-09
+  status: VERIFIED_CURRENT_WEB_WORKER_AND_BOTH_INSTALLERS
+  verified_at: "2026-09-26T10:49:12Z"
+  audited_head: da2df8d4
+  web_source_commit: 7c29e97d315160fb58de7dd028a1ad25dd59e7c4
+  worker_source_commit: 755553c9e33dadcc9861ef169b3f50eb77fa2e18
+  worker_release: 0.1.41
+  cloudflare_version_prefix: e41061aa
+  evidence: evidence/acceptance/VF-10-09/2026-09-26-production-release-parity.json
+  result: >-
+    Fresh remote inventory has no newer missing recent fix. Live production reports web source
+    7c29e97d; apps/web and packages Git trees match audited HEAD exactly, and deploy code has
+    no changes. Desktop/runtime/release sources match published tag media-worker-v0.1.41 exactly.
+    The release contains prompt compaction, ASR recovery, sub-frame planning, stage retry/stable
+    download, alternate alignment frames, collar anchoring and Windows hidden-console fixes.
+    Cloudflare's exact manifest equals the public release JSON. Both installer asset SHA-256/size
+    match that manifest and their public downloads return HTTP 200. The Windows file's computed
+    checksum matches. Chrome Settings serves both 0.1.41 links and MI_Notebook is Online.
+    No additional application deployment or worker rebuild was necessary.
+    Current good steward progress also reports Approved/stage 11 COMPLETE; this audit only
+    observed the user's approval and did not approve or rerun the project.
+  validation: >-
+    Source tree/ancestry and manifest/artifact parity pass. All three release CI jobs succeed;
+    prior installed native span acceptance and visibility checks pass. Chrome API healthy,
+    queue idle/Connected. JSON evidence and diff checks pass. Full context validators remain
+    unavailable here: Ruby and exact Ajv 8.20.0 are absent; canonical pnpm engines mismatch.
+  remaining_gates: None for release currency; other devices' installed versions and future unseen defects are not asserted.
+  authority: User requested all recent production/webapp/download fixes be up to date; prior deployment/install authority persists.
+  provider_spend: Zero provider calls or generation retries; no provider/model/resource change.
+  paid_compute_shutdown: No paid compute activated; live global inventory not queried.
 windows_worker_console_repair_2026_09_26:
   checkpoint: V2-09
   status: PRODUCTION_ACTIVATED_WINDOWS_INSTALLED_ONLINE_NATIVE_PASS
@@ -53,7 +84,8 @@ windows_good_steward_monitoring_2026_09_26:
     authenticated Chrome and reported Online. The user-started good steward project completed
     transcription, 32 prompts/images, 10 audio spans/avatar clips, local render and technical
     check. Chrome loaded 1920x1080 media lasting 159.2 seconds; playback advanced to 16.436 seconds
-    without a media error. Review reports no flags. Human final approval remains pending.
+    without a media error. Review reports no flags. Human final approval was pending at that
+    playback check; the subsequent release parity audit observed Approved/stage 11 COMPLETE.
   monitoring: >-
     Active page sampling used approximately one-second intervals; underlying page/server
     refreshes are slower. Recurring thread heartbeat watch-videoforge-worker-and-projects
@@ -68,14 +100,16 @@ windows_good_steward_monitoring_2026_09_26:
     Chrome media readiness/playback, Online worker, JSON evidence, tracked secret scan and
     diff checks pass. Full context validators could not run: Ruby and repository Ajv are
     absent in this Windows worktree. No application code or deployment was changed.
-  remaining_gates: Human creative approval; future unseen defects are not ruled out.
+  remaining_gates: Future unseen defects are not ruled out; user approval subsequently observed complete.
   provider_spend: Monitoring made no paid-generation calls; UI estimate USD0.30 is not settled debit.
   paid_compute_shutdown: No paid compute activated; existing global inventory was not queried.
 fal_avatar_neck_seam_repair_2026_09_26:
   checkpoint: V2-09
-  status: RELEASE_AUTHORIZED_FUTURE_VIDEOS_ONLY
+  status: PUBLISHED_WINDOWS_INSTALLED_FUTURE_VIDEOS_ONLY
   authority: User approved publication and installation for future videos only; no China found rerender, paid generation or GPU activation.
   source_commit: a85a5673
+  published_in_worker_release: 0.1.41
+  publication_and_windows_acceptance: Superseded by windows_worker_console_repair_2026_09_26 and production_release_parity_2026_09_26.
   result: >-
     Reproduced China found's moving collar joining a still torso. Shared Fal full/split
     compositor now anchors lower crop motion to the pinned source before blending;
@@ -87,9 +121,9 @@ fal_avatar_neck_seam_repair_2026_09_26:
     identities tested; metric does not guarantee perfect perceptual quality or unseen avatars.
   evidence: evidence/acceptance/VF-10-09/2026-09-26-avatar-neck-seam.json
   remaining_gates: >-
-    Publication/Mac installation, installed-worker real-Chrome acceptance and
-    user-controlled Windows installation. China found rerender explicitly excluded.
-    Browser execution tool is unavailable in this session; no Chrome proof claimed.
+    Separate Mac installation and human visual assessment are unverified by this Windows audit.
+    Both installer releases include the fix; current Windows worker installation/Chrome Online
+    acceptance are complete. China found rerender explicitly excluded.
   provider_spend: Zero provider calls or spend; retained local media only.
   paid_compute_shutdown: No paid compute started; live global inventory not queried.
 china_found_render_and_retry_repair_2026_09_26:
