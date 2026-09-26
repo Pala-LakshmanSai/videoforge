@@ -1,0 +1,74 @@
+{
+  "checkpoint": "V2-09",
+  "status": "PRODUCTION_DEPLOYED_SAME_PROJECT_PROMPTS_RUNNING",
+  "project_id": "a8132134-d81b-414f-b838-850adacc85a6",
+  "revision_id": "0a89de42-064a-4175-a7a2-d528cfb5f767",
+  "source_commit": "16d661405f1b743075fe8f26f11f5b5636a98737",
+  "cloudflare_version": "0d726fe6-ed86-4c5e-9145-b576183d6384",
+  "observed_at": "2026-09-26T03:30:59Z",
+  "cause": {
+    "production_error": "TIMELINE_SCHEDULING_FAILED: TRANSCRIPT_INVALID: Adjacent phrase boundaries must occupy distinct output frames.",
+    "asr_checksum": "sha256:bfba823e7855faeff16bf7a9f029c884006a90225730b04976c1364f197bda53",
+    "asr_bytes": 625012,
+    "same_frame_phrase_starts_ms": [
+      [
+        840762,
+        840772
+      ],
+      [
+        1126762,
+        1126782
+      ]
+    ],
+    "mechanism": "Scheduler incorrectly required every phrase start to occupy a distinct 30fps output frame, although scene selection uses longer bounded word ranges."
+  },
+  "fix": "Remove phrase-frame uniqueness check; preserve all word/phrase ordering, scene duration, exact word/audio and positive contiguous frame checks. Existing immediate and durable handoffs remain.",
+  "validation": {
+    "before": "New sub-frame regression fails with exact production error",
+    "scheduler_tests": 13,
+    "hosted_coordinator_and_continuation_tests": 32,
+    "durable_workflow_tests": 8,
+    "typecheck": "PASS",
+    "touched_eslint": "PASS",
+    "diff_check": "PASS",
+    "production_build": "PASS",
+    "bundle_firewall": "PASS",
+    "guarded_deploy_readback": "PASS",
+    "exact_saved_transcript_local": {
+      "state": "SUCCEEDED",
+      "words": 5121,
+      "duration_ms": 1703784,
+      "frames": 51114,
+      "segments": 378,
+      "images": 328,
+      "avatars": 99,
+      "elapsed_ms": 498.90362500000003,
+      "timeline_sha256": "sha256:458056b311f4bf604826547f779a69c7aa14ef9dbedaad98f50c87019fc1ba73"
+    }
+  },
+  "production": {
+    "timeline_plan_id": "80956017-2a29-5ed7-95f0-a08e5668d419",
+    "prompt_run_id": "f92e848f-a3dd-41f9-b007-3c15db2aecd8",
+    "prompt_state": "DISPATCHING",
+    "planned_scenes": 328,
+    "planned_batches": 33,
+    "reserved_cost_micro_usd": 8000000,
+    "chrome": "Stage4 COMPLETE; Stage5 RUNNING; batch1 of33",
+    "worker_version": "0.1.38",
+    "worker_status": "ONLINE"
+  },
+  "monitoring": {
+    "automation_id": "videoforge-china-voiceover-monitor",
+    "interval_minutes": 5,
+    "target_thread_id": "01a0db90-cd13-7323-ab83-002c87481dce",
+    "finish_gate": "Final artifact receipt, technical checks, checksum identity and Chrome playback; human approval remains separate"
+  },
+  "remaining_gates": [
+    "Prompt batches and paid API media",
+    "Local final render and technical check",
+    "Final receipt/artifact identity/Chrome playback",
+    "Human approval/download"
+  ],
+  "provider_spend": "No repair/deploy provider call; existing run resumed bounded paid prompt work. Settled final cost unknown.",
+  "paid_compute_shutdown": "No GPU activated; production GPU transport DISABLED_UNQUALIFIED. API generation has no retained GPU allocation; live GPU inventory not queried."
+}

@@ -1,5 +1,13 @@
 # VideoForge: start here
 
+## Current project monitoring — 2026-09-26
+
+`china found` recovered its scene-planning blocker on production source `16d66140`. Valid
+sub-frame ASR phrases no longer fail the scheduler; positive scene frames and exact word/audio
+coverage remain enforced. The same saved project advanced automatically to image prompts.
+Monitoring continues through final technical checks and Chrome playback; the final MP4 is not yet
+verified. See `china_found_planning_repair_2026_09_26` in `CURRENT_STATE.yaml`.
+
 ## ASR worker release — 2026-09-26
 
 Worker 0.1.38 fixes consecutive zero-duration Whisper timestamps and is published for Windows
