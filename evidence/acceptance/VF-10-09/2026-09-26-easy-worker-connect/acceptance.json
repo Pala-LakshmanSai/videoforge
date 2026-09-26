@@ -1,0 +1,141 @@
+{
+  "checkpoint": "V2-09",
+  "source_commit": "243b769f29f5540392b0178d1cc1a327eaa7e08d",
+  "cloudflare_version_id": "e14f7839-47a7-4d88-972f-e5cd69bd0948",
+  "worker_release": "0.1.44",
+  "release_ci": "https://github.com/Pala-LakshmanSai/videoforge/actions/runs/36255676774",
+  "both_platform_builds_and_publication": "SUCCESS",
+  "migration": {
+    "applied": [
+      212
+    ],
+    "migration_sha256": "sha256:a682f7fcf1337e95ccee1944d6d78ce3c78f9884681d72f504a4fbd9e9ef152d",
+    "at": "2026-09-26T16:38:25.735Z",
+    "preserved_archived_ledger_entries": 21,
+    "checked_common_metadata": 173,
+    "local_preexisting_missing_from_db": [
+      148
+    ],
+    "provider_calls": 0
+  },
+  "production_readback": {
+    "source_commit": "243b769f29f5540392b0178d1cc1a327eaa7e08d",
+    "version_id": "e14f7839-47a7-4d88-972f-e5cd69bd0948",
+    "manifest": {
+      "execution_bundle_sha256": "sha256:57912be1802c23d0bca0c60a5fbcba14b81ade77d360bf241a514fbbc31597a3",
+      "macos": {
+        "sha256": "sha256:22a35e7f59831e8f160d022746c691a532b36807b8a6edb856972ec65f6010e6",
+        "size_bytes": 414253497,
+        "trust": "AD_HOC_BETA",
+        "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.44/VideoForge-Worker-0.1.44.dmg"
+      },
+      "minimum_protocol_version": 1,
+      "schema_version": "videoforge-media-worker-release/v1",
+      "version": "0.1.44",
+      "whisper_model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+      "windows": {
+        "sha256": "sha256:169fa5cc7abfa55c514640ab99bfac880f398e10152491ab62cf1052f3699130",
+        "size_bytes": 279588250,
+        "trust": "UNSIGNED_BETA",
+        "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.44/VideoForge-Worker-0.1.44-Setup.exe"
+      }
+    },
+    "provider": "KIE_FAL",
+    "gpu_transport": "DISABLED_UNQUALIFIED",
+    "secret_count": 25,
+    "redact_query_string": true,
+    "status": {
+      "schema_version": "videoforge-hosted-status/v1",
+      "commit": "243b769f29f5540392b0178d1cc1a327eaa7e08d",
+      "environment": "production",
+      "gpu_transport": "DISABLED_UNQUALIFIED",
+      "database": "NEON_POSTGRES_REQUIRED",
+      "artifact_plane": "PRIVATE_R2_REQUIRED",
+      "orchestration": "CLOUDFLARE_WORKFLOW_REQUIRED",
+      "cpu_jobs": "ACCOUNT_OWNED_PERSONAL_WORKER_REQUIRED",
+      "supported_worker_platforms": [
+        "WINDOWS",
+        "MACOS"
+      ],
+      "provider_cpu_billing": "PROJECT_LEDGER_ENFORCED",
+      "authentication": [
+        "GOOGLE"
+      ]
+    },
+    "at": "2026-09-26T16:47:16.050Z"
+  },
+  "chrome": {
+    "mac_windows_copy": true,
+    "fresh_command": true,
+    "manual_disclosure_and_exact_download_links": true,
+    "page_overflow": false,
+    "automatic_mac_online": true,
+    "disposable_device_removed": true
+  },
+  "native_mac": {
+    "copied_terminal_command_completed": true,
+    "automatic_pairing": true,
+    "login_background_startup": true,
+    "consumed_command_replay_http": 410,
+    "original_installation_identity_preserved": true,
+    "original_keychain_credential_preserved": true,
+    "original_device": {
+      "status": "ONLINE",
+      "worker_version": "0.1.44",
+      "execution_bundle_sha256": "sha256:57912be1802c23d0bca0c60a5fbcba14b81ade77d360bf241a514fbbc31597a3",
+      "last_seen_at": "2026-09-26T16:52:55.097454+00:00",
+      "active_leases": 0
+    },
+    "provider_free_audio_smoke": {
+      "attempt_id": "attempt_span_local_001",
+      "audio": {
+        "artifact_uri": "vf-local://objects/sha256/27/27cb785df0cedf3e8136cf6893ae9a93a7220efc0420bd3e03dfc1c367f29638.wav",
+        "asset_id": "asset_span_local_001",
+        "byte_size": 480044,
+        "channels": 1,
+        "content_type": "audio/wav",
+        "duration_ms": 5000,
+        "sample_rate_hz": 48000,
+        "sha256": "sha256:27cb785df0cedf3e8136cf6893ae9a93a7220efc0420bd3e03dfc1c367f29638"
+      },
+      "error": null,
+      "schema_version": "selected-span-audio-result/v1",
+      "selection": {
+        "padded_end_ms_exclusive": 7500,
+        "padded_start_ms": 2500,
+        "selected_end_ms_exclusive": 7000,
+        "selected_start_ms": 3000,
+        "trim_end_ms_exclusive": 4500,
+        "trim_start_ms": 500
+      },
+      "source_voiceover": {
+        "asset_id": "asset_voiceover_local_001",
+        "duration_ms": 12000,
+        "sha256": "sha256:6e49db6ecc812f32cb043fb3c02e4aea55329fa8df27724c5b4e2a76ed57c360"
+      },
+      "span_id": "span_local_001",
+      "status": "SUCCEEDED",
+      "task_key": "audio-span:segment_local_001",
+      "timeline_plan_id": "timeline_local_001",
+      "timeline_segment_id": "segment_local_001",
+      "transcript_id": "transcript_local_001"
+    },
+    "audio_bytes_identical_to_0_1_43": true
+  },
+  "validations": {
+    "python_pass": 124,
+    "native_windows_only_skip": 1,
+    "web_focused_pass": 21,
+    "new_sql_single_use_expiry_tenant_rollback": "PASS",
+    "typescript": "PASS",
+    "changed_lint": "PASS",
+    "cloudflare_build_and_firewall": "PASS"
+  },
+  "limitations": [
+    "Native Windows 0.1.44 terminal installation not performed on this Mac; Windows build/frozen smoke/PowerShell parsing passed CI.",
+    "Global paid compute inventory not queried; no paid compute or provider generation started.",
+    "Overall production speed savings remain unmeasured."
+  ],
+  "paid_provider_spend_usd": 0,
+  "paid_compute_activated": false
+}

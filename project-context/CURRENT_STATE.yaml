@@ -2,19 +2,22 @@ schema_version: "2.0"
 
 easy_worker_connect_2026_09_26:
   checkpoint: V2-09
-  status: PROVIDER_FREE_CANDIDATE_RELEASE_PENDING
-  authority: User explicitly approved sync, idle Mac installation, implementation and production publication; no new paid generation or compute.
-  synchronized_branch: origin/codex/worker-production-speed
+  status: COMPLETE_PUBLISHED_MAC_COMMAND_ACCEPTED
+  authority: User approved preserving/syncing local work, idle Mac install, automatic terminal connection implementation and production publication; no new paid generation or compute.
   synchronized_commit: 99030a391205e5f29c6e0af7db1f6bf988d7b4f3
-  preserved_work: Local progress redesign commits and uncommitted node-fair-admission fixture role seed remain in the Mac checkout; production release branches from the Windows handoff.
-  mac_0_1_43: Exact published DMG hash/size, codesign and installed Online/bundle verified with pairing preserved and zero active leases. Installed worker produced a verified provider-free 5-second 48kHz mono audio span.
-  scope: Account-issued 15-minute single-use terminal commands, exact checksum/size verified platform install, shared PKCE/device approval, OS credential store and login startup; manual approval/download/removal retained.
-  migration: 0212_media_worker_connect_commands.sql
-  candidate_worker_release: 0.1.44
-  validation: 124 focused worker/render/Fal tests pass, one native Windows skip; 11 connection/onboarding tests and 10 heartbeat/claim tests pass; focused SQL single-use/expiry/tenant/rollback check passes; TypeScript and Cloudflare build/firewall pass.
-  remaining_gates: Both platform release CI/publication, additive production migration, exact release deployment/activation and Chrome/native command acceptance.
-  provider_spend: Zero new provider generation, retries or compute; historical attempts untouched.
-  paid_compute_shutdown: No paid compute activated; global inventory not yet queried.
+  preserved_work: Local progress redesign and uncommitted node-fair-admission fixture seed preserved; release branches from the Windows handoff.
+  production_source_commit: 243b769f29f5540392b0178d1cc1a327eaa7e08d
+  cloudflare_version_id: e14f7839-47a7-4d88-972f-e5cd69bd0948
+  worker_release: 0.1.44
+  execution_bundle_sha256: sha256:57912be1802c23d0bca0c60a5fbcba14b81ade77d360bf241a514fbbc31597a3
+  release_ci: https://github.com/Pala-LakshmanSai/videoforge/actions/runs/36255676774
+  migration: 0212 applied in an atomic append after verifying the live 211 predecessor and 173 overlapping immutable entries; archived ledger rows and preexisting unregistered 0148 preserved.
+  scope: Account-issued 15-minute single-use commands, checksum/size verified installers, existing PKCE/tenant approval, OS credential store and login background startup; manual downloads/approval/removal retained. Running workers are never replaced.
+  mac_acceptance: Published 0.1.43 verified/installed first. Copied production command installs 0.1.44 and pairs automatically; Chrome shows Online; replay HTTP410. Disposable connection removed; original identity/Keychain pairing restored and Online with zero active leases. Installed provider-free 5s 48kHz mono span bytes match 0.1.43.
+  validation: Both platform CI/publication pass; 124 focused Python pass with one Windows-only skip; 21 focused web pass; SQL expiry/single-use/tenant/rollback, TypeScript, lint and Cloudflare build/firewall pass. Exact live manifest/status, 25 secret bindings and custom domain read back; query strings redacted in request logs.
+  remaining_gates: Optional native Windows 0.1.44 command installation; existing Windows 0.1.43 needs the normal published update. Overall production speed savings remain unmeasured.
+  provider_spend: USD0 new provider generation or paid compute; KIE_FAL baseline and DISABLED_UNQUALIFIED GPU transport preserved; historical attempts/media untouched.
+  paid_compute_shutdown: No paid compute activated; global inventory not queried.
   evidence: evidence/acceptance/VF-10-09/2026-09-26-easy-worker-connect/
 worker_speed_2026_09_26:
   checkpoint: V2-09

@@ -2,11 +2,11 @@
 
 ## Paste-to-connect worker option — 2026-09-26
 
-The Windows speed handoff at `99030a39` is synchronized while preserving local work.
-Mac 0.1.43 is installed/Online on its exact bundle and passed an installed provider-free
-audio-span smoke. The single-command installer/pairing feature is under provider-free
-verification; read `easy_worker_connect_2026_09_26` in `CURRENT_STATE.yaml` for release gates.
-
+Published source `243b769f` / Cloudflare `e14f7839` offers macOS/Windows terminal
+commands in Settings. Worker 0.1.44 passes both platform CI. Actual Mac command installation,
+automatic pairing, background startup, Chrome Online/removal, and provider-free span smoke
+pass; original Mac pairing restored and Online. Native Windows command installation remains
+an optional platform gate. Read `easy_worker_connect_2026_09_26` in `CURRENT_STATE.yaml`.
 
 
 ## Personal worker speed release — 2026-09-26
