@@ -5,8 +5,10 @@
 Worker 0.1.41 is published from `755553c9` and suppresses Windows console creation for
 background media tools, streaming encoding and cancellation cleanup. Native visibility,
 captured errors, cancellation and both release jobs pass. Its Windows installer is checksum
-verified in Downloads. Cloudflare sign-in blocks production manifest activation and this PC's
-update; the paired 0.1.40 installation remains Online. See
+verified in Downloads. The exact manifest is activated on existing production Cloudflare
+version `e41061aa`; MI_Notebook is installed on 0.1.41/Online with pairing preserved.
+Installed FFmpeg/FFprobe span execution succeeded with zero visible descendant windows
+across 288 native samples. Ongoing monitoring is active. See
 `windows_worker_console_repair_2026_09_26` in `CURRENT_STATE.yaml`.
 
 ## Windows worker monitoring — 2026-09-26

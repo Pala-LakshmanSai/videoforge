@@ -1,7 +1,7 @@
 schema_version: "2.0"
 windows_worker_console_repair_2026_09_26:
   checkpoint: V2-09
-  status: PUBLISHED_PRODUCTION_ACTIVATION_AUTH_BLOCKED
+  status: PRODUCTION_ACTIVATED_WINDOWS_INSTALLED_ONLINE_NATIVE_PASS
   base_source_commit: 7c29e97d315160fb58de7dd028a1ad25dd59e7c4
   source_commit: 755553c9e33dadcc9861ef169b3f50eb77fa2e18
   worker_release: 0.1.41
@@ -23,15 +23,21 @@ windows_worker_console_repair_2026_09_26:
     bundled Node/pnpm engine versions; full canonical verification is not claimed.
     Windows and macOS release jobs, personal-worker tests and frozen Fal render smoke pass;
     publication succeeds. Downloaded Windows installer matches the published SHA-256 and size.
+    Installed frozen materialize-span execution produced the expected five-second PCM audio;
+    actual FFmpeg/FFprobe descendants had no visible windows across 288 native samples over
+    9.828 seconds (20ms requested interval, approximately 34ms actual mean including inspection).
   deployment: >-
-    Immutable Windows/macOS artifacts are public. Cloudflare is signed out on this computer;
-    user sign-in was requested in the opened Chrome tab. Production still advertises 0.1.40.
-    Verified 0.1.41 installer and production manifest are staged in this user's Downloads.
-    MI_Notebook remains on 0.1.40/Online until production accepts the new exact bundle,
-    preventing an incompatible upgrade from disconnecting it. Pairing credentials were not read.
+    User signed into the in-app Cloudflare browser. Verified existing videoforge-production-runtime
+    on videoforge.buzz at web source 7c29e97d, old 0.1.40 manifest and no active account jobs.
+    Changed only MEDIA_WORKER_RELEASE_MANIFEST_JSON to the exact published 0.1.41 manifest;
+    active Cloudflare version prefix e41061aa serves 100% traffic. Production Settings serves
+    both 0.1.41 downloads; runtime source/provider/GPU mode are unchanged. Checksum-verified
+    Windows installer exited zero; installation identity checksum is unchanged. MI_Notebook
+    reports 0.1.41/Online with advancing heartbeat (2026-09-26T10:43:16Z observed).
+    Existing pairing was preserved; credential values were not read. Ongoing monitor updated.
     Six orphan console hosts attributable to known finished worker tools were closed.
   authority: User authorized tested production fixes, worker publication and installation for ongoing/future projects.
-  remaining_gates: Cloudflare sign-in, exact release manifest activation, preserving-pairing Windows update and installed acceptance.
+  remaining_gates: None for this Windows console repair; future unseen defects cannot be ruled out. Human project creative approval remains separate.
   provider_spend: Zero provider calls, paid-generation retries or new spend.
   paid_compute_shutdown: No paid compute activated; live provider inventory not queried.
 windows_good_steward_monitoring_2026_09_26:

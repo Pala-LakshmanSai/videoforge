@@ -1,7 +1,7 @@
 {
   "schema_version": "videoforge-windows-console-repair/v1",
   "checkpoint": "V2-09",
-  "status": "PUBLISHED_PRODUCTION_ACTIVATION_AUTH_BLOCKED",
+  "status": "PRODUCTION_ACTIVATED_WINDOWS_INSTALLED_ONLINE_NATIVE_PASS",
   "source_commit": "755553c9e33dadcc9861ef169b3f50eb77fa2e18",
   "version": "0.1.41",
   "execution_bundle_sha256": "sha256:5ca3ee04573656ff364b8169d1e01835d4362cdc3fb5c20c609838cfaac76974",
@@ -17,7 +17,58 @@
     "windows_release": "PASS",
     "macos_release": "PASS",
     "frozen_fal_render_smoke_both_platforms": "PASS",
-    "immutable_publication": "PASS"
+    "immutable_publication": "PASS",
+    "installed_native_acceptance": {
+      "schema_version": "videoforge-installed-console-acceptance/v1",
+      "worker_version": "0.1.41",
+      "exit_code": 0,
+      "elapsed_seconds": 9.828,
+      "window_samples": 288,
+      "requested_sample_interval_ms": 20,
+      "observed_descendant_executables": [
+        "VideoForge Worker.exe",
+        "conhost.exe",
+        "ffmpeg.exe",
+        "ffprobe.exe"
+      ],
+      "visible_descendant_windows": [],
+      "result_document": {
+        "attempt_id": "attempt_console_acceptance",
+        "audio": {
+          "artifact_uri": "vf-local://objects/sha256/f9/f9339c7f541a91c8f83122605280463305874e9a7a064654bc3a096e1cfa58fc.wav",
+          "asset_id": "span_console_acceptance",
+          "byte_size": 160044,
+          "channels": 1,
+          "content_type": "audio/wav",
+          "duration_ms": 5000,
+          "sample_rate_hz": 16000,
+          "sha256": "sha256:f9339c7f541a91c8f83122605280463305874e9a7a064654bc3a096e1cfa58fc"
+        },
+        "error": null,
+        "schema_version": "selected-span-audio-result/v1",
+        "selection": {
+          "padded_end_ms_exclusive": 7500,
+          "padded_start_ms": 2500,
+          "selected_end_ms_exclusive": 7000,
+          "selected_start_ms": 3000,
+          "trim_end_ms_exclusive": 4500,
+          "trim_start_ms": 500
+        },
+        "source_voiceover": {
+          "asset_id": "voice_console_acceptance",
+          "duration_ms": 12000,
+          "sha256": "sha256:b2781a1b7190fe0fa8c344bbe57114c0912340302eec190f19465ef0a6086ee8"
+        },
+        "span_id": "span_console_acceptance",
+        "status": "SUCCEEDED",
+        "task_key": "audio-span:segment_console_acceptance",
+        "timeline_plan_id": "timeline_console_acceptance",
+        "timeline_segment_id": "segment_console_acceptance",
+        "transcript_id": "transcript_console_acceptance"
+      },
+      "provider_calls": 0,
+      "paid_compute_activated": false
+    }
   },
   "windows_installer": {
     "url": "https://github.com/Pala-LakshmanSai/videoforge/releases/download/media-worker-v0.1.41/VideoForge-Worker-0.1.41-Setup.exe",
@@ -32,17 +83,40 @@
   },
   "production": {
     "runtime_source_commit": "7c29e97d315160fb58de7dd028a1ad25dd59e7c4",
-    "advertised_worker_version": "0.1.40",
-    "manifest_activation": "PENDING_CLOUDFLARE_SIGN_IN",
-    "new_installer_applied": false,
-    "current_windows_worker": "MI_Notebook, 0.1.40, Online",
-    "credential_values_read": false
+    "advertised_worker_version": "0.1.41",
+    "manifest_activation": "PASS_EXACT_PUBLISHED_MANIFEST",
+    "new_installer_applied": true,
+    "current_windows_worker": "MI_Notebook, 0.1.41, Online",
+    "credential_values_read": false,
+    "cloudflare_worker_name": "videoforge-production-runtime",
+    "cloudflare_version_prefix": "e41061aa",
+    "active_traffic_percent": 100,
+    "change_scope": "MEDIA_WORKER_RELEASE_MANIFEST_JSON only; existing web source and other bindings unchanged",
+    "installer_exit_code": 0,
+    "installation_identity_checksum_preserved": true,
+    "fresh_heartbeat_observed_at": "2026-09-26T10:43:16Z"
   },
-  "closed_orphan_console_hosts": [26988, 9148, 10116, 19144, 12620, 27536],
+  "closed_orphan_console_hosts": [
+    26988,
+    9148,
+    10116,
+    19144,
+    12620,
+    27536
+  ],
   "cleanup_scope": "Only console hosts whose parent PID was a previously observed finished VideoForge tool, created during this project's media stages, and whose parent was no longer running.",
   "provider_calls": 0,
   "paid_generation_retries": 0,
   "new_paid_compute_activated": false,
   "live_provider_inventory_queried": false,
-  "remaining_gates": ["Cloudflare sign-in", "Production manifest activation", "Windows update preserving pairing", "Installed Windows acceptance"]
+  "remaining_gates": [],
+  "monitoring": {
+    "requested_interval_seconds": 1,
+    "installed_visibility_sample_actual_mean_ms": 34.125,
+    "guaranteed_response_seconds": null,
+    "future_defects_ruled_out": false,
+    "automation_id": "watch-videoforge-worker-and-projects",
+    "observed_heartbeat_cadence_seconds": "60-90 on previous runs",
+    "status": "ACTIVE"
+  }
 }
