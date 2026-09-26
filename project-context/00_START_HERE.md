@@ -1,5 +1,12 @@
 # VideoForge: start here
 
+## Windows console repair — 2026-09-26
+
+Worker 0.1.41 source suppresses Windows console creation for background media tools,
+streaming encoding and cancellation cleanup. Native Windows visibility, captured errors
+and cancellation checks pass; publication, production activation and installed acceptance
+remain pending. See `windows_worker_console_repair_2026_09_26` in `CURRENT_STATE.yaml`.
+
 ## Windows worker monitoring — 2026-09-26
 
 MI_Notebook worker 0.1.40 completed good steward through render, technical check and

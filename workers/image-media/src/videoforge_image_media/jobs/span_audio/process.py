@@ -3,6 +3,8 @@ from __future__ import annotations
 import subprocess
 from collections.abc import Callable, Sequence
 
+from videoforge_image_media.subprocess_options import background_creationflags
+
 from .ports import ProcessResult
 
 
@@ -20,6 +22,7 @@ class SubprocessRunner:
         try:
             process = subprocess.Popen(  # noqa: S603 - absolute trusted executable is injected
                 list(arguments),
+                creationflags=background_creationflags(),
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,

@@ -5,6 +5,8 @@ import signal
 import subprocess
 from collections.abc import Callable, Sequence
 
+from videoforge_image_media.subprocess_options import background_creationflags
+
 from .ports import ProcessResult
 
 _FORCE_KILL = getattr(signal, "SIGKILL", signal.SIGTERM)
@@ -37,6 +39,7 @@ class SubprocessRunner:
                 list(arguments),
                 shell=False,
                 start_new_session=os.name == "posix",
+                creationflags=background_creationflags(),
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,

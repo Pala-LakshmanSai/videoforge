@@ -5,6 +5,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+from videoforge_image_media.subprocess_options import background_creationflags
+
 
 def _perspective_maps(transform, size):
     """Cache the unchanged inverse mapping for every frame in one clip."""
@@ -188,7 +190,12 @@ def compose_fal_wide(square: Path, source: Path, output: Path, ffmpeg: Path) -> 
                    "-pixel_format", "bgr24", "-video_size", "1920x1080", "-framerate", "25",
                    "-i", "pipe:0", "-an", "-c:v", "libx264", "-preset", "veryfast",
                    "-crf", "18", "-pix_fmt", "yuv420p", "-threads", "2", str(output)]
-        process = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.Popen(
+            command,
+            stdin=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            creationflags=background_creationflags(),
+        )
         capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
         frame_count = 0
         last_wide = None

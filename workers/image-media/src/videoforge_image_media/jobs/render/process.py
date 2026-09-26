@@ -8,6 +8,8 @@ from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from typing import Iterator
 
+from videoforge_image_media.subprocess_options import background_creationflags
+
 try:
     import resource
 except ImportError:  # pragma: no cover - resource is unavailable on Windows
@@ -84,6 +86,7 @@ class SubprocessRunner:
                 process = subprocess.Popen(  # noqa: S603 - executable comes from the trusted tool port
                     list(arguments),
                     shell=False,
+                    creationflags=background_creationflags(),
                     stdin=subprocess.DEVNULL,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,

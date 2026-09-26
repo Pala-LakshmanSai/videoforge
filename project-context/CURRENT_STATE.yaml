@@ -1,4 +1,26 @@
 schema_version: "2.0"
+windows_worker_console_repair_2026_09_26:
+  checkpoint: V2-09
+  status: LOCAL_VERIFIED_PUBLICATION_PENDING
+  base_source_commit: 7c29e97d315160fb58de7dd028a1ad25dd59e7c4
+  worker_release: 0.1.41
+  cause: >-
+    Windows runtime FFmpeg, FFprobe, Whisper and job subprocesses inherited console
+    creation defaults despite the desktop executable itself being windowless.
+  fix: >-
+    All desktop media subprocess runners, streaming Fal encoding and taskkill cleanup
+    use CREATE_NO_WINDOW on Windows, retaining output capture, process groups and cancellation.
+    Other operating systems receive zero Windows creation flags.
+  validation: >-
+    Five regression tests pass, including real native Windows children with GetConsoleWindow=0,
+    captured failure stderr/exit codes and cancellation. Personal-worker and image-media job
+    suites: 113 passed, one existing symlink-privilege test deselected on this non-admin Windows
+    account. Targeted Ruff and diff checks pass. Canonical pnpm verify stops at unsupported
+    bundled Node/pnpm engine versions; full canonical verification is not claimed.
+  authority: User authorized tested production fixes, worker publication and installation for ongoing/future projects.
+  remaining_gates: Windows/macOS release CI, immutable publication, production manifest activation and installed Windows acceptance.
+  provider_spend: Zero provider calls, paid-generation retries or new spend.
+  paid_compute_shutdown: No paid compute activated; live provider inventory not queried.
 windows_good_steward_monitoring_2026_09_26:
   checkpoint: V2-09
   status: FINAL_TECHNICAL_AND_CHROME_PLAYBACK_PASS

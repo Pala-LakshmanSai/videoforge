@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any, BinaryIO, Callable
 
 from videoforge_image_media.local_cli import cancellation_marker
+from videoforge_image_media.subprocess_options import background_creationflags
 
 from .cloud_job import _local_path
 from .personal_tls import https_context
@@ -617,6 +618,7 @@ def _terminate_process(process: subprocess.Popen[bytes]) -> None:
                 check=False,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
+                creationflags=background_creationflags(),
             )
         else:
             os.killpg(process.pid, signal.SIGTERM)
@@ -646,7 +648,8 @@ def _run_media_subprocess(
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             start_new_session=os.name != "nt",
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0,
+            creationflags=background_creationflags()
+            | (subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0),
         )
         monitor.attach(process)
         try:
