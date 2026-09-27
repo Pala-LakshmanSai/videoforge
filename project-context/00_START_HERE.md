@@ -1,8 +1,8 @@
 # VideoForge: start here
 
-Per-image Fal Z-Image Turbo regeneration is locally verified with a button on every accepted-image
-thumbnail, including later pages. Migration 0213 preserves original images/final videos and old
-provider jobs. Publication and paid sample acceptance remain pending. Read
+Per-image Fal Z-Image Turbo regeneration is published at source `87239d3f` / Cloudflare `2ea07c43`.
+Migration213, all299 image buttons, real page2 replacement and reload persistence pass. Original
+media/approval records and old provider jobs remain unchanged; provider leases/jobs are zero. Read
 `fal_image_regeneration_2026_09_27` in CURRENT_STATE.yaml.
 
 

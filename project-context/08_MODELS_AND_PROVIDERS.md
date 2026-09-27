@@ -35,7 +35,9 @@ Fal's public model page listed $0.005 per megapixel on 2026-09-27; refresh befor
 Existing Kie or RunPod regeneration requests retain their provider and immutable task identity.
 Migration 0213 permits new Fal jobs for verified historical accepted RunPod stills without GPU
 activation or rewriting the source accepted unit. Gallery replacements do not rebuild final MP4s.
-Local proof is recorded in CURRENT_STATE.yaml; publication and paid visual acceptance remain open.
+Production source87239d3f passed one real Fal replacement, exact private bytes/receipt, all299 buttons
+and Chrome reload acceptance on2026-09-27. Original accepted media remained immutable and leases
+released. This sample does not prove a new full-video quality or unit-economics result.
 
 ## Historical RunPod compute boundary
 

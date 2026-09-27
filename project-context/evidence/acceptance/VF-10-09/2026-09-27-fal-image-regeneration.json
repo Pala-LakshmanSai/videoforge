@@ -1,6 +1,6 @@
 {
   "checkpoint": "V2-09",
-  "status": "LOCAL_VERIFIED_NOT_PUBLISHED",
+  "status": "COMPLETE_PUBLISHED_REAL_CHROME_AND_FAL_VERIFIED",
   "decision": "DEC_IMAGE_REGENERATION_001",
   "baseline_commit": "d95b4ea2",
   "provider_model": "fal-ai/z-image/turbo",
@@ -63,11 +63,115 @@
     "checksumMismatchesForRetainedMigrations": 0,
     "archivedLedgerVersionsNotInCurrentManifest": 21
   },
-  "remaining_gates": [
-    "Apply only migration 0213 against the exact current ledger; do not replay omitted/archived migrations.",
-    "Deploy isolated regeneration release preserving current runtime settings and exact worker 0.1.44.",
-    "Separately approved bounded real Fal regeneration, Chrome replacement persistence, original final checksum and private receipt/lease proof."
-  ],
-  "provider_spend_usd": 0,
-  "paid_compute": "None activated; global provider inventory not queried."
+  "remaining_gates": [],
+  "paid_compute": "No Pods, GPUs or volumes started or modified. Zero active provider-workload leases and regeneration jobs; global RunPod inventory not queried.",
+  "implementation_commit": "5c81c05b",
+  "prepared_release": {
+    "release_commit": "87239d3f651f0a9b1a3b5a22646a4beaa96ff141",
+    "predecessor_commit": "1e10191ff44056aac723019d26ec25657d2ef656",
+    "predecessor_cloudflare_version": "42c576e5-059a-4ec9-9452-3cb4b7ad8613",
+    "configuration_sha256": "sha256:2e27408a5d906762a86e54c3676c0749a82e560942f642bfbef73f78fef0c07c",
+    "guarded_sql_sha256": "sha256:0ad0ec617c443382024b817e2aa826b28d11684907db9e0fcfb3bfa8f228a8c4",
+    "focused_web_checks": 55,
+    "build_firewall_typecheck": "PASS",
+    "wrangler_dry_run": "PASS",
+    "installed_chrome_fixture": "PASS",
+    "pipeline_and_worker_changes_from_published_predecessor": 0
+  },
+  "production": {
+    "source": "87239d3f651f0a9b1a3b5a22646a4beaa96ff141",
+    "version": "2ea07c43-3d71-46fc-a651-1bc7d7e88afe",
+    "traffic": 100,
+    "plainVarsPreserved": true,
+    "nonAssetBindingsPreserved": true,
+    "secretCount": 25,
+    "queryRedaction": true,
+    "workerVersion": "0.1.44"
+  },
+  "approval": {
+    "userInstruction": "finish it fully, push to production",
+    "finiteActionCapUsd": 0.05,
+    "maxNewProviderSubmissions": 2
+  },
+  "live": {
+    "provider": "FAL_Z_IMAGE",
+    "model": "fal-ai/z-image/turbo",
+    "state": "SUCCEEDED",
+    "providerTaskId": "01a0e0db-6214-77b1-93c2-b9f97af02d25",
+    "requestId": "ad0cdd75-8d40-4ea0-bb66-a9914e4a41d5",
+    "providerResultAcceptedSeconds": 11.588,
+    "replacement": {
+      "bytes": 1293942,
+      "sha256": "sha256:69901d1570843f6ec215251c2e64c63f4d968fcde6ec3cb2ea78feffb8dee193",
+      "width": 1280,
+      "height": 720,
+      "independentPrivateReadback": true,
+      "receiptReservationMatch": true
+    },
+    "originalFinal": {
+      "checksumRecordUnchanged": true,
+      "sha256": "sha256:27ab803bbb7c8e070e2a1f4171bf1bb733688ddb6cc044dd6db42a9fc591edc3",
+      "retentionDeletedBeforeDeployment": true,
+      "playbackAcceptance": "This older output was deleted by retention before this release; original records remain unchanged."
+    },
+    "activeRegenerationJobs": 0,
+    "activeProviderLeases": 0,
+    "newProviderSubmissions": 1,
+    "publishedRateEstimateUsd": 0.005,
+    "settledProviderDebit": "Not queried; published-rate estimate only"
+  },
+  "preservation": {
+    "acceptedUnitsUnchanged": true,
+    "acceptedUnitCount": 389,
+    "originalAcceptedAssetCount": 391,
+    "originalAcceptedAssetsUnchanged": true,
+    "approvalUnchanged": true,
+    "newAcceptedAssets": 1,
+    "originalVideoChecksums": [],
+    "acceptedUnitsSha256": "sha256:8a5f36dd80319a63334a319f73202d1239d5226b3d720f3109a6ca3f06c8cbca",
+    "originalFinalRecord": {
+      "checksumRecordUnchanged": true,
+      "sha256": "sha256:27ab803bbb7c8e070e2a1f4171bf1bb733688ddb6cc044dd6db42a9fc591edc3",
+      "retentionDeletedBeforeDeployment": true,
+      "playbackAcceptance": "This older output was deleted by retention before this release; original records remain unchanged."
+    }
+  },
+  "chrome": {
+    "regeneration": {
+      "originalRetainedWhilePending": true,
+      "replacementPathChanged": true,
+      "imageHeight": 720,
+      "imageWidth": 1280,
+      "loadedButtons": 192,
+      "status": "Image regenerated.",
+      "reloadPersisted": true,
+      "allImageButtons": 299
+    },
+    "availableFinalPlayback": {
+      "currentTime": 61.030944,
+      "downloadAvailable": true,
+      "duration": 159.2,
+      "height": 1080,
+      "paused": false,
+      "ready": 4,
+      "width": 1920
+    },
+    "consoleErrors": []
+  },
+  "gitPublication": {
+    "branch": "codex/fal-image-regeneration-release",
+    "commit": "87239d3f651f0a9b1a3b5a22646a4beaa96ff141",
+    "remoteReadbackMatches": true
+  },
+  "provider_spend": {
+    "newSubmissions": 1,
+    "publishedRateEstimateUsd": 0.005,
+    "settledDebit": "Not queried; estimate only",
+    "approvedCapUsd": 0.05
+  },
+  "limitations": [
+    "The older test project final MP4 was retention-deleted on 2026-09-26, before this deployment; its original approval/checksum records remain unchanged.",
+    "An available existing final video independently loaded and advanced in production Chrome with a private download control. No new video render or whole-pipeline acceptance was performed.",
+    "Existing full-suite baseline failures remain separate."
+  ]
 }

@@ -1,9 +1,17 @@
 schema_version: "2.0"
 fal_image_regeneration_2026_09_27:
   checkpoint: V2-09
-  status: LOCAL_VERIFIED_NOT_PUBLISHED
+  status: COMPLETE_PUBLISHED_REAL_CHROME_AND_FAL_VERIFIED
   decision: DEC_IMAGE_REGENERATION_001
   model: fal-ai/z-image/turbo
+  implementation_commit: 5c81c05b
+  prepared_release_commit: 87239d3f651f0a9b1a3b5a22646a4beaa96ff141
+  prepared_release_branch: codex/fal-image-regeneration-release
+  production_source_commit: 87239d3f651f0a9b1a3b5a22646a4beaa96ff141
+  cloudflare_version_id: 2ea07c43-3d71-46fc-a651-1bc7d7e88afe
+  git_publication: Exact release branch pushed and remote commit verified.
+  authority: User approved publication and bounded tests; at most two submissions/USD0.05. One submission used.
+  release_validation: Isolated from published1e10191f with only regeneration changes; 55 focused checks, typecheck, build/firewall, Wrangler dry run and installed Chrome pass. Pipeline/worker code unchanged.
   migration: 0213_fal_z_image_regeneration.sql
   behavior: Regenerate button on every accepted-image thumbnail, including later pages and partially completed image stages. One random-seed 1280x720 PNG replacement through Fal; pinned style/output guards retained.
   preservation: Original accepted units/final MP4 immutable; existing Kie and RunPod regeneration jobs retain their provider/identity. Claims precede paid POST, unknown submissions never replay, accepted private receipts release capacity.
@@ -11,9 +19,11 @@ fal_image_regeneration_2026_09_27:
   full_suite: Changed tree 2233 pass/22 fail/1 skip; unchanged baseline 2222 pass/23 fail/1 skip. All 22 changed-tree failures reproduce on baseline. Snapshot predates three final regression tests; broad verify remains non-green for existing format/Python/fixture/runtime failures.
   live_preflight: Published source 1e10191f / Cloudflare 42c576e5 at 100 percent, 25 secrets including Fal/Kie bindings and query redaction. Migration ledger through212; no active API or legacy regeneration jobs. Retained migration checksums match; 21 archived versions remain only in production ledger and omitted148 must not replay.
   evidence: evidence/acceptance/VF-10-09/2026-09-27-fal-image-regeneration.json
-  remaining_gates: Exact additive migration213, isolated release deployment preserving current settings/worker0.1.44, separately authorized real Fal sample and Chrome receipt/reload/final-preservation acceptance.
-  provider_spend: USD0; no provider inference or remote mutation.
-  paid_compute_shutdown: None activated; global inventory not queried.
+  live_acceptance: Migration213 committed with exact ledger guards; release serves100 percent traffic, all plain settings/25 secrets/worker0.1.44/query redaction preserved. Real Fal image97 on page2 accepted in11.588s; 1280x720 PNG/1293942 bytes independently downloaded and checksum/receipt/reservation verified. All299 buttons present; original retention while pending, disabled actions, success and full-reload persistence pass.
+  media_preservation: All389 original runtime units,391 accepted assets and approval/checksum records unchanged. The older test final was retention-deleted before release; another available final plays in Chrome at1920x1080 with private download available. No new video render.
+  remaining_gates: none_for_requested_regeneration_publication_and_acceptance; broader existing full-suite/pipeline gates remain separate.
+  provider_spend: One Fal submission under USD0.05 cap; USD0.005 published-rate estimate, actual account debit not queried.
+  paid_compute_shutdown: Zero active provider-workload leases and regeneration jobs. No Pod/GPU/volume actions; global RunPod inventory not queried.
 mac_terminal_account_fix_2026_09_27:
   checkpoint: V2-09
   status: COMPLETE_PUBLISHED_NATIVE_MAC_VERIFIED
