@@ -12,6 +12,10 @@ const state = vi.hoisted(() => ({
   tokenValid: true,
   ownerConflict: false,
   signedIn: true,
+  deviceAuthorized: true,
+  sameAccount: true,
+  ready: true,
+  busy: false,
 }));
 vi.mock("./auth", () => ({
   createHostedAuth: () => ({
@@ -22,6 +26,23 @@ vi.mock("./neon", async (original) => {
   const actual = await original<typeof import("./neon")>();
   async function query(sql: string) {
     state.calls.push(sql);
+    if (sql.includes("videoforge_media_worker_device_scope"))
+      return {
+        rows: state.deviceAuthorized
+          ? [
+              {
+                device_id: "device",
+                account_id: state.sameAccount ? "account" : "old-account",
+                workspace_id: state.sameAccount ? "workspace" : "old-workspace",
+                status: "ONLINE",
+              },
+            ]
+          : [],
+      };
+    if (sql.includes("SELECT status, (status"))
+      return { rows: [{ status: "ONLINE", ready: state.ready }] };
+    if (sql.includes("SELECT id FROM media_worker_leases"))
+      return { rows: state.busy ? [{ id: "lease" }] : [] };
     if (
       sql.includes("videoforge_hosted_session_scope") ||
       sql.includes("videoforge_media_worker_connect_consume")
@@ -94,6 +115,10 @@ beforeEach(() => {
   state.tokenValid = true;
   state.ownerConflict = false;
   state.signedIn = true;
+  state.deviceAuthorized = true;
+  state.sameAccount = true;
+  state.ready = true;
+  state.busy = false;
 });
 const enroll = () =>
   new Request("https://app.example.test/api/v2/media-worker-enrollments", {
@@ -170,7 +195,7 @@ it("requires same-origin signed-in command creation", async () => {
   expect(response?.status).toBe(201);
   const commands = (await response?.json()) as { macos: string; windows: string };
   expect(commands).toMatchObject({
-    macos: expect.stringContaining("bash -c 'set -eu;"),
+    macos: expect.stringContaining("bash -c 'script="),
     windows: expect.stringContaining("powershell.exe -NoProfile"),
   });
   // This outer command has no variables or quotes for CMD/parent PowerShell to expand.
@@ -201,7 +226,7 @@ it.runIf(process.platform !== "win32")(
       // Simulate curl writing executable bytes before a failed transfer.
       writeFileSync(
         join(directory, "curl"),
-        `#!/bin/bash\nwhile [ "$1" != -o ]; do shift; done\nshift\nprintf '%s\\n' 'touch "${marker}"' > "$1"\nexit 22\n`,
+        `#!/bin/bash\nprintf '%s\\n' 'touch "${marker}"'\nexit 22\n`,
         { mode: 0o700 },
       );
       const result = spawnSync("/bin/bash", ["-c", commands.macos], {
@@ -221,10 +246,103 @@ it("installer scripts pin exact bytes/hash and reuse running workers without rep
     const script = workerConnectScript(config, "d".repeat(64), platform);
     expect(script).not.toContain("@@");
     expect(script).toContain("--connect-file");
-    expect(script).toContain("Your existing worker is running; current work was preserved");
+    expect(script).toContain(
+      platform === "MACOS"
+        ? "Connected and Online"
+        : "Your existing worker is running; current work was preserved",
+    );
     expect(script).not.toContain("Stop-Process");
     expect(script).not.toContain("pkill");
     expect(script).toContain(platform === "MACOS" ? "shasum -a 256" : "Get-FileHash");
   }
   expect(() => workerConnectScript(config, "'; touch /tmp/x; '", "MACOS")).toThrow("rejected");
 });
+
+const prepare = (running = true) =>
+  handlePersonalWorkerRequest(
+    new Request("https://app.example.test/api/v2/media-worker/connect-prepare", {
+      method: "POST",
+      headers: { authorization: `Bearer ${"e".repeat(64)}` },
+      body: JSON.stringify({ token: "d".repeat(64), running }),
+    }),
+    {},
+    { waitUntil() {} },
+    config,
+  );
+it("reconnects the same online account without replacing its worker", async () => {
+  const response = await prepare();
+  expect(response?.status).toBe(200);
+  expect(await response?.json()).toEqual({ action: "CONNECTED" });
+  expect(
+    state.calls.some(
+      (sql) =>
+        sql.includes("UPDATE media_worker_devices") ||
+        sql.includes("INSERT INTO media_worker_connect_commands"),
+    ),
+  ).toBe(false);
+});
+it("switches an idle computer using a fresh enrollment while preserving old tenant history", async () => {
+  state.sameAccount = false;
+  const response = await prepare();
+  expect(response?.status).toBe(200);
+  expect(await response?.json()).toEqual({
+    action: "SWITCH",
+    token: expect.stringMatching(/^[a-f0-9]{64}$/),
+  });
+  expect(state.calls.some((sql) => sql.includes("status='REVOKED'"))).toBe(true);
+  expect(state.calls.some((sql) => sql.includes("INSERT INTO media_worker_events"))).toBe(true);
+  expect(state.calls).toContain("COMMIT");
+});
+it.each(["busy", "expired"])("rolls back an account switch when %s", async (reason) => {
+  state.sameAccount = false;
+  state.busy = reason === "busy";
+  state.tokenValid = reason !== "expired";
+  const response = await prepare();
+  expect(response?.status).toBe(409);
+  expect(state.calls).toContain("ROLLBACK");
+  expect(state.calls).not.toContain("COMMIT");
+  expect(state.calls.some((sql) => sql.includes("UPDATE media_worker_devices"))).toBe(false);
+});
+it("requires the existing device credential as well as the new account command", async () => {
+  state.deviceAuthorized = false;
+  expect((await prepare())?.status).toBe(401);
+  expect(state.calls.some((sql) => sql.includes("connect_consume"))).toBe(false);
+});
+it("reissues a same-account command for a stopped worker without revoking it", async () => {
+  const response = await prepare(false);
+  expect(await response?.json()).toEqual({
+    action: "CONNECT",
+    token: expect.stringMatching(/^[a-f0-9]{64}$/),
+  });
+  expect(state.calls.some((sql) => sql.includes("UPDATE media_worker_devices"))).toBe(false);
+});
+
+it.runIf(process.platform !== "win32")(
+  "keeps adjacent duplicate pastes as separate commands",
+  async () => {
+    const response = await handlePersonalWorkerRequest(
+      new Request("https://app.example.test/api/v2/media-worker/connect-command", {
+        method: "POST",
+        headers: { origin: config.publicOrigin },
+      }),
+      {},
+      { waitUntil() {} },
+      config,
+    );
+    const commands = (await response?.json()) as { macos: string };
+    const directory = mkdtempSync(join(tmpdir(), "vf-connect-paste-"));
+    try {
+      writeFileSync(join(directory, "curl"), '#!/bin/bash\nprintf "%s\\n" "echo bootstrap-ok"\n', {
+        mode: 0o700,
+      });
+      const result = spawnSync("/bin/bash", ["-c", commands.macos + commands.macos], {
+        env: { ...process.env, PATH: `${directory}:/usr/bin:/bin` },
+        encoding: "utf8",
+      });
+      expect(result.status).toBe(0);
+      expect(result.stdout.trim().split("\n")).toEqual(["bootstrap-ok", "bootstrap-ok"]);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  },
+);

@@ -4,6 +4,7 @@ import { handlePersonalWorkerRequest } from "./personal-worker";
 const state = vi.hoisted(() => ({
   calls: [] as string[],
   fresh: true,
+  revoked: false,
   active: true,
   failInputs: false,
   bytes: new Uint8Array(),
@@ -82,6 +83,8 @@ vi.mock("./neon", async (original) => ({
             return { rows: [] };
           }
 
+          if (sql.includes("SELECT status FROM media_worker_devices"))
+            return { rows: [{ status: state.revoked ? "REVOKED" : "ONLINE" }] };
           if (sql.includes("SELECT 1 FROM media_worker_devices")) {
             state.calls.push("FRESHNESS");
             return { rows: state.fresh ? [{ ok: 1 }] : [] };
@@ -169,6 +172,7 @@ const environment = () =>
 beforeEach(async () => {
   state.calls = [];
   state.fresh = true;
+  state.revoked = false;
   state.active = true;
   state.failInputs = false;
   state.attemptId = "attempt";
@@ -397,4 +401,16 @@ it("requeues a span attempt that failed for a local reason so stage 6 recovers",
   expect(state.calls).toContain("RETRYABLE_REQUEUE");
   // The retry must be durable before any lease is issued for the same claim.
   expect(state.calls.indexOf("RETRYABLE_REQUEUE")).toBeLessThan(state.calls.indexOf("LEASE"));
+});
+
+it("rejects a stale online scope after an account switch revoked the device", async () => {
+  state.revoked = true;
+  const result = await handlePersonalWorkerRequest(
+    request(),
+    environment(),
+    { waitUntil() {} },
+    config,
+  );
+  expect(result?.status).toBe(204);
+  expect(state.calls).not.toContain("LEASE");
 });

@@ -310,7 +310,7 @@ async function createConnectCommand(
     return json(
       {
         expires_at: expiresAt,
-        macos: `bash -c 'set -eu; umask 077; script=$(mktemp); cleanup() { rm -f -- "$script"; }; trap cleanup EXIT; if ! curl -fsSL --proto "=https" --tlsv1.2 --retry 2 --connect-timeout 30 --max-time 60 "${mac}" -o "$script"; then echo "Could not download the connection script. Get a fresh command in VideoForge Settings and try again." >&2; exit 1; fi; bash "$script"'`,
+        macos: `bash -c 'script=$(curl -fsSL --proto "=https" --connect-timeout 15 --max-time 60 "${mac}") || { echo "Get a fresh command in VideoForge Settings and try again." >&2; exit 1; }; bash <<< "$script"';`,
         windows: `powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${windowsEncoded}`,
       },
       201,
@@ -341,6 +341,88 @@ async function checkExistingConnection(request: Request, config: HostedRuntimeCo
     return json({ connected: true });
   } catch {
     return json({ error: { code: "MEDIA_WORKER_CONNECT_REJECTED" } }, 409);
+  } finally {
+    await pool.end();
+  }
+}
+
+// The local OS credential and a fresh account-issued command are both required.
+// Account changes create a new device through normal enrollment; old tenant history stays put.
+async function prepareConnection(request: Request, config: HostedRuntimeConfiguration) {
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const device = await deviceScope(request, pool);
+    if (!device || device.status === "REVOKED")
+      return json({ error: { code: "MEDIA_WORKER_UNAUTHORIZED" } }, 401);
+    const body = (await request.json()) as { token?: unknown; running?: unknown };
+    if (typeof body.token !== "string" || !TOKEN.test(body.token))
+      return json({ error: { code: "MEDIA_WORKER_CONNECT_REJECTED" } }, 400);
+    const result = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        device.accountId,
+      ]);
+      // Claims take the same row lock before admitting any work.
+      const locked = await transaction.query<{ status: string; ready: boolean }>(
+        `SELECT status, (status IN ('ONLINE','BUSY') AND last_seen_at > now() - interval '20 seconds'
+           AND execution_bundle_sha256=$2) AS ready
+           FROM media_worker_devices WHERE id=$1 FOR UPDATE`,
+        [device.deviceId, config.mediaWorkerRelease.executionBundleSha256],
+      );
+      if (!locked.rows[0] || locked.rows[0].status === "REVOKED")
+        throw new Error("MEDIA_WORKER_UNAUTHORIZED");
+      const target = await consumeConnectCommand(transaction, body.token as string);
+      const sameAccount =
+        target.accountId === device.accountId && target.workspaceId === device.workspaceId;
+      if (sameAccount && locked.rows[0].ready && body.running === true)
+        return { action: "CONNECTED" };
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        device.accountId,
+      ]);
+      const leases = await transaction.query(
+        "SELECT id FROM media_worker_leases WHERE device_id=$1 AND state IN ('CLAIMED','RUNNING','COMPLETING') LIMIT 1",
+        [device.deviceId],
+      );
+      if (leases.rows[0]) throw new Error("MEDIA_WORKER_BUSY");
+      if (!sameAccount) {
+        await transaction.query(
+          "UPDATE media_worker_devices SET status='REVOKED',revoked_at=now(),removed_at=now(),updated_at=now() WHERE id=$1",
+          [device.deviceId],
+        );
+        await transaction.query(
+          `INSERT INTO media_worker_events(id,account_id,workspace_id,device_id,lease_id,sequence,kind,facts_sha256,occurred_at)
+           SELECT $1,$2::uuid,$3::uuid,$4::uuid,NULL,COALESCE(max(sequence),0)+1,'REVOKED',$5,now()
+           FROM media_worker_events WHERE device_id=$4::uuid`,
+          [
+            crypto.randomUUID(),
+            device.accountId,
+            device.workspaceId,
+            device.deviceId,
+            await sha256("LOCAL_ACCOUNT_SWITCH"),
+          ],
+        );
+      }
+      const token = randomToken();
+      await transaction.query("SELECT set_config($1, $2, true)", [
+        "videoforge.account_id",
+        target.accountId,
+      ]);
+      await transaction.query(
+        `INSERT INTO media_worker_connect_commands(id,account_id,workspace_id,token_sha256,expires_at)
+         VALUES($1,$2,$3,$4,now()+interval '15 minutes')`,
+        [crypto.randomUUID(), target.accountId, target.workspaceId, await sha256(token)],
+      );
+      return { action: sameAccount ? "CONNECT" : "SWITCH", token };
+    });
+    return json(result);
+  } catch (error) {
+    const code =
+      error instanceof Error &&
+      ["MEDIA_WORKER_BUSY", "MEDIA_WORKER_UNAUTHORIZED"].includes(error.message)
+        ? error.message
+        : "MEDIA_WORKER_CONNECT_REJECTED";
+    return json({ error: { code } }, 409);
   } finally {
     await pool.end();
   }
@@ -1130,6 +1212,12 @@ async function claim(
         "videoforge.account_id",
         scope.accountId,
       ]);
+      const currentDevice = await transaction.query<{ status: string }>(
+        "SELECT status FROM media_worker_devices WHERE id=$1 FOR UPDATE",
+        [scope.deviceId],
+      );
+      if (!currentDevice.rows[0] || currentDevice.rows[0].status !== "ONLINE")
+        return { status: "EMPTY" };
       const expiredLeases = await transaction.query<{
         id: string;
         device_id: string;
@@ -2159,6 +2247,8 @@ export async function handlePersonalWorkerRequest(
     return createConnectCommand(request, config, executionContext);
   if (request.method === "POST" && url.pathname === "/api/v2/media-worker/connect-check")
     return checkExistingConnection(request, config);
+  if (request.method === "POST" && url.pathname === "/api/v2/media-worker/connect-prepare")
+    return prepareConnection(request, config);
   if (
     request.method === "GET" &&
     ["/api/v2/media-worker/connect.sh", "/api/v2/media-worker/connect.ps1"].includes(url.pathname)

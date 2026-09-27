@@ -15,6 +15,7 @@ export function workerConnectScript(
     HASH: file.sha256.slice(7),
     SIZE: String(file.sizeBytes),
     VERSION: config.mediaWorkerRelease.version,
+    ORIGIN: new URL(config.publicOrigin).origin,
   };
   // Values come from the validated immutable release. Reject shell metacharacters even
   // if a future configuration validator broadens its URL or version grammar.
@@ -22,7 +23,7 @@ export function workerConnectScript(
     if (!/^[A-Za-z0-9:/._+-]+$/u.test(value)) throw new Error("Worker installer value rejected");
   }
   return (platform === "MACOS" ? macos : windows).replace(
-    /@@(TOKEN|URL|HASH|SIZE|VERSION)@@/gu,
+    /@@(TOKEN|URL|HASH|SIZE|VERSION|ORIGIN)@@/gu,
     (_, key: keyof typeof substitutions) => substitutions[key],
   );
 }

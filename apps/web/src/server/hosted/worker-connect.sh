@@ -10,14 +10,70 @@ target="$HOME/Applications/VideoForge Worker.app"
 executable="$target/Contents/MacOS/VideoForge Worker"
 service="gui/$(id -u)/com.videoforge.personal-media-worker"
 printf '%s' '@@TOKEN@@' > "$work/connect-token"
-# Verify account ownership without replacing or restarting an active worker.
-if pgrep -f "^$executable" >/dev/null; then
-  echo 'Checking the running VideoForge Worker…'
-  if ! "$executable" --connect-file "$work/connect-token"; then
-    echo 'Connection was not changed. Check the account in Settings and copy a fresh command. If an update is required, let current work finish and reopen the worker.' >&2; exit 1
+state="$HOME/Library/Application Support/VideoForge Worker/installation.json"
+# Native macOS tools avoid unpacking the large worker just to check its account.
+if [ -x "$executable" ] && [ -f "$state" ]; then
+  installation=$(/usr/bin/plutil -extract installation_id raw -o - "$state")
+  if /usr/bin/security find-generic-password -w -s com.videoforge.personal-media-worker -a "$installation" > "$work/credential" 2>/dev/null; then
+    printf 'Authorization: Bearer %s\n' "$(cat "$work/credential")" > "$work/headers"
+    rm -f "$work/credential"
+    running=false
+    if pgrep -f "^$executable" >/dev/null; then running=true; fi
+    printf '{"token":"%s","running":%s}' '@@TOKEN@@' "$running" > "$work/request"
+    echo 'Connecting this Mac…'
+    status=$(curl -sS --proto '=https' --connect-timeout 15 --max-time 45 -X POST \
+      -H @"$work/headers" -H 'Content-Type: application/json' --data-binary @"$work/request" \
+      '@@ORIGIN@@/api/v2/media-worker/connect-prepare' -o "$work/response" -w '%{http_code}')
+    rm -f "$work/headers" "$work/request"
+    if [ "$status" != 200 ]; then
+      code=$(/usr/bin/plutil -extract error.code raw -o - "$work/response" 2>/dev/null || true)
+      if [ "$code" = MEDIA_WORKER_BUSY ]; then
+        echo 'This Mac is working. Let it finish, then copy a fresh command to switch accounts.' >&2
+      else
+        echo 'Connection could not be verified. Refresh the command in Settings and try again.' >&2
+      fi
+      exit 1
+    fi
+    action=$(/usr/bin/plutil -extract action raw -o - "$work/response")
+    if [ "$action" = CONNECTED ]; then
+      echo 'Connected and Online. This Mac is ready in VideoForge.'
+      exit 0
+    fi
+    /usr/bin/plutil -extract token raw -o "$work/connect-token" "$work/response"
+    if [ "$action" = SWITCH ]; then
+      echo 'Switching this idle Mac to the account from your command…'
+      launchctl bootout "$service" >/dev/null 2>&1 || true
+      # A manually opened worker exits when it observes the revoked credential.
+      for attempt in {1..15}; do
+        if ! pgrep -f "^$executable" >/dev/null; then break; fi
+        sleep 1
+      done
+      if pgrep -f "^$executable" >/dev/null; then
+        echo 'Close VideoForge Worker, then paste a fresh command to finish reconnecting.' >&2; exit 1
+      fi
+      /usr/bin/security delete-generic-password -s com.videoforge.personal-media-worker -a "$installation" >/dev/null 2>&1 || true
+      rm -f "$state"
+    fi
+  elif [ "$(/usr/bin/plutil -extract revoked raw -o - "$state" 2>/dev/null || true)" = true ]; then
+    if pgrep -f "^$executable" >/dev/null; then
+      echo 'Close VideoForge Worker, then paste a fresh command to finish reconnecting.' >&2; exit 1
+    fi
+    rm -f "$state"
   fi
-  echo 'Connected. Your existing worker is running; current work was preserved.'
+fi
+# Reuse the installed current version even when it was stopped or just switched accounts.
+installed_version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$target/Contents/Info.plist" 2>/dev/null || true)
+if [ -x "$executable" ] && [ "$installed_version" = '@@VERSION@@' ]; then
+  echo 'Starting VideoForge Worker…'
+  "$executable" --connect-file "$work/connect-token"
+  launchctl kickstart "$service"
+  echo 'Connected and Online. This Mac is ready in VideoForge.'
   exit 0
+fi
+# An older running worker may still be finishing work and cannot be replaced safely.
+if pgrep -f "^$executable" >/dev/null; then
+  echo 'Let current work finish, close VideoForge Worker, then paste a fresh command to update.' >&2
+  exit 1
 fi
 echo 'Downloading VideoForge Worker @@VERSION@@…'
 curl --fail --location --proto '=https' --tlsv1.2 --retry 2 --connect-timeout 30 '@@URL@@' -o "$work/worker.dmg"
