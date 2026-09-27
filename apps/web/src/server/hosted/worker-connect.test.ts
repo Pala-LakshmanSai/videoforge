@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
   deviceAuthorized: true,
   sameAccount: true,
   ready: true,
+  currentBundle: true,
   busy: false,
 }));
 vi.mock("./auth", () => ({
@@ -40,7 +41,9 @@ vi.mock("./neon", async (original) => {
           : [],
       };
     if (sql.includes("SELECT status, (status"))
-      return { rows: [{ status: "ONLINE", ready: state.ready }] };
+      return {
+        rows: [{ status: "ONLINE", ready: state.ready, current_bundle: state.currentBundle }],
+      };
     if (sql.includes("SELECT id FROM media_worker_leases"))
       return { rows: state.busy ? [{ id: "lease" }] : [] };
     if (
@@ -118,6 +121,7 @@ beforeEach(() => {
   state.deviceAuthorized = true;
   state.sameAccount = true;
   state.ready = true;
+  state.currentBundle = true;
   state.busy = false;
 });
 const enroll = () =>
@@ -246,12 +250,8 @@ it("installer scripts pin exact bytes/hash and reuse running workers without rep
     const script = workerConnectScript(config, "d".repeat(64), platform);
     expect(script).not.toContain("@@");
     expect(script).toContain("--connect-file");
-    expect(script).toContain(
-      platform === "MACOS"
-        ? "Connected and Online"
-        : "Your existing worker is running; current work was preserved",
-    );
-    expect(script).not.toContain("Stop-Process");
+    expect(script).toContain("0.1.44 is connected and Online");
+    expect(script).toContain("connect-prepare");
     expect(script).not.toContain("pkill");
     expect(script).toContain(platform === "MACOS" ? "shasum -a 256" : "Get-FileHash");
   }
@@ -263,7 +263,7 @@ const prepare = (running = true) =>
     new Request("https://app.example.test/api/v2/media-worker/connect-prepare", {
       method: "POST",
       headers: { authorization: `Bearer ${"e".repeat(64)}` },
-      body: JSON.stringify({ token: "d".repeat(64), running }),
+      body: JSON.stringify({ token: "d".repeat(64), running, installed_version: "0.1.44" }),
     }),
     {},
     { waitUntil() {} },
@@ -293,14 +293,37 @@ it("switches an idle computer using a fresh enrollment while preserving old tena
   expect(state.calls.some((sql) => sql.includes("INSERT INTO media_worker_events"))).toBe(true);
   expect(state.calls).toContain("COMMIT");
 });
-it.each(["busy", "expired"])("rolls back an account switch when %s", async (reason) => {
+it("rolls back an expired account switch", async () => {
   state.sameAccount = false;
-  state.busy = reason === "busy";
-  state.tokenValid = reason !== "expired";
-  const response = await prepare();
-  expect(response?.status).toBe(409);
+  state.tokenValid = false;
+  expect((await prepare())?.status).toBe(409);
   expect(state.calls).toContain("ROLLBACK");
-  expect(state.calls).not.toContain("COMMIT");
+  expect(state.calls.some((sql) => sql.includes("UPDATE media_worker_devices"))).toBe(false);
+});
+it.each([true, false])(
+  "renews a busy command without stopping work (same account %s)",
+  async (sameAccount) => {
+    state.sameAccount = sameAccount;
+    state.currentBundle = false;
+    state.ready = false;
+    state.busy = true;
+    const response = await prepare();
+    expect(await response?.json()).toEqual({
+      action: "WAIT",
+      token: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+    expect(state.calls).toContain("COMMIT");
+    expect(state.calls.some((sql) => sql.includes("UPDATE media_worker_devices"))).toBe(false);
+  },
+);
+it("authorizes an idle old bundle upgrade without changing its pairing", async () => {
+  state.currentBundle = false;
+  state.ready = false;
+  const response = await prepare();
+  expect(await response?.json()).toEqual({
+    action: "UPGRADE",
+    token: expect.stringMatching(/^[a-f0-9]{64}$/),
+  });
   expect(state.calls.some((sql) => sql.includes("UPDATE media_worker_devices"))).toBe(false);
 });
 it("requires the existing device credential as well as the new account command", async () => {

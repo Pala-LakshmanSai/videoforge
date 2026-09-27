@@ -354,7 +354,11 @@ async function prepareConnection(request: Request, config: HostedRuntimeConfigur
     const device = await deviceScope(request, pool);
     if (!device || device.status === "REVOKED")
       return json({ error: { code: "MEDIA_WORKER_UNAUTHORIZED" } }, 401);
-    const body = (await request.json()) as { token?: unknown; running?: unknown };
+    const body = (await request.json()) as {
+      token?: unknown;
+      running?: unknown;
+      installed_version?: unknown;
+    };
     if (typeof body.token !== "string" || !TOKEN.test(body.token))
       return json({ error: { code: "MEDIA_WORKER_CONNECT_REJECTED" } }, 400);
     const result = await createNeonExecutor(pool).transaction(async (transaction) => {
@@ -363,9 +367,13 @@ async function prepareConnection(request: Request, config: HostedRuntimeConfigur
         device.accountId,
       ]);
       // Claims take the same row lock before admitting any work.
-      const locked = await transaction.query<{ status: string; ready: boolean }>(
+      const locked = await transaction.query<{
+        status: string;
+        ready: boolean;
+        current_bundle: boolean;
+      }>(
         `SELECT status, (status IN ('ONLINE','BUSY') AND last_seen_at > now() - interval '20 seconds'
-           AND execution_bundle_sha256=$2) AS ready
+           AND execution_bundle_sha256=$2) AS ready, execution_bundle_sha256=$2 AS current_bundle
            FROM media_worker_devices WHERE id=$1 FOR UPDATE`,
         [device.deviceId, config.mediaWorkerRelease.executionBundleSha256],
       );
@@ -374,7 +382,12 @@ async function prepareConnection(request: Request, config: HostedRuntimeConfigur
       const target = await consumeConnectCommand(transaction, body.token as string);
       const sameAccount =
         target.accountId === device.accountId && target.workspaceId === device.workspaceId;
-      if (sameAccount && locked.rows[0].ready && body.running === true)
+      if (
+        sameAccount &&
+        locked.rows[0].ready &&
+        body.running === true &&
+        body.installed_version === config.mediaWorkerRelease.version
+      )
         return { action: "CONNECTED" };
       await transaction.query("SELECT set_config($1, $2, true)", [
         "videoforge.account_id",
@@ -384,8 +397,9 @@ async function prepareConnection(request: Request, config: HostedRuntimeConfigur
         "SELECT id FROM media_worker_leases WHERE device_id=$1 AND state IN ('CLAIMED','RUNNING','COMPLETING') LIMIT 1",
         [device.deviceId],
       );
-      if (leases.rows[0]) throw new Error("MEDIA_WORKER_BUSY");
-      if (!sameAccount) {
+      const busy = Boolean(leases.rows[0]);
+      // Renew the single-use command while waiting, so long renders never require another paste.
+      if (!busy && !sameAccount) {
         await transaction.query(
           "UPDATE media_worker_devices SET status='REVOKED',revoked_at=now(),removed_at=now(),updated_at=now() WHERE id=$1",
           [device.deviceId],
@@ -413,7 +427,16 @@ async function prepareConnection(request: Request, config: HostedRuntimeConfigur
          VALUES($1,$2,$3,$4,now()+interval '15 minutes')`,
         [crypto.randomUUID(), target.accountId, target.workspaceId, await sha256(token)],
       );
-      return { action: sameAccount ? "CONNECT" : "SWITCH", token };
+      return {
+        action: busy
+          ? "WAIT"
+          : !sameAccount
+            ? "SWITCH"
+            : !locked.rows[0].current_bundle
+              ? "UPGRADE"
+              : "CONNECT",
+        token,
+      };
     });
     return json(result);
   } catch (error) {

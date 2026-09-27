@@ -1,0 +1,27 @@
+name: Terminal worker upgrade smoke
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/easy-worker-connect]
+    paths:
+      - apps/web/src/server/hosted/worker-connect.ps1
+      - scripts/tests/windows/worker-connect-upgrade.ps1
+      - .github/workflows/worker-connect-smoke.yml
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Download published upgrade fixtures
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download media-worker-v0.1.43 --pattern VideoForge-Worker-0.1.43-Setup.exe --dir old
+          gh release download media-worker-v0.1.44 --pattern VideoForge-Worker-0.1.44-Setup.exe --dir latest
+      - name: Exercise Windows PowerShell 5 installer upgrade
+        shell: powershell
+        run: ./scripts/tests/windows/worker-connect-upgrade.ps1 -OldInstaller old/VideoForge-Worker-0.1.43-Setup.exe -LatestInstaller latest/VideoForge-Worker-0.1.44-Setup.exe
