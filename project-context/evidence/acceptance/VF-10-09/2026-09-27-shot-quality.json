@@ -1,10 +1,10 @@
 {
   "checkpoint": "V2-09",
   "review_date": "2026-09-27",
-  "status": "LOCAL_VERIFIED_NOT_PUBLISHED",
+  "status": "PUBLISHED_V24_PRODUCTION_CODE_AND_CHROME_VERIFIED",
   "baseline_commit": "a6c3fbbd",
   "decision": "DEC_IMAGE_SHOT_001",
-  "request_version": "runware-gemini-3.5-flash-prompt-request-v23",
+  "request_version": "runware-gemini-3.5-flash-prompt-request-v24",
   "sources": [
     {
       "file": "china found.mp4",
@@ -186,7 +186,6 @@
     }
   },
   "remaining_gates": [
-    "prompt policy publication",
     "fresh generated visual comparison",
     "preexisting database fixture repairs outside this change"
   ],
@@ -226,5 +225,12 @@
     "unrelated_progress_and_worker_changes_excluded": true,
     "publication_approval": "requested for the same shot-policy-only scope; baseline updated before publication; not received at evidence update",
     "retains_latest_mac_account_connection_fix": true
-  }
+  },
+  "introduced_request_version": "runware-gemini-3.5-flash-prompt-request-v23",
+  "production": {
+    "source": "366d16c27369b4430a843ae4e6929b7d7156eb89",
+    "version": "62524e69-7fea-4796-9d4a-a87124b16009",
+    "trafficPercent": 100
+  },
+  "compaction_and_publication_evidence": "2026-09-27-prompt-instruction-compaction.json"
 }

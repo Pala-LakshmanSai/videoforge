@@ -281,6 +281,8 @@ Local proof establishes functional compatibility; fresh visual improvement remai
 
 ### Compact repeated instructions — 2026-09-27
 
+Published at source `366d16c2` / Cloudflare `62524e69` with exact code/settings readback and real Chrome controls verified.
+
 `DEC_PROMPT_COMPACT_001` consolidates repeated wording without dropping grounding, style,
 shot-quality, typography or exact-output constraints. Request v24 changes task identity while
 retaining the eight-field scene contract, field/tag bounds, adaptive batching, output/reasoning

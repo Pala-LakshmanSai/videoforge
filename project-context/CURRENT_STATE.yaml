@@ -1,7 +1,15 @@
 prompt_instruction_compaction_2026_09_27:
+  publication_authority: User approved push/deploy of exact release366d16c2 on2026-09-27; USD0 finite cap, no DB mutations or provider generation, preserve runtime/secrets/worker0.1.44, stop on production baseline drift.
   implementation_commit: df08f439
+  prepared_release_commit: 366d16c2
+  prepared_release_branch: codex/compact-shot-quality-release
+  prepared_release_baseline: 87239d3f (latest published Fal regeneration and terminal upgrades retained)
   checkpoint: V2-09
-  status: LOCAL_VERIFIED_NOT_PUBLISHED
+  status: PUBLISHED_PRODUCTION_CODE_AND_CHROME_VERIFIED
+  production_source_commit: 366d16c27369b4430a843ae4e6929b7d7156eb89
+  cloudflare_version_id: 62524e69-7fea-4796-9d4a-a87124b16009
+  publication: Exact isolated branch pushed and remote commit verified;100 percent traffic, published v24/shot-quality code read back, all plain variables except source pin/25 secrets/other bindings/exact worker0.1.44/query redaction preserved.
+  production_chrome: Settings/API healthy, worker Online, both34px OS buttons toggle correctly with real bash/encoded PowerShell commands and no horizontal clipping; restored macOS. No generation started.
   decision: DEC_PROMPT_COMPACT_001
   request_version: runware-gemini-3.5-flash-prompt-request-v24
   replaces_local_prompt_policy: v23 prepared release 9c88581d; that older release must not be deployed.
@@ -9,18 +17,22 @@ prompt_instruction_compaction_2026_09_27:
   preserved: All grounding/style/quality/no-text/output rules, eight-field scene contract, narration/style payload, field/tag bounds, adaptive batching, reasoning/output budgets, validation/recovery/cost safeguards and immutable accepted prompts.
   validation: Pipeline 201 and hosted prompt/recovery/regeneration 43 pass; pipeline/web typecheck and pipeline lint pass. Clean latest-baseline web/Cloudflare builds and bundle firewall pass; actual bundle contains v24. Wire size guard enforces at most 6000 instruction bytes. A 300-scene local fixture covers every scene in 30 batches within existing limits.
   evidence: evidence/acceptance/VF-10-09/2026-09-27-prompt-instruction-compaction.json
-  remaining_gates: Publication remains pending; actual provider billed-token/dollar savings and generated-quality equivalence remain unmeasured.
+  remaining_gates: Actual provider billed-token/dollar savings and generated-quality equivalence remain unmeasured.
   provider_spend: USD0; no inference, image generation or rerender calls.
   paid_compute_shutdown: No paid compute activated; global inventory not queried.
 shot_quality_2026_09_27:
   checkpoint: V2-09
-  status: LOCAL_VERIFIED_NOT_PUBLISHED
+  status: PUBLISHED_PRODUCTION_CODE_AND_CHROME_VERIFIED
+  production_source_commit: 366d16c27369b4430a843ae4e6929b7d7156eb89
+  cloudflare_version_id: 62524e69-7fea-4796-9d4a-a87124b16009
+  publication: Exact isolated branch pushed and remote commit verified;100 percent traffic, published v24/shot-quality code read back, all plain variables except source pin/25 secrets/other bindings/exact worker0.1.44/query redaction preserved.
+  production_chrome: Settings/API healthy, worker Online, both34px OS buttons toggle correctly with real bash/encoded PowerShell commands and no horizontal clipping; restored macOS. No generation started.
   baseline_commit: a6c3fbbd
   implementation_commit: 2dcab146
-  prepared_release_commit: 9c88581d
-  prepared_release_branch: codex/shot-quality-release
+  prepared_release_commit: 366d16c2
+  prepared_release_branch: codex/compact-shot-quality-release
   decision: DEC_IMAGE_SHOT_001
-  request_version: runware-gemini-3.5-flash-prompt-request-v23
+  request_version: runware-gemini-3.5-flash-prompt-request-v24
   review: Two downloaded final videos, 1124 three-second samples on 32 contact sheets, selected full-resolution checks and two user screenshots. Qualitative patterns, no measured failure rate.
   result: Batch instructions avoid small visible faces, unnecessary crowds, complex contacts and implausible scale while retaining narrated participants/actions and assigned roles. Essential framing goes into authoritative fields.
   validation: Pipeline 201 pass; provider/settings 23 and hosted prompt/regeneration 46 pass; pipeline/web typecheck, lint and web/Cloudflare build/firewall pass. Broader durable database group has 16 pass and 9 identical baseline fixture failures (missing digest/admission functions).
@@ -28,7 +40,7 @@ shot_quality_2026_09_27:
   guide: ../SHOT_QUALITY_GUIDE.md
   desktop_guide: ~/Desktop/VideoForge Shot Quality Guide.html
   evidence: evidence/acceptance/VF-10-09/2026-09-27-shot-quality.json
-  remaining_gates: Publish new prompt policy; fresh visual comparison requires separately authorized generation. Native Windows installer execution is outside this UI check. Existing database fixture failures remain separate.
+  remaining_gates: Fresh visual comparison requires separately authorized generation. Native Windows installer execution is outside this UI check. Existing database fixture failures remain separate.
   provider_spend: USD0; no provider generation, rerender or resource mutation.
   paid_compute_shutdown: No paid compute activated; global inventory not queried.
 schema_version: "2.0"

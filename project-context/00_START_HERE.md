@@ -1,8 +1,9 @@
 # VideoForge: start here
 
-Prompt instructions are locally compacted in request v24: same quality/grounding/output rules,
-39.54% fewer repeated bytes. This supersedes the local v23 release proposal; publication remains
-pending. Read `prompt_instruction_compaction_2026_09_27` in CURRENT_STATE.yaml and the prompt domain.
+Prompt instructions and shot-quality selection are published at source `366d16c2` / Cloudflare
+`62524e69`: request v24, same rules/runtime guards,39.54% fewer repeated bytes. Production code,
+settings preservation and Chrome OS controls pass; no paid generation/compute. Actual billed-token
+savings and fresh visual equivalence remain unmeasured. Read `prompt_instruction_compaction_2026_09_27`.
 
 Per-image Fal Z-Image Turbo regeneration is locally verified with a button on every accepted-image
 thumbnail, including later pages. Migration 0213 preserves original images/final videos and old

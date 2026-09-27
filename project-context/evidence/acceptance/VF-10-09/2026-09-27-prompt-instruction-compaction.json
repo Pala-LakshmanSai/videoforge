@@ -29,7 +29,7 @@
   "measurement_note": "Bytes/words are exact. Input tokens use the existing conservative UTF-8 bytes/2 planner estimator, not Gemini tokenization or provider billing. No inference or generation calls.",
   "checkpoint": "V2-09",
   "date": "2026-09-27",
-  "status": "LOCAL_VERIFIED_NOT_PUBLISHED",
+  "status": "PUBLISHED_PRODUCTION_CODE_AND_CHROME_VERIFIED",
   "baseline_source": "d95b4ea2",
   "decision": "DEC_PROMPT_COMPACT_001",
   "runtime_after_prompt_constants_identical_to_v23": true,
@@ -74,11 +74,49 @@
   "spend_usd": 0,
   "paid_compute": "None activated; global inventory not queried.",
   "remaining_gates": [
-    "publication",
     "actual Gemini billed-token/dollar savings",
     "fresh visual equivalence"
   ],
   "implementation_commit": "df08f439",
   "writer_source_before_sha256": "b1217f4546338c6640073e29eb3611127cf74be66ffba0bc379f73b1f2aea267",
-  "writer_source_after_sha256": "cdea886c84314642a0b6147dc526f96cc3c498da7d398b807be7ed33885c45d8"
+  "writer_source_after_sha256": "cdea886c84314642a0b6147dc526f96cc3c498da7d398b807be7ed33885c45d8",
+  "prepared_release_commit": "366d16c2",
+  "prepared_release_baseline": "87239d3f",
+  "publication_authority": {
+    "approvedByUser": true,
+    "spendCapUsd": 0,
+    "noDatabaseMutations": true,
+    "noProviderCalls": true,
+    "stopOnBaselineDrift": true
+  },
+  "production": {
+    "source": "366d16c27369b4430a843ae4e6929b7d7156eb89",
+    "version": "62524e69-7fea-4796-9d4a-a87124b16009",
+    "trafficPercent": 100,
+    "plainVarsPreserved": true,
+    "secretCount": 25,
+    "secretNamesPreserved": true,
+    "otherBindingsPreserved": true,
+    "workerRelease": "0.1.44",
+    "redactQuery": true,
+    "publishedCodeV24": true,
+    "shotQualityRules": true,
+    "providerCalls": 0,
+    "spendUsd": 0,
+    "newCompute": false
+  },
+  "remote_branch": "codex/compact-shot-quality-release",
+  "remote_commit_verified": "366d16c27369b4430a843ae4e6929b7d7156eb89",
+  "chrome_acceptance": {
+    "settingsLoads": true,
+    "apiHealthy": true,
+    "workerOnline": true,
+    "macWindowsButtonsHeightPx": 34,
+    "macCommandBash": true,
+    "windowsCommandPowerShellEncoded": true,
+    "windowsSelectedState": true,
+    "horizontalOverflow": false,
+    "macSelectionRestored": true,
+    "generationStarted": false
+  }
 }

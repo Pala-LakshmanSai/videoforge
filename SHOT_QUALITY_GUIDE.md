@@ -51,7 +51,7 @@ These are qualitative patterns, not a measured model failure percentage or a gua
 - Request writer: `packages/pipeline/src/prompts/runware-deepseek-writer.ts`, request v24 (same quality rules, compact instructions).
 - Machine-readable review/validation: `project-context/evidence/acceptance/VF-10-09/2026-09-27-shot-quality.json`.
 
-Implementation status: locally verified; prompt policy publication and fresh visual comparison remain separate gates. macOS/Windows settings controls are already published and were checked in real Chrome.
+Implementation status: published at source `366d16c2` / Cloudflare `62524e69` (100% traffic). Actual deployed v24 code and preserved settings were verified; macOS/Windows controls passed real Chrome checks. Fresh visual comparison and actual billed-token savings remain unmeasured.
 
 The detailed guide stays local and is never sent to the provider. The actual shared batch
 instructions are 5,937 bytes / 691 words, down from 9,820 bytes / 1,360 words. All existing
