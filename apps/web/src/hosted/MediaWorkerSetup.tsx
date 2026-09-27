@@ -281,7 +281,7 @@ export function MediaWorkerSetup() {
 
       <div className="worker-command" role="region" aria-label="Connect with a terminal command">
         <div className="worker-command-heading">
-          <h3>Connect</h3>
+          <h3>Connect a computer</h3>
           <div className="worker-platforms" role="group" aria-label="Computer operating system">
             <button
               type="button"
@@ -306,7 +306,8 @@ export function MediaWorkerSetup() {
           </div>
         </div>
         <p className="worker-command-instruction">
-          {platform === "MACOS" ? "Paste in Terminal." : "Paste in Command Prompt or PowerShell."}
+          Paste in {platform === "MACOS" ? "Terminal" : "Command Prompt or PowerShell"} to install
+          and connect automatically.
         </p>
         <div className="worker-command-copy">
           <pre tabIndex={0} aria-label="Install and connect command">

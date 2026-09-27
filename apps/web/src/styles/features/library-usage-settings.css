@@ -100,6 +100,7 @@
 .worker-command-heading,
 .worker-command-footer,
 .worker-command-copy {
+  align-items: flex-start;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -160,11 +161,12 @@
 .worker-command-copy pre {
   flex: 1;
   min-width: 0;
-  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   padding: 8px;
   margin: 0;
   font-size: 12px;
-  scrollbar-width: thin;
+  line-height: 1.65;
 }
 .worker-command-copy .button {
   flex-shrink: 0;
@@ -214,5 +216,14 @@
   .worker-command-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+@media (max-width: 600px) {
+  .worker-command-copy {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .worker-command-copy .button {
+    align-self: flex-end;
   }
 }
