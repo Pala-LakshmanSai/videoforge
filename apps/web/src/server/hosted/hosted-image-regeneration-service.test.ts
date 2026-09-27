@@ -136,6 +136,7 @@ function configuration() {
 }
 
 type HarnessOptions = {
+  historicalApiConfiguration?: boolean;
   prepareError?: Error & { code?: string };
   raceRow?: JsonRecord;
 };
@@ -157,6 +158,7 @@ function harness(options: HarnessOptions = {}) {
   };
   const query = vi.fn(async (sql: string, values: readonly SqlPrimitive[] = []) => {
     calls.push({ sql, values });
+    if (sql.includes("SELECT EXISTS")) return { rows: [{ value: true }] };
     if (sql.includes("SELECT generation_provider AS value FROM public.projects"))
       return { rows: [{ value: "RUNPOD" }] };
     if (sql.includes("videoforge_create_hosted_image_regeneration"))
@@ -192,7 +194,9 @@ function harness(options: HarnessOptions = {}) {
   } as unknown as TransactionalSqlExecutor;
   const service = createHostedImageRegenerationService({
     database,
-    config: configuration(),
+    config: options.historicalApiConfiguration
+      ? { ...configuration(), apiGeneration: { kieApiKey: "test-key", falApiKey: "test-key" } }
+      : configuration(),
     environment: environment(workflow) as HostedRuntimeEnvironment,
   });
   return {
@@ -230,13 +234,21 @@ describe("hosted image regeneration service", () => {
       error_code: "UNKNOWN_NO_RETRY",
     });
   });
-  it("creates an API regeneration from the pinned style without GPU bindings", async () => {
+  it("retains a historical RunPod idempotency key even when Fal is now configured", async () => {
+    const test = harness({ historicalApiConfiguration: true });
+    await expect(test.service.create(args)).resolves.toMatchObject({ request_id: requestId });
+    expect(test.prepared).toBeDefined();
+    expect(test.calls.some(({ sql }) => sql.includes("videoforge_create_hosted_api_image_regeneration"))).toBe(false);
+    expect(test.calls.some(({ sql }) => sql.includes("videoforge_create_hosted_image_regeneration"))).toBe(true);
+  });
+  it.each(["KIE_FAL", "RUNPOD"])("creates a new API regeneration from a %s image's pinned style without GPU bindings", async (provider) => {
     const previousGuard = "Legacy original still; no text or branding";
     const queries: Array<{ sql: string; values: readonly SqlPrimitive[] }> = [];
     const query = vi.fn(async (sql: string, values: readonly SqlPrimitive[] = []) => {
       queries.push({ sql, values });
       if (sql.includes("set_config")) return { rows: [{ value: true }] };
-      if (sql.includes("SELECT generation_provider")) return { rows: [{ value: "KIE_FAL" }] };
+      if (sql.includes("SELECT generation_provider")) return { rows: [{ value: provider }] };
+      if (sql.includes("SELECT EXISTS")) return { rows: [{ value: false }] };
       if (sql.includes("videoforge_read_hosted_api_image_regeneration_source"))
         return { rows: [{ value: { sourceInputManifest: { compiledPrompt: {
           components: { literalContent: originalPrompt, continuityAndShotRole: "original role",

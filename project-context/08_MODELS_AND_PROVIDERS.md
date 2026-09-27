@@ -26,6 +26,17 @@ For fresh Fal renders, `fal-flashhead-512x512p25-wide-v2` restores the pinned wi
 around the accepted square talking clip with feature alignment and feathering on the personal CPU
 worker. Uncertain alignment fails closed; historical native crop profiles remain immutable.
 
+## Per-image regeneration (2026-09-27 decision)
+
+New image replacements use Fal `fal-ai/z-image/turbo`: one 1280x720 PNG, eight inference steps,
+safety checker enabled, prompt expansion disabled, and no fixed seed. The existing compact scene
+prompt retains the pinned style and permanent no-text/output guards. Provider secrets stay server-side.
+Fal's public model page listed $0.005 per megapixel on 2026-09-27; refresh before paid acceptance.
+Existing Kie or RunPod regeneration requests retain their provider and immutable task identity.
+Migration 0213 permits new Fal jobs for verified historical accepted RunPod stills without GPU
+activation or rewriting the source accepted unit. Gallery replacements do not rebuild final MP4s.
+Local proof is recorded in CURRENT_STATE.yaml; publication and paid visual acceptance remain open.
+
 ## Historical RunPod compute boundary
 
 Prior production target for existing RunPod attempts:

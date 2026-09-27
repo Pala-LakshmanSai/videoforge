@@ -1050,6 +1050,12 @@
       "name": "media_worker_connect_commands",
       "filename": "0212_media_worker_connect_commands.sql",
       "sha256": "sha256:a682f7fcf1337e95ccee1944d6d78ce3c78f9884681d72f504a4fbd9e9ef152d"
+    },
+    {
+      "version": 213,
+      "name": "fal_z_image_regeneration",
+      "filename": "0213_fal_z_image_regeneration.sql",
+      "sha256": "sha256:13561496cc795473cce4f80d4cc65c31856b00255d5b4dfa4fd1e1a7c82e50ae"
     }
   ]
 }

@@ -4,6 +4,35 @@ import { ProjectMediaReview } from "./ProjectMediaReview";
 
 afterEach(cleanup);
 
+it("provides regeneration on every thumbnail, including loaded pages, and keeps arrow keys in the editor", async () => {
+  const first = { id: "scene-1", url: "/one.png", label: "Scene 1", prompt: "First scene." };
+  const second = { id: "scene-2", url: "/two.png", label: "Scene 2", prompt: "Second scene." };
+  const onRegenerate = vi.fn().mockResolvedValue(undefined);
+  const view = render(
+    <ProjectMediaReview
+      launcher="images"
+      images={[first]}
+      avatarVideos={[]}
+      onRegenerate={onRegenerate}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "View generated images" }));
+  expect(screen.getByRole("button", { name: "Regenerate image 1" })).toBeEnabled();
+  view.rerender(
+    <ProjectMediaReview
+      launcher="images"
+      images={[first, second]}
+      avatarVideos={[]}
+      onRegenerate={onRegenerate}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Regenerate image 2" }));
+  await waitFor(() => expect(onRegenerate).toHaveBeenCalledWith(second, second.prompt));
+  expect(screen.getByRole("img", { name: "Scene 2" })).toHaveAttribute("src", second.url);
+  fireEvent.keyDown(screen.getByRole("textbox", { name: "Image prompt" }), { key: "ArrowLeft" });
+  expect(screen.getByRole("img", { name: "Scene 2" })).toBeVisible();
+});
+
 describe("ProjectMediaReview", () => {
   it("opens enlarged image and avatar viewers from two clear actions", () => {
     render(

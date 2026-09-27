@@ -40,6 +40,18 @@ describe("HostedSqlImageRegenerationStore", () => {
       expect.any(Array),
     );
   });
+  it("checks historical idempotency keys within the current tenant and fails closed", async () => {
+    const x = make();
+    const s = new HostedSqlImageRegenerationStore(x.executor, "a", "w");
+    x.query.mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ value: true }] } as never);
+    expect(await s.hasHistoricalRequest("old-key")).toBe(true);
+    expect(x.query).toHaveBeenCalledWith(
+      expect.stringContaining("account_id=$1 AND workspace_id=$2 AND idempotency_key=$3"),
+      ["a", "w", "old-key"],
+    );
+    await expect(s.hasHistoricalRequest("unknown-key")).rejects.toThrow("HISTORY_INVALID");
+  });
   it("rejects a different tenant before SQL", async () => {
     const x = make();
     const s = new HostedSqlImageRegenerationStore(x.executor, "a", "w");

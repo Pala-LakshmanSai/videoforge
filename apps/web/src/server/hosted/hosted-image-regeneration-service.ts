@@ -56,6 +56,7 @@ export function regenerationStatus(row: Row): Row {
 export function createHostedImageRegenerationService(input: {
   database: TransactionalSqlExecutor;
   scheduleWorkflow?: boolean;
+  historicalRunPodRequest?: boolean;
   config: HostedRuntimeConfiguration;
   environment: HostedRuntimeEnvironment & HostedPairLiveEnvironment;
 }): HostedImageRegenerationRouteService {
@@ -67,7 +68,10 @@ export function createHostedImageRegenerationService(input: {
         throw new Error("HOSTED_IMAGE_REGENERATION_WORKFLOW_MISSING");
       const store = storeFor(args.accountId, args.workspaceId);
       const provider = await store.generationProvider(args.projectId, args.revisionId);
-      if (provider === "KIE_FAL") {
+      const historical = input.historicalRunPodRequest ||
+        (provider === "RUNPOD" && input.config.apiGeneration &&
+          await store.hasHistoricalRequest(args.idempotencyKey));
+      if (provider === "KIE_FAL" || (input.config.apiGeneration && !historical)) {
         if (!input.config.apiGeneration || !input.environment.PRIVATE_ARTIFACTS)
           throw new Error("HOSTED_IMAGE_REGENERATION_API_BINDING_MISSING");
         const source = record(await store.apiSource({ ...args, projectRevisionId: args.revisionId }));

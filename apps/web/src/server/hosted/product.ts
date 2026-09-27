@@ -7259,7 +7259,7 @@ async function projectDetail(
  JOIN artifact_receipts receipt ON receipt.account_id=reservation.account_id AND receipt.workspace_id=reservation.workspace_id AND receipt.reservation_id=reservation.id AND receipt.deleted_at IS NULL AND receipt.object_key=reservation.object_key AND receipt.checksum_sha256=reservation.checksum_sha256
  WHERE regeneration.account_id=$1 AND regeneration.workspace_id=$2 AND regeneration.project_id=$3 AND regeneration.project_revision_id=$4 AND regeneration.state='COMPLETED'
              ), api_regenerated_output_items AS (
-               SELECT regeneration.source_api_job_id AS attempt_id,
+               SELECT COALESCE(regeneration.source_api_job_id, regeneration.source_attempt_id) AS attempt_id,
                       'mage_image'::text AS lane,
                       jsonb_build_object(
                         'item_id', regeneration.image_task_id::text,
@@ -7273,7 +7273,7 @@ async function projectDetail(
                       -1 AS source_priority,
                       regeneration.image_task_id::text AS item_id
                  FROM hosted_api_image_regeneration_jobs AS regeneration
-                 JOIN hosted_api_generation_jobs AS source
+                 LEFT JOIN hosted_api_generation_jobs AS source
                    ON source.account_id = regeneration.account_id
                   AND source.workspace_id = regeneration.workspace_id
                   AND source.id = regeneration.source_api_job_id
@@ -7282,6 +7282,12 @@ async function projectDetail(
                   AND source.generation_task_id = regeneration.image_task_id
                   AND source.lane = 'IMAGE'
                   AND source.state = 'SUCCEEDED'
+                 LEFT JOIN serverless_attempts AS historical_source
+                   ON historical_source.account_id = regeneration.account_id
+                  AND historical_source.workspace_id = regeneration.workspace_id
+                  AND historical_source.id = regeneration.source_attempt_id
+                  AND historical_source.project_id = regeneration.project_id
+                  AND historical_source.project_revision_id = regeneration.project_revision_id
                  JOIN artifact_receipts AS receipt
                    ON receipt.account_id = regeneration.account_id
                   AND receipt.workspace_id = regeneration.workspace_id
@@ -7311,6 +7317,7 @@ async function projectDetail(
                   AND regeneration.project_id = $3
                   AND regeneration.project_revision_id = $4
                   AND regeneration.state = 'SUCCEEDED'
+                  AND (source.id IS NOT NULL OR historical_source.id IS NOT NULL)
              ), expanded_output_items AS (
                SELECT output.attempt_id, output.lane, item.value AS artifact,
                       output.accepted_at, output.source_priority,
@@ -7340,7 +7347,8 @@ async function projectDetail(
                   AND job.project_revision_id=$4 AND job.state='SUCCEEDED'
              ), deduplicated_output_items AS (
                SELECT DISTINCT ON (attempt_id, lane, item_id)
-                      attempt_id, lane, item_id, artifact, accepted_at
+                      attempt_id, lane, item_id, artifact, accepted_at,
+                      min(accepted_at) OVER (PARTITION BY attempt_id, lane) AS first_accepted_at
                  FROM expanded_output_items
                 ORDER BY attempt_id, lane, item_id, source_priority, accepted_at DESC
              )
@@ -7349,7 +7357,7 @@ async function projectDetail(
                max(accepted_at) AS accepted_at
           FROM deduplicated_output_items
          GROUP BY attempt_id, lane
-         ORDER BY max(accepted_at), attempt_id`,
+         ORDER BY min(first_accepted_at), attempt_id`,
         [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
       const projectApiGeneration =

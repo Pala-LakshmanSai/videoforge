@@ -136,7 +136,7 @@ type FetchPort = (input: string | URL | Request, init?: RequestInit) => Promise<
 /** Claim is a durable PREPARED -> SUBMITTING CAS, before any paid network request. */
 export async function submitKieImageJob(input: {
   readonly manifest: KieImageManifest;
-  readonly client: KieZImageClient;
+  readonly client: Pick<KieZImageClient, "create">;
   readonly claimSubmission: () => Promise<boolean>;
   readonly persistTaskId: (taskId: string) => Promise<void>;
   readonly markRequestRejected: () => Promise<void>;
@@ -329,7 +329,7 @@ async function downloadImage(url: string, fetchPort: FetchPort): Promise<Uint8Ar
 export async function observeKieImageJob(input: {
   readonly taskId: string;
   readonly objectKey: string;
-  readonly client: KieZImageClient;
+  readonly client: Pick<KieZImageClient, "get">;
   readonly bucket: HostedR2BucketBinding;
   readonly fetchPort?: FetchPort;
 }): Promise<

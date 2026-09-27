@@ -267,6 +267,60 @@ async function createRequest(executor) {
   return result.rows[0].value;
 }
 
+test("0213 regenerates historical images through a new Fal job while retaining source and tenant boundaries", async () => {
+  await withPgcryptoMigrationsThrough(194, async ({ executor }) => {
+    const fixture = await seedAcceptedScene(executor);
+    const migration = (await loadMigrationSources()).find(({ version }) => version === 213);
+    await executor.execute(migration.sql);
+    const leaseId = uuid(1_290_213);
+    const approvalId = uuid(1_290_214);
+    await executor.query(`INSERT INTO provider_workload_leases(id,slot,account_id,workspace_id,
+      request_kind,generation_request_id,owner_token_sha256,state,acquired_at,heartbeat_at,expires_at)
+      VALUES($1,1,$2,$3,'VIDEO',$4,$5,'ACTIVE',transaction_timestamp(),transaction_timestamp(),
+        transaction_timestamp()+interval '1 hour')`,
+      [leaseId,IDS.accountA,IDS.workspaceA,fixture.request,sha256('source-owner')]);
+    await executor.query(`INSERT INTO hosted_paid_dispatch_approvals(id,approval_sha256,
+      account_id,workspace_id,project_id,project_revision_id,generation_request_id,
+      generation_plan_sha256,lease_id,lane_bindings,maximum_cumulative_finite_cap_usd,
+      expires_at,approved_by_operator,approved_at)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'[{},{}]'::jsonb,1,
+        transaction_timestamp()+interval '1 hour','fixture',transaction_timestamp())`,
+      [approvalId,sha256('source-approval'),IDS.accountA,IDS.workspaceA,IDS.projectA,
+        IDS.revisionA,fixture.request,sha256('source-plan'),leaseId]);
+    const compiledPrompt = { components: { literalContent: 'Original scene',
+      stylePositiveSuffix: 'Documentary photography', styleNegativeSuffix: 'CGI' } };
+    const candidate = { schemaVersion: 'videoforge.hosted-v209-ordinary-dispatch/v1',
+      work: { mage_image: [{ taskId: IDS.taskA, compiledPrompt }] } };
+    await executor.query(`INSERT INTO hosted_v209_ordinary_dispatch_candidates(
+      generation_request_id,account_id,workspace_id,project_id,project_revision_id,lease_id,
+      generation_plan_sha256,work_manifest_sha256,candidate_sha256,approval_id,candidate_document,expires_at)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,transaction_timestamp()+interval '1 hour')`,
+      [fixture.request,IDS.accountA,IDS.workspaceA,IDS.projectA,IDS.revisionA,leaseId,
+        sha256('source-plan'),sha256('source-work'),canonicalSha256(candidate),approvalId,
+        JSON.stringify(candidate)]);
+    await executor.query(`UPDATE provider_workload_leases SET state='RELEASED',
+      released_at=transaction_timestamp(),release_reason='FIXTURE_SOURCE_COMPLETE',version=version+1 WHERE id=$1`,[leaseId]);
+    const args = [IDS.accountA,IDS.workspaceA,IDS.projectA,IDS.revisionA,IDS.taskA];
+    const sourceSql = 'SELECT public.videoforge_read_hosted_api_image_regeneration_source($1,$2,$3,$4,$5) AS value';
+    const source = (await executor.query(sourceSql,args)).rows[0].value;
+    assert.equal(source.sourceAttemptId,fixture.sourceAttempt);
+    assert.deepEqual(source.sourceInputManifest.compiledPrompt,compiledPrompt);
+    const createSql = 'SELECT public.videoforge_create_hosted_api_image_regeneration($1,$2,$3,$4,$5,$6,$7) AS value';
+    const createArgs = [...args,'Replacement documentary scene. No visible text.','fal-historical'];
+    const job = (await executor.query(createSql,createArgs)).rows[0].value;
+    assert.equal(job.inputManifest.provider,'FAL_Z_IMAGE');
+    assert.equal(job.inputManifest.sourceAttemptId,fixture.sourceAttempt);
+    assert.equal((await executor.query(createSql,createArgs)).rows[0].value.id,job.id);
+    await setAccount(executor,IDS.accountB);
+    await expectDatabaseError(() => executor.query(sourceSql,args),'42501');
+    await setAccount(executor,IDS.accountA);
+    assert.equal((await executor.query('SELECT state FROM serverless_attempts WHERE id=$1',
+      [fixture.sourceAttempt])).rows[0].state,'SUCCEEDED');
+    assert.equal((await executor.query('SELECT checksum_sha256 FROM artifact_receipts WHERE id=$1',
+      [fixture.sourceReceipt])).rows[0].checksum_sha256,SOURCE_IMAGE_HASH);
+  });
+});
+
 function prepareDocuments(request, fixture) {
   const issuedAt = new Date(Date.now() - 1_000).toISOString();
   const deadlineAt = new Date(Date.parse(issuedAt) + 600_000).toISOString();

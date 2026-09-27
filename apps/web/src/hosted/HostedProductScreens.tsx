@@ -4485,6 +4485,17 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       if (status.state === "SUCCEEDED") {
         try {
           await queryClient.refetchQueries({ queryKey: ["hosted-project", projectId] });
+          for (let pageNumber = 2; pageNumber <= mediaPage.images; pageNumber += 1) {
+            const page = await readJson<ProjectDetailResponse>(
+              `/api/v2/hosted/projects/${projectId}?media_kind=images&media_page=${pageNumber}`,
+            );
+            if (mediaContextRef.current !== `${projectId}:${request.revisionId}`) break;
+            const images = page.review?.contact_sheet ?? page.contact_sheet ?? [];
+            setAdditionalMedia((current) => ({
+              ...current,
+              images: mergeHostedMedia(current.images, images),
+            }));
+          }
         } catch {
           throw new HostedImageRegenerationError(
             "The replacement was accepted, but the project could not be refreshed. Try again to resume this request; no new image will be submitted.",
@@ -5090,7 +5101,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       stage.label === "Generate avatar",
   );
   const stageMediaActions = {
-    ...(imageStage?.status === "COMPLETE" && generatedImages.length > 0
+    ...(imageStage && generatedImages.length > 0
       ? {
           [imageStage.id]: (
             <ProjectMediaReview
@@ -5107,9 +5118,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               onRetry={() => void query.refetch()}
               onRegenerate={regenerateImage}
               regenerationCostDescription={
-                query.data.generation_provider === "KIE_FAL"
-                  ? "Regeneration may incur an API charge."
-                  : undefined
+                "Regeneration uses Fal Z-Image Turbo and incurs an API charge."
               }
             />
           ),
@@ -5132,9 +5141,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               onRetry={() => void query.refetch()}
               onRegenerate={regenerateImage}
               regenerationCostDescription={
-                query.data.generation_provider === "KIE_FAL"
-                  ? "Regeneration may incur an API charge."
-                  : undefined
+                "Regeneration uses Fal Z-Image Turbo and incurs an API charge."
               }
             />
           ),

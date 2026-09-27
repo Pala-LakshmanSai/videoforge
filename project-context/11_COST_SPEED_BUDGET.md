@@ -1,5 +1,12 @@
 # Cost, speed, and capacity budget
 
+Per-image regeneration decision (2026-09-27): new replacements use Fal Z-Image Turbo, publicly
+listed at $0.005 per megapixel. One 1280x720 image per request; no automatic paid retry after an
+uncertain POST. Refresh rates and obtain exact finite-action authority before live acceptance.
+This is a published-rate estimate, not observed account debit. Existing video generation prices
+and historical attempt cost records remain separate.
+
+
 Fresh API generation decision (2026-09-24): Kie z-image lists 0.8 credits, approximately
 $0.004 per image. On 2026-09-25 the public Fal FlashHead model page listed $0.005 per output
 second. The earlier authenticated audio-route quote was $0.00125 per billable compute second;

@@ -1059,6 +1059,59 @@ it.each(["KIE_FAL", "RUNPOD"] as const)(
   },
 );
 
+it("regenerates images on loaded later pages while image generation is still running", async () => {
+  const projectId = "11111111-1111-4111-8111-111111111111";
+  const imageTaskId = "33333333-3333-4333-8333-333333333333";
+  const requestId = "44444444-4444-4444-8444-444444444444";
+  let replacementReady = false;
+  let pageReads = 0;
+  let submissions = 0;
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const path = String(input);
+    if (path.endsWith(`/images/${imageTaskId}/regenerate`)) {
+      expect(init?.method).toBe("POST");
+      submissions += 1;
+      return Response.json({ request_id: requestId, state: "QUEUED" }, { status: 202 });
+    }
+    if (path.endsWith(`/images/${imageTaskId}/regenerate/${requestId}`)) {
+      replacementReady = true;
+      return Response.json({ state: "SUCCEEDED" });
+    }
+    const laterPage = path.includes("media_kind=images&media_page=2");
+    if (laterPage) pageReads += 1;
+    return Response.json({
+      project: {
+        id: projectId,
+        title: "Private project",
+        created_at: "2026-09-06T10:00:00.000Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+      },
+      attempts: [],
+      generation_provider: "KIE_FAL",
+      gpu_transport: "DISABLED_UNQUALIFIED",
+      gpu_readiness: gpuReadiness,
+      generation: null,
+      stages: [{ id: "image-generation", name: "Generate images", status: "IN_PROGRESS", progress_percent: 50 }],
+      media_pagination: { images: { total_accepted: 97 }, avatar: { total_accepted: 0 } },
+      contact_sheet: laterPage
+        ? [{ id: imageTaskId, image_url: replacementReady ? "/replacement.png" : "/later.png", prompt: "Later image prompt" }]
+        : [{ id: "first-image", image_url: "/original.png", prompt: "First image prompt" }],
+    });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  renderHosted(<HostedProjectScreen projectId={projectId} />);
+  fireEvent.click(await screen.findByRole("button", { name: "View generated images" }));
+  fireEvent.click(screen.getByRole("button", { name: /Load more/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "Regenerate image 2" }));
+  await waitFor(() => expect(screen.getByRole("img", { name: "Generated image 2" })).toHaveAttribute("src", "/replacement.png"));
+  expect(screen.getByText("Image regenerated.")).toBeVisible();
+  expect(submissions).toBe(1);
+  expect(pageReads).toBe(2);
+  fireEvent.click(screen.getByRole("button", { name: "Open image 1" }));
+  expect(screen.getByRole("img", { name: "Generated image 1" })).toHaveAttribute("src", "/original.png");
+});
+
 it.each(["RUNPOD", "KIE_FAL"] as const)(
   "%s regenerates one accepted image with its edited prompt and refreshes only after acceptance",
   async (generationProvider) => {
@@ -1131,9 +1184,7 @@ it.each(["RUNPOD", "KIE_FAL"] as const)(
     fireEvent.click(await screen.findByRole("button", { name: "View generated images" }));
     expect(
       screen.getByText(
-        generationProvider === "KIE_FAL"
-          ? "Regeneration may incur an API charge."
-          : "Regeneration costs up to $2.",
+        "Regeneration uses Fal Z-Image Turbo and incurs an API charge.",
       ),
     ).toBeVisible();
     const prompt = screen.getByRole("textbox", { name: "Image prompt" });

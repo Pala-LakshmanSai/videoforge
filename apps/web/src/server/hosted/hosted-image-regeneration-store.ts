@@ -89,6 +89,15 @@ export class HostedSqlImageRegenerationStore implements HostedImageRegenerationS
       [this.accountId, this.workspaceId, input.projectId, input.projectRevisionId, input.imageTaskId],
     ));
   }
+  async hasHistoricalRequest(idempotencyKey: string): Promise<boolean> {
+    const value = await this.query(
+      `SELECT EXISTS(SELECT 1 FROM public.hosted_image_regeneration_requests
+        WHERE account_id=$1 AND workspace_id=$2 AND idempotency_key=$3) AS value`,
+      [this.accountId, this.workspaceId, idempotencyKey],
+    );
+    if (typeof value !== "boolean") throw new Error("HOSTED_IMAGE_REGENERATION_HISTORY_INVALID");
+    return value;
+  }
   async createApi(input: HostedImageRegenerationCreateInput, prompt: string): Promise<Row> {
     if (input.accountId !== this.accountId || input.workspaceId !== this.workspaceId)
       throw new Error("HOSTED_IMAGE_REGENERATION_SCOPE_INVALID");

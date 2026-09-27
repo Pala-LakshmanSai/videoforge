@@ -11,6 +11,7 @@ import { createHostedV209TerminalOutputIngestor } from "./hosted-v209-terminal-o
 import { readImageRegenerationCost } from "./hosted-image-regeneration-cost";
 import { hostedPairProductionBindingState } from "./hosted-pair-production-composition";
 import { KieZImageClient, KieZImageError } from "../providers/kie-z-image";
+import { FalZImageClient, FAL_Z_IMAGE_MODEL } from "../providers/fal-z-image";
 import { KieImageJobError, observeKieImageJob, submitKieImageJob } from "../providers/kie-image-job";
 export interface ImageRegenerationParameters {
   schema_version: "videoforge-image-regeneration-workflow/v1";
@@ -27,7 +28,18 @@ async function observeApiImageRegeneration(
   if (!config.apiGeneration || !environment.PRIVATE_ARTIFACTS)
     throw new Error("HOSTED_IMAGE_REGENERATION_API_BINDING_MISSING");
   const requestId = String(row.id);
-  const client = new KieZImageClient(config.apiGeneration.kieApiKey);
+  const manifest = row.inputManifest as Record<string, unknown>;
+  // Historical requests retain their provider, including interrupted paid submissions.
+  if (
+    manifest.provider !== undefined &&
+    manifest.provider !== "KIE_Z_IMAGE" &&
+    !(manifest.provider === "FAL_Z_IMAGE" && manifest.model === FAL_Z_IMAGE_MODEL)
+  )
+    throw new Error("HOSTED_IMAGE_REGENERATION_PROVIDER_INVALID");
+  const client =
+    manifest.provider === "FAL_Z_IMAGE"
+      ? new FalZImageClient(config.apiGeneration.falApiKey)
+      : new KieZImageClient(config.apiGeneration.kieApiKey);
   if (row.state === "PREPARED") {
     const claimId = crypto.randomUUID();
     try {
@@ -121,6 +133,7 @@ export async function observeHostedImageRegeneration(
       environment,
       config: hostedRuntimeConfiguration(environment),
       scheduleWorkflow: false,
+      historicalRunPodRequest: true,
     }).create({
       accountId: params.accountId,
       workspaceId: params.workspaceId,

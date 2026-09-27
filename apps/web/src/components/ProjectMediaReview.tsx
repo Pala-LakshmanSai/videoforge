@@ -307,6 +307,7 @@ export function ProjectMediaReview({
           <Dialog.Content
             className="media-review-dialog"
             onKeyDown={(event) => {
+              if (event.target instanceof HTMLTextAreaElement) return;
               if (event.key === "ArrowLeft") {
                 event.preventDefault();
                 move(-1);
@@ -521,26 +522,48 @@ export function ProjectMediaReview({
                     </div>
                     <div className="media-review-thumbnail-grid">
                       {activeItems.map((item, index) => (
-                        <button
-                          className={`media-review-thumbnail${index === selectedIndex ? " is-selected" : ""}`}
-                          type="button"
-                          aria-label={`Open ${sectionNoun(activeSection)} ${index + 1}`}
-                          aria-current={index === selectedIndex ? "true" : undefined}
-                          key={item.id}
-                          onClick={() => {
-                            setFailedAssetUrl(null);
-                            setSelectedIndex(index);
-                          }}
-                        >
+                        <div className="media-review-thumbnail-card" key={item.id}>
+                          <button
+                            className={`media-review-thumbnail${index === selectedIndex ? " is-selected" : ""}`}
+                            type="button"
+                            aria-label={`Open ${sectionNoun(activeSection)} ${index + 1}`}
+                            aria-current={index === selectedIndex ? "true" : undefined}
+                            onClick={() => {
+                              setFailedAssetUrl(null);
+                              setSelectedIndex(index);
+                            }}
+                          >
+                            {activeSection === "images" ? (
+                              <img src={item.url} alt="" aria-hidden="true" />
+                            ) : (
+                              <span className="media-review-thumbnail-video" aria-hidden="true">
+                                <Play size={18} fill="currentColor" />
+                              </span>
+                            )}
+                            <span>{item.label}</span>
+                          </button>
                           {activeSection === "images" ? (
-                            <img src={item.url} alt="" aria-hidden="true" />
-                          ) : (
-                            <span className="media-review-thumbnail-video" aria-hidden="true">
-                              <Play size={18} fill="currentColor" />
-                            </span>
-                          )}
-                          <span>{item.label}</span>
-                        </button>
+                            <button
+                              className="button button-secondary media-review-thumbnail-regenerate"
+                              type="button"
+                              aria-label={`Regenerate image ${index + 1}`}
+                              disabled={
+                                !onRegenerate ||
+                                regeneratingId !== null ||
+                                !promptFor(item).trim() ||
+                                regenerationErrors[item.id]?.retryable === false
+                              }
+                              onClick={() => {
+                                setSelectedIndex(index);
+                                setFailedAssetUrl(null);
+                                void regenerate(item);
+                              }}
+                            >
+                              <RefreshCw size={14} aria-hidden="true" />
+                              {regeneratingId === item.id ? "Regenerating…" : "Regenerate"}
+                            </button>
+                          ) : null}
+                        </div>
                       ))}
                     </div>
                     {loadMoreError ? (

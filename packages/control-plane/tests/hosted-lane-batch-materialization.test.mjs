@@ -14,6 +14,8 @@ import {
   sha256,
   uuid,
   withMigratedDatabase,
+  withPgcryptoMigrationsThrough,
+  loadMigrationSources,
 } from "./support/pglite.mjs";
 
 export async function seedMaterialization(executor, options = {}) {
@@ -358,7 +360,10 @@ test("0041 installs immutable tenant batches, narrow capability, and attempt lin
 });
 
 test("0188 API jobs materialize, claim once, accept outputs, and reach render", async () => {
-  await withMigratedDatabase(async ({ executor }) => {
+  // This flow needs pgcrypto. Unrelated grant migrations reference omitted fixture functions.
+  await withPgcryptoMigrationsThrough(194, async ({ executor }) => {
+    const migration = (await loadMigrationSources()).find(({ version }) => version === 213);
+    await executor.execute(migration.sql);
     const seeded = await seedMaterialization(executor, { canonicalV209: true });
     await executor.execute("ALTER TABLE projects DISABLE TRIGGER projects_generation_provider_immutable");
     await executor.query(
@@ -626,6 +631,8 @@ test("0188 API jobs materialize, claim once, accept outputs, and reach render", 
     const created=(await executor.query(createSql,createArgs)).rows[0].result;
     assert.equal(created.state,'PREPARED');
     assert.equal(created.inputManifest.prompt,createArgs[5]);
+    assert.equal(created.inputManifest.provider,'FAL_Z_IMAGE');
+    assert.equal(created.inputManifest.model,'fal-ai/z-image/turbo');
     assert.equal((await executor.query(createSql,createArgs)).rows[0].result.id,created.id);
     await expectDatabaseError(() => executor.query(createSql,[...createArgs.slice(0,5),
       'Different scene',createArgs[6]]),'23505');
@@ -645,6 +652,10 @@ test("0188 API jobs materialize, claim once, accept outputs, and reach render", 
       $1::uuid,$2::text,$3::bigint,$4::text,$5::jsonb) AS result`,
       [created.id,replacementHash,4096,'image/jpeg',JSON.stringify({width:1280,height:720})])).rows[0].result;
     assert.equal(committed.state,'SUCCEEDED');
+    const metadata=(await executor.query('SELECT metadata FROM assets WHERE id=$1',
+      [committed.outputAssetId])).rows[0].metadata;
+    assert.equal(metadata.provider,'FAL_Z_IMAGE');
+    assert.equal(metadata.model,'fal-ai/z-image/turbo');
     assert.equal((await executor.query(`SELECT count(*)::integer AS count FROM provider_workload_leases
       WHERE api_image_regeneration_job_id=$1 AND state='ACTIVE'`,[created.id])).rows[0].count,0);
     const replacements=(await executor.query(`SELECT public.videoforge_read_hosted_api_image_regenerations(

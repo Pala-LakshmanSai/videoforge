@@ -962,6 +962,21 @@
   text-align: left;
 }
 
+.media-review-thumbnail-card {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 4px;
+}
+
+.media-review-thumbnail-regenerate {
+  width: 100%;
+  min-height: 34px;
+  padding: 4px;
+  gap: 4px;
+  font-size: 0.68rem;
+}
+
 .media-review-thumbnail:hover,
 .media-review-thumbnail.is-selected {
   border-color: rgba(255, 101, 122, 0.55);

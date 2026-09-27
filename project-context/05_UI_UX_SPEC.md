@@ -147,7 +147,9 @@ the only persistent applied-state indicator.
 - Any regeneration displays incremental estimated/capped cost and creates a new attempt. No hidden
   repair, enhancement, fallback, or model substitution.
 - Generated-image review shows the exact saved positive prompt instead of internal IDs. Every scene
-  provides an editable prompt and **Regenerate image** action. Enter submits; Shift+Enter adds a
+  provides an editable prompt and **Regenerate image** action, plus a Regenerate button on every
+  accepted-image thumbnail. Images are reviewable as soon as accepted, including loaded later pages.
+  New replacements use Fal Z-Image Turbo; the editor discloses the API charge. Enter submits; Shift+Enter adds a
   newline. Editing the prompt alone performs no work, and each scene retains its own draft.
 - Regeneration creates only that scene's replacement using its pinned style and existing negative
   prompt. The old image remains selected until the replacement passes artifact validation. Pending

@@ -12,6 +12,14 @@ task/Fal request IDs, `UNKNOWN_NO_RETRY` for ambiguous submission, verified priv
 asset/receipt/accepted-unit commits, and a ready-render projection. Existing RunPod attempts and
 their provenance remain on the original path. The hosted acceptance gate is still open.
 
+Migration 0213 pins new regeneration manifests to `FAL_Z_IMAGE` / `fal-ai/z-image/turbo`.
+Exactly one tenant-scoped original source identity is required: API job or historical serverless
+attempt backed by accepted unit, committed reservation/receipt and immutable compiled prompt.
+Existing regeneration manifests retain their provider. Durable claims precede POST; ambiguous calls
+remain `UNKNOWN_NO_RETRY`. Replacement receipt acceptance releases the lease and overlays only
+that gallery image; original runtime accepted units and final video receipts are unchanged.
+Gallery ordering follows original acceptance so replacements retain their pagination position.
+
 The repository's existing PostgreSQL/PGlite foundation, identity checks, immutable revisions,
 scheduler contracts, and media manifests are reusable. Existing migrations and versioned bytes are
 append-only history.

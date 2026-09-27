@@ -1,0 +1,73 @@
+{
+  "checkpoint": "V2-09",
+  "status": "LOCAL_VERIFIED_NOT_PUBLISHED",
+  "decision": "DEC_IMAGE_REGENERATION_001",
+  "baseline_commit": "d95b4ea2",
+  "provider_model": "fal-ai/z-image/turbo",
+  "migration": 213,
+  "behavior": [
+    "Each accepted-image thumbnail has a regeneration button; accepted images are available before the whole image stage completes.",
+    "One Fal Z-Image Turbo replacement, 1280x720 PNG, random seed, safety on and prompt expansion off.",
+    "Loaded image pages refresh after acceptance; original ordering remains stable.",
+    "New attempts use verified API or historical RunPod source lineage. Old regeneration requests retain their provider.",
+    "Claim before provider POST, exact task ID, no automatic replay for uncertain submission, tenant-private validated media and receipt, lease release.",
+    "Original accepted units and final MP4 remain immutable."
+  ],
+  "validation": {
+    "focused_web": 59,
+    "database": 2,
+    "installed_chrome_fixture": 1,
+    "manual_real_chrome_fixture": "PASS: thumbnail actions, later-page success, all actions disabled pending, failure retains original image, no console errors",
+    "web_worker_typecheck": "PASS",
+    "changed_typescript_lint": "PASS",
+    "web_cloudflare_build_firewall": "PASS",
+    "context": "PASS with existing profile budget warnings"
+  },
+  "full_web_comparison": {
+    "changed_tree": {
+      "passed": 2233,
+      "failed": 22,
+      "skipped": 1
+    },
+    "unchanged_baseline": {
+      "passed": 2222,
+      "failed": 23,
+      "skipped": 1
+    },
+    "all_changed_tree_failures_reproduced_on_baseline": true,
+    "snapshot_before_three_final_regression_tests": true
+  },
+  "repository_verify": "Not green: existing formatting, Python lint, fixture role/function/column and Cloudflare test-runtime startup failures. No whole-repository green claim.",
+  "production_read_only_preflight": {
+    "source": "1e10191ff44056aac723019d26ec25657d2ef656",
+    "version": [
+      {
+        "version_id": "42c576e5-059a-4ec9-9452-3cb4b7ad8613",
+        "percentage": 100
+      }
+    ],
+    "secretCount": 25,
+    "redactQuery": true,
+    "hasFalBinding": true,
+    "hasKieBinding": true
+  },
+  "database_read_only_preflight": {
+    "latestMigration": 212,
+    "ledgerRows": 195,
+    "missingLocalVersions": [
+      148,
+      213
+    ],
+    "activeApiRegenerations": 0,
+    "activeLegacyRegenerations": 0,
+    "checksumMismatchesForRetainedMigrations": 0,
+    "archivedLedgerVersionsNotInCurrentManifest": 21
+  },
+  "remaining_gates": [
+    "Apply only migration 0213 against the exact current ledger; do not replay omitted/archived migrations.",
+    "Deploy isolated regeneration release preserving current runtime settings and exact worker 0.1.44.",
+    "Separately approved bounded real Fal regeneration, Chrome replacement persistence, original final checksum and private receipt/lease proof."
+  ],
+  "provider_spend_usd": 0,
+  "paid_compute": "None activated; global provider inventory not queried."
+}

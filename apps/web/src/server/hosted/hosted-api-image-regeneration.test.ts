@@ -11,7 +11,7 @@ const fixtures = vi.hoisted(() => ({
 }));
 
 vi.mock("./configuration", () => ({
-  hostedRuntimeConfiguration: () => ({ apiGeneration: { kieApiKey: "test-key" } }),
+  hostedRuntimeConfiguration: () => ({ apiGeneration: { kieApiKey: "test-key", falApiKey: "fal-test-key" } }),
 }));
 vi.mock("./hosted-image-regeneration-store", () => ({
   HostedSqlImageRegenerationStore: class {
@@ -114,5 +114,73 @@ describe("hosted API image regeneration", () => {
     expect(result).toMatchObject({ state: "UNKNOWN_NO_RETRY", leaseReleased: false });
     expect(post).not.toHaveBeenCalled();
     expect(fixtures.events).toEqual(["unknown"]);
+  });
+
+  it("uses the pinned Fal model and persists its request before observing output", async () => {
+    const taskId = "764cabcf-b745-4b3e-ae38-1200304cf45b";
+    fixtures.row.inputManifest = {
+      prompt: "A documentary photo. No visible text.",
+      provider: "FAL_Z_IMAGE",
+      model: "fal-ai/z-image/turbo",
+    };
+    const post = vi.fn(async (url, init) => {
+      fixtures.events.push("POST");
+      expect(url).toBe("https://queue.fal.run/fal-ai/z-image/turbo");
+      expect(init.headers.Authorization).toBe("Key fal-test-key");
+      return new Response(
+        JSON.stringify({
+          request_id: taskId,
+          status_url: `https://queue.fal.run/fal-ai/z-image/requests/${taskId}/status`,
+          response_url: `https://queue.fal.run/fal-ai/z-image/requests/${taskId}`,
+        }),
+      );
+    });
+    vi.stubGlobal("fetch", post);
+    await observeHostedImageRegeneration(
+      environment as never,
+      {} as TransactionalSqlExecutor,
+      params,
+    );
+    expect(fixtures.row.providerTaskId).toBe(taskId);
+    expect(fixtures.events).toEqual(["claim", "POST", "record", "observe"]);
+    await observeHostedImageRegeneration(
+      environment as never,
+      {} as TransactionalSqlExecutor,
+      params,
+    );
+    expect(post).toHaveBeenCalledOnce();
+  });
+
+  it("never repeats an uncertain Fal submission", async () => {
+    fixtures.row.inputManifest = {
+      prompt: "A documentary photo.",
+      provider: "FAL_Z_IMAGE",
+      model: "fal-ai/z-image/turbo",
+    };
+    const post = vi.fn().mockRejectedValue(new Error("lost response"));
+    vi.stubGlobal("fetch", post);
+    for (let count = 0; count < 2; count += 1) {
+      const result = await observeHostedImageRegeneration(
+        environment as never,
+        {} as TransactionalSqlExecutor,
+        params,
+      );
+      expect(result.state).toBe("UNKNOWN_NO_RETRY");
+    }
+    expect(post).toHaveBeenCalledOnce();
+  });
+
+  it("rejects unknown provider pins before any submission", async () => {
+    fixtures.row.inputManifest = {
+      prompt: "A documentary photo.",
+      provider: "FAL_Z_IMAGE",
+      model: "another-model",
+    };
+    const post = vi.fn();
+    vi.stubGlobal("fetch", post);
+    await expect(
+      observeHostedImageRegeneration(environment as never, {} as TransactionalSqlExecutor, params),
+    ).rejects.toThrow("HOSTED_IMAGE_REGENERATION_PROVIDER_INVALID");
+    expect(post).not.toHaveBeenCalled();
   });
 });

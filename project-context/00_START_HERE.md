@@ -1,5 +1,11 @@
 # VideoForge: start here
 
+Per-image Fal Z-Image Turbo regeneration is locally verified with a button on every accepted-image
+thumbnail, including later pages. Migration 0213 preserves original images/final videos and old
+provider jobs. Publication and paid sample acceptance remain pending. Read
+`fal_image_regeneration_2026_09_27` in CURRENT_STATE.yaml.
+
+
 Mac terminal account fix published: `9c5ad1b8` / Cloudflare `86a0da26`. Actual Mac now Online under the current signed-in account; idle switch 20.65s, same-account repeat 0.84s with no restart. Busy switches are blocked, old tenant history retained. Supersedes earlier cross-account refusal/restored old pairing. Read `mac_terminal_account_fix_2026_09_27` in CURRENT_STATE.yaml.
 
 
