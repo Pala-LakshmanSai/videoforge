@@ -1,5 +1,8 @@
 # VideoForge: start here
 
+Terminal upgrade published: `1e10191f` / Cloudflare `42c576e5`. Both commands upgrade older workers before connecting; busy work waits automatically with renewed command authority. Real Mac 0.1.43→0.1.44 passed with pairing retained (74.77s), latest repeat 0.85s. Windows native installer/Credential Manager CI passed; live Windows account enrollment remains separate. Read `terminal_worker_upgrade_2026_09_27` in CURRENT_STATE.yaml.
+
+
 Mac terminal account fix published: `9c5ad1b8` / Cloudflare `86a0da26`. Actual Mac now Online under the current signed-in account; idle switch 20.65s, same-account repeat 0.84s with no restart. Busy switches are blocked, old tenant history retained. Supersedes earlier cross-account refusal/restored old pairing. Read `mac_terminal_account_fix_2026_09_27` in CURRENT_STATE.yaml.
 
 

@@ -1,0 +1,72 @@
+{
+  "checkpoint": "V2-09",
+  "source_commit": "1e10191ff44056aac723019d26ec25657d2ef656",
+  "cloudflare_version": "42c576e5-059a-4ec9-9452-3cb4b7ad8613",
+  "status": "PUBLISHED_MAC_NATIVE_AND_WINDOWS_INSTALLER_CI_VERIFIED",
+  "scope": "Existing older macOS/Windows installations automatically reach the current manifest version before terminal connection; idle authenticated old processes can stop safely, busy ones wait with renewed single-use commands. Same-account identity and OS credentials retained.",
+  "mac_native_upgrade": {
+    "exit": 0,
+    "elapsed_seconds": 74.77,
+    "downloaded_latest": true,
+    "online_reported": true
+  },
+  "mac_pairing": {
+    "status": "ONLINE",
+    "version": "0.1.44",
+    "heartbeat_age_seconds": 3.493406,
+    "active_leases": 0,
+    "same_installation": true,
+    "same_credential": true
+  },
+  "mac_repeat": {
+    "exit": 0,
+    "elapsed_seconds": 0.85,
+    "no_restart": true,
+    "no_download": true,
+    "output": "Connecting this Mac\u2026\nVideoForge Worker 0.1.44 is connected and Online.\n"
+  },
+  "windows_ci": {
+    "run_id": 36283547214,
+    "url": "https://github.com/Pala-LakshmanSai/videoforge/actions/runs/36283547214",
+    "conclusion": "success",
+    "native_operations": [
+      "Windows PowerShell 5 script parsing and execution",
+      "Published Inno Setup 0.1.43 to 0.1.44 installs",
+      "Real Windows Credential Manager read and preservation",
+      "Registry release readback"
+    ],
+    "fixture_operations": [
+      "Running/stopped worker process control",
+      "Busy reply then idle upgrade with renewed token",
+      "Hosted API response and final --connect-file enrollment"
+    ],
+    "assertions": [
+      "Never invoke --connect-file on old executable",
+      "Preserve same-account state/credential",
+      "Wait before stopping",
+      "Latest repeat skips installation/restart",
+      "Partial download never installed"
+    ]
+  },
+  "tests": {
+    "focused": 34,
+    "web_worker_typecheck": "PASS",
+    "changed_files_lint": "PASS",
+    "bash_syntax": "PASS",
+    "production_build_firewall": "PASS"
+  },
+  "production_readback": {
+    "source": "1e10191ff44056aac723019d26ec25657d2ef656",
+    "version": "42c576e5-059a-4ec9-9452-3cb4b7ad8613",
+    "traffic": 100,
+    "plain_vars_preserved": true,
+    "secret_count": 25,
+    "query_redaction": true
+  },
+  "remaining_gates": [
+    "Live Windows production account enrollment was not executed; native installer plus API/worker fixture boundaries are explicitly separated.",
+    "No whole-video quality/speed acceptance or new paid generation."
+  ],
+  "provider_spend_usd": 0,
+  "paid_compute": "None activated; global provider inventory not queried."
+}

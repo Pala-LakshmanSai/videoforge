@@ -1,4 +1,18 @@
 schema_version: "2.0"
+terminal_worker_upgrade_2026_09_27:
+  checkpoint: V2-09
+  status: PUBLISHED_MAC_NATIVE_AND_WINDOWS_INSTALLER_CI_VERIFIED
+  production_source_commit: 1e10191ff44056aac723019d26ec25657d2ef656
+  cloudflare_version_id: 42c576e5-059a-4ec9-9452-3cb4b7ad8613
+  behavior: macOS and Windows inspect installed version and authenticate the stored OS credential before reuse or upgrade. Only verified current versions run --connect-file. Idle old processes can stop after server lease check; busy installations wait and renew a single-use command automatically. Same-account pairing is preserved.
+  mac_acceptance: Actual published 0.1.43 installed then upgraded through exact production Settings command to 0.1.44 in 74.77 seconds including download/verification. Same installation and Keychain credential, Online, zero leases. Repeat 0.85 seconds with no download/restart.
+  windows_acceptance: Windows PowerShell 5 CI 36283547214 passes actual published 0.1.43-to-0.1.44 Inno installs, registry and Credential Manager operations. Running/stopped process control, server replies and final enrollment use fixtures; wait renewal, pairing retention, latest fast path and partial-download rejection pass.
+  validations: 34 focused tests, web/Worker typecheck, changed-file lint, bash syntax, production build/firewall pass. Native Windows installer CI passed. Earlier unrelated full-suite fixture/lint limitations remain separate.
+  release_preserved: Exact worker 0.1.44 manifest, other runtime variables, 25 secret bindings, query redaction, 100 percent traffic.
+  remaining_gates: Real Windows production-account enrollment still unverified; no fresh generated-video or whole-production speed acceptance.
+  provider_spend: USD0 new generation or compute.
+  paid_compute_shutdown: None activated; global inventory not queried.
+  evidence: evidence/acceptance/VF-10-09/2026-09-27-terminal-worker-upgrade.json
 mac_terminal_account_fix_2026_09_27:
   checkpoint: V2-09
   status: COMPLETE_PUBLISHED_NATIVE_MAC_VERIFIED
