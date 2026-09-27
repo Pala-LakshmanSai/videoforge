@@ -1,0 +1,69 @@
+{
+  "checkpoint": "V2-09",
+  "source_commit": "9c5ad1b8378eb370dbba3401e2215cb0431883f9",
+  "cloudflare_version": "86a0da26-1989-460c-bbfe-5d1c63a47083",
+  "status": "PUBLISHED_MAC_NATIVE_ACCEPTED",
+  "root_cause": "Installed Mac belonged to the previous account. The prior reconnect implementation deliberately rejected the account currently signed in to Settings. Adjacent duplicate pastes also concatenated the old temporary script argument.",
+  "fixes": [
+    "Require both local OS credential and fresh account-issued command; atomically reject busy switches, revoke idle old device, retain its tenant history and mint a fresh target enrollment command.",
+    "Lock the device row during claims so stale credentials cannot admit new work after switching.",
+    "Reuse a fresh current same-account worker via native macOS checks without binary unpack or restart.",
+    "Download full bootstrap before execution; trailing command separator tolerates adjacent duplicate pastes; recover stopped locally revoked installations."
+  ],
+  "native_switch": {
+    "exit": 0,
+    "elapsed_seconds": 20.65,
+    "output": "Connecting this Mac\u2026\nSwitching this idle Mac to the account from your command\u2026\nStarting VideoForge Worker\u2026\nVideoForge Worker is connected and Online\nConnected and Online. This Mac is ready in VideoForge.\n"
+  },
+  "repeat_connection": {
+    "exit": 0,
+    "elapsed_seconds": 0.84,
+    "state_unchanged": true,
+    "credential_unchanged": true,
+    "processes_unchanged": true,
+    "output": "Connecting this Mac\u2026\nConnected and Online. This Mac is ready in VideoForge.\n"
+  },
+  "used_command": {
+    "exit": 1,
+    "output": "curl: (56) The requested URL returned error: 410\nGet a fresh command in VideoForge Settings and try again.\n"
+  },
+  "pairing": {
+    "new_identity": true,
+    "different_account": true,
+    "old_revoked": true,
+    "new_status": "ONLINE",
+    "heartbeat_age_seconds": 2.740629,
+    "version": "0.1.44",
+    "active_leases": 0
+  },
+  "chrome": {
+    "actual_signed_in_settings": true,
+    "current_account_mac_online": true,
+    "full_real_command": true,
+    "command_length": 316,
+    "no_horizontal_overflow": true
+  },
+  "checks": {
+    "focused_tests": 32,
+    "typecheck": "PASS",
+    "changed_files_lint": "PASS",
+    "bash_syntax": "PASS",
+    "cloudflare_build_and_bundle_firewall": "PASS",
+    "full_web_lint": "Unrelated pre-existing no-this-alias error in kie-z-image.test.ts:82",
+    "broad_suite": "Not green: absent fixture runtime role and project-detail end_frame_exclusive fixture column; broad run stopped. Focused worker/UI suite completed."
+  },
+  "preserved": {
+    "exact_worker": "0.1.44",
+    "plain_vars_except_source": true,
+    "secret_bindings": 25,
+    "traffic_percent": 100,
+    "old_tenant_history": true,
+    "unrelated_local_work": true
+  },
+  "remaining_gates": [
+    "Native Windows installation/reconnection remains unverified.",
+    "No new generated-video or overall production speed claim."
+  ],
+  "provider_spend_usd": 0,
+  "paid_compute": "None activated; global provider inventory not queried."
+}

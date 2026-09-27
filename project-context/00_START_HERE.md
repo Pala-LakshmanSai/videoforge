@@ -1,8 +1,11 @@
 # VideoForge: start here
 
+Mac terminal account fix published: `9c5ad1b8` / Cloudflare `86a0da26`. Actual Mac now Online under the current signed-in account; idle switch 20.65s, same-account repeat 0.84s with no restart. Busy switches are blocked, old tenant history retained. Supersedes earlier cross-account refusal/restored old pairing. Read `mac_terminal_account_fix_2026_09_27` in CURRENT_STATE.yaml.
+
+
 Settings UI published: `e7419e7e` / Cloudflare `39dae23c`. Compact cards retain real commands and functional controls; production Chrome Copy/Refresh/both platforms pass. Read `settings_ui_2026_09_27` in CURRENT_STATE.yaml.
 
-Latest terminal connection retest: source `10302d1a` / Cloudflare `3a61b2c9`. Running workers reconnect without download/restart; failed or expired Mac bootstrap downloads return a clear failure. Native production Mac reconnection and pairing preservation pass. Read `terminal_connection_retest_2026_09_26` in CURRENT_STATE.yaml; native Windows execution remains unverified.
+Previous same-account terminal retest: source `10302d1a` / Cloudflare `3a61b2c9`. Running workers reconnect without download/restart; failed or expired Mac bootstrap downloads return a clear failure. Native production Mac reconnection and pairing preservation pass. Read `terminal_connection_retest_2026_09_26` in CURRENT_STATE.yaml; native Windows execution remains unverified.
 
 Latest connection audit: source `f7843203` / Cloudflare `31a2dfbd` fixes PowerShell paste expansion and finished-project Queue reappearance after output removal. Checks and live readback pass; native Windows update remains unverified. Read `easy_worker_connect_audit_2026_09_26` in CURRENT_STATE.yaml.
 

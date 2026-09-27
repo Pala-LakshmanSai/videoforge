@@ -1,4 +1,19 @@
 schema_version: "2.0"
+mac_terminal_account_fix_2026_09_27:
+  checkpoint: V2-09
+  status: COMPLETE_PUBLISHED_NATIVE_MAC_VERIFIED
+  production_source_commit: 9c5ad1b8378eb370dbba3401e2215cb0431883f9
+  cloudflare_version_id: 86a0da26-1989-460c-bbfe-5d1c63a47083
+  root_cause: Mac remained paired to an earlier account; prior reconnect intentionally rejected the account currently signed in to Settings. Duplicate adjacent pastes also joined the old script argument.
+  fix: Dual-authenticated idle account switch revokes old device and preserves tenant history; normal enrollment creates a new identity. Active leases block switching. Claims lock and recheck the same device row. Same-account current Online workers reconnect without unpacking/restart; full-fetch bootstrap fails closed and handles adjacent duplicate pastes.
+  native_acceptance: Actual production Settings command switched idle Mac 0.1.44 to the signed-in account in 20.65 seconds without download. Repeat took 0.84 seconds with unchanged identity, credential and processes. Used command exits1. Chrome current account shows Online; zero active leases.
+  validation: 32 focused tests, web/Worker typecheck, changed-file lint, bash syntax and Cloudflare build/firewall pass. Full lint has unrelated kie-z-image.test.ts no-this-alias; broader fixture checks fail for missing runtime role and project-detail column, so no whole-repo green claim.
+  release_preserved: Exact 0.1.44 manifest, other plain variables, 25 secret bindings, query redaction and 100 percent traffic verified.
+  supersedes: Earlier cross-account refusal and restoration of old pairing are replaced by explicit safe idle account switching. Mac now stays connected to the current signed-in account.
+  remaining_gates: Native Windows installation/reconnection unverified; no fresh generated-video or overall production-speed acceptance.
+  provider_spend: USD0; no new provider generation or compute.
+  paid_compute_shutdown: None activated; global provider inventory not queried.
+  evidence: evidence/acceptance/VF-10-09/2026-09-27-mac-account-connect.json
 settings_ui_2026_09_27:
   checkpoint: V2-09
   status: COMPLETE_PUBLISHED_REAL_CHROME_VERIFIED
