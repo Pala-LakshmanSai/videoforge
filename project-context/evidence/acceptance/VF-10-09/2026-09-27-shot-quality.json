@@ -1,0 +1,230 @@
+{
+  "checkpoint": "V2-09",
+  "review_date": "2026-09-27",
+  "status": "LOCAL_VERIFIED_NOT_PUBLISHED",
+  "baseline_commit": "a6c3fbbd",
+  "decision": "DEC_IMAGE_SHOT_001",
+  "request_version": "runware-gemini-3.5-flash-prompt-request-v23",
+  "sources": [
+    {
+      "file": "china found.mp4",
+      "sha256": "a5230228ebbd801a798ea0c41bd23da402ce878a341e8fec16938e5dd65984fe",
+      "size_bytes": 344114328,
+      "duration_seconds": 1703.8,
+      "sampled_frames": 568
+    },
+    {
+      "file": "NAPAA - Napa Water Rights - final.mp4",
+      "sha256": "994ca985185b5a1629877bcc793578ee351e05f38f82fce46122a2b5609d48bb",
+      "size_bytes": 419202381,
+      "duration_seconds": 1667.333008,
+      "sampled_frames": 556
+    }
+  ],
+  "review_method": {
+    "sample_interval_seconds": 3,
+    "contact_sheets_reviewed": 32,
+    "full_resolution_examples": 16,
+    "continuous_realtime_playback": false,
+    "short_shots_may_be_missed": true,
+    "user_screenshots": {
+      "count": 2,
+      "video_and_timestamp_unknown": true
+    },
+    "scientific_accuracy_audit": false,
+    "generation_vs_compression_isolation": false,
+    "measured_model_failure_rate": null
+  },
+  "patterns": [
+    {
+      "pattern": "small visible faces in distant/frontal/full-body scenes",
+      "confidence": "repeated qualitative observation",
+      "examples": [
+        {
+          "video": "napa",
+          "seconds": 169.5
+        },
+        {
+          "video": "napa",
+          "seconds": 1336.5
+        }
+      ],
+      "safer": "large facial evidence or supported rear view; keep narrated participants/actions"
+    },
+    {
+      "pattern": "groups with many small visible faces",
+      "confidence": "repeated qualitative observation",
+      "examples": [
+        {
+          "video": "china",
+          "seconds": 457.5
+        },
+        {
+          "video": "china",
+          "seconds": 745.5
+        },
+        {
+          "video": "napa",
+          "seconds": 835.5
+        }
+      ]
+    },
+    {
+      "pattern": "complex finger/contact geometry",
+      "confidence": "user screenshot plus conservative composition risk; not quantified across videos",
+      "counterexample": {
+        "video": "napa",
+        "seconds": 334.5
+      }
+    },
+    {
+      "pattern": "implausible prop scale",
+      "confidence": "specific full-resolution example",
+      "example": {
+        "video": "china",
+        "seconds": 832.5
+      }
+    },
+    {
+      "pattern": "invented typography",
+      "confidence": "repeated qualitative observation; permanent exclusion",
+      "example": {
+        "video": "napa",
+        "seconds": 727.5
+      }
+    }
+  ],
+  "preserved": [
+    "exact narration subject/action/participants",
+    "assigned shot roles and layouts",
+    "style/version pins",
+    "saved accepted prompts/media",
+    "retry, uncertain-submission and cost fences",
+    "hard cuts, slow zoom, no graphics/text"
+  ],
+  "validation": {
+    "pipeline_suite": {
+      "passed": 201,
+      "failed": 0
+    },
+    "web_provider_and_settings": {
+      "passed": 23,
+      "failed": 0
+    },
+    "web_hosted_prompt_and_regeneration": {
+      "passed": 46,
+      "failed": 0
+    },
+    "pipeline_typecheck": true,
+    "pipeline_lint": true,
+    "web_typecheck": true,
+    "changed_web_test_lint": true,
+    "web_build": true,
+    "cloudflare_build_and_firewall": true,
+    "durable_database_group": {
+      "passed": 16,
+      "failed": 9,
+      "baseline_source": "a6c3fbbd",
+      "baseline_reproduces_identical_names_and_errors": true,
+      "failures": [
+        {
+          "test": "production PGlite store atomically accepts exact authority and replays without writer",
+          "error": "function digest(bytea, unknown) does not exist"
+        },
+        {
+          "test": "store rejects stale claim, cancellation, and cross-workspace access before writer",
+          "error": "function digest(bytea, unknown) does not exist"
+        },
+        {
+          "test": "cost drift and storage conflict roll back every acceptance mutation",
+          "error": "function digest(bytea, unknown) does not exist"
+        },
+        {
+          "test": "accepted prompt authority survives metadata restore and fresh-process replay",
+          "error": "function digest(bytea, unknown) does not exist"
+        },
+        {
+          "test": "migrations 0009 onward upgrade live migration-0008 prompt authority and execute",
+          "error": "function digest(bytea, unknown) does not exist"
+        },
+        {
+          "test": "0069 reuses the workspace compatible compact-context profile for a new project claim",
+          "error": "function public.videoforge_admitted_hosted_account_ids() does not exist"
+        },
+        {
+          "test": "0069 fails before claim or reservation when the compact-context profile drifted",
+          "error": "function public.videoforge_admitted_hosted_account_ids() does not exist"
+        },
+        {
+          "test": "0072 commits a schema-valid Stage 3 result with exact reservation conservation",
+          "error": "function public.videoforge_admitted_hosted_account_ids() does not exist"
+        },
+        {
+          "test": "0072 omits a zero RELEASED event when Stage 3 spends its full reservation",
+          "error": "function public.videoforge_admitted_hosted_account_ids() does not exist"
+        }
+      ]
+    },
+    "real_chrome_published_settings": {
+      "mac_selected_and_bash_command": true,
+      "windows_selected_and_powershell_command": true,
+      "button_height_px": 34,
+      "button_font_px": 13,
+      "desktop_horizontal_clipping": false,
+      "command_bytes_recorded": false,
+      "native_windows_installer_executed": false
+    },
+    "desktop_report": {
+      "self_contained": true,
+      "example_cards": 12,
+      "browser_file_preview": "Blocked by browser URL policy; no workaround attempted. Comparison image visually inspected.",
+      "structural_check": {
+        "embedded_images": 12,
+        "external_media": 0,
+        "scripts": 0
+      }
+    }
+  },
+  "remaining_gates": [
+    "prompt policy publication",
+    "fresh generated visual comparison",
+    "preexisting database fixture repairs outside this change"
+  ],
+  "provider_generation_calls": 0,
+  "spend_usd": 0,
+  "paid_compute": "None activated; global inventory not queried.",
+  "local_private_artifacts": ".videoforge/quality-review/2026-09-27/",
+  "artifact_sha256": {
+    "napa-334.5.jpg": "1d747029f257317a3b859ba545a5fe73630c8d48b45b4c371a57d8a76f866891",
+    "napa-727.5.jpg": "3f2d41fdf72bc9bed2e8772f4f32c437d5c48a42d63924bf0b51dd08ec37ba74",
+    "napa-835.5.jpg": "ba6c3372c4d650ed456c4bbdfc8c2b7492387c3781685e391f7497b147fd0b62",
+    "napa-169.5.jpg": "be80efae1a4b39b95cf0da3125268531f8906ba0f6636d6634d4ca38c7077e83",
+    "china-832.5.jpg": "a0e7d5d55cf554ccaca487d7f55caa89fa34d898cb3aa7ec733332913a900477",
+    "comparison.jpg": "1897c4e316215b550ff64e07d8fd7ffbc53bad670f4fd97ab716bdbc1591d912",
+    "china-745.5.jpg": "f662b14792b9e103c9dbb09434f47c64897d515e2bbe0c0c83f1eed94d0e448e",
+    "napa-112.5.jpg": "15ddf0a4d75d3b98adb140c97892bb893c38e970a0beec5443d9ef950a17d3d4",
+    "napa-319.5.jpg": "7f08729cd9cd5ca0184f8891c081f5134cc52659292449799cbf339c0908a605",
+    "napa-568.5.jpg": "0002de54ae1e204c89a100ca263768a432cff068d9ef67ea6c3a004933948470",
+    "china-220.5.jpg": "dd86a0121a6fca8162bee86d579c286ca0dd93c747a051042e635ea7a19d57de",
+    "napa-1336.5.jpg": "daf89096223a21b35fd673b14f10fe671d020708d8adff203139ae0bbada7a96",
+    "napa-343.5.jpg": "0443f9fb00700eb8aeb91991993bcf2ace5701b59b43cd5b2b2335dbbb5219e1",
+    "china-457.5.jpg": "22431fb77fc6010c0a3b8c80b467ad3d69ab2c1b617a377f079bba245435db0b",
+    "china-511.5.jpg": "459eafccc6ed258c0e0b6db1fff8f4063a4023402eab1594c897b15dcccf726f",
+    "china-1363.5.jpg": "380f9ef40e41d265fc55cea0cf9af38dd3627b44b6a6765d3b827ccd14c13e76",
+    "china-757.5.jpg": "a8ce8b5cb3bd52b933c02e5fdfd808945ae460cf865396a241d779fabab4e245"
+  },
+  "release_preparation": {
+    "source_commit": "9c88581d",
+    "branch": "codex/shot-quality-release",
+    "base_production_source": "9c5ad1b8378eb370dbba3401e2215cb0431883f9",
+    "workspace": "/Users/lakshmansai/.codex/worktrees/shot-quality-release/videoforge",
+    "source_tracked_tree_clean": true,
+    "web_and_cloudflare_build": true,
+    "bundle_firewall": true,
+    "context_validation": true,
+    "bundled_request_v23_and_quality_guidance": true,
+    "unrelated_progress_and_worker_changes_excluded": true,
+    "publication_approval": "requested for the same shot-policy-only scope; baseline updated before publication; not received at evidence update",
+    "retains_latest_mac_account_connection_fix": true
+  }
+}

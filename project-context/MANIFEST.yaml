@@ -247,8 +247,10 @@ approved_decisions:
   DEC_IMAGE_001: superseded_mage_historical_attempts_only
   DEC_IMAGE_002: superseded_mage_terms_risk_historical_attempts_only
   DEC_IMAGE_003: image_review_rule_retained_mage_retry_historical_only
-  DEC_LLM_001: runware_deepseek_v4_flash_0731
-  DEC_LLM_002: deepseek_image_prompts_only
+  DEC_IMAGE_SHOT_001: narration_preserving_shot_quality_selection_request_v23
+  DEC_PROMPT_COMPACT_001: compact_v24_batch_instructions_preserve_constraints_and_runtime_guards
+  DEC_LLM_001: current_runware_gemini_3_5_flash_deepseek_historical
+  DEC_LLM_002: scene_content_and_bounded_context_never_ai_timeline_layout
   DEC_OUTPUT_001: full_avatar_full_image_split_only
   DEC_OUTPUT_002: hard_cuts_no_graphics_text_or_transitions
   DEC_OUTPUT_003: immediate_centered_zoom_faster_both_layouts

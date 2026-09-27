@@ -23,7 +23,7 @@ Image prompts must keep all surfaces plain, blank and unmarked, excluding readab
 
 ### Post-transcription story context
 
-After transcription and before scene planning, Runware DeepSeek V4 Flash receives the complete
+After transcription and before scene planning, Runware Gemini 3.5 Flash receives the complete
 ordered voiceover exactly once and returns one compact structured story-context document. It may
 contain only transcript-supported topic, people, places, era/time, recurring objects, processes,
 cause/effect, chronology, continuity facts, and resolved pronoun/callback references. Persist and
@@ -44,7 +44,7 @@ Token and cost bounds are part of acceptance. The live hosted profile uses one b
 extraction with a 350-token output ceiling and a 10,000 micro-USD reservation. Schema-valid global context is normalized to the existing 360-character flattened budget: retain the subject, then whole remote-reference facts, continuity facts, and visual facts in that priority order while they fit. Preserve category order in the final context; reject malformed keys, types, duplicate facts, and excessive list counts. Aggregate verbosity alone must not trigger another inference or stop the pipeline.
 
 Stage 5 plans against
-a 48,000-token input ceiling and a 16,384-token application output-quality budget per request under
+a 48,000-token input ceiling and a 14,336-token hosted output budget per request under
 the 64,000-token technical output ceiling, with one 40,000 micro-USD project reservation. One
 provider request is allowed per persisted planned batch. The hosted path performs no prompt-provider
 retry: accepted batches persist before the next request, while definite or ambiguous failure stops
@@ -52,7 +52,8 @@ without redispatch. Do not duplicate the same global context inside every scene 
 stay concise and concrete; trusted code adds crop, style, optional keywords, and permanent guardrails
 exactly once.
 
-Runware DeepSeek V4 Flash 0731 writes scene-content prompts only. Code already knows:
+Runware Gemini 3.5 Flash writes scene-content prompts only. The legacy source filename retains
+DeepSeek in its name; current runtime model identity is `google:gemini@3.5-flash`. Code already knows:
 
 - The sanitized project title as global topic context.
 - The scene start/end and exact narration phrase.
@@ -87,8 +88,7 @@ Recommended Runware settings:
 ```json
 {
   "taskType": "textInference",
-  "model": "deepseek:v4@flash",
-  "outputFormat": "JSON",
+  "model": "google:gemini@3.5-flash",
   "includeUsage": true,
   "includeCost": true,
   "settings": {
@@ -99,9 +99,11 @@ Recommended Runware settings:
 }
 ```
 
-Use strict `jsonSchema`. Application code owns style suffixes, optional extra keywords, and permanent guardrails so the model cannot omit or inconsistently repeat them.
+Do not send `jsonSchema` or `outputFormat`: Gemini rejects that provider request shape. Require
+the exact JSON shape in the system prompt and retain strict application-side parsing/schema
+validation. Application code owns style suffixes, optional extra keywords, and permanent guardrails.
 
-DeepSeek scene-writing contract (`scene-prompt-writer-v2`, Runware request v18):
+Scene-writing contract (`scene-prompt-writer-v2`, Runware Gemini request v24):
 
 ```text
 You write concise image scene cores for VideoForge. For each stable scene ID,
@@ -120,14 +122,14 @@ GPU, retry, or fallback. Return only the strict requested JSON and every scene I
 exactly once.
 ```
 
-Request v18 keeps the structured fields explicit: `literal_subject`, `action`, `environment`, and
+Request v24 keeps the structured fields explicit: `literal_subject`, `action`, `environment`, and
 `lighting_context` are the source-bound scene facts, with `continuity_tags` and a compatibility-only
 `prompt_core`. Subject, action, and environment must retain concrete anchors from the exact phrase,
 containing sentence, bounded previous/next narration, or compact global story context. The system
-prompt tells DeepSeek to begin with the exact phrase's visible action and not invent coordinated
+prompt tells the writer to begin with the exact phrase's visible action and not invent coordinated
 actions. Hosted acceptance does not use lexical or action-equivalence heuristics as a terminal gate:
 subject, action, context, and duplicate-prose checks are advisory because natural paraphrases cannot
-be classified reliably by a bounded word matcher. Hosted v18 also repairs harmless provider
+be classified reliably by a bounded word matcher. Hosted acceptance also repairs harmless provider
 formatting defects before strict persistence: it bounds or fills blank, oversized, or control-
 containing text; normalizes and deduplicates continuity tags; and replaces forbidden compiled fields
 with neutral narration-derived fallbacks rather than wasting the whole batch. Forbidden continuity
@@ -137,11 +139,11 @@ fields and independently rejects forbidden compiled content, so `prompt_core` ca
 subject, action, environment, or restrictions that reach the image model. Final prompts take only
 medium, realism, camera language, and lighting from the pinned style; palette descriptors and hex,
 framing, shot-scale preferences, contrast, depth, texture, imperfection, and mood are intentionally
-not repeated per scene. DeepSeek targets at most 20 words each for subject, action, and environment,
+not repeated per scene. The writer targets at most 20 words each for subject, action, and environment,
 10 for audit-only lighting context, and 45 for compatibility-only `prompt_core`. Deterministic
 schema, scene identity, completeness, provider-metadata, and spend-cap fences remain mandatory.
 
-## Compact DeepSeek output
+## Compact scene-writer output
 
 ```json
 {
@@ -156,13 +158,13 @@ schema, scene identity, completeness, provider-metadata, and spend-cap fences re
 }
 ```
 
-The scheduler assigns `in_image_shot_role` from a versioned seeded rotation with simple lexical overrides. DeepSeek returns the exact enum unchanged. The selected style guidance may shape visual treatment, but the output still describes the narration's visible content rather than repeating boilerplate. Structured subject/action/environment/lighting fields are the source-bound compiler inputs; `prompt_core` is compatibility-only.
+The scheduler assigns `in_image_shot_role` from a versioned seeded rotation with simple lexical overrides. The writer returns the exact enum unchanged. The selected style guidance may shape visual treatment, but the output still describes the narration's visible content rather than repeating boilerplate. Structured subject/action/environment/lighting fields are the source-bound compiler inputs; `prompt_core` is compatibility-only.
 
 ## Deterministic prompt compiler
 
 Positive construction order:
 
-1. Contract-valid literal subject, visible action, environment, and lighting facts from DeepSeek.
+1. Contract-valid literal subject, visible action, environment, and lighting facts from the scene writer.
 2. Exact source anchors retained by those structured facts.
 3. Deterministic continuity and required in-image shot role/viewpoint.
 4. Full-image or split-image crop-safe guidance from the pinned style.
@@ -187,7 +189,7 @@ Semantic conflict precedence:
 4. Enabled project extra keywords as soft refinements.
 5. The selected style's other soft traits.
 
-Extra keywords never become a system instruction and never go to DeepSeek. Normalize Unicode, strip control characters, and cap at 500 characters. While the toggle is off, preserve the text but do not semantically validate it, block production because of it, or send it anywhere. Turning the toggle on validates the text; enabled blank/whitespace-only text is rejected and the user may turn the toggle off instead. Block enabling requests such as `add a caption`, `show a logo`, `infographic`, borders, motion graphics, decorative transitions, or a different layout; do not mistake negative refinements such as `no logo`, `no text`, or `no AI look` for requests to add them. Warn only on soft creative tension. Apply the same deterministic hard-rule validator to analyzer-produced and user-edited style clauses before publication. When enabled, trusted compiler code inserts it exactly once in the final Mage prompt. Do not add an LLM call to interpret or rewrite it.
+Extra keywords never become a system instruction and never go to the scene writer. Normalize Unicode, strip control characters, and cap at 500 characters. While the toggle is off, preserve the text but do not semantically validate it, block production because of it, or send it anywhere. Turning the toggle on validates the text; enabled blank/whitespace-only text is rejected and the user may turn the toggle off instead. Block enabling requests such as `add a caption`, `show a logo`, `infographic`, borders, motion graphics, decorative transitions, or a different layout; do not mistake negative refinements such as `no logo`, `no text`, or `no AI look` for requests to add them. Warn only on soft creative tension. Apply the same deterministic hard-rule validator to analyzer-produced and user-edited style clauses before publication. When enabled, trusted compiler code inserts it exactly once in the final Mage prompt. Do not add an LLM call to interpret or rewrite it.
 
 Store `scene_prompt_writer_version`, `prompt_compiler_version`, every component, the exact final positive/negative UTF-8 strings submitted to Mage, and SHA-256 of those exact bytes. The compiler owns a versioned normalization/joining rule so the effective prompt is reproducible.
 
@@ -257,6 +259,39 @@ Assign one enum with deterministic rotation and context-aware lexical overrides,
 
 Do not generate a sequence of generic landscapes when the narration discusses a tool, action, person, food, body detail, or result. Prefer literal evidence over metaphor. For abstract narration, show the concrete person, object, process, place, or consequence being discussed.
 
+### Shot quality selection — 2026-09-27
+
+`DEC_IMAGE_SHOT_001` adds batch-level quality guidance (introduced in v23, compacted in v24), based on the two
+downloaded final-video reviews in [SHOT_QUALITY_GUIDE.md](../SHOT_QUALITY_GUIDE.md).
+Avoid small visible faces in distant frontal/full-body shots and crowds. When facial evidence
+matters, keep it large in a tight chest-up view; otherwise use supported rear-facing or
+over-the-shoulder people. Preserve every necessary participant and narrated action, including
+interactions and precise hand actions. Keep essential hand-object contacts close, large and
+unobstructed; avoid gratuitous overlapping hands or extra contacts. Isolate essential objects
+at believable scale without invented machinery or scientific detail. Reinforce blank/unmarked
+surfaces under the permanent no-text rule.
+
+Wide landscapes and coherent medium human views remain valid. Quality constraints override
+soft shot-scale preferences while retaining the immutable style's medium/treatment. Put essential
+framing in `literal_subject` or `environment`, since compatibility-only `prompt_core` does not
+reach the final image description. Apply guidance once per batch; retain deterministic roles,
+layouts, narration order, source grounding, budget/recovery rules and immutable accepted prompts.
+No new heuristic rejection gate, image-analysis call or automatic regeneration is added.
+Local proof establishes functional compatibility; fresh visual improvement remains unmeasured.
+
+### Compact repeated instructions — 2026-09-27
+
+`DEC_PROMPT_COMPACT_001` consolidates repeated wording without dropping grounding, style,
+shot-quality, typography or exact-output constraints. Request v24 changes task identity while
+retaining the eight-field scene contract, field/tag bounds, adaptive batching, output/reasoning
+headroom and all validation/recovery/cost logic. Shared instructions appear once per batch and
+are regression-bounded to 6,000 UTF-8 bytes; the detailed review guide is never API input.
+The combined system/output instructions fall from 9,820 to 5,937 bytes (39.54%), or 1,360 to
+691 words. Thirty identical submissions avoid 116,490 instruction bytes. Gemini billing-token
+or dollar savings and generated-quality equivalence have not been measured; local planner
+estimates are conservative budgets, not provider usage. See
+`evidence/acceptance/VF-10-09/2026-09-27-prompt-instruction-compaction.json`.
+
 ## Composition-safe prompting
 
 Full image:
@@ -302,7 +337,7 @@ absolutely photorealistic, no AI look.
 
 ## Reference-derived custom styles
 
-The normal MVP does not pass reference images to Mage-Flow-Turbo and does not train a LoRA. Runware Gemini analyzes references once into a text profile; DeepSeek and the code-side compiler then use that profile. This is the simplest fast, low-cost implementation, but it is not a promise of pixel-identical style cloning.
+The normal MVP does not pass reference images to Mage-Flow-Turbo and does not train a LoRA. Runware Gemini analyzes references once into a text profile; the scene writer and code-side compiler then use that profile. This is the simplest fast, low-cost implementation, but it is not a promise of pixel-identical style cloning.
 
 `GATE_STYLE_002` must test at least five substantially different style packs using identical neutral content fixtures. If prompt-only profiles cannot reproduce a distinctive style reliably, pause and present the results before adding Style LoRA training, a reference-conditioned model, or another generator.
 

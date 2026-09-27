@@ -15,6 +15,7 @@ import {
   SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
   buildPromptBatch,
   buildRunwarePromptRequest,
+  compileImagePrompt,
 } from "../dist/src/index.js";
 
 const layouts = ["IMAGE_FULL", "SPLIT_RIGHT_IMAGE"];
@@ -162,6 +163,56 @@ async function expectInvalid(action) {
   );
 }
 
+test("shot guidance reaches each batch once and authoritative framing survives compilation", async () => {
+  for (const count of [6, 50]) {
+    const input = makeBatch(count);
+    const run = writer([
+      (request) =>
+        success(request, {
+          change: (rows) =>
+            rows.map((row) => ({
+              ...row,
+              literal_subject: "Weathered hands in close unobstructed view",
+              action: "demonstrating an irrigation valve step with a simple grip",
+              environment: "irrigation valve step on a farm pipe with the hand contact centered",
+            })),
+        }),
+    ]);
+    const accepted = await run.value.write(input);
+    const request = run.transport.requests[0];
+    assert.equal(request.requestVersion, "runware-gemini-3.5-flash-prompt-request-v24");
+    assert.ok(
+      Buffer.byteLength(request.request.settings.systemPrompt, "utf8") <= 6_000,
+      "Repeated batch instructions exceed the compact input budget",
+    );
+    assert.equal(
+      request.request.settings.systemPrompt.match(/Shot quality selection:/gu)?.length,
+      1,
+    );
+    assert.doesNotMatch(request.request.messages[0].content, /Shot quality selection:/u);
+    for (const role of IN_IMAGE_SHOT_ROLES)
+      assert.ok(request.request.settings.systemPrompt.includes(role));
+    assert.deepEqual(
+      accepted.scenes.map((row) => row.in_image_shot_role),
+      input.scenes.map((row) => row.inImageShotRole),
+    );
+    const compiled = compileImagePrompt({
+      expectedScene: input.scenes[0],
+      writerOutput: accepted.scenes[0],
+      style: {
+        positiveSuffix: "documentary photo",
+        negativeSuffix: "CGI",
+        fullImageGuidance: "16:9 center-safe",
+        splitImageGuidance: "8:9 center-safe right panel",
+      },
+      extraPromptKeywords: "",
+      applyExtraPromptKeywords: false,
+    });
+    assert.match(compiled.components.literalContent, /close unobstructed view/u);
+    assert.match(compiled.components.literalContent, /simple grip/u);
+  }
+});
+
 test("pins exact AIR/schema and deterministically handles 25/50 scenes across five styles", async () => {
   for (let styleIndex = 0; styleIndex < styleGuidance.length; styleIndex += 1) {
     const count = styleIndex % 2 === 0 ? 25 : 50;
@@ -269,46 +320,49 @@ test("writer contract requires relatable physical evidence and applies style as 
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /one camera-capturable moment/u);
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /physically plausible visible action/u);
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /familiar human behavior, ordinary locations/u);
-  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /never substitute symbolism or metaphor/u);
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
-    /exact_phrase, scene_phrase_context, prior_scene_phrase, and next_scene_phrase as the primary content source/u,
+    /never symbolism or metaphor when literal evidence exists/u,
   );
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
-    /story_context as a low-priority batch-level fallback only/u,
+    /exact_phrase > scene_phrase_context > prior_scene_phrase > next_scene_phrase/u,
   );
-  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /style_treatment object as visual treatment/u);
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
-    /without importing concrete people, places, objects, products, logos/u,
+    /story_context only to resolve locally unresolved/u,
+  );
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /Only style_treatment supplies reusable/u);
+  assert.match(
+    SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
+    /without imported reference people, places, objects, products, logos/u,
   );
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /believable anatomy, materials, scale/u);
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
-    /choose concrete visible evidence of the exact phrase/iu,
+    /Show concrete visible evidence of the exact phrase/u,
   );
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /authoritative structured scene facts/u);
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
-    /do not echo palette descriptors, hex colors, lighting metadata/u,
+    /must not repeat style suffixes, palette\/hex colors, lighting/u,
   );
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
-    /target at most 20 words each.*10 words.*45 words/u,
+    /Word targets: literal_subject\/action\/environment at most 20 each, lighting_context 10, prompt_core 45/u,
   );
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
-    /downstream compiler derives the final literal image description/u,
+    /downstream compiler derives final literal image description/u,
   );
-  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /preserve that action semantically in action/u);
-  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /static, stative, or abstract/u);
-  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /Never substitute a contradictory action/u);
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
-    /When narration names a location, preserve that location in environment/u,
+    /Preserve narrated actions semantically in action/u,
   );
-  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /at most 12 unique continuity_tags/u);
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /static, stative or abstract/u);
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /never invent events or contradict narration/u);
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /Preserve named locations in environment/u);
+  assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /continuity_tags: at most 12 unique/u);
   assert.doesNotMatch(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /Copy each required_literal_anchor/u);
 });
 

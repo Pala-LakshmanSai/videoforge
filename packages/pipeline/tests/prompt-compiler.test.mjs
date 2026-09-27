@@ -401,7 +401,7 @@ test("castle dates and room counts remain narration facts rather than requested 
     assert.ok(compiled.positivePrompt.includes(term), `missing typography exclusion: ${term}`);
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
-    /never quote a label or render the fact as writing/u,
+    /Convey names\/dates\/addresses\/quantities through physical subjects, architecture or activity, never writing/u,
   );
   assert.match(SCENE_PROMPT_WRITER_SYSTEM_PROMPT, /plain blank unmarked physical surface/u);
   verifyCompiledImagePrompt(compiled);
@@ -450,7 +450,7 @@ test("keeps described products relatable without allowing text or branding", () 
   assert.doesNotMatch(PERMANENT_NEGATIVE_GUARDRAIL, /manufactured products, containers/u);
   assert.match(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
-    /Products, packages, containers, tools, medicines, and purchased goods may appear/u,
+    /Products, packages, containers, tools, medicines and purchased goods may appear only when locally supported/u,
   );
   assert.doesNotMatch(
     SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
@@ -620,7 +620,8 @@ test("landscape prompts keep scene and photographic cues without repeated text b
     expectedScene: input.scenes[0],
     style: {
       ...style(landscapeStyle),
-      negativeSuffix: "blurry, soft focus, low resolution, artificial, over-saturated, human-centric, portrait, watermark, text, pseudo-text, gibberish lettering, words, letters, numbers, typography, labels, packaging text, printed markings, branded packaging, brand names, product names, ingredient lists, crushed blacks",
+      negativeSuffix:
+        "blurry, soft focus, low resolution, artificial, over-saturated, human-centric, portrait, watermark, text, pseudo-text, gibberish lettering, words, letters, numbers, typography, labels, packaging text, printed markings, branded packaging, brand names, product names, ingredient lists, crushed blacks",
     },
     extraPromptKeywords: null,
     applyExtraPromptKeywords: false,
@@ -630,7 +631,10 @@ test("landscape prompts keep scene and photographic cues without repeated text b
   assert.match(compiled.positivePrompt, /high-noon or golden-hour sun, strong shadows/u);
   assert.match(compiled.positivePrompt, /No text or pseudo-text/u);
   assert.match(compiled.negativePrompt, /crushed blacks/u);
-  assert.doesNotMatch(compiled.components.styleNegativeSuffix, /gibberish lettering|packaging text/u);
+  assert.doesNotMatch(
+    compiled.components.styleNegativeSuffix,
+    /gibberish lettering|packaging text/u,
+  );
   assert.ok(compiled.positivePrompt.length < 700);
   assert.ok(compiled.negativePrompt.length < 220);
   verifyCompiledImagePrompt(compiled);

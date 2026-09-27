@@ -1,5 +1,9 @@
 # VideoForge: start here
 
+Prompt instructions are locally compacted in request v24: same quality/grounding/output rules,
+39.54% fewer repeated bytes. This supersedes the local v23 release proposal; publication remains
+pending. Read `prompt_instruction_compaction_2026_09_27` in CURRENT_STATE.yaml and the prompt domain.
+
 Per-image Fal Z-Image Turbo regeneration is locally verified with a button on every accepted-image
 thumbnail, including later pages. Migration 0213 preserves original images/final videos and old
 provider jobs. Publication and paid sample acceptance remain pending. Read

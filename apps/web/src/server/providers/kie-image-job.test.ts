@@ -59,6 +59,37 @@ function bucket(): HostedR2BucketBinding & { readonly put: ReturnType<typeof vi.
 }
 
 describe("Kie image job", () => {
+  it("retains essential face and hand framing in both layouts within the provider limit", () => {
+    for (const [subject, action] of [
+      [
+        "A vineyard owner in a tight chest-up view with a large unobstructed face",
+        "looking over the vineyard",
+      ],
+      ["Weathered hands in close unobstructed view", "turning a valve with a simple grip"],
+    ]) {
+      for (const crop of [
+        "wide horizontal center-safe",
+        "narrow vertical right panel center-safe",
+      ]) {
+        const literal = `subject: ${subject}, action: ${action}, environment: a vineyard irrigation pipe`;
+        const prompt = buildKieScenePrompt({
+          components: {
+            literalContent: literal,
+            continuityAndShotRole: "same subject/setting/state, viewpoint: human medium",
+            cropGuidance: crop,
+            stylePositiveSuffix: "documentary photo with natural light",
+            extraPromptKeywords: null,
+            styleNegativeSuffix: "CGI, malformed anatomy",
+          },
+        } as never);
+        expect(prompt.length).toBeLessThanOrEqual(800);
+        expect(prompt).toContain(literal);
+        expect(prompt).toContain(crop);
+        expect(prompt).toContain("No visible text/pseudo-text");
+      }
+    }
+  });
+
   it("maps style negatives and mandatory exclusions into Kie's single prompt", () => {
     const prompt = buildKieScenePrompt({
       components: {
@@ -114,7 +145,8 @@ describe("Kie image job", () => {
   });
 
   it("keeps production-length scene content intact within Kie's medium target", () => {
-    const literal = "subject: A person, action: depicting the narration-supported visible moment, environment: a room with a wooden desk next to a large window.";
+    const literal =
+      "subject: A person, action: depicting the narration-supported visible moment, environment: a room with a wooden desk next to a large window.";
     const prompt = buildKieScenePrompt({
       components: {
         literalContent: literal,

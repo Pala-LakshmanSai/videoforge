@@ -29,10 +29,10 @@ import type {
  * reason, and this writer follows it so both text stages run on one live model.
  */
 export const RUNWARE_PROMPT_MODEL = "google:gemini@3.5-flash" as const;
-// v22: reserve output space for Gemini reasoning tokens observed in the provider usage receipt.
-// The version feeds the deterministic taskUUID, so changed maxTokens never reuses a paid v21 task.
+// v24: compact batch instructions without removing grounding, quality or output constraints.
+// The version feeds the deterministic taskUUID; changed instructions must not reuse a paid v23 task.
 export const RUNWARE_PROMPT_REQUEST_VERSION =
-  "runware-gemini-3.5-flash-prompt-request-v22" as const;
+  "runware-gemini-3.5-flash-prompt-request-v24" as const;
 /**
  * Runware currently permits a considerably larger response, but this tighter
  * application ceiling leaves room for request metadata and keeps one malformed
@@ -56,45 +56,28 @@ export const RUNWARE_PROMPT_ESTIMATED_BYTES_PER_TOKEN = 2 as const;
  * parse and schema validation in this module still refuse anything that does not match it.
  */
 export const SCENE_PROMPT_WRITER_OUTPUT_CONTRACT = [
-  "Answer with one JSON object and nothing else - no commentary, no Markdown fence.",
-  "It must have exactly two keys: batch_id (the batch_id given to you) and scenes (an array).",
-  "Every scene object must have exactly these eight keys: scene_id, literal_subject, action, environment, in_image_shot_role, lighting_context, continuity_tags, prompt_core.",
-  "scene_id must repeat the scene_id you were given, in the order you were given it.",
-  "in_image_shot_role must be one of the roles supplied for that scene.",
-  "continuity_tags must be an array of at most 12 lowercase phrases.",
-  "Return one scene object per requested scene and no others.",
+  "Return one JSON object and nothing else: no commentary or Markdown fence.",
+  "Exactly two keys: batch_id (echo input) and scenes (array); one scene object per requested scene, in input order, no extras or omissions.",
+  "Every scene has exactly these eight keys: scene_id, literal_subject, action, environment, in_image_shot_role, lighting_context, continuity_tags, prompt_core.",
+  "Echo scene_id and assigned in_image_shot_role unchanged; continuity_tags is an array.",
 ].join("\n");
 
 export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
-  "Write concise literal still-image scene cores for VideoForge using the scene-content contract scene-prompt-writer-v2.",
-  "Return every requested scene ID exactly once and echo its in-image shot role unchanged.",
-  "Treat each scene's exact_phrase, scene_phrase_context, prior_scene_phrase, and next_scene_phrase as the primary content source, in that order. Those local script parts determine the scene subject, visible action, and physical environment.",
-  "Read exact_phrase first, then scene_phrase_context, then prior_scene_phrase and next_scene_phrase to resolve omitted details, references, and transitions. Adjacent script parts may add only compatible detail and may never override exact_phrase.",
-  "Treat story_context as a low-priority batch-level fallback only. Use it only when the four local fields cannot resolve a person, place, pronoun, callback, or era; never use it to replace a local subject, action, location, or object, and never let it drive a generic topic image.",
-  "Choose concrete visible evidence of the exact phrase, never a generic mood image merely related to the overall topic.",
-  "Design one camera-capturable moment per scene: a specific subject doing a physically plausible visible action in a specific real-world environment.",
-  "Keep one visible action per scene. Do not chain actions with while, then, and, or but unless the same coordinated action is present in the supplied narration; an and-list of objects is allowed.",
-  "Prefer familiar human behavior, ordinary locations, credible objects, contextual clutter, and natural imperfection when the narration supports them; never manufacture spectacle or a staged advertising pose.",
-  "For abstract narration, show the most direct transcript-supported person, object, process, place, or consequence; never substitute symbolism or metaphor when literal evidence exists.",
-  "Express the exact phrase semantically; do not force narration wording into the image description merely to create lexical overlap.",
-  "Never use vague placeholders such as a person, someone, something, somewhere, a generic or public setting, standing still, or doing something unless that exact detail is narration-critical.",
-  "Use only the supplied style_treatment object as visual treatment derived from the pinned immutable style profile: honor its medium, realism, palette, framing, shot-scale preferences, lighting, contrast, depth, texture, camera language, mood, and imperfection as reusable treatment without importing concrete people, places, objects, products, logos, or other reference content.",
-  "For photographic styles, require believable anatomy, materials, scale, perspective, optics, light, and everyday wear rather than glossy synthetic perfection.",
-  "Camera language, lens, framing, and viewpoint are optical treatment instructions, never objects to add to the scene. Describe the scene itself, not its recording. Do not introduce cameras, tripods, filming rigs, photographic equipment, or film crew unless the narration explicitly requires those physical subjects.",
-  "Every text field must be non-empty and contain no control characters. Be compact: target at most 20 words each for literal_subject, action, and environment; 10 words for lighting_context; and 45 words for prompt_core. The hard compatibility ceilings remain 240 characters for literal_subject, action, and environment, 120 for lighting_context, and 600 for prompt_core.",
-  "Return at most 12 unique continuity_tags per scene, each non-empty and 80 characters or fewer. Write them as plain lowercase phrases of ordinary words separated by single spaces; never write hyphenated, underscored or slash-separated slugs (write energy transfer, not energy-transfer), because token-shaped punctuation is reproduced as printed marking in the image.",
-  "Write prompt_core as concise compatibility prose describing only the scene subject, visible action, and physical environment; do not echo palette descriptors, hex colors, lighting metadata, or any other style_treatment field in prompt_core or scene facts.",
-  "Treat literal_subject, action, and environment as the authoritative structured scene facts. The downstream compiler derives the final literal image description from those fields. Keep lighting_context as concise audit metadata; pinned style lighting is the image-model authority. prompt_core is retained only for provider compatibility and bounded quality checks.",
-  "Ensure literal_subject preserves a meaningful source anchor from exact_phrase, scene_phrase_context, prior_scene_phrase, or next_scene_phrase. Use story_context only as a fallback when those local fields cannot resolve the reference.",
-  "Add only ordinary camera-capturable physical detail needed to make the locally anchored moment specific, believable, and relatable. Such detail may clarify a compatible real-world setting, object condition, or human interaction, but it must never change or contradict the local script meaning, introduce a new story event, or act as a hardcoded visual style.",
-  "When the exact phrase contains a camera-capturable action, preserve that action semantically in action and prefer beginning the field with its verb after optional natural modifiers. When the phrase is static, stative, or abstract, describe the nearest visible state or interaction supported by the local script context without inventing a new story event. Never substitute a contradictory action.",
-  "When narration names a location, preserve that location in environment. When it names none, infer one ordinary compatible physical environment from the local scene context; use story_context only to resolve an otherwise unresolved reference.",
-  "Do not repeat a full style suffix or invent continuity facts.",
-  "Never request visible text, writing, handwritten or printed words, price tags, receipts, captions, titles, labels, signage, product or measurement markings, logos, branding, branded packaging, UI screens, charts, diagrams, graphics, borders, motion graphics, or decorative transitions.",
-  "No typography may appear, including unreadable or invented lettering, individual letters, digits, dates, room numbers, inscriptions, plaques, signs, or watermarks. Convey named facts, historical dates, addresses and room counts through the relevant physical subject, architecture or activity; never quote a label or render the fact as writing. If context mentions an inscription, plaque or sign, describe its plain blank unmarked physical surface instead of its characters. Preserve the narrated meaning without adding writing.",
-  "Products, packages, containers, tools, medicines, and purchased goods may appear when the local script names or supports them; depict them as plain, unbranded, unmarked physical objects with no readable text or branding. Do not invent product details, packaging copy, or an advertising display that the local script does not support.",
-  "Never choose duration, layout, shot role, avatar placement, model, GPU, retry, or fallback.",
-  "Return only the strict requested JSON.",
+  "Write concise literal VideoForge still-image scenes (scene-prompt-writer-v2).",
+  "Local source precedence: exact_phrase > scene_phrase_context > prior_scene_phrase > next_scene_phrase. Adjacent context only adds compatible detail. Use story_context only to resolve locally unresolved people, places, pronouns, callbacks or era; never replace local subject, action, place or object with a generic topic/mood image. literal_subject must retain a meaningful source anchor. Express meaning, not copied wording for lexical overlap.",
+  "Show concrete visible evidence of the exact phrase in one camera-capturable moment: a specific subject, physically plausible visible action and real environment. Preserve narrated actions semantically in action, preferably verb first. For static, stative or abstract phrases, show the nearest locally supported state/interaction; never invent events or contradict narration. No chains (while/then/and/but) unless narration gives that same coordinated action; object lists are allowed.",
+  "Preserve named locations in environment; otherwise infer an ordinary compatible location from local context, using story_context only if unresolved. Add only necessary, compatible physical details; never invent continuity facts or story events.",
+  "Prefer familiar human behavior, ordinary locations, credible objects, contextual clutter and natural imperfection; no spectacle or advertising poses. For abstractions use direct supported person/object/process/place/consequence, never symbolism or metaphor when literal evidence exists. No vague people/actions/places (a person, someone, something, somewhere, generic/public setting, standing still, doing something) unless narration-critical.",
+  "Only style_treatment supplies reusable medium, realism, palette, framing, shot-scale, lighting, contrast, depth, texture, camera language, mood and imperfection; honor it without imported reference people, places, objects, products, logos or content. Photographs need believable anatomy, materials, scale, perspective, optics, light and wear, not glossy synthetic perfection. Camera/lens/viewpoint describe optics, never physical cameras, tripods, photographic gear, rigs or crew unless narrated.",
+  "Shot quality selection: simplify composition without deleting narrated participants/actions or changing assigned roles. Quality overrides soft shot-scale preferences, preserving pinned medium/treatment. Avoid tiny visible faces, distant frontal/full-body portraits, rows/crowds and incidental background faces.",
+  "HUMAN_MEDIUM or human REACTION_RESULT: prefer a dominant tight chest-up subject with a large unobstructed face when identity/expression matters; otherwise supported rear-facing/over-the-shoulder views. Keep necessary interactions/participants: closer necessary faces or one dominant face with compatible rear-facing others; never invent solitude or unrelated portraits.",
+  "ENVIRONMENTAL_WIDE: prioritize the narrated place/result; needed people rear-facing when faces are not evidence. Landscapes remain valid; never make essential faces tiny, especially in split-right panels.",
+  "HANDS_ACTION: close, large, unobstructed essential hand-object contact with ordinary anatomy and a simple supported grip. Avoid needless intertwined hands, overlapping fingers, tiny operations or extra contacts; retain narrated precise actions, never substitute aftermath.",
+  "OBJECT_EVIDENCE/MACRO_DETAIL: isolate essential evidence at believable scale; no gratuitous people, oversized props, decorative machinery, extra mechanisms or invented technical/scientific details.",
+  "literal_subject/action/environment are authoritative structured scene facts; downstream compiler derives final literal image description from them. Put essential close/chest-up/rear-facing/contact framing in literal_subject or environment, center-safe and large enough for assigned full/split layout and zoom. lighting_context is audit-only; pinned style owns lighting. prompt_core describes only subject/action/environment for compatibility/quality checks; it and continuity_tags do not control final image content. Scene facts/prompt_core must not repeat style suffixes, palette/hex colors, lighting or other style_treatment fields.",
+  "No visible or invented typography: text, handwriting/print, letters/digits, dates, room numbers, inscriptions, plaques/signage, labels, product/measurement markings, price tags/receipts, titles/captions, branding/logos/watermarks, branded packaging, UI/screens, charts/diagrams, graphics/overlays/borders, motion graphics or decorative transitions. Convey names/dates/addresses/quantities through physical subjects, architecture or activity, never writing. Inscription/plaque/sign surfaces must be plain blank unmarked physical surfaces. Products, packages, containers, tools, medicines and purchased goods may appear only when locally supported, plain/unbranded/unmarked; no invented product details, packaging copy or advertising displays.",
+  "All text fields non-empty, no control characters. Word targets: literal_subject/action/environment at most 20 each, lighting_context 10, prompt_core 45. Character ceilings: 240 each for subject/action/environment, 120 lighting_context, 600 prompt_core. continuity_tags: at most 12 unique non-empty lowercase phrases, 80 characters each, ordinary words separated by single spaces; no hyphens, underscores or slashes.",
+  "Never choose duration, layout, shot role, avatar placement, style version, model, GPU, retry or fallback. Return the exact JSON contract.",
 ].join(" ");
 
 export interface RunwarePromptUsage {

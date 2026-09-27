@@ -385,7 +385,7 @@ test("request maxTokens includes fixed and per-scene headroom and allows short b
       RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM,
   );
   assert.equal(request.requestVersion, RUNWARE_PROMPT_REQUEST_VERSION);
-  assert.equal(request.requestVersion, "runware-gemini-3.5-flash-prompt-request-v22");
+  assert.equal(request.requestVersion, "runware-gemini-3.5-flash-prompt-request-v24");
   assert.equal(request.request.model, "google:gemini@3.5-flash");
 });
 
