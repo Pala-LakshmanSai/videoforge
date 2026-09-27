@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Disclosure } from "../components/ui";
+import { Badge, Button, Disclosure } from "../components/ui";
 
 type WorkerStatus = "ONLINE" | "BUSY" | "OFFLINE" | "REVOKED" | "UPDATE_REQUIRED";
 
@@ -258,15 +258,10 @@ export function MediaWorkerSetup() {
 
   return (
     <section className="worker-setup" aria-labelledby="worker-setup-title">
-      <p>Your computer · no processing charge</p>
-      <h2 id="worker-setup-title">
-        {hasReadyWorker ? "Computer connected" : "Connect your computer once"}
-      </h2>
-      <p>
-        {hasReadyWorker
-          ? "Ready for transcription and final rendering."
-          : "Connect a Windows or Mac for transcription and final rendering."}
-      </p>
+      <header className="worker-setup-heading">
+        <h2 id="worker-setup-title">Computers</h2>
+        {hasReadyWorker ? <Badge tone="success">Connected</Badge> : null}
+      </header>
 
       {enrollment ? (
         <div className="worker-connect" role="region" aria-label="Computer connection request">
@@ -274,20 +269,19 @@ export function MediaWorkerSetup() {
           <span>
             {enrollment.platform === "WINDOWS" ? "Windows" : "Mac"} · {enrollment.architecture}
           </span>
-          <p>Only your account can send work to this computer. Your files stay private.</p>
-          <button
+          <Button
             type="button"
             disabled={busy || enrollment.state !== "PENDING"}
             onClick={() => void approve()}
           >
             {busy ? "Connecting…" : "Connect this computer"}
-          </button>
+          </Button>
         </div>
       ) : null}
 
       <div className="worker-command" role="region" aria-label="Connect with a terminal command">
         <div className="worker-command-heading">
-          <h3>Connect a computer</h3>
+          <h3>Connect</h3>
           <div className="worker-platforms" role="group" aria-label="Computer operating system">
             <button
               type="button"
@@ -311,12 +305,8 @@ export function MediaWorkerSetup() {
             </button>
           </div>
         </div>
-        <p>
-          Paste one command into{" "}
-          {platform === "MACOS"
-            ? "Terminal on your Mac"
-            : "Command Prompt or PowerShell on your Windows PC"}
-          . It installs the worker, connects to your account, and starts it in the background.
+        <p className="worker-command-instruction">
+          {platform === "MACOS" ? "Paste in Terminal." : "Paste in Command Prompt or PowerShell."}
         </p>
         <div className="worker-command-copy">
           <pre tabIndex={0} aria-label="Install and connect command">
@@ -325,34 +315,28 @@ export function MediaWorkerSetup() {
                 (commandBusy ? "Preparing your command…" : "Get a fresh command to connect.")}
             </code>
           </pre>
-          <button
+          <Button
             type="button"
             disabled={!commandText || remaining === 0 || commandBusy}
             onClick={() => void copyCommand()}
           >
             {copied ? "Copied" : "Copy"}
-          </button>
+          </Button>
         </div>
         <div className="worker-command-footer">
           <small>
             {command && remaining > 0
-              ? `For one computer · expires in ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`
-              : "Commands expire after 15 minutes."}
+              ? `Private · ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")} left`
+              : "Command expired"}
           </small>
           <button type="button" disabled={commandBusy} onClick={() => void freshCommand()}>
-            {commandBusy ? "Preparing…" : "Get a fresh command"}
+            {commandBusy ? "Preparing…" : "Refresh command"}
           </button>
         </div>
         {commandError ? <p role="alert">{commandError}</p> : null}
-        <small>
-          Keep this command private. It connects the computer to your signed-in account.
-        </small>
       </div>
 
-      <Disclosure
-        summary="Other ways to install, or a computer waiting for approval"
-        open={Boolean(enrollment)}
-      >
+      <Disclosure summary="Manual install & approval" open={Boolean(enrollment)}>
         <ol className="worker-steps">
           <li>Download the worker.</li>
           <li>Install and open it. Your browser returns here once.</li>
@@ -383,8 +367,10 @@ export function MediaWorkerSetup() {
 
       <div className="worker-devices" aria-live="polite">
         <h3>Your computers</h3>
-        {!workers ? <p>Checking worker status…</p> : null}
-        {workers?.devices.length === 0 ? <p>No computers connected yet.</p> : null}
+        {!workers ? <p className="worker-empty">Checking status…</p> : null}
+        {workers?.devices.length === 0 ? (
+          <p className="worker-empty">No connected computers</p>
+        ) : null}
         {workers?.devices.map((device) => (
           <article className="worker-device" key={device.id}>
             <div>
@@ -401,21 +387,22 @@ export function MediaWorkerSetup() {
                 {device.status === "BUSY"
                   ? "Working now"
                   : device.status === "UPDATE_REQUIRED"
-                    ? `Paste a fresh command, or install the current ${device.platform === "WINDOWS" ? "Windows" : "Mac"} worker below.`
+                    ? "Reconnect to update"
                     : lastSeen(device.last_seen_at)}
               </small>
             </div>
-            <button type="button" disabled={busy} onClick={() => void remove(device)}>
+            <Button
+              variant="ghost"
+              type="button"
+              disabled={busy}
+              onClick={() => void remove(device)}
+            >
               Remove
-            </button>
+            </Button>
           </article>
         ))}
       </div>
       {message ? <p role="status">{message}</p> : null}
-      <p className="worker-privacy">
-        It handles only your projects with temporary file access; it never receives account or
-        service credentials.
-      </p>
     </section>
   );
 }

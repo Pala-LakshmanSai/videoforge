@@ -30,11 +30,11 @@ function HostedSettingsScreen() {
   return (
     <>
       <PageHeader title="Settings" />
-      <div className="grid grid-2 settings-grid">
-        <Panel eyebrow="Account" heading={tenant.data?.workspace_name ?? "Your workspace"}>
+      <div className="grid grid-2 settings-grid settings-hosted-grid">
+        <Panel heading="Account">
           <div className="settings-summary">
             <Badge tone={tenant.isError ? "danger" : "success"}>
-              {tenant.isError ? "Unavailable" : "Private workspace"}
+              {tenant.isError ? "Unavailable" : "Private"}
             </Badge>
             <strong>{tenant.data?.user.email ?? "Loading account…"}</strong>
           </div>

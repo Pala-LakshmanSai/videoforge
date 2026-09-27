@@ -49,7 +49,7 @@ it("copies commands for the selected OS and keeps manual downloads available", a
   fireEvent.click(screen.getByRole("button", { name: "Windows" }));
   fireEvent.click(screen.getByRole("button", { name: "Copy" }));
   await waitFor(() => expect(copy).toHaveBeenCalledWith("powershell.exe -Command connect"));
-  fireEvent.click(screen.getByText("Other ways to install, or a computer waiting for approval"));
+  fireEvent.click(screen.getByText("Manual install & approval"));
   expect(screen.getByRole("link", { name: /Download for Windows/ })).toHaveAttribute(
     "href",
     "https://app.test/worker.exe",
@@ -63,7 +63,7 @@ it("refreshes the command explicitly without changing OS selection", async () =>
   const { fetcher } = setup();
   await waitFor(() => expect(screen.getByRole("button", { name: "Copy" })).toBeEnabled());
   fireEvent.click(screen.getByRole("button", { name: "Windows" }));
-  fireEvent.click(screen.getByRole("button", { name: "Get a fresh command" }));
+  fireEvent.click(screen.getByRole("button", { name: "Refresh command" }));
   await waitFor(() =>
     expect(fetcher.mock.calls.filter(([url]) => url.includes("connect-command"))).toHaveLength(2),
   );

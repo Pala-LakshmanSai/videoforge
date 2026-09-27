@@ -61,7 +61,7 @@ describe("production screens", () => {
 
     expect(await screen.findByText("owner@example.test")).toBeVisible();
     expect(screen.getByText("Available when setup is complete")).toBeInTheDocument();
-    expect(screen.getByText("Your computer · no processing charge")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Computers" })).toBeInTheDocument();
     expect(screen.queryByText(/fake transport/u)).not.toBeInTheDocument();
   });
 });

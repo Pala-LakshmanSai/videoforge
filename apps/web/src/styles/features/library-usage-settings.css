@@ -90,14 +90,13 @@
   border-color: var(--surface-border);
 }
 
-.worker-command {
-  display: grid;
-  gap: 12px;
-  padding: 18px;
-  border: 1px solid var(--surface-border-subtle);
-  border-radius: 16px;
-  min-width: 0;
+/* Hosted account and computer setup. */
+.settings-hosted-grid {
+  grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.5fr);
+  max-width: 1120px;
+  gap: 20px;
 }
+.worker-setup-heading,
 .worker-command-heading,
 .worker-command-footer,
 .worker-command-copy {
@@ -107,38 +106,112 @@
   gap: 12px;
   min-width: 0;
 }
-.worker-command-heading h3,
-.worker-command p {
+.worker-setup-heading h2 {
   margin: 0;
+}
+.worker-command {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.worker-command-heading h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.worker-command-instruction,
+.worker-empty {
+  color: var(--muted);
+  font-size: 13px;
 }
 .worker-platforms {
   display: flex;
-  gap: 6px;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--surface-border-subtle);
+  border-radius: 11px;
+  background: rgba(0, 0, 0, 0.18);
+}
+.worker-platforms button {
+  min-height: 34px;
+  padding: 6px 13px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
 }
 .worker-platforms button[aria-pressed="true"] {
-  background: var(--accent);
-  color: white;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+.worker-platforms button:hover,
+.worker-command-footer button:hover {
+  color: var(--text);
+}
+.worker-command-copy {
+  padding: 6px;
+  border: 1px solid var(--surface-border-subtle);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.22);
 }
 .worker-command-copy pre {
   flex: 1;
   min-width: 0;
   overflow-x: auto;
-  padding: 14px;
+  padding: 8px;
   margin: 0;
-  border-radius: 8px;
-  background: var(--surface-fill);
+  font-size: 12px;
+  scrollbar-width: thin;
+}
+.worker-command-copy .button {
+  flex-shrink: 0;
+  min-width: 74px;
+  min-height: 42px;
+  padding: 9px 14px;
+  border-radius: 9px;
+}
+.worker-command-footer small {
+  color: var(--muted);
   font-size: 12px;
 }
-.worker-command-copy button {
-  flex-shrink: 0;
-}
-.worker-command-footer small,
-.worker-command > small {
+.worker-command-footer button {
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
   color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
 }
-@media (max-width: 600px) {
-  .worker-command-heading,
-  .worker-command-footer {
+.worker-command-footer button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.worker-devices {
+  padding-top: 16px;
+  border-top: 1px solid var(--surface-border-subtle);
+}
+.worker-devices h3 {
+  font-size: 14px;
+}
+.worker-empty {
+  padding: 8px 0;
+}
+@media (max-width: 800px) {
+  .settings-hosted-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .worker-device {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .worker-device > .button {
+    grid-column: 2;
+  }
+}
+@media (max-width: 380px) {
+  .worker-command-heading {
     align-items: flex-start;
     flex-direction: column;
   }
