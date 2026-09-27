@@ -1,0 +1,39 @@
+{
+  "checkpoint": "V2-09",
+  "verified_at": "2026-09-27T00:19:06.517543+00:00",
+  "production": {
+    "source": "e7419e7e14a51b2926d7ea810c80e73b55b33d38",
+    "cloudflare_version_id": "39dae23c-1012-4ac4-aaef-c74d008ed798",
+    "traffic_percent": 100,
+    "secret_bindings": 25,
+    "query_redaction": true,
+    "plain_vars_preserved": true
+  },
+  "changes": [
+    "Compact Account and Computers cards; concise install instruction; hidden privacy/manual details.",
+    "Styled OS segmented buttons and primary Copy button.",
+    "Real command wraps without changing copied bytes; no placeholder account or command in production."
+  ],
+  "validation": {
+    "focused_ui_tests_passed": 7,
+    "web_typecheck": true,
+    "changed_tsx_lint": true,
+    "build_firewall": true,
+    "chrome_desktop_preview": true,
+    "chrome_390px_frame_preview": true,
+    "live_actual_account_and_command": true,
+    "live_command_not_clipped": true,
+    "live_mac_copy_exact": true,
+    "live_windows_copy_exact": true,
+    "live_refresh_changes_command": true,
+    "live_os_switch_resets_copy": true,
+    "manual_both_downloads_present": true
+  },
+  "worker_release": "0.1.44 unchanged",
+  "remaining_gates": [
+    "Native Windows terminal installer execution remains unverified; UI checks do not replace installation qualification."
+  ],
+  "provider_generation_calls": 0,
+  "paid_compute": "None activated; global inventory not queried.",
+  "preserved_work": "User node-fair-admission fixture seed and unpublished progress redesign unchanged."
+}

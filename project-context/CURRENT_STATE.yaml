@@ -1,4 +1,16 @@
 schema_version: "2.0"
+settings_ui_2026_09_27:
+  checkpoint: V2-09
+  status: COMPLETE_PUBLISHED_REAL_CHROME_VERIFIED
+  production_source_commit: e7419e7e14a51b2926d7ea810c80e73b55b33d38
+  cloudflare_version_id: 39dae23c-1012-4ac4-aaef-c74d008ed798
+  scope: Compact Account/Computers cards, styled OS tabs and Copy, short install guidance, real command wrapping; manual/approval/privacy/account controls retained.
+  validation: 7 focused UI checks, typecheck, lint and build/firewall pass. Real Chrome desktop and 390px frame preview; production actual account/command, no horizontal clipping, exact clipboard for Mac and Windows, Refresh token change and both manual downloads verified.
+  release_preserved: Exact 0.1.44 worker, all plain vars except source pin, 25 secrets and query redaction preserved at 100 percent traffic.
+  remaining_gates: Native Windows installation remains unverified; UI work does not change qualification.
+  provider_spend: USD0 new generation or compute.
+  paid_compute_shutdown: No activation; global inventory not queried.
+  evidence: evidence/acceptance/VF-10-09/2026-09-27-settings-ui.json
 terminal_connection_retest_2026_09_26:
   checkpoint: V2-09
   status: COMPLETE_PUBLISHED_MAC_RETEST_WITH_WINDOWS_GATE
