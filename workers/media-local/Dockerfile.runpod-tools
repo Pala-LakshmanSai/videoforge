@@ -8,7 +8,8 @@ COPY .videoforge/cloud-media/tool-build/whisper /src/whisper
 RUN cd /src/ffmpeg && test "$(cat RELEASE)" = 8.1.2 \
     && ./configure --prefix=/opt/tools --disable-shared --enable-static \
        --disable-debug --disable-doc --disable-ffplay --enable-gpl --enable-libx264 \
-    && make -j 4 && make install
+    && make -j 4 && make install \
+    && cp /opt/tools/bin/ffmpeg /opt/tools/bin/ffprobe /opt/tools/
 RUN cmake -S /src/whisper -B /src/whisper/build -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DGGML_CUDA=OFF \
     -DGGML_METAL=OFF -DGGML_AVX2=ON -DGGML_F16C=ON -DGGML_FMA=ON \
