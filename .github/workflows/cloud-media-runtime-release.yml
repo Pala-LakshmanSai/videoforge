@@ -1,28 +1,39 @@
-name: Cloud media runtime release
+name: Cloud media runtime qualification and retained fixture
 on:
   workflow_dispatch:
     inputs:
+      operation:
+        description: Offline qualification or private retained audio fixture
+        required: true
+        type: choice
+        default: qualify
+        options: [qualify, derive-audio]
+      image_digest:
+        description: Exact already qualified private image digest for fixture preparation
+        required: false
+        type: string
       source_commit:
         description: Exact reviewed production-based source commit
         required: true
         type: string
       qualification_sha256:
         description: SHA-256 of exact retained private ASR/span/full and split Fal qualification ZIP
-        required: true
+        required: false
         type: string
       image_package:
-        description: New private GHCR package name; never an existing public package
+        description: Existing private GHCR package with explicit Actions read access
         required: true
-        default: videoforge-cloud-media-runtime
+        default: videoforge-cloud-media-runtime-private
         type: string
 permissions:
   contents: read
-  packages: write
+  packages: read
 concurrency:
   group: videoforge-cloud-media-runtime-release
   cancel-in-progress: false
 jobs:
-  qualify-and-publish:
+  qualify-runtime:
+    if: inputs.operation == 'qualify'
     # Public-repository standard runner is free; no larger runner/cache/artifact storage.
     runs-on: ubuntu-24.04
     timeout-minutes: 90
@@ -115,26 +126,71 @@ jobs:
           cp "$RUNNER_TEMP/qualified/runtime.json" .videoforge/cloud-media/build/runtime.json
           docker build --platform linux/amd64 -f workers/media-local/Dockerfile.runpod -t vf-cloud-qualified --build-arg FFMPEG_SHA256 --build-arg FFPROBE_SHA256 --build-arg WHISPER_SHA256 .
           docker run --rm --network=none --entrypoint python vf-cloud-qualified -c 'import json; assert json.load(open("/opt/videoforge/runtime.json"))["qualified"] is True'
-      - name: Publish only qualified image and independently verify private visibility
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PACKAGE: ${{ inputs.image_package }}
-          OWNER: ${{ github.repository_owner }}
+      - name: Record qualification; publication requires separate private operator authority
         run: |
           set -euo pipefail
-          image="ghcr.io/${OWNER,,}/$PACKAGE:${GITHUB_SHA}"
-          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$OWNER" --password-stdin
-          docker tag vf-cloud-qualified "$image"
-          docker push "$image"
-          gh api "users/$OWNER/packages/container/$PACKAGE" > "$RUNNER_TEMP/package.json"
-          python -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/package.json"))["visibility"]=="private"'
-          docker pull "$image"
-          image_identity="$(docker inspect --format '{{index .RepoDigests 0}}' "$image")"
-          printf 'Qualified private image: `%s`\n\n' "$image_identity" >> "$GITHUB_STEP_SUMMARY"
+          printf 'Offline qualification passed. Automatic package publication is disabled.\n\n' >> "$GITHUB_STEP_SUMMARY"
           printf 'Release configuration (no credentials or private media):\n```json\n' >> "$GITHUB_STEP_SUMMARY"
           cat "$RUNNER_TEMP/qualified/release-config.json" >> "$GITHUB_STEP_SUMMARY"
           printf '\n```\n' >> "$GITHUB_STEP_SUMMARY"
-          docker logout ghcr.io
       - name: Remove private qualification scratch
         if: always()
         run: rm -rf "$RUNNER_TEMP/qualification" "$RUNNER_TEMP/qualified"
+  derive-retained-audio:
+    if: inputs.operation == 'derive-audio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Verify exact source and private qualified image
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          IMAGE_DIGEST: ${{ inputs.image_digest }}
+          OWNER: ${{ github.repository_owner }}
+          PACKAGE: ${{ inputs.image_package }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+          [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          test "$PACKAGE" = videoforge-cloud-media-runtime-private
+          gh api "users/$OWNER/packages/container/$PACKAGE" > "$RUNNER_TEMP/private-package.json"
+          python3 -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/private-package.json"))["visibility"]=="private"'
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$OWNER" --password-stdin
+          image="ghcr.io/${OWNER,,}/$PACKAGE@$IMAGE_DIGEST"
+          docker pull "$image"
+          test "$(docker inspect --format '{{index .RepoDigests 0}}' "$image")" = "$image"
+          echo "QUALIFIED_IMAGE=$image" >> "$GITHUB_ENV"
+      - name: Read private exact fixture plan and download verified source
+        env:
+          PRIVATE_AUDIO_PLAN: ${{ secrets.VIDEOFORGE_CLOUD_DERIVED_AUDIO_PLAN }}
+          EXPECTED_IMAGE_DIGEST: ${{ inputs.image_digest }}
+        run: |
+          set -euo pipefail
+          mkdir "$RUNNER_TEMP/derived-audio"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          encoded=os.environ.pop("PRIVATE_AUDIO_PLAN")
+          plan=json.loads(encoded)
+          assert plan["expected_image_digest"]==os.environ["EXPECTED_IMAGE_DIGEST"]
+          path=Path(os.environ["RUNNER_TEMP"])/"derived-audio"/"plan.json"
+          path.write_text(encoded)
+          path.chmod(0o600)
+          PY
+          python3 workers/media-local/derive_retained_cloud_audio.py --phase download --root "$RUNNER_TEMP/derived-audio"
+      - name: Derive exact lossless audio offline using pinned qualified tools
+        run: |
+          set -euo pipefail
+          docker run --rm --network=none --user "$(id -u):$(id -g)" --entrypoint python \
+            -v "$RUNNER_TEMP/derived-audio:/fixture" \
+            -v "$GITHUB_WORKSPACE/workers/media-local/derive_retained_cloud_audio.py:/derive.py:ro" \
+            "$QUALIFIED_IMAGE" /derive.py --phase derive --root /fixture
+      - name: Wait for exact private object authority and upload once
+        run: python3 workers/media-local/derive_retained_cloud_audio.py --phase publish --root "$RUNNER_TEMP/derived-audio"
+      - name: Remove private fixture scratch and registry login
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/derived-audio"
+          docker logout ghcr.io
