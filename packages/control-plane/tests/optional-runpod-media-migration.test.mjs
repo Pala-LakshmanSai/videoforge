@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
-import { loadMigrationSources, PGliteExecutor } from "./support/pglite.mjs";
+import { PGliteExecutor } from "./support/pglite.mjs";
+import { IDS, seedLockedProjects } from "./support/fixtures.mjs";
 const source = readFileSync(new URL("../migrations/0214_optional_runpod_media.sql", import.meta.url), "utf8");
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const hash = `sha256:${"a".repeat(64)}`;
@@ -13,16 +15,74 @@ test("0214 applies against reviewed prior function preimages without replaying o
   try {
     await db.exec("CREATE EXTENSION pgcrypto");
     const executor = new PGliteExecutor(db);
-    for (const migration of (await loadMigrationSources()).filter(row => row.version < 214)) {
+    const manifest=JSON.parse(readFileSync(new URL('../migrations/manifest.json',import.meta.url),'utf8'));
+    for (const migration of manifest.migrations.filter(row => row.version < 214)) {
+      const sql=readFileSync(new URL(`../migrations/${migration.filename}`,import.meta.url),'utf8');
+      assert.equal(`sha256:${createHash('sha256').update(sql).digest('hex')}`,migration.sha256,`${migration.filename} historical checksum drifted`);
       // This grant-only migration depends on omitted deployment-owned continuation objects.
       // Their production identities are a rollout gate; they are not fabricated or replayed here.
       if (migration.version === 195) continue;
-      await executor.execute(migration.sql);
+      await executor.execute(sql);
     }
     await executor.execute(source);
     assert.equal((await db.query("SELECT count(*)::int AS n FROM cloud_media_budget_authorities")).rows[0].n, 0);
     assert.equal((await db.query("SELECT has_table_privilege('videoforge_v209_runtime_dc9612d6','cloud_media_budget_authorities','INSERT') AS allowed")).rows[0].allowed, false);
     assert.equal((await db.query("SELECT has_function_privilege('videoforge_v209_runtime_dc9612d6','videoforge_cloud_media_reserve_budget(uuid)','EXECUTE') AS allowed")).rows[0].allowed, true);
+    assert.equal((await db.query("SELECT has_column_privilege('videoforge_v209_runtime_dc9612d6','cloud_media_jobs','technical_verification_ms','UPDATE') AS allowed")).rows[0].allowed,true);
+    assert.equal((await db.query("SELECT has_column_privilege('videoforge_v209_runtime_dc9612d6','cloud_media_jobs','attempt_id','UPDATE') AS allowed")).rows[0].allowed,false);
+    // Exercise the real fair-admission function and every installed guard. No
+    // transcript/context/plan/prompts/bridge exists before the first ASR job.
+    await seedLockedProjects(executor);
+    await db.query("SELECT set_config('videoforge.account_id',$1,false)",[IDS.accountA]);
+    await db.query(`INSERT INTO projects(id,workspace_id,owner_user_id,name,normalized_name)
+      VALUES($1,$2,$3,'Cloud ASR admission proof','cloud asr admission proof')`,[id(300),IDS.workspaceA,IDS.userA]);
+    await db.query(`INSERT INTO project_revisions
+      SELECT (jsonb_populate_record(NULL::project_revisions,to_jsonb(r)||jsonb_build_object(
+        'id',$1::text,'project_id',$2::text,'media_execution_backend','RUNPOD_POD',
+        'created_at',now(),'locked_at',now()))).* FROM project_revisions r WHERE r.id=$3`,
+      [id(301),id(300),IDS.revisionA]);
+    const prefix=`tenant/${IDS.accountA}/workspace/${IDS.workspaceA}/project/${id(300)}/revision/${id(301)}/lane/input/job/${id(302)}/artifact`;
+    await db.query(`INSERT INTO hosted_cpu_job_attempts(id,account_id,workspace_id,project_id,project_revision_id,
+      kind,state,execution_backend,execution_bundle_sha256,request_sha256,job_spec_object_key,
+      job_spec_content_length,job_spec_checksum_sha256,result_object_key,image_digest,callback_token_sha256,deadline_at)
+      VALUES($1,$2,$3,$4,$5,'ASR','OUTBOXED','RUNPOD_POD',$6,$6,$7,100,$6,$8,$6,$6,now()+interval '1 hour')`,
+      [id(302),IDS.accountA,IDS.workspaceA,id(300),id(301),hash,`${prefix}/job-spec`,`${prefix}/result-document`]);
+    const admit=async()=> (await db.query(`SELECT videoforge_admit_hosted_v209_generation($1,$2,$3,$4) AS value`,
+      [IDS.accountA,IDS.workspaceA,IDS.userA,id(300)])).rows[0].value;
+    const admitted=await admit();
+    assert.equal(admitted.state,'ACTIVE');
+    assert.deepEqual(await admit(),admitted);
+    assert.equal((await db.query("SELECT count(*)::int AS n FROM provider_workload_leases WHERE state='ACTIVE'")).rows[0].n,1);
+    assert.equal((await db.query("SELECT count(*)::int AS n FROM video_runtime_states")).rows[0].n,0);
+    assert.equal((await db.query("SELECT count(*)::int AS n FROM hosted_api_generation_jobs")).rows[0].n,0);
+    // Selecting Cloud by itself grants no admission exception. Local ASR keeps
+    // the original post-prompt readiness check even while another account runs.
+    await db.query("SELECT set_config('videoforge.account_id',$1,false)",[IDS.accountB]);
+    const localPrefix=`tenant/${IDS.accountB}/workspace/${IDS.workspaceB}/project/${IDS.projectB}/revision/${IDS.revisionB}/lane/input/job/${id(303)}/artifact`;
+    await db.query(`INSERT INTO hosted_cpu_job_attempts(id,account_id,workspace_id,project_id,project_revision_id,
+      kind,state,execution_backend,execution_bundle_sha256,request_sha256,job_spec_object_key,
+      job_spec_content_length,job_spec_checksum_sha256,result_object_key,image_digest,callback_token_sha256,deadline_at)
+      VALUES($1,$2,$3,$4,$5,'ASR','OUTBOXED','PERSONAL_WORKER',$6,$6,$7,100,$6,$8,$6,$6,now()+interval '1 hour')`,
+      [id(303),IDS.accountB,IDS.workspaceB,IDS.projectB,IDS.revisionB,hash,`${localPrefix}/job-spec`,`${localPrefix}/result-document`]);
+    await assert.rejects(db.query("SELECT videoforge_admit_hosted_v209_generation($1,$2,$3,$4)",
+      [IDS.accountB,IDS.workspaceB,IDS.userB,IDS.projectB]),/prompts are not ready/);
+    await db.query(`INSERT INTO projects(id,workspace_id,owner_user_id,name,normalized_name)
+      VALUES($1,$2,$3,'Cloud with no ready ASR','cloud with no ready asr')`,[id(304),IDS.workspaceB,IDS.userB]);
+    await db.query(`INSERT INTO project_revisions
+      SELECT (jsonb_populate_record(NULL::project_revisions,to_jsonb(r)||jsonb_build_object(
+        'id',$1::text,'project_id',$2::text,'media_execution_backend','RUNPOD_POD',
+        'created_at',now(),'locked_at',now()))).* FROM project_revisions r WHERE r.id=$3`,
+      [id(305),id(304),IDS.revisionB]);
+    await assert.rejects(db.query("SELECT videoforge_admit_hosted_v209_generation($1,$2,$3,$4)",
+      [IDS.accountB,IDS.workspaceB,IDS.userB,id(304)]),/prompts are not ready/);
+    assert.equal((await db.query("SELECT count(*)::int AS n FROM provider_workload_leases WHERE state='ACTIVE'")).rows[0].n,1);
+    await db.query("SELECT set_config('videoforge.account_id',$1,false)",[IDS.accountA]);
+    // Once a bridge exists, invoke the exact original runtime preparation and
+    // fail closed on its real geometry/task validation instead of skipping it.
+    const admissionDefinition=(await db.query("SELECT pg_get_functiondef('videoforge_admit_hosted_v209_generation_after_reclaim(uuid,uuid,uuid,uuid)'::regprocedure) AS value")).rows[0].value;
+    assert.equal((admissionDefinition.match(/PERFORM public.videoforge_prepare_hosted_v209_runtime/g)||[]).length,3);
+    assert.equal((admissionDefinition.match(/AND NOT EXISTS\(SELECT 1 FROM public.hosted_canonical_timing_bridges bridge/g)||[]).length,3);
+
   } finally { await db.close(); }
 });
 
@@ -31,6 +91,7 @@ test("durable approval debit is idempotent, finite, release-bound and never auto
   try {
     await db.exec(`CREATE ROLE videoforge_v209_runtime_dc9612d6;
       CREATE FUNCTION videoforge_current_account_id() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT '${id(1)}'::uuid $$;
+      CREATE TABLE projects(id uuid PRIMARY KEY,account_id uuid);
       ${source.slice(source.indexOf("CREATE TABLE cloud_media_budget_authorities"), source.indexOf("CREATE TABLE cloud_media_reservations"))}
       CREATE TABLE cloud_media_reservations(id uuid PRIMARY KEY,account_id uuid,project_id uuid,budget_authority_id uuid,
         state text,image text,source_sha256 text,runtime_sha256 text,budget_usd numeric,max_hourly_usd numeric,rental_seconds int);
@@ -52,6 +113,40 @@ test("durable approval debit is idempotent, finite, release-bound and never auto
     await assert.rejects(reserve(10, id(1), `repo@${hash}`, id(99)), /approved finite budget unavailable/);
     assert.equal((await db.query("SELECT count(*)::int AS n FROM cloud_media_budget_debits")).rows[0].n, 1);
   } finally { await db.close(); }
+});
+
+test("qualification scope is a tenant-bound bool and rejects unapproved, foreign, disabled and expired projects", async () => {
+  const db=new PGlite();
+  try {
+    await db.exec(`CREATE ROLE videoforge_v209_runtime_dc9612d6;
+      CREATE TABLE projects(id uuid PRIMARY KEY,account_id uuid);
+      CREATE FUNCTION videoforge_current_account_id() RETURNS uuid LANGUAGE sql STABLE
+        AS $$ SELECT nullif(current_setting('videoforge.account_id',true),'')::uuid $$;
+      ${source.slice(source.indexOf("CREATE TABLE cloud_media_budget_authorities"),source.indexOf("CREATE TABLE cloud_media_reservations"))}`);
+    await db.query("INSERT INTO projects VALUES($1,$2),($3,$2),($4,$5)",[id(801),id(810),id(802),id(803),id(811)]);
+    await db.query(`INSERT INTO cloud_media_budget_authorities(id,allowed_account_ids,allowed_project_ids,
+      total_cap_usd,max_reservation_usd,max_hourly_usd,max_rental_seconds,image,source_sha256,runtime_sha256,expires_at)
+      VALUES($1,ARRAY[$2::uuid,$3::uuid],ARRAY[$4::uuid],3,1.6,.8,7200,$5,$6,$6,now()+interval '1 hour')`,
+      [id(800),id(810),id(811),id(801),`repo@${hash}`,hash]);
+    assert.equal((await db.query("SELECT has_table_privilege('videoforge_v209_runtime_dc9612d6','cloud_media_budget_authorities','SELECT') AS allowed")).rows[0].allowed,false);
+    assert.equal((await db.query("SELECT has_function_privilege('public','videoforge_cloud_media_qualification_scope(uuid,uuid)','EXECUTE') AS allowed")).rows[0].allowed,false);
+    const scoped=async(account,project,authority=id(800))=>{
+      await db.query("SELECT set_config('videoforge.account_id',$1,false)",[account]);
+      await db.exec("SET ROLE videoforge_v209_runtime_dc9612d6");
+      try{return (await db.query("SELECT videoforge_cloud_media_qualification_scope($1,$2) AS allowed",[authority,project])).rows[0].allowed;}
+      finally{await db.exec("RESET ROLE");}
+    };
+    assert.equal(await scoped(id(810),id(801)),true);
+    assert.equal(await scoped(id(810),id(802)),false);
+    assert.equal(await scoped(id(811),id(801)),false);
+    assert.equal(await scoped(id(810),id(803)),false);
+    assert.equal(await scoped(id(810),id(801),id(899)),false);
+    assert.equal(await scoped(id(899),id(801)),false);
+    await db.query("UPDATE cloud_media_budget_authorities SET enabled=false WHERE id=$1",[id(800)]);
+    assert.equal(await scoped(id(810),id(801)),false);
+    await db.query("UPDATE cloud_media_budget_authorities SET enabled=true,expires_at=now()-interval '1 second' WHERE id=$1",[id(800)]);
+    assert.equal(await scoped(id(810),id(801)),false);
+  } finally{await db.close();}
 });
 
 test("immutable backends inherit on successor revisions and require exact Cloud render recovery proof", async () => {

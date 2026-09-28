@@ -1,6 +1,7 @@
 import type { SqlExecutor, SqlPrimitive } from "@videoforge/control-plane";
 import type { HostedExecutionContext } from "./auth";
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
+import { cloudMediaQualificationOnly } from "./cloud-media-qualification";
 import { deriveCallbackToken, deriveScopedToken, sha256, sha256Bytes } from "./crypto";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { canonicalJson } from "./submission";
@@ -130,11 +131,31 @@ export async function cleanupCloudReservation(client: RunPodMediaClient, config:
     await client.request("DELETE", `/pods/${encodeURIComponent(pod.id)}`);
   }
   if ((await client.inventory()).some(p => p.name === r.pod_name)) return false;
-  await tenant(config,String(r.account_id), async sql => {
-    await query(sql, `UPDATE cloud_media_reservations SET state='CLEAN',cleanup_verified_at=now(),updated_at=now()
-      WHERE id=$1 AND state='STOPPING' AND leased_attempt_id=$2 AND fence_id=$3`,[r.id,r.leased_attempt_id,r.fence_id]);
-  });
-  return true;
+  // A killed process cannot abort its parts. Stop compute first, then clean only this
+  // reservation's known unfinished uploads; completed objects are never deleted.
+  const uploads=await tenant(config,String(r.account_id),async sql=>(await query(sql, `SELECT u.*
+    FROM cloud_media_multipart_uploads u JOIN hosted_cpu_upload_authorities a ON a.id=u.authority_id
+    JOIN cloud_media_jobs j ON j.attempt_id=a.attempt_id AND j.reservation_id=u.reservation_id
+    JOIN cloud_media_reservations r ON r.id=u.reservation_id
+    WHERE r.id=$1 AND r.state='STOPPING' AND r.leased_attempt_id=$2 AND r.fence_id=$3
+      AND u.state NOT IN ('VERIFIED','ABORTED')`,[r.id,r.leased_attempt_id,r.fence_id])).rows);
+  const signer=new HostedR2Signer(config.r2);
+  for(const upload of uploads) {
+    const ids=upload.upload_id ? [String(upload.upload_id)] : await signer.listMultipartUploadsExact(String(upload.object_key));
+    // An empty read cannot identify a lost initiation. Keep the uncertainty durable.
+    if(!ids.length) return false;
+    for(const uploadId of ids) {
+      const response=await signer.multipartRequest("DELETE",String(upload.object_key),{uploadId});
+      if(!response.ok && response.status!==404) return false;
+    }
+    if((await signer.listMultipartUploadsExact(String(upload.object_key))).length) return false;
+    await tenant(config,String(r.account_id),async sql=>{await query(sql,
+      "UPDATE cloud_media_multipart_uploads SET state='ABORTED' WHERE id=$1 AND reservation_id=$2 AND state<>'VERIFIED'",[upload.id,r.id]);});
+  }
+  return tenant(config,String(r.account_id), async sql => !!(await query(sql,
+    `UPDATE cloud_media_reservations SET state='CLEAN',cleanup_verified_at=now(),updated_at=now()
+      WHERE id=$1 AND state='STOPPING' AND leased_attempt_id=$2 AND fence_id=$3 RETURNING id`,
+    [r.id,r.leased_attempt_id,r.fence_id])).rows[0]);
 }
 
 async function settleFailedCpu(config:HostedRuntimeConfiguration,a:Row):Promise<boolean> {
@@ -184,6 +205,13 @@ export async function runCloudMediaObservation(environment: HostedRuntimeEnviron
   });
   const a = loaded.a; let r = loaded.r;
   if (!a) return {state:"FAILED"};
+  if(cloudMediaQualificationOnly(environment)) {
+    const authority=environment.VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID!;
+    if((r && r.budget_authority_id!==authority) || (!r && !await tenant(config,scope.accountId,async sql=>
+      (await query(sql,"SELECT public.videoforge_cloud_media_qualification_scope($1,$2) AS allowed",[authority,a.project_id])).rows[0]?.allowed===true))
+      )
+      return {state:"QUALIFICATION_SCOPE_REJECTED"};
+  }
   if (!r && TERMINAL.includes(String(a.state))) {
     if(a.state!=="SUCCEEDED" && !await settleFailedCpu(config,a)) return {state:"FINALIZATION_PENDING",delaySeconds:30};
     return {state:String(a.state)};
@@ -229,7 +257,8 @@ export async function runCloudMediaObservation(environment: HostedRuntimeEnviron
         const inputs = (await query(sql, `SELECT COALESCE(sum(content_length),0) AS bytes FROM media_worker_input_objects WHERE attempt_id=$1`,[a.id])).rows[0];
         const revision = typeof a.payload === "object" && a.payload ? a.payload as Row : {};
         const voiceover = revision.voiceover as Row | undefined;
-        const duration = Number(a.voiceover_duration_ms ?? voiceover?.duration_ms ?? revision.voiceover_duration_ms);
+        const duration = a.kind==="RENDER" ? await cloudRenderDuration(environment,sql,a,committed)
+          : Number(a.voiceover_duration_ms ?? voiceover?.duration_ms ?? revision.voiceover_duration_ms);
         const cloud = config.cloudMedia!; const id=crypto.randomUUID();
         const token=await deriveScopedToken(config.workflowCallbackSecret,"cloud-reservation",id);
         const inserted = await query(sql, `INSERT INTO cloud_media_reservations(id,account_id,workspace_id,project_id,project_revision_id,
@@ -384,6 +413,21 @@ async function reservationForToken(request:Request,config:HostedRuntimeConfigura
   } finally {await pool.end();}
 }
 
+/** Size render scratch from the committed timeline, including render-only fixtures/retries. */
+export async function cloudRenderDuration(environment:HostedRuntimeEnvironment,sql:SqlExecutor,a:Row,template:Row):Promise<number> {
+  const input=template.input_document as Row | undefined, ref=input?.resolved_render_manifest as Row | undefined;
+  if(!ref || input?.project_revision_id!==a.project_revision_id) throw new Error("CLOUD_MEDIA_MANIFEST_INVALID");
+  const source=(await query(sql,"SELECT * FROM media_worker_input_objects WHERE attempt_id=$1 AND uri=$2 AND checksum_sha256=$3",
+    [a.id,ref.artifact_uri,ref.sha256])).rows[0];
+  const object=source && await environment.PRIVATE_ARTIFACTS?.get(String(source.object_key));
+  if(!object || object.size!==Number(source?.content_length) || object.size>4_194_304) throw new Error("CLOUD_MEDIA_MANIFEST_INVALID");
+  const bytes=await object.arrayBuffer();
+  if(await sha256Bytes(bytes)!==ref.sha256) throw new Error("CLOUD_MEDIA_MANIFEST_INVALID");
+  const {value:document}=await validateAndHashHostedContractDocument("resolvedRenderManifest",JSON.parse(new TextDecoder().decode(bytes)));
+  if(document.project_revision_id!==a.project_revision_id) throw new Error("CLOUD_MEDIA_MANIFEST_INVALID");
+  return Math.ceil(document.total_frames*1000*document.output.fps_den/document.output.fps_num);
+}
+
 async function cloudTemplate(environment:HostedRuntimeEnvironment,a:Row):Promise<Row> {
   const object=await environment.PRIVATE_ARTIFACTS?.get(String(a.job_spec_object_key));
   if(!object || object.size!==Number(a.job_spec_content_length) || object.size>1_048_576)
@@ -498,10 +542,27 @@ export async function handleCloudMediaRequest(request:Request,environment:Hosted
   const active=ACTIVE.includes(String(r.state)) && r.verified_at && r.attempt_state==="RUNNING" && Date.parse(String(r.deadline_at))>Date.now();
   if(action==="heartbeat") {
     const phase=({DOWNLOADING_INPUTS:"DOWNLOADING",RENDERING:"RENDERING",CHECKING_VIDEO:"CHECKING",SAVING:"SAVING"} as Record<string,string>)[String(body.phase)];
-    if(active) await tenant(config,String(r.account_id),async sql=>{await query(sql, `UPDATE cloud_media_reservations SET
-      state=COALESCE($2,state),last_heartbeat_at=now(),updated_at=now() WHERE id=$1 AND leased_attempt_id=$3 AND state IN ('STARTING','DOWNLOADING','RENDERING','CHECKING','SAVING')
-      AND EXISTS(SELECT 1 FROM hosted_cpu_job_attempts a WHERE a.id=$3 AND a.state='RUNNING')`,[r.id,phase ?? null,r.leased_attempt_id]);});
-    return Response.json({schema_version:"videoforge-personal-worker-lease-heartbeat/v1",cancel_requested:!active,lease_expires_in_seconds:300});
+    for(const [key,expected] of [["technical_verification_ms","CHECKING"],["artifact_verification_ms","SAVING"]]) {
+      if(body[key!]!==undefined && (phase!==expected || !Number.isSafeInteger(body[key!]) || Number(body[key!])<0 || Number(body[key!])>14_400_000))
+        return new Response(null,{status:400});
+    }
+    const accepted=active ? await tenant(config,String(r.account_id),async sql=>{
+      const changed=await query(sql, `UPDATE cloud_media_reservations SET
+      state=CASE WHEN array_position(ARRAY['STARTING','DOWNLOADING','RENDERING','CHECKING','SAVING'],state)
+        <=array_position(ARRAY['STARTING','DOWNLOADING','RENDERING','CHECKING','SAVING'],$2::text) THEN $2 ELSE state END,
+      last_heartbeat_at=now(),updated_at=now() WHERE id=$1 AND leased_attempt_id=$3 AND state IN ('STARTING','DOWNLOADING','RENDERING','CHECKING','SAVING')
+      AND fence_id=$4
+      AND EXISTS(SELECT 1 FROM hosted_cpu_job_attempts a WHERE a.id=$3 AND a.state='RUNNING') RETURNING id`,[r.id,phase ?? null,r.leased_attempt_id,r.fence_id]);
+      if(changed.rows[0]) await query(sql, `UPDATE cloud_media_jobs SET
+        downloading_started_at=CASE WHEN $3='DOWNLOADING' THEN COALESCE(downloading_started_at,now()) ELSE downloading_started_at END,
+        rendering_started_at=CASE WHEN $3='RENDERING' THEN COALESCE(rendering_started_at,now()) ELSE rendering_started_at END,
+        checking_started_at=CASE WHEN $3='CHECKING' THEN COALESCE(checking_started_at,now()) ELSE checking_started_at END,
+        saving_started_at=CASE WHEN $3='SAVING' THEN COALESCE(saving_started_at,now()) ELSE saving_started_at END,
+        technical_verification_ms=COALESCE(technical_verification_ms,$4),artifact_verification_ms=COALESCE(artifact_verification_ms,$5)
+        WHERE reservation_id=$1 AND attempt_id=$2`,[r.id,r.leased_attempt_id,phase ?? null,body.technical_verification_ms ?? null,body.artifact_verification_ms ?? null]);
+      return !!changed.rows[0];
+    }) : false;
+    return Response.json({schema_version:"videoforge-personal-worker-lease-heartbeat/v1",cancel_requested:!accepted,lease_expires_in_seconds:300});
   }
   if(action==="multipart/abort") return cloudMultipart("abort",body,r,environment,config);
   if(!active) return Response.json({error:{code:"CLOUD_MEDIA_LEASE_STALE"}},{status:409});
@@ -666,10 +727,18 @@ async function cloudComplete(body:Row,r:Row,environment:HostedRuntimeEnvironment
 
 /** External safety sweep; only exact reservation ownership is eligible for cleanup. */
 export async function reconcileCloudMediaReservations(environment:HostedRuntimeEnvironment):Promise<number> {
+  const qualificationOnly=cloudMediaQualificationOnly(environment);
   const {hostedRuntimeConfiguration}=await import("./configuration"); const config=hostedRuntimeConfiguration(environment);
   const pool=createNeonPool(config.neon.databaseUrl);
   try {const rows=(await pool.query("SELECT * FROM videoforge_cloud_media_reconciliation_scope()")).rows;
-    for(const row of rows) await runCloudMediaObservation(environment,config,{attemptId:String(row.attempt_id),accountId:String(row.account_id),workspaceId:String(row.workspace_id)});
-    return rows.length;
+    let observed=0;
+    for(const row of rows) {
+      if(qualificationOnly && !await tenant(config,String(row.account_id),async sql=>(await query(sql,
+        `SELECT r.id FROM cloud_media_reservations r JOIN cloud_media_jobs j ON j.reservation_id=r.id
+          WHERE j.attempt_id=$1 AND r.budget_authority_id=$2`,[row.attempt_id,environment.VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID])).rows[0])) continue;
+      await runCloudMediaObservation(environment,config,{attemptId:String(row.attempt_id),accountId:String(row.account_id),workspaceId:String(row.workspace_id)});
+      observed++;
+    }
+    return observed;
   } finally {await pool.end();}
 }

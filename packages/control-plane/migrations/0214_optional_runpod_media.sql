@@ -23,6 +23,21 @@ CREATE TABLE cloud_media_budget_authorities (
  created_at timestamptz NOT NULL DEFAULT now()
 );
 REVOKE ALL ON cloud_media_budget_authorities FROM PUBLIC;
+-- Staging qualification may observe only the approved owner's exact projects.
+-- The runtime receives a tenant-bound boolean, never the approval row or its scopes.
+CREATE FUNCTION public.videoforge_cloud_media_qualification_scope(authority_id uuid, project_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,pg_catalog AS $$
+ SELECT EXISTS(
+   SELECT 1 FROM public.cloud_media_budget_authorities a JOIN public.projects p
+     ON p.id=$2 AND p.account_id=public.videoforge_current_account_id()
+   WHERE a.id=$1 AND a.enabled AND a.expires_at>now()
+     AND public.videoforge_current_account_id()=ANY(a.allowed_account_ids)
+     AND p.id=ANY(a.allowed_project_ids)
+ );
+$$;
+REVOKE ALL ON FUNCTION public.videoforge_cloud_media_qualification_scope(uuid,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.videoforge_cloud_media_qualification_scope(uuid,uuid)
+ TO videoforge_v209_runtime_dc9612d6;
 CREATE TABLE cloud_media_reservations (
   id uuid PRIMARY KEY, account_id uuid NOT NULL, workspace_id uuid NOT NULL,
   budget_authority_id uuid NOT NULL REFERENCES cloud_media_budget_authorities(id),
@@ -170,7 +185,7 @@ CREATE TRIGGER cloud_media_multipart_write_guard BEFORE INSERT OR UPDATE ON clou
 
 -- Strict function preimages: a changed installed definition stops this migration.
 DO $migration$
-DECLARE definition text;
+DECLARE definition text; runtime_call text; runtime_indent integer;
 BEGIN
  SELECT pg_get_functiondef('public.videoforge_finalize_hosted_v209_span_audio(uuid,uuid,uuid,jsonb)'::regprocedure) INTO definition;
  IF strpos(definition,$old$attempt.execution_backend<>'PERSONAL_WORKER'$old$)=0 THEN
@@ -245,6 +260,31 @@ $old$,$new$  IF NOT EXISTS (
           AND task.state<>'COMPLETE'
      )) THEN
 $new$);
+ -- Admission owns the VIDEO lease before Cloud ASR. A new ASR has no canonical
+ -- timing bridge yet; preparing image/avatar runtime at this point would fail
+ -- and roll back admission. All ordinary and bridge-present calls stay exact.
+ IF (length(definition)-length(replace(definition,'PERFORM public.videoforge_prepare_hosted_v209_runtime(','')))
+   /length('PERFORM public.videoforge_prepare_hosted_v209_runtime(')<>3 THEN
+  RAISE EXCEPTION 'cloud early runtime admission call count drifted'; END IF;
+ FOR runtime_indent IN 4..8 BY 2 LOOP
+  runtime_call:='PERFORM public.videoforge_prepare_hosted_v209_runtime('||E'\n'||
+    repeat(' ',runtime_indent)||'supplied_account_id,supplied_workspace_id,supplied_user_id,supplied_project_id,request.id);';
+  IF strpos(definition,runtime_call)=0 THEN
+   RAISE EXCEPTION 'cloud early runtime admission preimage drifted'; END IF;
+  definition:=replace(definition,runtime_call,$guard$IF NOT (
+    EXISTS(SELECT 1 FROM public.project_revisions r
+      JOIN public.hosted_cpu_job_attempts a ON a.project_revision_id=r.id
+        AND a.account_id=r.account_id AND a.workspace_id=r.workspace_id
+      WHERE r.account_id=supplied_account_id AND r.workspace_id=supplied_workspace_id
+        AND r.project_id=supplied_project_id AND r.id=request.project_revision_id
+        AND r.media_execution_backend='RUNPOD_POD' AND a.execution_backend='RUNPOD_POD'
+        AND a.kind='ASR' AND a.state IN ('OUTBOXED','RUNNING','SUCCEEDED') AND a.deadline_at>db_now)
+    AND NOT EXISTS(SELECT 1 FROM public.hosted_canonical_timing_bridges bridge
+      WHERE bridge.account_id=supplied_account_id AND bridge.workspace_id=supplied_workspace_id
+        AND bridge.project_id=supplied_project_id AND bridge.project_revision_id=request.project_revision_id)
+   ) THEN
+$guard$||runtime_call||E'\n END IF;');
+ END LOOP;
  EXECUTE definition;
 END;
 $migration$;
@@ -283,6 +323,10 @@ GRANT EXECUTE ON FUNCTION public.videoforge_cloud_media_renew_admission(uuid) TO
 CREATE TABLE cloud_media_jobs (
  account_id uuid NOT NULL,workspace_id uuid NOT NULL,reservation_id uuid NOT NULL,attempt_id uuid NOT NULL UNIQUE,
  claimed_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(reservation_id,attempt_id),
+ downloading_started_at timestamptz,rendering_started_at timestamptz,
+ checking_started_at timestamptz,saving_started_at timestamptz,
+ technical_verification_ms integer CHECK(technical_verification_ms BETWEEN 0 AND 14400000),
+ artifact_verification_ms integer CHECK(artifact_verification_ms BETWEEN 0 AND 14400000),
  FOREIGN KEY(account_id,workspace_id,reservation_id) REFERENCES cloud_media_reservations(account_id,workspace_id,id),
  FOREIGN KEY(account_id,workspace_id,attempt_id) REFERENCES hosted_cpu_job_attempts(account_id,workspace_id,id)
 );
@@ -293,6 +337,8 @@ CREATE POLICY cloud_media_jobs_tenant ON cloud_media_jobs USING(account_id=publi
 CREATE TRIGGER cloud_media_jobs_write_guard BEFORE INSERT OR UPDATE ON cloud_media_jobs
  FOR EACH ROW EXECUTE FUNCTION public.videoforge_assert_tenant_write();
 GRANT SELECT,INSERT ON cloud_media_jobs TO videoforge_v209_runtime_dc9612d6;
+GRANT UPDATE(downloading_started_at,rendering_started_at,checking_started_at,saving_started_at,
+ technical_verification_ms,artifact_verification_ms) ON cloud_media_jobs TO videoforge_v209_runtime_dc9612d6;
 
 -- Explicit Cloud recovery reuses accepted assets and the immutable render manifest.
 -- No provider calls, paid-work replay, or accepted output replacement.

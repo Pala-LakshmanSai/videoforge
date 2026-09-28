@@ -314,6 +314,7 @@ export async function runHostedContinuation(
   target?: HostedContinuationTarget,
   onPromptResponse?: (response: Response) => Promise<void>,
 ): Promise<string[]> {
+  if((await import("./cloud-media-qualification")).cloudMediaQualificationOnly(environment)) return [];
   console.info("hosted_continuation_phase", { phase: "configuration", target: target?.step ?? null });
   const config: HostedRuntimeConfiguration = await resolveContinuationConfiguration(environment);
   console.info("hosted_continuation_phase", { phase: "configuration_ready" });

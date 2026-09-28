@@ -101,6 +101,22 @@ beforeEach(() => {
 });
 
 describe("hosted continuation Workflow loop", () => {
+  it("keeps staging qualification provider-inert for both targeted handoffs and periodic ticks",async()=>{
+    const runner=new HostedContinuationWorkflow({} as never,{VIDEOFORGE_ENVIRONMENT:"staging",
+      VIDEOFORGE_CLOUD_MEDIA_QUALIFICATION_ONLY:"true",VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID:"11111111-1111-4111-8111-111111111111"} as never);
+    expect(await runner.run(event({target:{accountId:"bbbbbbbb-bbbb-bbbb-7bbb-bbbbbbbbbbbb",projectId:"11111111-1111-4111-8111-111111111111",
+      revisionId:"eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",step:"context"}}),recordingStep([]).step as unknown as WorkflowStep))
+      .toEqual({state:"QUALIFICATION_PROVIDER_INERT"});
+    await runner.run(event({reason:"cloud-media-qualification"}),recordingStep([]).step as unknown as WorkflowStep);
+    expect(collaborators.reconcileCloudMediaReservations).toHaveBeenCalledTimes(HOSTED_CONTINUATION_ITERATIONS);
+    expect(collaborators.runHostedContinuation).not.toHaveBeenCalled();expect(collaborators.ensureHostedPairObservers).not.toHaveBeenCalled();
+  });
+  it("rejects qualification mode in production before any dispatch",async()=>{
+    const runner=new HostedContinuationWorkflow({} as never,{...environment,VIDEOFORGE_CLOUD_MEDIA_QUALIFICATION_ONLY:"true",
+      VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID:"11111111-1111-4111-8111-111111111111"} as never);
+    await expect(runner.run(event({}),recordingStep([]).step as unknown as WorkflowStep)).rejects.toThrow("CLOUD_MEDIA_QUALIFICATION_SCOPE_INVALID");
+    expect(collaborators.reconcileCloudMediaReservations).not.toHaveBeenCalled();expect(collaborators.runHostedContinuation).not.toHaveBeenCalled();
+  });
   it("retains an independent cleanup observer beyond its bounded window and adopts a lost start acknowledgement", async () => {
     collaborators.reconcileCloudMediaReservations.mockResolvedValue(1);
     const create = vi.fn().mockResolvedValueOnce({ id: "accepted" }).mockRejectedValueOnce(new Error("lost acknowledgement"));

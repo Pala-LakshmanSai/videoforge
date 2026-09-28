@@ -9,7 +9,7 @@ import {
   HOSTED_PAIR_REQUIRED_MIGRATIONS,
   type HostedPairProductionGateInput,
 } from "./hosted-pair-production-composition";
-import { resolveContinuationConfiguration } from "./stage-continuation-sweep";
+import { resolveContinuationConfiguration, runHostedContinuation } from "./stage-continuation-sweep";
 
 // The sweep imports ./app dynamically, exactly as the production Worker does. Mocking it here keeps
 // the test on the wire that matters: which database seam the sweep resolves its configuration
@@ -22,6 +22,10 @@ vi.mock("./app", () => ({
 
 const sha = (label: string): Sha256 => canonicalSha256({ label });
 const SOURCE_COMMIT = "a".repeat(40);
+it("keeps staging qualification cron and direct continuation inert before configuration or database access",async()=>{
+  expect(await runHostedContinuation({VIDEOFORGE_ENVIRONMENT:"staging",VIDEOFORGE_CLOUD_MEDIA_QUALIFICATION_ONLY:"true",
+    VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID:"11111111-1111-4111-8111-111111111111"},{waitUntil(){}})).toEqual([]);
+});
 const NOW_MS = Date.now();
 const DATABASE_NOW = new Date(NOW_MS - 60_000).toISOString();
 const EXPIRES = new Date(NOW_MS + 3 * 60_000).toISOString();

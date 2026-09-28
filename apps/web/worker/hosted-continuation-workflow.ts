@@ -125,7 +125,9 @@ export class HostedContinuationWorkflow extends WorkflowEntrypoint<
     step: WorkflowStep,
   ): Promise<unknown> {
     const params = continuationParameters(event.payload);
+    const qualificationOnly=(await import("../src/server/hosted/cloud-media-qualification")).cloudMediaQualificationOnly(this.env);
     if (params.reason === "invalid-stage-handoff") return { state: "INVALID_TARGET" };
+    if(qualificationOnly && params.target) return {state:"QUALIFICATION_PROVIDER_INERT"};
     if (params.target) {
       if (params.target.step !== "prompts") {
         return step.do(`handoff ${params.target.step}`, async () => {
@@ -198,6 +200,7 @@ export class HostedContinuationWorkflow extends WorkflowEntrypoint<
         try {
           const { reconcileCloudMediaReservations } = await import("../src/server/hosted/runpod-media");
           const cloud = await reconcileCloudMediaReservations(this.env);
+          if(qualificationOnly) return {dispatched:0,observers:0,cloud:cloud ?? 0,error:null};
           const dispatched = await runHostedContinuation(this.env, context);
           const observers = await ensureHostedPairObservers(this.env, context);
           return { dispatched: dispatched.length, observers, cloud: cloud ?? 0, error: null };

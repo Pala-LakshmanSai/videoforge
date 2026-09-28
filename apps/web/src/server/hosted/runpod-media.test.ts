@@ -3,15 +3,16 @@ import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./con
 import { sha256 } from "./crypto";
 import asrResultFixture from "../../../../../packages/contracts/generated/fixtures/asr_job_result.valid.json";
 import renderResultFixture from "../../../../../packages/contracts/generated/fixtures/render_job_result.valid.json";
+import renderManifestFixture from "../../../../../packages/contracts/generated/fixtures/resolved_render_manifest.valid.json";
 import { MULTIPART_PART_BYTES } from "./runpod-media-policy";
 
-const fixture = vi.hoisted(() => ({ query: vi.fn(), transport: vi.fn(), checksum: vi.fn(), multipart: vi.fn(), part: vi.fn(), sign: vi.fn() }));
+const fixture = vi.hoisted(() => ({ query: vi.fn(), transport: vi.fn(), checksum: vi.fn(), multipart: vi.fn(), part: vi.fn(), sign: vi.fn(), listMultipart:vi.fn() }));
 vi.mock("./neon", () => ({ createNeonPool: () => ({ query: fixture.query, end: async () => {} }),
   createNeonExecutor: () => ({ transaction: async (run: (sql: unknown) => unknown) => run({ query: fixture.query }) }) }));
 vi.mock("./r2-checksum", () => ({ verifyHostedObjectChecksum: fixture.checksum }));
-vi.mock("./r2", () => ({ HostedR2Signer: class { multipartRequest = fixture.multipart; signMultipartPart = fixture.part; sign = fixture.sign; } }));
+vi.mock("./r2", () => ({ HostedR2Signer: class { multipartRequest = fixture.multipart; signMultipartPart = fixture.part; sign = fixture.sign; listMultipartUploadsExact=fixture.listMultipart; } }));
 vi.mock("./hosted-v209-queue-admission",()=>({ensureHostedV209GenerationAdmission:async()=>({state:"ACTIVE"})}));
-import { handleCloudMediaRequest, RunPodMediaClient, runCloudMediaObservation, verifyCloudPlacement } from "./runpod-media";
+import { cleanupCloudReservation, cloudRenderDuration, handleCloudMediaRequest, RunPodMediaClient, runCloudMediaObservation, verifyCloudPlacement } from "./runpod-media";
 
 type Row = Record<string, unknown>;
 const accountId = "11111111-1111-4111-8111-111111111111", workspaceId = "22222222-2222-4222-8222-222222222222";
@@ -21,9 +22,41 @@ const scope = { accountId, workspaceId, attemptId };
 const environment = { RUNPOD_API_KEY: "fixture-key", PRIVATE_ARTIFACTS: { head: vi.fn(),get: vi.fn() } } as unknown as HostedRuntimeEnvironment;
 const config = { publicOrigin: "https://videoforge.example", neon: { databaseUrl: "fixture" }, workflowCallbackSecret: "fixture-secret",
   cloudMedia: { apiKey: "fixture-key", image: `ghcr.io/example/media@${hash}`, sourceSha256: hash,runtimeSha256:hash,tooling:{ffmpeg_version:"8.1.2"} } } as unknown as HostedRuntimeConfiguration;
-let attempt: Row, reservation: Row, upload: Row, tokenHash: string, raceCancel = false, rotateBeforeStop = false, generationActive = false, cpuSettled = true, noReservation = false;
+let attempt: Row, reservation: Row, upload: Row, measuredJob:Row, tokenHash: string, raceCancel = false, rotateBeforeStop = false, generationActive = false, cpuSettled = true, noReservation = false, qualificationAllowed=true;
 let resultBytes:Uint8Array, templateBytes:Uint8Array;
 const future = () => new Date(Date.now() + 3_600_000).toISOString();
+
+it.each(["valid","missing-commit","corrupt","wrong-revision"])("sizes render scratch only from an exact committed manifest: %s",async mode=>{
+  const doc=structuredClone(renderManifestFixture),bytes=new TextEncoder().encode(JSON.stringify(doc)),checksum=await sha256(JSON.stringify(doc));
+  const localAttempt={id:attemptId,project_revision_id:doc.project_revision_id,voiceover_duration_ms:159216};
+  const template={input_document:{project_revision_id:doc.project_revision_id,resolved_render_manifest:{artifact_uri:"manifest-uri",sha256:checksum}}};
+  fixture.query.mockResolvedValue({rows:mode==="missing-commit"?[]:[{object_key:"exact-manifest",content_length:bytes.byteLength}],affectedRows:0});
+  const sql={execute:vi.fn(),query:fixture.query};
+  const bucket={PRIVATE_ARTIFACTS:{get:vi.fn(async()=>({size:bytes.byteLength,arrayBuffer:async()=>mode==="corrupt"?new Uint8Array(bytes.byteLength).buffer:bytes.buffer}))}} as unknown as HostedRuntimeEnvironment;
+  if(mode==="wrong-revision") localAttempt.project_revision_id="foreign-revision";
+  if(mode==="valid") expect(await cloudRenderDuration(bucket,sql,localAttempt,template)).toBe(12000);
+  else await expect(cloudRenderDuration(bucket,sql,localAttempt,template)).rejects.toThrow("CLOUD_MEDIA_MANIFEST_INVALID");
+  expect(fixture.transport).not.toHaveBeenCalled();
+});
+
+it.each(["foreign-reservation","foreign-project"])("rejects %s before staging qualification can mutate or observe provider state",async reason=>{
+  Object.assign(environment,{VIDEOFORGE_CLOUD_MEDIA_QUALIFICATION_ONLY:"true",VIDEOFORGE_ENVIRONMENT:"staging",VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID:reservationId});
+  reservation.budget_authority_id=reason==="foreign-reservation"?attemptId:reservationId;
+  noReservation=reason==="foreign-project";
+  qualificationAllowed=reason!=="foreign-project";
+  expect(await runCloudMediaObservation(environment,config,scope)).toEqual({state:"QUALIFICATION_SCOPE_REJECTED"});
+  expect(fixture.transport).not.toHaveBeenCalled();
+  expect(fixture.query.mock.calls.some(([sql])=>/INSERT|UPDATE|DELETE|renew_admission|reserve_budget/u.test(String(sql)))).toBe(false);
+});
+it("continues exact owned cleanup after its qualification approval expires",async()=>{
+  Object.assign(environment,{VIDEOFORGE_CLOUD_MEDIA_QUALIFICATION_ONLY:"true",VIDEOFORGE_ENVIRONMENT:"staging",VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID:reservationId});
+  reservation.budget_authority_id=reservationId;qualificationAllowed=false;
+  attempt.state="CANCEL_REQUESTED";reservation.launch_outcome=null;
+  expect((await runCloudMediaObservation(environment,config,scope)).state).toBe("CANCELLED");
+  expect(reservation.state).toBe("CLEAN");
+  expect(fixture.query.mock.calls.some(([sql])=>String(sql).includes("qualification_scope"))).toBe(false);
+  expect(fixture.transport).not.toHaveBeenCalled();
+});
 function placement(changes: Row = {}): Row {
   return { id: "owned-pod", name: reservation.pod_name, image: reservation.image, cloud: "SECURE", disk: 100,
     cost: .4, gpu: { id: "NVIDIA GeForce RTX 4090", count: 1, vcpuCount: 16, memory: 64 }, ...changes };
@@ -54,6 +87,8 @@ async function setResultDocument(value:unknown):Promise<void> {
 }
 
 beforeEach(async () => {
+  for(const key of ["VIDEOFORGE_CLOUD_MEDIA_QUALIFICATION_ONLY","VIDEOFORGE_ENVIRONMENT","VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID"]) Reflect.deleteProperty(environment,key);
+  qualificationAllowed=true;
   vi.clearAllMocks(); raceCancel = false; rotateBeforeStop = false; generationActive = false; cpuSettled = true; noReservation = false; tokenHash = await sha256(capability);
   attempt = { id: attemptId, account_id: accountId, workspace_id: workspaceId, state: "RUNNING", kind: "RENDER",
     project_id: "55555555-5555-4555-8555-555555555555", project_revision_id: "66666666-6666-4666-8666-666666666666", deadline_at: future() };
@@ -64,6 +99,7 @@ beforeEach(async () => {
     placement_deadline_at: future(), deadline_at: future(), launch_outcome: "UNKNOWN", verified_at: new Date().toISOString() };
   upload = { id: "88888888-8888-4888-8888-888888888888", reservation_id: reservationId, upload_id: "fixture-upload",
     object_key: "primary", content_length: MULTIPART_PART_BYTES * 2, checksum_sha256: hash, state: "OPEN" };
+  measuredJob={};
   primary.issued_content_length=100;primary.issued_checksum_sha256=hash;primary.content_type="video/mp4";
   const doc=structuredClone(renderResultFixture);doc.attempt_id=attemptId;doc.output.sha256=hash;doc.output.bytes=100;doc.probe.sha256=hash;doc.probe.bytes=100;
   await setResultDocument(doc);
@@ -78,11 +114,13 @@ beforeEach(async () => {
   fixture.checksum.mockResolvedValue(true);
   fixture.part.mockResolvedValue("https://private.example/signed-part");
   fixture.multipart.mockResolvedValue(new Response("<CompleteMultipartUploadResult/>"));
+  fixture.listMultipart.mockReset();fixture.listMultipart.mockResolvedValue([]);
   const head = environment.PRIVATE_ARTIFACTS!.head as ReturnType<typeof vi.fn>;
   head.mockImplementation(async (key: string) => ({ size: key === "result" ? result.issued_content_length : primary.issued_content_length,
     httpMetadata: { contentType: key === "result" ? "application/json" : primary.content_type } }));
   fixture.query.mockImplementation(async (sql: string, values: unknown[] = []) => {
     if (sql.includes("SELECT set_config")) return { rows: [] };
+    if (sql.includes("videoforge_cloud_media_qualification_scope")) return {rows:[{allowed:qualificationAllowed}]};
     if (sql.includes("pg_advisory_xact_lock")) return { rows: [] };
     if (sql.includes("SELECT r.id FROM cloud_media_reservations r")) return {rows:[{id:reservationId}]};
     if (sql.includes("videoforge_cloud_media_capability_scope")) return { rows: values[1] === tokenHash ? [{ account_id: accountId }] : [] };
@@ -91,7 +129,17 @@ beforeEach(async () => {
     if (sql.includes("SELECT r.*,a.state AS attempt_state")) return { rows: [{ ...reservation, attempt_state: attempt.state, kind: attempt.kind }] };
     if (sql.includes("SELECT * FROM hosted_cpu_job_attempts")) return { rows: [{ ...attempt }] };
     if (sql.includes("SELECT * FROM hosted_cpu_upload_authorities")) return { rows: [primary, result] };
+    if (sql.includes("u.state NOT IN ('VERIFIED','ABORTED')")) return {rows:!["VERIFIED","ABORTED"].includes(String(upload.state))?[{...upload}]:[]};
     if (sql.includes("SELECT u.* FROM cloud_media_multipart_uploads")) return { rows: [{ ...upload }] };
+    if(sql.includes("last_heartbeat_at=now(),updated_at=now() WHERE id=$1 AND leased_attempt_id=$3")) {
+      const phases=["STARTING","DOWNLOADING","RENDERING","CHECKING","SAVING"];
+      if(attempt.state!=="RUNNING" || values[2]!==reservation.leased_attempt_id || values[3]!==reservation.fence_id) return {rows:[]};
+      if(values[1]!==null && phases.indexOf(String(values[1]))>=phases.indexOf(String(reservation.state))) reservation.state=values[1];
+      return {rows:[{id:reservationId}]};
+    }
+    if(sql.includes("UPDATE cloud_media_jobs SET")) {
+      measuredJob.technical_verification_ms ??= values[3];measuredJob.artifact_verification_ms ??= values[4];return {rows:[]};
+    }
     if (sql.includes("INSERT INTO cloud_media_multipart_parts")) return { rows: [] };
     if (sql.includes("SELECT part_number,content_length FROM cloud_media_multipart_parts")) return { rows: [
       { part_number: 1, content_length: MULTIPART_PART_BYTES }, { part_number: 2, content_length: MULTIPART_PART_BYTES }] };
@@ -246,6 +294,67 @@ it("retains capacity when independent inventory still shows the owned Pod after 
 });
 
 describe("fenced publication and multipart recovery", () => {
+  it("persists bounded verification timing for the exact attempt without regressing phase",async()=>{
+    reservation.state="RENDERING";
+    expect((await runRoute("heartbeat",{phase:"CHECKING_VIDEO",technical_verification_ms:125}))?.status).toBe(200);
+    expect(reservation.state).toBe("CHECKING");expect(measuredJob.technical_verification_ms).toBe(125);
+    await runRoute("heartbeat",{phase:"RENDERING"});expect(reservation.state).toBe("CHECKING");
+    await runRoute("heartbeat",{phase:"SAVING",artifact_verification_ms:24});
+    expect(measuredJob.artifact_verification_ms).toBe(24);
+    const write=fixture.query.mock.calls.find(([sql])=>String(sql).includes("UPDATE cloud_media_jobs SET"));
+    expect(write?.[1]?.slice(0,2)).toEqual([reservationId,attemptId]);
+  });
+  it("rejects invalid or misplaced timing before any lease mutation",async()=>{
+    reservation.state="RENDERING";
+    for(const body of [{phase:"RENDERING",technical_verification_ms:1},{phase:"CHECKING_VIDEO",technical_verification_ms:-1},
+      {phase:"CHECKING_VIDEO",technical_verification_ms:14_400_001},{phase:"CHECKING_VIDEO",technical_verification_ms:1.5},
+      {phase:"SAVING",artifact_verification_ms:"24"}]) expect((await runRoute("heartbeat",body))?.status).toBe(400);
+    expect(reservation.state).toBe("RENDERING");expect(measuredJob).toEqual({});
+  });
+  it("rejects stale heartbeat publication while reporting cancellation",async()=>{
+    reservation.state="RENDERING";attempt.state="CANCEL_REQUESTED";
+    const value=await runRoute("heartbeat",{phase:"CHECKING_VIDEO",technical_verification_ms:125});
+    expect(await value?.json()).toMatchObject({cancel_requested:true});expect(measuredJob).toEqual({});
+  });
+  it("aborts owned unfinished multipart storage only after independent Pod absence",async()=>{
+    reservation.state="RENDERING";reservation.launch_outcome="CONFIRMED";
+    fixture.transport.mockResolvedValueOnce(response({pods:[placement()],pagination:{hasNextPage:false}}))
+      .mockResolvedValueOnce(new Response(null,{status:204})).mockResolvedValueOnce(emptyInventory());
+    fixture.multipart.mockImplementation(async()=>{expect(fixture.transport).toHaveBeenCalledTimes(3);return new Response(null,{status:204});});
+    expect(await cleanupCloudReservation(new RunPodMediaClient("fixture-key"),config,reservation)).toBe(true);
+    expect(upload.state).toBe("ABORTED");expect(reservation.state).toBe("CLEAN");
+    expect(fixture.multipart).toHaveBeenCalledWith("DELETE","primary",{uploadId:"fixture-upload"});
+  });
+  it("keeps capacity reserved when multipart abort fails after compute is stopped",async()=>{
+    reservation.state="STOPPING";reservation.launch_outcome="CONFIRMED";
+    fixture.multipart.mockResolvedValue(new Response(null,{status:503}));
+    expect(await cleanupCloudReservation(new RunPodMediaClient("fixture-key"),config,reservation)).toBe(false);
+    expect(reservation.state).toBe("STOPPING");expect(upload.state).toBe("OPEN");
+  });
+  it("retains uncertainty for a lost multipart initiation with no identifiable upload",async()=>{
+    reservation.state="STOPPING";reservation.launch_outcome="CONFIRMED";upload.state="UNKNOWN";upload.upload_id=null;
+    expect(await cleanupCloudReservation(new RunPodMediaClient("fixture-key"),config,reservation)).toBe(false);
+    expect(reservation.state).toBe("STOPPING");expect(upload.state).toBe("UNKNOWN");expect(fixture.multipart).not.toHaveBeenCalled();
+  });
+  it("reconciles and aborts exact owned uploads from a lost initiation without creating another",async()=>{
+    reservation.state="STOPPING";reservation.launch_outcome="CONFIRMED";upload.state="UNKNOWN";upload.upload_id=null;
+    fixture.listMultipart.mockResolvedValueOnce(["reconciled-owned"]).mockResolvedValueOnce([]);
+    fixture.multipart.mockResolvedValue(new Response(null,{status:204}));
+    expect(await cleanupCloudReservation(new RunPodMediaClient("fixture-key"),config,reservation)).toBe(true);
+    expect(fixture.multipart).toHaveBeenCalledWith("DELETE","primary",{uploadId:"reconciled-owned"});
+    expect(fixture.listMultipart).toHaveBeenCalledTimes(2);expect(upload.state).toBe("ABORTED");
+  });
+  it("retains capacity when an owned multipart upload remains visible after DELETE",async()=>{
+    reservation.state="STOPPING";reservation.launch_outcome="CONFIRMED";
+    fixture.listMultipart.mockResolvedValue(["fixture-upload"]);
+    expect(await cleanupCloudReservation(new RunPodMediaClient("fixture-key"),config,reservation)).toBe(false);
+    expect(upload.state).toBe("OPEN");expect(reservation.state).toBe("STOPPING");
+  });
+  it("never aborts verified multipart output during cleanup",async()=>{
+    reservation.state="STOPPING";reservation.launch_outcome="CONFIRMED";upload.state="VERIFIED";
+    expect(await cleanupCloudReservation(new RunPodMediaClient("fixture-key"),config,reservation)).toBe(true);
+    expect(fixture.multipart).not.toHaveBeenCalled();expect(upload.state).toBe("VERIFIED");
+  });
   it("does not publish success when cancellation wins after artifact verification", async () => {
     reservation.state = "SAVING"; raceCancel = true;
     expect((await runRoute("complete", completion))?.status).toBe(409);

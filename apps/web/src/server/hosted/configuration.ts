@@ -58,9 +58,9 @@ export interface HostedRuntimeEnvironment {
   readonly PRIVATE_ARTIFACTS?: HostedR2BucketBinding;
   readonly VIDEO_WORKFLOW?: HostedWorkflowBinding;
   readonly HOSTED_PAIR_WORKFLOW?: HostedWorkflowBinding;
-  /** Durable stage-continuation driver (stages 3-8). Optional like the other Workflow bindings: the
-   * driver is started opportunistically from the personal-worker claim poll and an absent binding
-   * only means continuation falls back to the (unreliable) cron. */
+  /** Durable stage-continuation driver (stages 3-8). CPU submission starts it for either backend;
+   * personal-worker polling remains an additional Local recovery trigger. Cloud continuation and
+   * cleanup require this binding because production cron delivery is not a reliable watchdog. */
   readonly HOSTED_CONTINUATION_WORKFLOW?: HostedWorkflowBinding;
   readonly VIDEOFORGE_COMMIT?: string;
   readonly VIDEOFORGE_ENVIRONMENT?: string;
@@ -111,6 +111,8 @@ export interface HostedRuntimeEnvironment {
   readonly VIDEOFORGE_CLOUD_MEDIA_BUDGET_USD?: string;
   readonly VIDEOFORGE_CLOUD_MEDIA_MAX_RENTAL_SECONDS?: string;
   readonly VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID?: string;
+  /** Staging acceptance only: observe owned media jobs without provider progression. */
+  readonly VIDEOFORGE_CLOUD_MEDIA_QUALIFICATION_ONLY?: string;
   readonly VIDEOFORGE_MAGE_ENDPOINT_ID?: string;
   readonly VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256?: string;
   readonly VIDEOFORGE_SOULX_ENDPOINT_ID?: string;
