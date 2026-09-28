@@ -21,7 +21,7 @@ const step = {
   },
   sleep: sleeps,
 } as unknown as WorkflowStep;
-const run = () => new HostedVideoWorkflow({} as never, {} as never).run({ payload: params } as WorkflowEvent<typeof params>, step);
+const run = (payload: unknown = params) => new HostedVideoWorkflow({} as never, {} as never).run({ payload } as WorkflowEvent<typeof params>, step);
 beforeEach(() => {
   vi.clearAllMocks();
   steps.length = 0;
@@ -43,4 +43,31 @@ it("does not replay an observation with an unknown launch outcome", async () => 
   await expect(run()).rejects.toThrow("launch outcome unknown");
   expect(fixture.observe).toHaveBeenCalledOnce();
   expect(sleeps).not.toHaveBeenCalled();
+});
+
+it("accepts the JSON-encoded REST payload with the same tenant-bound lookup as the binding object", async () => {
+  fixture.observe.mockResolvedValue({ state: "SUCCEEDED" });
+  expect(await run(JSON.stringify(params))).toEqual({ state: "SUCCEEDED" });
+  expect(fixture.query).toHaveBeenCalledWith(expect.stringContaining("WHERE id = $1 AND account_id = $2 AND workspace_id = $3"), [params.attemptId, params.accountId, params.workspaceId]);
+  expect(fixture.observe).toHaveBeenCalledWith(expect.anything(), expect.anything(), params);
+});
+it.each([
+  "{", "null", "[]", "42", JSON.stringify(JSON.stringify(params)),
+  JSON.stringify({ ...params, attemptId: "wrong" }),
+  JSON.stringify({ ...params, accountId: "wrong" }),
+  JSON.stringify({ ...params, workspaceId: "wrong" }),
+  JSON.stringify({ attemptId: params.attemptId, accountId: params.accountId }),
+  JSON.stringify({ ...params, backend: "RUNPOD_POD" }),
+  " ".repeat(1025), null, [], { ...params, target: {} },
+])("rejects malformed or non-exact REST/binding lineage before any database or provider call (%#)", async (payload) => {
+  await expect(run(payload)).rejects.toThrow("Hosted Workflow parameters must be exact UUID lineage.");
+  expect(fixture.query).not.toHaveBeenCalled();
+  expect(fixture.observe).not.toHaveBeenCalled();
+});
+it("fails a decoded cross-tenant lookup before observing or renting Cloud compute", async () => {
+  fixture.query.mockResolvedValue({ rows: [] });
+  const foreign = { ...params, accountId: "44444444-4444-4444-8444-444444444444" };
+  await expect(run(JSON.stringify(foreign))).rejects.toThrow("Hosted CPU execution lineage is unavailable.");
+  expect(fixture.query).toHaveBeenCalledWith(expect.stringContaining("WHERE id = $1 AND account_id = $2 AND workspace_id = $3"), [foreign.attemptId, foreign.accountId, foreign.workspaceId]);
+  expect(fixture.observe).not.toHaveBeenCalled();
 });

@@ -18,14 +18,27 @@ interface HostedWorkflowParameters {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const DATABASE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 
-function parameters(value: HostedWorkflowParameters): HostedWorkflowParameters {
-  if (
-    !UUID.test(value.attemptId) ||
-    ![value.accountId, value.workspaceId].every((item) => DATABASE_UUID.test(item))
-  ) {
-    throw new TypeError("Hosted Workflow parameters must be exact UUID lineage.");
+function parameters(value: unknown): HostedWorkflowParameters {
+  const invalid = () => new TypeError("Hosted Workflow parameters must be exact UUID lineage.");
+  // REST v4 preserves its JSON-encoded params as a string; the Workers binding passes an object.
+  if (typeof value === "string") {
+    if (value.length > 1024) throw invalid();
+    try { value = JSON.parse(value); } catch { throw invalid(); }
   }
-  return Object.freeze({ ...value });
+  if (typeof value !== "object" || value === null || Array.isArray(value)) throw invalid();
+  const candidate = value as Record<string, unknown>;
+  if (
+    Object.keys(candidate).length !== 3 ||
+    typeof candidate.attemptId !== "string" || !UUID.test(candidate.attemptId) ||
+    ![candidate.accountId, candidate.workspaceId].every(
+      (item) => typeof item === "string" && DATABASE_UUID.test(item),
+    )
+  ) throw invalid();
+  return Object.freeze({
+    attemptId: candidate.attemptId,
+    accountId: candidate.accountId as string,
+    workspaceId: candidate.workspaceId as string,
+  });
 }
 
 /**
