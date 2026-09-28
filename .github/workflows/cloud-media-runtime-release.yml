@@ -1,0 +1,140 @@
+name: Cloud media runtime release
+on:
+  workflow_dispatch:
+    inputs:
+      source_commit:
+        description: Exact reviewed production-based source commit
+        required: true
+        type: string
+      qualification_sha256:
+        description: SHA-256 of exact retained private ASR/span/full and split Fal qualification ZIP
+        required: true
+        type: string
+      image_package:
+        description: New private GHCR package name; never an existing public package
+        required: true
+        default: videoforge-cloud-media-runtime
+        type: string
+permissions:
+  contents: read
+  packages: write
+concurrency:
+  group: videoforge-cloud-media-runtime-release
+  cancel-in-progress: false
+jobs:
+  qualify-and-publish:
+    # Public-repository standard runner is free; no larger runner/cache/artifact storage.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.12.10"
+      - name: Guard reviewed source and private package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          PACKAGE: ${{ inputs.image_package }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+          [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$PACKAGE" =~ ^videoforge-cloud-media-[a-z0-9-]+$ ]]
+          if gh api "users/$OWNER/packages/container/$PACKAGE" > "$RUNNER_TEMP/package.json" 2> "$RUNNER_TEMP/package-error.txt"; then
+            python -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/package.json"))["visibility"]=="private"'
+          else
+            grep -q 'HTTP 404' "$RUNNER_TEMP/package-error.txt"
+          fi
+      - name: Acquire immutable upstream sources and build toolchain
+        run: |
+          set -euo pipefail
+          mkdir -p .videoforge/cloud-media/tool-build
+          git init .videoforge/cloud-media/tool-build/ffmpeg
+          git -C .videoforge/cloud-media/tool-build/ffmpeg remote add origin https://github.com/FFmpeg/FFmpeg.git
+          git -C .videoforge/cloud-media/tool-build/ffmpeg fetch --depth 1 origin 38b88335f99e76ed89ff3c93f877fdefce736c13
+          test "$(git -C .videoforge/cloud-media/tool-build/ffmpeg rev-parse FETCH_HEAD)" = 38b88335f99e76ed89ff3c93f877fdefce736c13
+          git -C .videoforge/cloud-media/tool-build/ffmpeg checkout --detach FETCH_HEAD
+          curl --fail --location --silent --show-error https://github.com/ggml-org/whisper.cpp/archive/refs/tags/v1.8.4.tar.gz -o "$RUNNER_TEMP/whisper.tar.gz"
+          echo "b26f30e52c095ccb75da40b168437736605eb280de57381887bf9e2b65f31e66  $RUNNER_TEMP/whisper.tar.gz" | sha256sum --check --strict
+          mkdir .videoforge/cloud-media/tool-build/whisper
+          tar -xzf "$RUNNER_TEMP/whisper.tar.gz" --strip-components=1 -C .videoforge/cloud-media/tool-build/whisper
+          docker build --platform linux/amd64 -f workers/media-local/Dockerfile.runpod-tools -t vf-cloud-tool-build .
+          container="$(docker create vf-cloud-tool-build)"
+          mkdir "$RUNNER_TEMP/linux-tools"
+          docker cp "$container:/opt/tools/." "$RUNNER_TEMP/linux-tools/"
+          docker rm "$container"
+          curl --fail --location --silent --show-error https://github.com/astral-sh/uv/releases/download/0.12.13/uv-x86_64-unknown-linux-gnu.tar.gz -o "$RUNNER_TEMP/uv.tar.gz"
+          echo "745765a3b6e360ad76743599ae5c42e9278c7edf8bbff9fc76d05bf2623a04dd  $RUNNER_TEMP/uv.tar.gz" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/uv.tar.gz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/uv-x86_64-unknown-linux-gnu" >> "$GITHUB_PATH"
+      - name: Prepare current locked Linux runtime
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-base.en.bin -o "$RUNNER_TEMP/ggml-base.en.bin"
+          echo "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002  $RUNNER_TEMP/ggml-base.en.bin" | sha256sum --check --strict
+          python -m pip download --require-hashes --only-binary=:all: --dest "$RUNNER_TEMP/wheels" -r workers/media-local/runpod-requirements.lock
+          python - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])
+          provenance={"platform":"linux/amd64"}
+          for name,filename,version in [("ffmpeg","ffmpeg","8.1.2"),("ffprobe","ffprobe","8.1.2"),("whisper","whisper-cli","1.8.4")]:
+              with (root/"linux-tools"/filename).open("rb") as source:
+                  digest="sha256:"+hashlib.file_digest(source,"sha256").hexdigest()
+              provenance[name]={"version":version,"sha256":digest}
+          provenance["whisper"]["source_sha256"]="sha256:b26f30e52c095ccb75da40b168437736605eb280de57381887bf9e2b65f31e66"
+          (root/"linux-tools.json").write_text(json.dumps(provenance))
+          PY
+          python workers/media-local/prepare_runpod_build.py --tools "$RUNNER_TEMP/linux-tools" --wheels "$RUNNER_TEMP/wheels" --model "$RUNNER_TEMP/ggml-base.en.bin" --provenance "$RUNNER_TEMP/linux-tools.json"
+          python - <<'PY' >> "$GITHUB_ENV"
+          import json
+          values=json.load(open(".videoforge/cloud-media/build/build-args.json"))
+          for key,value in values.items(): print(f"{key}={value}")
+          PY
+      - name: Build unqualified candidate without publishing
+        run: |
+          set -euo pipefail
+          docker build --platform linux/amd64 -f workers/media-local/Dockerfile.runpod -t vf-cloud-candidate --build-arg FFMPEG_SHA256 --build-arg FFPROBE_SHA256 --build-arg WHISPER_SHA256 .
+      - name: Retrieve exact private qualification inputs
+        env:
+          VIDEOFORGE_CLOUD_QUALIFICATION_URL: ${{ secrets.VIDEOFORGE_CLOUD_QUALIFICATION_URL }}
+          QUALIFICATION_SHA256: ${{ inputs.qualification_sha256 }}
+        run: python workers/media-local/fetch_cloud_qualification.py --sha256 "$QUALIFICATION_SHA256" --target "$RUNNER_TEMP/qualification"
+      - name: Run real jobs offline and rebuild qualified final image
+        run: |
+          set -euo pipefail
+          mkdir "$RUNNER_TEMP/qualified"
+          docker run --rm --network=none --user "$(id -u):$(id -g)" --entrypoint python \
+            -v "$RUNNER_TEMP/qualification:/qualification" -v "$RUNNER_TEMP/qualified:/qualified" \
+            vf-cloud-candidate /opt/videoforge/qualify_runpod_runtime.py \
+            --artifact-root /qualification/artifact-root --asr-input /qualification/jobs/asr.json \
+            --span-input /qualification/jobs/span.json --render-input /qualification/jobs/render.json \
+            --output /qualified/runtime.json
+          cp "$RUNNER_TEMP/qualified/runtime.json" .videoforge/cloud-media/build/runtime.json
+          docker build --platform linux/amd64 -f workers/media-local/Dockerfile.runpod -t vf-cloud-qualified --build-arg FFMPEG_SHA256 --build-arg FFPROBE_SHA256 --build-arg WHISPER_SHA256 .
+          docker run --rm --network=none --entrypoint python vf-cloud-qualified -c 'import json; assert json.load(open("/opt/videoforge/runtime.json"))["qualified"] is True'
+      - name: Publish only qualified image and independently verify private visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE: ${{ inputs.image_package }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          image="ghcr.io/${OWNER,,}/$PACKAGE:${GITHUB_SHA}"
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$OWNER" --password-stdin
+          docker tag vf-cloud-qualified "$image"
+          docker push "$image"
+          gh api "users/$OWNER/packages/container/$PACKAGE" > "$RUNNER_TEMP/package.json"
+          python -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/package.json"))["visibility"]=="private"'
+          docker pull "$image"
+          image_identity="$(docker inspect --format '{{index .RepoDigests 0}}' "$image")"
+          printf 'Qualified private image: `%s`\n\n' "$image_identity" >> "$GITHUB_STEP_SUMMARY"
+          printf 'Release configuration (no credentials or private media):\n```json\n' >> "$GITHUB_STEP_SUMMARY"
+          cat "$RUNNER_TEMP/qualified/release-config.json" >> "$GITHUB_STEP_SUMMARY"
+          printf '\n```\n' >> "$GITHUB_STEP_SUMMARY"
+          docker logout ghcr.io
+      - name: Remove private qualification scratch
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/qualification" "$RUNNER_TEMP/qualified"
