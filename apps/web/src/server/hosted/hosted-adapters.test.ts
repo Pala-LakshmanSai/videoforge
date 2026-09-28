@@ -31,7 +31,21 @@ import {
   exactHostedRenderSubmission,
   whisperModelUri,
 } from "./submission";
-import { hostedCpuPrimaryOutput } from "./app";
+import { handleHostedRequest, hostedCpuPrimaryOutput } from "./app";
+
+const cpuDatabase = vi.hoisted(() => ({
+  query: vi.fn(),
+  transaction: vi.fn(),
+  end: vi.fn(async () => {}),
+  getSession: vi.fn(),
+}));
+vi.mock("./neon", () => ({
+  createNeonPool: () => ({ query: cpuDatabase.query, end: cpuDatabase.end }),
+  createNeonExecutor: () => ({ transaction: cpuDatabase.transaction }),
+}));
+vi.mock("./auth", () => ({
+  createHostedAuth: () => ({ api: { getSession: cpuDatabase.getSession } }),
+}));
 
 function environment(providerMode: "staging" | "production" = "staging"): HostedRuntimeEnvironment {
   return {
@@ -101,6 +115,67 @@ function environment(providerMode: "staging" | "production" = "staging"): Hosted
 }
 
 describe("V2-06 hosted adapters", () => {
+  it("returns a readable conflict only for the exact account CPU admission guard", async () => {
+    const accountId = "11111111-1111-4111-8111-111111111111";
+    const workspaceId = "22222222-2222-4222-8222-222222222222";
+    const modelHash = `sha256:${"d".repeat(64)}`;
+    const body = JSON.stringify({
+      schema_version: "videoforge-hosted-cpu-submission/v1",
+      idempotency_key: "owned-asr-request-0001",
+      project_id: "33333333-3333-4333-8333-333333333333",
+      project_revision_id: "44444444-4444-4444-8444-444444444444",
+      kind: "ASR",
+      input_document: {
+        schema_version: "asr-job-input/v1",
+        model: { sha256: modelHash },
+        output: { result_uri: "client-value-is-not-authority" },
+      },
+      objects: [{
+        artifact_receipt_id: "55555555-5555-4555-8555-555555555555",
+        uri: `vf-local://objects/sha256/dd/${"d".repeat(64)}.bin`,
+      }],
+    });
+    const message = "account already has an active personal CPU project";
+    for (const [code, detail] of [
+      ["23514", message],
+      ["23514", "both global personal CPU projects are occupied"],
+      ["23514", "CPU backend differs from immutable revision or recovery authority"],
+      ["42501", message],
+    ]) {
+      const failure = Object.assign(new Error(detail), { code });
+      const query = vi.fn(async (statement: string) => {
+        if (statement.includes("INSERT INTO hosted_cpu_job_attempts")) throw failure;
+        if (statement.includes("render_plan.schema_version"))
+          return { rows: [{ media_execution_backend: "PERSONAL_WORKER" }] };
+        if (statement.includes("FROM artifact_receipts AS receipt"))
+          return { rows: [{ id: "55555555-5555-4555-8555-555555555555",
+            object_key: "private-input", content_type: "audio/wav", content_length: 1,
+            checksum_sha256: modelHash }] };
+        return { rows: [] };
+      });
+      cpuDatabase.getSession.mockResolvedValueOnce({ user: { id: accountId }, session: { token: "fixture-session" } });
+      cpuDatabase.query.mockResolvedValueOnce({ rows: [{ account_id: accountId, workspace_id: workspaceId }] });
+      cpuDatabase.transaction.mockImplementationOnce(async callback => callback({ query }));
+      const source = environment();
+      const put = vi.spyOn(source.PRIVATE_ARTIFACTS!, "put");
+      const create = vi.spyOn(source.VIDEO_WORKFLOW!, "create");
+      const pending = handleHostedRequest(new Request(`${source.VIDEOFORGE_PUBLIC_ORIGIN}/api/v2/cpu-attempts`, {
+        method: "POST", body,
+        headers: { origin: source.VIDEOFORGE_PUBLIC_ORIGIN!, "content-length": String(body.length) },
+      }), source, { waitUntil() {} });
+      if (code === "23514" && detail === message) {
+        const result = await pending;
+        expect(result.status).toBe(409);
+        await expect(result.json()).resolves.toEqual({ error: {
+          code: "HOSTED_CPU_ACCOUNT_PROJECT_ACTIVE",
+          message: "Another project is already queued or running for this account. Open Queue to finish or cancel it, then try again.",
+        } });
+      } else await expect(pending).rejects.toBe(failure);
+      expect(query.mock.calls.some(([statement]) => statement.includes("INSERT INTO hosted_cpu_job_attempts"))).toBe(true);
+      expect(put).not.toHaveBeenCalled();
+      expect(create).not.toHaveBeenCalled();
+    }
+  });
   it("binds server-owned span audio to one exact 48 kHz WAV output lane", () => {
     expect(hostedCpuPrimaryOutput("SPAN_AUDIO")).toEqual({
       lane: "input",

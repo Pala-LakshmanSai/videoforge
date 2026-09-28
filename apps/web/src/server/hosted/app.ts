@@ -675,6 +675,16 @@ async function handleCpuSubmission(
       202,
     );
   } catch (error) {
+    if (
+      error instanceof Error &&
+      "code" in error && error.code === "23514" &&
+      error.message === "account already has an active personal CPU project"
+    ) {
+      return json({ error: {
+        code: "HOSTED_CPU_ACCOUNT_PROJECT_ACTIVE",
+        message: "Another project is already queued or running for this account. Open Queue to finish or cancel it, then try again.",
+      } }, 409);
+    }
     if (error instanceof Error && error.message === "CLOUD_MEDIA_UNAVAILABLE") {
       return json({ error: { code: "CLOUD_MEDIA_UNAVAILABLE" } }, 503);
     }
