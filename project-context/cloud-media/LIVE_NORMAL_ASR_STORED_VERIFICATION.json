@@ -1,0 +1,32 @@
+{
+  "schema_version": "videoforge-cloud-asr-stored-semantic-proof/v1",
+  "observed_at": "2026-09-28T20:39:22.016Z",
+  "read_only": true,
+  "primary": {
+    "bytes": 92536,
+    "sha256": "sha256:09309c7ec2707295d50095e12e0429265aa19fb4d1ca9a90f3e58c501e26be04"
+  },
+  "result": {
+    "bytes": 55232,
+    "sha256": "sha256:f74f3cec79d96d1591f7ef079469b44f834e107808d0133b1c67cb4da379b293"
+  },
+  "primary_result_byte_hashes_equal": false,
+  "contracts_valid": true,
+  "canonical_contract_hashes_equal": true,
+  "canonical_contract_sha256": "sha256:f74f3cec79d96d1591f7ef079469b44f834e107808d0133b1c67cb4da379b293",
+  "attempt_lineage_exact": true,
+  "accepted_source_model_exact": true,
+  "cpu_state": "SUCCEEDED",
+  "reservation_state": "CLEAN",
+  "durable_completion_receipt_present": true,
+  "durably_accepted_artifact_facts_match": true,
+  "exact_qualified_model": true,
+  "operator_inserted_asr_attempt": false,
+  "server_created_asr": true,
+  "operator_prepared_project_metadata": true,
+  "retained_inputs": true,
+  "raw_browser_submit_response_verified": false,
+  "fresh_provider_or_editorial_quality_proven": false,
+  "conclusion": "Exact normal server-created Cloud ASR primary and result objects independently streamed/read and wholeSHA verified; validated canonical semantics and accepted receipt agree",
+  "media_or_transcript_saved": false
+}

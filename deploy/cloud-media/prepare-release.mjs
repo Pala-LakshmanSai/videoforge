@@ -62,7 +62,7 @@ export function prepareCloudConfig(baseline, commit, cloudVariables = { VIDEOFOR
 
 /** Guard the complete observed ledger, including archived entries; apply one reviewed additive migration. */
 export function prepareMigrationSql(observed, manifest, sql, version = 214) {
-  const filenames = { 214: "0214_optional_runpod_media.sql", 215: "0215_hosted_cloud_asr_recovery.sql", 216: "0216_cloud_media_disk_measurements.sql" };
+  const filenames = { 214: "0214_optional_runpod_media.sql", 215: "0215_hosted_cloud_asr_recovery.sql", 216: "0216_cloud_media_disk_measurements.sql", 217: "0217_hosted_span_audio_current_asr_receipt.sql" };
   const expected = manifest.migrations.find((entry) => entry.version === version);
   if (!Object.hasOwn(filenames, version) || !expected || expected.filename !== filenames[version] || hash(sql) !== expected.sha256 || !Array.isArray(observed)) fail();
   const ledger = observed.map(({ version, name, filename, sha256 }) => ({ version: Number(version), name, filename, sha256 })).sort((a, b) => a.version - b.version);

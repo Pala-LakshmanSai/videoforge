@@ -1074,6 +1074,12 @@
       "name": "cloud_media_disk_measurements",
       "filename": "0216_cloud_media_disk_measurements.sql",
       "sha256": "sha256:e6dc92ec93ada4832d5f3ec9bc5022273e3c4f2a3d066f47db60415545a7ec60"
+    },
+    {
+      "version": 217,
+      "name": "hosted_span_audio_current_asr_receipt",
+      "filename": "0217_hosted_span_audio_current_asr_receipt.sql",
+      "sha256": "sha256:accdd0f376448180904810a73d336bddda8fc2526db62a7df97c043a25105ded"
     }
   ]
 }

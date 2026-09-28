@@ -1,7 +1,7 @@
 # Optional Cloud media release preparation
 
 Status: implementation and offline Linux runtime qualified; immutable private image published.
-Cloud remains disabled; no production application release, new provider generation or paid Pod.
+Production Cloud remains disabled. Scoped staging has accepted a normal server-created Cloud ASR result; all three owned Pods are independently absent. No new provider generation or production application release.
 Checkpoint VF-10-09/V2-09. Current evidence: SAFE_PREPARATION_EVIDENCE.json and QUALIFIED_RUNTIME.json.
 
 ## Source and preservation
@@ -13,28 +13,68 @@ baseline and recheck bindings/version immediately before publication.
 Implementation checkout is `f9b9283ca662e73c0ba276741db22521c3b65357`. It includes unpublished UI
 changes; release preparation uses a registered isolated worktree from production366d and applies
 only task changes with three-way merging, preserving the published timing/details UI. Exclude the
-unrelated `apps/web/src/server/runtime/node-fair-admission.ts` edit. Isolated task source/evidence are committed and pushed on codex/cloud-media-release; no application deployment.
+unrelated `apps/web/src/server/runtime/node-fair-admission.ts` edit. Isolated task source/evidence are committed and pushed on codex/cloud-media-release; no production application deployment. Current staging source5c77b2b2/version39842c70 and two newly registered Workflow definitions are independently verified.
 
 Local evidence: `.videoforge/cloud-media/baseline.json`, `implementation-from-f9.patch` and
 `release-transplant.json`. These sanitized operator files retain identities/rates/test boundaries,
 not secrets. Worktree location is recorded there; refresh task changes only after owners finish.
 
+## Current verified staging state
+
+Source `0cc46390812c7c4f836abc64bb2130fe0f0a7a87`, Cloudflare version
+`e03b9dc6-e1e5-497a-aa7d-1d5775c42ca4`, configuration SHA256
+`2c5ac991ceac9b8638cac7e53517a4957b62162793aa5ff60e19456e534c9d31`,
+bundle entry SHA256 `9a8ea3b39b55bf6e351e6fe5b92702ebe967f5b775da38e8b7e659f10c10d2e0`.
+Both Workflow definitions and the exact owned canonical continuation execution use this source.
+Registration alone does not upgrade running executions; historical terminal instances stay immutable.
+
+Normal real-Chrome transcription started20:17UTC, completed20:18:10.848UTC and cleanup was
+independently verified20:18:16.921UTC. The tab was closed during Starting and reopened at Complete.
+Mac and Windows personal workers were Offline. This proves disconnected-worker execution, not a
+physical computer power-off. The normal server created the attempt, input authority and callback
+credentials; operator preparation created only the explicitly labeled retained-input project metadata.
+Private R2 primary/result size and whole SHA were independently verified, and canonical ASR semantics
+match despite different JSON serialization. See LIVE_NORMAL_ASR_ACCEPTANCE.json and
+LIVE_NORMAL_ASR_STORED_VERIFICATION.json.
+
+Five reservations are terminal/CLEAN; four historical failures remain immutable. Three actual Pods
+were rented and complete independent inventory shows none owned. Conservative debitUSD0.60 is not
+an invoice. Normal ASR measured combined reservation/resource verification2.541s, runtime/bootstrap
+11.449s, download5.895s, processing11.509s, checking4.708s, save/accept22.197s and cleanup6.073s.
+These combined intervals do not establish separate image-pull, upload or DELETE timings.
+100GB disk and controller-observed all-inUSD0.733889/hour were verified on RTXPRO4500Server.
+One-second disk samples are a lower bound, not an exact job-exclusive peak.
+
+The normal selected-span request returned409 before any committed materialization/CPU/reservation.
+Read-only Postgres rollback diagnosis confirms the old materializer selects an original other-project
+receipt rather than the exact input accepted by the new ASR. Additive217 is locally qualified (14 actual PostgreSQL checks), choosing the accepted current ASR
+input receipt first and preserving deterministic Local fallback/replay. Its exact ledger199→200
+application is prepared but unexecuted; no successful live span is claimed. Earlier native and genuine hosted Local proof passed;
+later unrelated Local ASR failures hit the existing2GiB disk guard and remain unchanged.
+
+Production remains366d16c2/version62524e69, Cloud disabled. Ledger199 through214/215/216 is installed;
+never replay it. Safe source0cc production preparation preserves secrets/bindings/query redaction and
+starts with Cloud disabled. Remaining gates: span, short Cloud final/private playback, cancellation,
+45-minute rendering/storage, ordinary terminal promotion and conditional rollout. The approved maximum
+is six reservations through21:15UTC, with one slot remaining. A sameUSD5/USD3compute amendment to
+max10/23:00UTC is prepared but unapproved; no new authority is inferred from it.
+
 ## Qualified Linux image and publication boundary
 
 Real offline retained-source ASR, span cutting, current Fal full/split composition and final technical
-checks passed in CI36437915344 at sourcefe61f686. Qualified execution source SHA25608f7344553c2b493eccd236b61698cae330edbee77eb7ee909e180d13f66b768 and runtime SHA256194d1a4cee7acca64661774faa9ad205b31c66470af2011b5dc420ebe447db81 are recorded with exact tool/model hashes in QUALIFIED_RUNTIME.json.
-The immutable image is ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:d054d17bef2178593d96b8d579c41446f272330044e79ef1bbde976a859f2c62.
+checks passed in network-disabled CI36458994531 at source7434fc0c. Qualified execution source SHA2562d5f4f16be8c7f0be96b0608dce905cc22f38426d9e242c0ebc4aa91c8cdcc41 and runtime SHA256d313eee20b0874f9729c259417e78d02a6c56b11e58ed21350c4c6e503ef73f4 are recorded with exact tool/model hashes in QUALIFIED_RUNTIME.json.
+The immutable image is ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:a2ff1f16e4d8990e611f0eb9380c96bcd936ddffdc49be3332ef140888566811.
 Independent GitHub API visibility is private, with no repository link. Controller-local scoped
 registry mounts preserved every qualified layer and digest without rebuilding or transferring media.
 The first public-repository GITHUB_TOKEN push inherited public package visibility; it contained only
 source/upstream tools/model, no private input or credential. Future publication must reject that path.
-Exact private root/Linux manifests, config and all layer sizes were authenticated-pull verified; anonymous pull returned401. A dedicated read:packages-only capability registered one exact owned RunPod media registry and independent inventory verified it. Actual Pod startup/resources/rate and independent cleanup remain live gates. The mistaken newly public package was removed via exact regular-Chrome owner confirmation and independently returned404; the private qualified digest stayed unchanged.
+Exact private root/Linux manifests, config and all layer sizes were authenticated-pull verified; anonymous pull returned401. A dedicated read:packages-only capability registered one exact owned RunPod media registry and independent inventory verified it. One actual owned placement verified100GB/16vCPU/94GB RAM at controller-observed all-inUSD0.733889/hour. ASR processed10.956s and artifacts uploaded, but old byte-based callback validation failed; FAILED attempt remains immutable and independently absent after CLEAN. That earlier failed proof remains immutable; subsequent normal server-created ASR acceptance is recorded above. The mistaken newly public package was removed via exact regular-Chrome owner confirmation and independently returned404; the private qualified digest stayed unchanged.
 Linux executable hashes are qualified separately from desktop binaries.
 
 ## Operator rate snapshot
 
 RunPod Pod REST v2 Secure Cloud catalog GET2026-09-28 returned48 models. Complete paginated Pod
-inventory contained zero Pods. No creation, termination, endpoint or volume mutation occurred.
+inventory contained zero Pods. This historical pre-allocation read did not create compute; current owned allocation/cleanup evidence is LIVE_ASR_ACCEPTANCE.json. Endpoints and retained volumes remain unchanged.
 
 | Preference / offering | Observed GPU rate | Capacity / fallback reason | GPU memory | Speed |
 |---|---:|---|---:|---|
@@ -58,8 +98,7 @@ inventory contained zero Pods. No creation, termination, endpoint or volume muta
 | 18. NVIDIA RTX 2000 Ada Generation | USD0.24/h | LOW; verify actual CPU/RAM/rate | 16GB | Unmeasured |
 
 At100GB temporary disk, reference disk cost is USD0.013889/h, giving rank1 estimated
-USD0.733889/h. This is an estimate from current listing, not actual billing/spend approval or a
-qualified placement. Persist chosen disk across fallback; verify actual returned price/resources
+USD0.733889/h. This is an estimate from current listing, not invoice proof. The third live ASR placement independently verified this resource/rate boundary; retain the fallback preference order until measured comparisons qualify a change. Persist chosen disk across fallback; verify actual returned price/resources
 against approved limits before work. No warm pool or retained network volume.
 
 ## Upload size boundary
@@ -131,30 +170,12 @@ unverified cleanup. Keep uncertain reservations counted; terminate only exact ow
 Fresh configured VideoForge inventory/catalog at approximately2026-09-28T15:20Z was complete with
 zero Pods/one inventory page/48 GPU models. No Frontier credential was copied. Prior Secure listing
 observed RTX4000 Ada atUSD0.28/h, with100GB disk estimatedUSD0.013889/h; refreshed placement facts
-remain required. No paid Pod POST or DELETE has occurred. Rates/resources and VideoForge speed
-remain unmeasured on real rented hosts; listed estimates are not invoices.
+remain required. Three reservations are consumed; first two rented nothing, third rented one owned Pod and independently cleaned it. Conservative debitUSD0.20, actual invoice unobserved. Three remaining reservations cover new ASR/span/short. Cancellation and45-minute require an amended finite-action count/deadline before execution; aggregateUSD5 authority remains unchanged.
 The cap is an application action guard, not an invoice guarantee. User approved this replacement proposal with “Ok approved, go ahead and finish everything”. No paid action occurred before approval.
 
-Re-read production source/version/configuration/bindings and exact local-worker release. Stop on
-baseline drift. The exact214 append was executed and independently verified: ledger197/exact checksum, no prior-row or omitted148 change. The preparation below records the applied guard procedure. Before any future schema release, inventory the current migration ledger and compare retained checksums,
-including archived/omitted entries (the verified production ledger has196 rows and deliberately lacks retained148); prepare one owner transaction for only
-`0214_optional_runpod_media.sql`, exact checksum/ledger insert and required minimum runtime grants.
-Do not run a directory-wide migration replay. Add the compatible schema with Cloud still disabled.
+Re-read production source/version/configuration/bindings and exact Local0.1.44 before publication; stop on baseline drift. Additive214/215/216 are already installed: exact ledger199, preserved prior identities/omitted148. **Do not replay them.** `deploy/cloud-media/prepare-release.mjs`'s CLI214 SQL path records historical preparation only; its exported guards support a narrowly selected additive215/216 before installation, not an already applied ledger. Current source rollout requires no new migration.
 
-`deploy/cloud-media/prepare-release.mjs` prepares local files only. Supply a fresh complete ledger
-JSON array (`version,name,filename,sha256`, ordered by version), the freshly read production Wrangler
-configuration and reviewed release commit:
-
-```sh
-node deploy/cloud-media/prepare-release.mjs --ledger /private/ledger.json --baseline-config /private/wrangler.json --output-prefix /private/cloud-media-release --commit <reviewed-40-character-commit>
-```
-
-It validates every applied retained migration hash through213, permits only the exact historically omitted148 identity, and preserves all observed archived entries and148 absence in the exact complete
-ledger guard, emits one advisory-locked transaction for214 and its exact ledger insert, and preserves
-baseline configuration/bindings while forcing Cloud off. Output files are private, exclusive writes.
-The tool makes no network call and cannot execute SQL, publish an image or deploy. Obtain a fresh production baseline before using its output for release; Cloudflare read access has been restored.
-The production validator accepts only complete qualified Cloud release variables (or the sole
-disabled flag); provider secrets remain existing secret bindings outside plain configuration.
+Prepare production from fresh exact verified366d settings, preserve all bindings/secrets, and set Cloud disabled until gates and finite scoped production authority pass. Keep runtime/source/digest pins exact and reusable keys out of plain configuration. A source-only Cloudflare upload does not update already running Workflow bundles: fence/drain active owned attempts, verify owned absence, terminate exact stale owned continuation versions, restart the canonical driver once under the newly registered version and independently verify its params/version and complete instance inventory. Never restart CPU attempts or replay paid launch POSTs. Scoped staging performed exactly two owned continuation terminations and one same-ID canonical restart; histories remain immutable.
 
 Publish the qualified immutable runtime/source, then deploy isolated reviewed source. Preserve all
 existing secrets, Kie/Fal settings, private R2, query redaction, authentication, worker0.1.44 and
@@ -173,30 +194,10 @@ is settled. Never terminate unrelated Pods or touch historical Mage/SoulX volume
 
 ## Current acceptance boundary
 
-Production-based UI/product tests234pass/one unchanged source-text assertion. Focused controller50,
-continuation17, exact R2 inventory/checksum29 and migration9 pass. Python Cloud80, Local99pass/1skip,
-ASR33/span14/render31 and derived-audio helper25 pass; contracts123, typecheck, changed lint and
-context pass. Broad worker172pass/one unchanged historical Mage byte/hash failure; broad web
-2250pass/22fail/1skip, with not all22 individually baseline-reproduced. Source firewall retains two
-unchanged continuation import allowlist failures; emitted bundle quarantine passes. The unrelated
-node-fair-admission edit SHA remains unchanged.
+Current controller83/policy10 focused93 tests pass, including actual PostgreSQL214 CLEAN iff timestamp/event constraints, stale fencing, cancellation/deadline rejection and lost-callback receipt storage recovery. Prior controller/UI/render/adapter combined268 pass; current adapter20, native full-chain215/retry6, source-overlay28/Ruff, Localmedia114pass/1Windows skip, contracts123/typecheck12tasks/vNext/changedlint/context and fresh release web/Cloudflare build/quarantine pass. Broad worker175pass/one unchanged historical Mage source-byte/hash failure stops the remaining package chain. Broad web2250pass/22fail/1skip: not all22 individually baseline-reproduced. Two existing V2-05 continuation source allowlist failures remain; emitted quarantine passes. Do not claim whole-repository green. The unrelated fair-admission file's exact hash is unchanged.
 
-Production/staging builds pass at static closures2,778,234/2,775,622 bytes under unchanged limits;
-Cloud/multipart helpers remain dynamic, Linux execution stays outside Cloudflare bundles.
-Production source366d16c2/version62524e69 remains unchanged; fresh settings/deployments reads200,
-25 secret bindings, worker0.1.44 and query redaction verified. Publication parity is still required.
+Genuine installed Local0.1.44 retained-input ASR21170ms/span12119ms/render+mandatory technical checks150151ms;159.2s/4776frames/current Fal full/split composition and output hash are recorded in NATIVE_RETAINED_PROOF.json. Another hosted Local ASR succeeded through existing claim/lease/accepted-receipt logic: LOCAL_HOSTED_ASR_PROOF.json. Exact idle Local service is temporarily paused for Cloud; restore after proof, preserving identity/credentials. Regular Chrome existing saved159.2s output played to end/reloaded/private downloaded exact accepted checksum. Real Local/Cloud selector/default/readiness and Cloud saving reload with all paired workers OFFLINE are proved; new Cloud final preview/download/full playback remain gates.
 
-Real regular Chrome saved159.2s output reached ended=true, reload restored readyState4 without
-error, and private download25,080,526 bytes matches accepted SHA256; independent FFprobe verifies
-4776frames/1080p30/H264/AAC. Fixture selector/offline/Stopping/reload checks remain mocked.
-Current native Local execution remains below its unchanged2GiB scratch guard after clearing only
-verified disposable package/update caches (about1.1GiB remains); external613MiB and stale Windows heartbeat provide no ready alternative. Saved playback is not fresh execution or human AV review.
+One real Cloud ASR processed/uploaded, but primary pretty JSON differed from canonical RESULT bytes. Both whole checksums/contracts and semantic equality independently verified; source5c77 fixes verification and reconciles lost callbacks from the same stored receipt. Failed attempt is immutable; third owned Pod independently absent. Evidence LIVE_ASR_ACCEPTANCE.json/LIVE_ASR_STORED_VERIFICATION.json records exact measured intervals and unmeasured timing boundaries, resources/rates, sampled disk lower bound and conservativeUSD0.20 debit. No invoice or fresh provider quality claim.
 
-Real offline qualified Linux image/private pull proof is recorded in QUALIFIED_RUNTIME.json.
-Synthetic45-minute retained audio was derived with that exact runtime in free CI36441214616,
-195,749,679 bytes; independent whole R2 SHA and119,070,000-sample/2700s/44.1kHz/stereo FLAC probe
-passed and the exact new asset became VERIFIED. This is fixture preparation, not a45-minute render.
-Additive214 is independently installed, ledger197 and omitted148 preserved. The scoped authority
-and dormant owned proof jobs are prepared; no paid Pod or new Kie/Fal/prompt request has occurred.
-Short Cloud/cancellation/independent cleanup,45-minute render/storage, actual Cloud Chrome flow,
-current Local, ordinary final-promotion and qualified production rollout remain gates.
+Derived45-minute audio195,749,679 bytes/2700s/44.1kHz/stereo/119,070,000samples is independently verified. Its render/storage is unrun. Successful new Cloud ASR/span/short, real cancellation,45-minute storage/render, new output regular Chrome recovery/private playback/download, ordinary final promotion and gated production rollout remain. Retained/operator fixtures cannot fabricate accepted Kie/Fal/prompt/approval records or prove fresh provider/editorial quality. All recurring spend/volume/warm-pool authority remains absent.

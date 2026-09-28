@@ -1,0 +1,23 @@
+{
+  "schema_version": "videoforge-cloud-asr-stored-semantic-proof/v1",
+  "observed_at": "2026-09-28T18:46:52.026Z",
+  "read_only": true,
+  "primary": {
+    "bytes": 92536,
+    "sha256": "sha256:307e10f5472b7c4ecf9922d49957793dc7c1bf9472f2b4cae7c274c67d146df9"
+  },
+  "result": {
+    "bytes": 55232,
+    "sha256": "sha256:63da19b6d31fa3e6c60ae9f5c2dbb731e35f0ce14e100d4d9a0c4c0fa457473b"
+  },
+  "primary_result_byte_hashes_equal": false,
+  "contracts_valid": true,
+  "canonical_contract_hashes_equal": true,
+  "canonical_contract_sha256": "sha256:63da19b6d31fa3e6c60ae9f5c2dbb731e35f0ce14e100d4d9a0c4c0fa457473b",
+  "attempt_lineage_exact": true,
+  "accepted_source_model_exact": true,
+  "cpu_state": "FAILED",
+  "reservation_state": "CLEAN",
+  "conclusion": "Separately checksum-verified stored ASR JSON documents have equal validated canonical semantics and different serialized bytes; byte-identity acceptance gate rejects this actual result",
+  "private_content_copied_to_evidence": false
+}

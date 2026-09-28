@@ -7,9 +7,9 @@
     "f16c",
     "fma"
   ],
-  "runtime_sha256": "sha256:194d1a4cee7acca64661774faa9ad205b31c66470af2011b5dc420ebe447db81",
+  "runtime_sha256": "sha256:d313eee20b0874f9729c259417e78d02a6c56b11e58ed21350c4c6e503ef73f4",
   "schema_version": "videoforge-runpod-media-release/v1",
-  "source_sha256": "sha256:08f7344553c2b493eccd236b61698cae330edbee77eb7ee909e180d13f66b768",
+  "source_sha256": "sha256:2d5f4f16be8c7f0be96b0608dce905cc22f38426d9e242c0ebc4aa91c8cdcc41",
   "tooling": {
     "ffmpeg_sha256": "sha256:788271d88c9dd311ad914c4ea6776410bf4a81e67b38d34a2270bcca38541dbf",
     "ffmpeg_version": "8.1.2",
@@ -19,13 +19,13 @@
     "whisper_sha256": "sha256:3f1b748fa7e569f6a5aa739f6fcfc5944d748ff04da61c6df0bca3e0413d62b8",
     "whisper_version": "1.8.4"
   },
-  "image": "ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:d054d17bef2178593d96b8d579c41446f272330044e79ef1bbde976a859f2c62",
-  "source_commit": "fe61f6866a1c9aa52dbc0b27bdcf714ab03cfcc0",
-  "qualification_ci_run": 36437915344,
-  "qualification_boundary": "Real retained-source ASR, selected-span cutting, current Fal full/split composition, final render and technical checks ran offline in Linux. No paid Pod, fresh provider/editorial or desktop binary parity claim.",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:a2ff1f16e4d8990e611f0eb9380c96bcd936ddffdc49be3332ef140888566811",
+  "source_commit": "7434fc0cf652ae696c1f1e3a0799b38cb34e842c",
+  "qualification_ci_run": 36458994531,
+  "qualification_boundary": "Real retained-source ASR, selected-span cutting, current Fal full/split composition, final render and mandatory technical checks ran offline in Linux with network disabled. No paid Pod, fresh provider/editorial or desktop binary parity claim.",
   "publication": {
     "visibility": "private",
     "repository_link": null,
-    "method": "Controller-local scoped GHCR cross-repository blob mounts; identical qualified digest, no rebuild or media transfer"
+    "method": "Reviewed source overlay on exact prior immutable qualified tool/model/dependency image; new source fully qualified offline and final image digest independently verified. Actions write access restored to read-only; anonymous pull401."
   }
 }

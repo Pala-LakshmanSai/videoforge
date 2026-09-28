@@ -1,0 +1,169 @@
+{
+  "schema_version": "videoforge-cloud-media-live-ordinal2-normal-phase-evidence/v1",
+  "read_only": true,
+  "browser_created_asr": true,
+  "raw_browser_submit_response_verified": false,
+  "ordinary_final_promotion": false,
+  "unrun_gates": [
+    "SHORT_RENDER",
+    "45_MINUTE_RENDER",
+    "CANCELLATION"
+  ],
+  "observations": [
+    {
+      "observed_at": "2026-09-28T20:37:10.42919+00:00",
+      "budget": {
+        "enabled": true,
+        "expires_at": "2026-09-28T21:15:51.287417+00:00",
+        "scope_exact": true,
+        "max_hourly_usd": 0.8,
+        "reservation_count": 5,
+        "max_rental_seconds": 7200,
+        "max_reservation_usd": 1.6,
+        "approved_compute_cap_usd": 3,
+        "conservative_debited_usd": 0.6
+      },
+      "billing_total_usd": null,
+      "billing_status": "NOT_OBSERVED_budget_debits_are_conservative_authority_reservations_not_invoices",
+      "capacity": {
+        "global_active_cloud_reservations": 0,
+        "account_active_cloud_reservations": 0,
+        "global_active_provider_workload_admissions": 1,
+        "account_active_provider_workload_admissions": 1
+      },
+      "not_yet_prepared": [
+        "ordinal2-span"
+      ],
+      "attempts": [
+        {
+          "label": "ordinal2-asr",
+          "kind": "ASR",
+          "backend": "RUNPOD_POD",
+          "attempt_state": "SUCCEEDED",
+          "failure_code": null,
+          "attempt_created_at": "2026-09-28T20:17:07.695Z",
+          "attempt_submitted_at": "2026-09-28T20:17:13.659Z",
+          "attempt_deadline_at": "2026-09-29T20:17:07.695Z",
+          "cancellation_requested_at": null,
+          "phases": {
+            "resource_verified_at": "2026-09-28T20:17:15.090Z",
+            "download_started_at": "2026-09-28T20:17:26.539Z",
+            "processing_started_at": "2026-09-28T20:17:32.434Z",
+            "checking_started_at": "2026-09-28T20:17:43.943Z",
+            "saving_started_at": "2026-09-28T20:17:48.651Z",
+            "accepted_or_terminal_at": "2026-09-28T20:18:10.848Z",
+            "cleanup_verified_at": "2026-09-28T20:18:16.921Z"
+          },
+          "reservation": {
+            "state": "CLEAN",
+            "launch_outcome": "CONFIRMED",
+            "created_at": "2026-09-28T20:17:12.549Z",
+            "updated_at": "2026-09-28T20:18:16.921Z",
+            "deadline_at": "2026-09-28T20:32:13.659Z",
+            "placement_deadline_at": "2026-09-28T20:20:12.549Z",
+            "disk_gb": 100,
+            "rental_seconds": 900,
+            "expected_all_in_hourly_usd": 0.7338888888888888,
+            "controller_recorded_actual_all_in_hourly_usd": 0.7338888888888888,
+            "pricing_note": "Persisted controller rate uses observed provider Pod cost plus disk allowance at USD0.10/GB/month divided by720; not an invoice or independent billing total",
+            "hourly_cap_usd": 0.8,
+            "reservation_cap_usd": 0.2,
+            "fallback_round": 0,
+            "candidate_index": 0,
+            "span_batch_count": 1,
+            "gpu": "NVIDIA RTX PRO 4500 Blackwell Server Edition",
+            "image_digest": "sha256:a2ff1f16e4d8990e611f0eb9380c96bcd936ddffdc49be3332ef140888566811",
+            "runtime_sha256": "sha256:d313eee20b0874f9729c259417e78d02a6c56b11e58ed21350c4c6e503ef73f4",
+            "source_sha256": "sha256:2d5f4f16be8c7f0be96b0608dce905cc22f38426d9e242c0ebc4aa91c8cdcc41"
+          },
+          "committed_inputs": {
+            "object_count": 1,
+            "bytes": 2548151
+          },
+          "outputs": [
+            {
+              "source": "PRIMARY_RESULT_OUTPUT",
+              "content_type": "application/json",
+              "max_bytes": 16777216,
+              "issued_bytes": 92536,
+              "issued_at": "2026-09-28T20:17:53.397Z"
+            },
+            {
+              "source": "RESULT_DOCUMENT",
+              "content_type": "application/json",
+              "max_bytes": 1048576,
+              "issued_bytes": 55232,
+              "issued_at": "2026-09-28T20:17:58.898Z"
+            }
+          ],
+          "accepted_receipt_bytes": 55232,
+          "accepted_receipt_sha256": "sha256:f74f3cec79d96d1591f7ef079469b44f834e107808d0133b1c67cb4da379b293",
+          "measurements": {
+            "reservation_to_resource_verified": {
+              "milliseconds": 2541,
+              "boundary": "Combined admission/capacity/provider-create/resource-verification interval; paid POST begin/end not persisted"
+            },
+            "resource_verified_to_download": {
+              "milliseconds": 11449,
+              "boundary": "Combined image transfer/container bootstrap/runtime qualification/spec fetch/first heartbeat; standalone image-pull duration unavailable"
+            },
+            "input_download": {
+              "milliseconds": 5895,
+              "boundary": "Controller-observed download-to-processing heartbeat interval, includes transport latency"
+            },
+            "processing_to_checking": {
+              "milliseconds": 11509,
+              "boundary": "Controller-observed render/ASR/span subprocess interval"
+            },
+            "checking_to_saving": {
+              "milliseconds": 4708,
+              "boundary": "Controller-observed technical checks and local artifact verification"
+            },
+            "technical_verification": {
+              "milliseconds": null,
+              "boundary": "Pod child monotonic metric for mandatory full video technical verification; null for ASR/span"
+            },
+            "local_artifact_verification": {
+              "milliseconds": 0,
+              "boundary": "Pod local receipt/primary-artifact checks and SHA hashing before upload; excludes server acceptance"
+            },
+            "saving_to_acceptance": {
+              "milliseconds": 22197,
+              "boundary": "Combined artifact transfer/receipt publication/server verification/durable acceptance; standalone upload split unavailable"
+            },
+            "terminal_to_cleanup_verified": {
+              "milliseconds": 6073,
+              "boundary": "Combined cleanup request/provider DELETE/complete-inventory absence/storage cleanup/durable cleanup; DELETE start/end unavailable"
+            },
+            "provider_created_to_container_started": {
+              "milliseconds": null,
+              "boundary": "Provider-reported lifecycle timestamps while Pod observable; not a standalone image-pull measurement"
+            },
+            "os_peak_disk_bytes": {
+              "value": 24137728,
+              "status": "SAMPLED_FILESYSTEM_HIGH_WATER_LOWER_BOUND",
+              "filesystem_total_bytes": 107374182400,
+              "initial_used_bytes": 16486400,
+              "min_free_bytes": 107350044672,
+              "sample_count": 40,
+              "reason": "One-second filesystem samples include runtime and other filesystem users; not an exact or job-exclusive peak"
+            }
+          },
+          "independent_provider_observation": {
+            "inventory_complete": true,
+            "page_count": 1,
+            "observed_at": "2026-09-28T20:37:10.42919+00:00",
+            "owned_matching_pods": 0,
+            "confirmed_owned_pod_absence": true,
+            "unknown_launch_not_disproved_by_empty_inventory": false
+          },
+          "last_observed_provider_facts": null
+        }
+      ]
+    }
+  ],
+  "operator_inserted_asr_attempt": false,
+  "server_created_asr": true,
+  "operator_prepared_project_metadata": true,
+  "retained_inputs": true
+}

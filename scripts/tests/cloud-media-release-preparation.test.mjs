@@ -57,7 +57,8 @@ test("new additive recovery and telemetry migrations guard exact214 before215 an
   const original = entry(214,"optional_runpod_media","SELECT 214;");
   const recovery = entry(215,"hosted_cloud_asr_recovery","SELECT 215;");
   const disk = entry(216,"cloud_media_disk_measurements","SELECT 216;");
-  const manifest = { migrations: [original,recovery,disk] };
+  const span = entry(217,"hosted_span_audio_current_asr_receipt","SELECT 217;");
+  const manifest = { migrations: [original,recovery,disk,span] };
   const first = prepareMigrationSql([original],manifest,"SELECT 215;",215);
   assert.match(first,/VALUES\(215,/u);
   assert.ok(first.includes(JSON.stringify([original])));
@@ -69,4 +70,10 @@ test("new additive recovery and telemetry migrations guard exact214 before215 an
   assert.throws(()=>prepareMigrationSql([original,recovery,disk],manifest,"SELECT 216;",216));
   assert.throws(()=>prepareMigrationSql([original],manifest,"SELECT 216;",215));
   assert.throws(()=>prepareMigrationSql([original],manifest,"SELECT 217;",217));
+  const third = prepareMigrationSql([original,recovery,disk],manifest,"SELECT 217;",217);
+  assert.match(third,/VALUES\(217,/u);
+  assert.ok(third.includes(JSON.stringify([original,recovery,disk])));
+  assert.equal(third.includes("SELECT 216;"),false);
+  assert.throws(()=>prepareMigrationSql([original,recovery,disk,span],manifest,"SELECT 217;",217));
+  assert.throws(()=>prepareMigrationSql([original,recovery,disk],manifest,"SELECT 217;SELECT 1;",217));
 });

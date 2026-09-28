@@ -1,0 +1,22 @@
+{
+  "observed_at": "2026-09-28T16:09:07.224Z",
+  "source": "cf2820f66589d53e3958c0aacd2272ae9bc5ea82",
+  "environment": "scoped_staging",
+  "browser": "existing regular Chrome",
+  "incognito": false,
+  "authenticated_current_owner": true,
+  "local_default": true,
+  "stale_worker_not_shown_connected": true,
+  "local_connect_settings_link": true,
+  "cloud_selection_accessible_native_combobox": true,
+  "cloud_no_connected_worker_blocker": true,
+  "cloud_compute_cost_copy": true,
+  "local_restoration": true,
+  "queue_cloud_backend_copy": true,
+  "queue_disconnected_computer_blocker": false,
+  "future_planned_jobs_not_fake_active": true,
+  "fixture_delete_disabled": true,
+  "ordinary_project_submitted": false,
+  "paid_job_started_from_browsing": false,
+  "boundary": "Real authenticated staging selector/readiness/Queue UI only; no paid execution, completed Cloud output, ordinary final promotion or fresh Local execution from this check."
+}

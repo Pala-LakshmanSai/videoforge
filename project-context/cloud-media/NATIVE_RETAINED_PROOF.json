@@ -1,0 +1,103 @@
+{
+  "schema_version": "videoforge-native-retained-offline-proof/v1",
+  "native_version": "0.1.44",
+  "execution_bundle_sha256": "sha256:57912be1802c23d0bca0c60a5fbcba14b81ade77d360bf241a514fbbc31597a3",
+  "tools": {
+    "ffmpeg": "sha256:32a863b82bad587a8b54d8fba239d9e094b0a366ac870a68844c1104b92e70fa",
+    "ffprobe": "sha256:2800e92c127642111a0d83112a957b867b92012798f2ea8ebcfcf64858b6408e",
+    "whisper": "sha256:51e149203449328053e4e839110b3718254010492e266204c1d6ba70baa7bb72",
+    "model": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002"
+  },
+  "input_objects": 45,
+  "input_bytes": 49212960,
+  "all_input_whole_hashes_verified": true,
+  "phases": [
+    {
+      "kind": "ASR",
+      "milliseconds": 21170,
+      "exit": 0,
+      "status": "SUCCEEDED"
+    },
+    {
+      "kind": "SPAN_AUDIO",
+      "milliseconds": 12119,
+      "exit": 0,
+      "status": "SUCCEEDED"
+    },
+    {
+      "kind": "RENDER",
+      "milliseconds": 150151,
+      "exit": 0,
+      "status": "SUCCEEDED"
+    }
+  ],
+  "probe": {
+    "asset_id": "asset_render_05e402dc6a88882961f19868",
+    "audio": {
+      "channels": 2,
+      "codec": "aac",
+      "sample_rate_hz": 48000,
+      "start_ms": 0
+    },
+    "av_drift_ms": 0,
+    "bytes": 24997512,
+    "container": "mp4",
+    "decode_ok": true,
+    "duration_ms": 159200,
+    "loudness": {
+      "input_integrated_lufs": -21.61,
+      "input_true_peak_dbtp": -4.71,
+      "normalized": true,
+      "output_integrated_lufs": -16.1,
+      "output_true_peak_dbtp": -2.25,
+      "profile": "voiceover-minus16lufs-v1"
+    },
+    "schema_version": "technical-probe/v1",
+    "sha256": "sha256:05e402dc6a88882961f19868efb736d757fd29ec5a64260a42ce6a14431bb3f9",
+    "stream_counts": {
+      "audio": 1,
+      "data": 0,
+      "subtitle": 0,
+      "video": 1
+    },
+    "tools": {
+      "ffmpeg_version": "8.1.2",
+      "ffprobe_version": "8.1.2",
+      "filtergraph_sha256": "sha256:42b145a0d4700f1422b711e64547328812d5ef1288bd420955b5116e9601d92f"
+    },
+    "total_frames": 4776,
+    "video": {
+      "codec": "h264",
+      "fps_den": 1,
+      "fps_num": 30,
+      "height": 1080,
+      "pixel_format": "yuv420p",
+      "start_ms": 0,
+      "width": 1920
+    }
+  },
+  "output_bytes": 24997512,
+  "output_sha256": "sha256:05e402dc6a88882961f19868efb736d757fd29ec5a64260a42ce6a14431bb3f9",
+  "real_frozen_installed_worker": true,
+  "fresh_offline_attempt_ids": true,
+  "immutable_manifest_and_assets_reused": true,
+  "database_mutations": 0,
+  "server_queue_claim": false,
+  "server_publication": false,
+  "new_provider_generation": false,
+  "paid_posts": 0,
+  "boundary": "Native retained-media execution and mandatory technical gates, plus fresh hosted reconnect in current-account regular Chrome. Does not prove hosted job claim, upload or final promotion; earlier fixture-layout rejections were operator setup errors.",
+  "hosted_connection_verification": {
+    "verified_at": "2026-09-28T17:05:30.627Z",
+    "production_source": "366d16c27369b4430a843ae4e6929b7d7156eb89",
+    "installed_version": "0.1.44",
+    "published_connect_script_exact": true,
+    "server_atomic_idle_switch": true,
+    "regular_chrome_settings_online": true,
+    "current_account": true,
+    "installer_downloaded": false,
+    "upgrade_performed": false,
+    "existing_device_history_preserved": true,
+    "hosted_claim_upload_final_promotion": false
+  }
+}

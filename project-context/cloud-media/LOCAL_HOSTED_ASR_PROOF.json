@@ -1,0 +1,17 @@
+{
+  "at": "2026-09-28T18:53:31.621347+00:00",
+  "readonly": true,
+  "uniqueAttempt": true,
+  "exactInstalledDevice": true,
+  "workerVersion": "0.1.44",
+  "exactDesktopRelease": true,
+  "cpuState": "SUCCEEDED",
+  "leaseState": "SUCCEEDED",
+  "hostedAcceptedResultReceipt": true,
+  "resultObjectFactsBound": true,
+  "terminalAt": "2026-09-28T18:32:02.558745+00:00",
+  "leaseCompletedAt": "2026-09-28T18:32:02.558745+00:00",
+  "failureCode": null,
+  "hostedLocalAsrSucceeded": true,
+  "remoteMutations": 0
+}

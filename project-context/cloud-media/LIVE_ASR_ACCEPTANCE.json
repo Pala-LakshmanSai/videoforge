@@ -1,0 +1,111 @@
+{
+  "schema_version": "videoforge-cloud-media-live-asr-evidence/v1",
+  "observed_at": "2026-09-28T18:37:09.105979+00:00",
+  "source": "481f258161b3d15b6bb9bdac1a05cb12b729018d",
+  "stage_version": "502c830a-92f4-486a-9a80-2c1897b97260",
+  "phase": "retained-media ASR qualification",
+  "result": "FAILED_AT_COMPLETION_ACCEPTANCE",
+  "accepted_result": false,
+  "shared_process_and_artifact_uploads_observed": true,
+  "primary_bytes": 92536,
+  "result_bytes": 55232,
+  "identity": {
+    "image_digest": "sha256:a2ff1f16e4d8990e611f0eb9380c96bcd936ddffdc49be3332ef140888566811",
+    "source_sha256": "sha256:2d5f4f16be8c7f0be96b0608dce905cc22f38426d9e242c0ebc4aa91c8cdcc41",
+    "runtime_sha256": "sha256:d313eee20b0874f9729c259417e78d02a6c56b11e58ed21350c4c6e503ef73f4"
+  },
+  "gpu": "NVIDIA RTX PRO 4500 Blackwell Server Edition",
+  "temporary_disk_gb": 100,
+  "expected_all_in_hourly_usd": 0.7338888888888888,
+  "controller_recorded_actual_all_in_hourly_usd": 0.7338888888888888,
+  "billing_total_usd": null,
+  "billing_status": "NOT_OBSERVED",
+  "conservative_reservation_debit_usd": 0.2,
+  "total_reservations_consumed": 3,
+  "phases": {
+    "resource_verified_at": "2026-09-28T18:33:27.974Z",
+    "download_started_at": "2026-09-28T18:33:44.126Z",
+    "processing_started_at": "2026-09-28T18:33:50.018Z",
+    "checking_started_at": "2026-09-28T18:34:00.974Z",
+    "saving_started_at": "2026-09-28T18:34:05.723Z",
+    "accepted_or_terminal_at": "2026-09-28T18:34:52.026Z",
+    "cleanup_verified_at": "2026-09-28T18:34:53.684Z"
+  },
+  "measurements": {
+    "reservation_to_resource_verified": {
+      "milliseconds": 2738,
+      "boundary": "Combined admission/capacity/provider-create/resource-verification interval; paid POST begin/end not persisted"
+    },
+    "resource_verified_to_download": {
+      "milliseconds": 16152,
+      "boundary": "Combined image transfer/container bootstrap/runtime qualification/spec fetch/first heartbeat; standalone image-pull duration unavailable"
+    },
+    "input_download": {
+      "milliseconds": 5892,
+      "boundary": "Controller-observed download-to-processing heartbeat interval, includes transport latency"
+    },
+    "processing_to_checking": {
+      "milliseconds": 10956,
+      "boundary": "Controller-observed render/ASR/span subprocess interval"
+    },
+    "checking_to_saving": {
+      "milliseconds": 4749,
+      "boundary": "Controller-observed technical checks and local artifact verification"
+    },
+    "technical_verification": {
+      "milliseconds": null,
+      "boundary": "Pod child monotonic metric for mandatory full video technical verification; null for ASR/span"
+    },
+    "local_artifact_verification": {
+      "milliseconds": 0,
+      "boundary": "Pod local receipt/primary-artifact checks and SHA hashing before upload; excludes server acceptance"
+    },
+    "saving_to_acceptance": {
+      "milliseconds": 46303,
+      "boundary": "Combined artifact transfer/receipt publication/server verification/durable acceptance; standalone upload split unavailable"
+    },
+    "terminal_to_cleanup_verified": {
+      "milliseconds": 1658,
+      "boundary": "Combined cleanup request/provider DELETE/complete-inventory absence/storage cleanup/durable cleanup; DELETE start/end unavailable"
+    },
+    "provider_created_to_container_started": {
+      "milliseconds": null,
+      "boundary": "Provider-reported lifecycle timestamps while Pod observable; not a standalone image-pull measurement"
+    },
+    "os_peak_disk_bytes": {
+      "value": 24137728,
+      "status": "SAMPLED_FILESYSTEM_HIGH_WATER_LOWER_BOUND",
+      "filesystem_total_bytes": 107374182400,
+      "initial_used_bytes": 16486400,
+      "min_free_bytes": 107350044672,
+      "sample_count": 22,
+      "reason": "One-second filesystem samples include runtime and other filesystem users; not an exact or job-exclusive peak"
+    }
+  },
+  "provider_resources": {
+    "created_at": "2026-09-28T18:33:27.200Z",
+    "started_at": "2026-09-28T18:33:27.194Z",
+    "container_uptime_seconds": 57,
+    "provider_reported_pod_cost_usd_per_hour": 0.72,
+    "temporary_disk_gb": 100,
+    "vcpu_count": 16,
+    "system_ram_gb": 94,
+    "gpu_count": 1,
+    "status": "RUNNING"
+  },
+  "independent_cleanup": {
+    "complete_inventory": true,
+    "owned_matching_pods": 0,
+    "confirmed_owned_pod_absence": true,
+    "observed_at": "2026-09-28T18:37:09.105979+00:00"
+  },
+  "boundaries": [
+    "Retained media ASR only; no new provider generation",
+    "Physical computer stayed on for regular Chrome; installed rendering worker service offline",
+    "ASR artifacts were uploaded but final callback was rejected; no accepted CPU success",
+    "No Cloud span/render/cancellation/45-minute/ordinary-final-promotion acceptance yet",
+    "Sampled filesystem high-water is a lower bound, not a storage guarantee",
+    "Observed rate is not an invoice"
+  ],
+  "next": "Fix ASR primary/result JSON semantic verification; preserve terminal attempt and uploaded objects"
+}

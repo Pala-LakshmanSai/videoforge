@@ -1,6 +1,6 @@
 {
   "schema_version": "videoforge-cloud-media-safe-preparation/v1",
-  "status": "QUALIFIED_SCOPED_STAGING_DEPLOYED_AWAITING_LIVE_PROOF",
+  "status": "NORMAL_BROWSER_CLOUD_ASR_ACCEPTED_AND_CLEAN_SPAN_LINEAGE_CORRECTION_PENDING",
   "checkpoint": "VF-10-09",
   "production_source": "366d16c27369b4430a843ae4e6929b7d7156eb89",
   "implementation_base": "f9b9283ca662e73c0ba276741db22521c3b65357",
@@ -12,7 +12,8 @@
     "applied": true,
     "ledger_rows_after": 197,
     "post_commit_read_verified": true,
-    "historical_omitted_148_preserved": true
+    "historical_omitted_148_preserved": true,
+    "boundary": "Historical214append; current215/216append separately exact-ledger guarded"
   },
   "validations": {
     "production_web_build": "PASS",
@@ -44,9 +45,9 @@
       "ruff": "PASS"
     },
     "local_media_tests": {
-      "total": 100,
-      "pass": 99,
-      "skip": 1
+      "pass": 114,
+      "skip": 1,
+      "boundary": "Current release source, existing Python3.12 environment"
     },
     "asr_tests": {
       "pass": 33
@@ -58,10 +59,9 @@
       "pass": 31
     },
     "broad_worker_tests": {
-      "total": 173,
-      "pass": 172,
+      "pass": 175,
       "fail": 1,
-      "failure": "historical Mage byte/hash test; unchanged at366d/f9"
+      "failure": "Unchanged historical Mage source-byte/hash assertion; runner stops before remaining packages"
     },
     "broad_web_tests": {
       "pass": 2250,
@@ -98,6 +98,42 @@
       "pass": 25,
       "ruff": "PASS",
       "yaml_bash_syntax": "PASS"
+    },
+    "current_focused_tests": {
+      "controller": 61,
+      "ui": 154,
+      "render_materializer_handoff": 34,
+      "hosted_adapters": 19,
+      "combined": 268,
+      "pass": true
+    },
+    "runtime_source_overlay_tests": {
+      "pass": 28,
+      "ruff": "PASS",
+      "real_network_disabled_ci": 36458994531
+    },
+    "current_typecheck": "PASS12tasks",
+    "additive_release_preparation_tests": {
+      "pass": 4
+    },
+    "current_callback_recovery_tests": {
+      "pass": 97,
+      "fail": 0,
+      "actual_postgres_cleanup_event_constraints": true,
+      "asr_semantic_verification": true,
+      "lost_callback_same_receipt_recovery": true,
+      "lint": "PASS",
+      "typecheck": "PASS",
+      "fresh_web_cloudflare_build": "PASS"
+    },
+    "current_hosted_adapter_tests": {
+      "pass": 20,
+      "exact_account_admission_conflict": true
+    },
+    "normal_span_continuation_qualification": {
+      "pass": 58,
+      "fail": 0,
+      "actual_postgres_scope_guards": true
     }
   },
   "bundles": {
@@ -168,7 +204,8 @@
         "sha256": "b2dacf86a8c41932d96b21b95172e4fbadfbab52c8102d0212d4727e7ac1def8",
         "statically_reachable": false
       }
-    }
+    },
+    "boundary": "Historical measured closure identities; current7434build/quarantine PASS, deployment current below"
   },
   "browser": {
     "real_chrome": true,
@@ -183,23 +220,33 @@
     "production_readonly": [
       "Regular signed-in Chrome saved playback to ended=true; reload restores readyState4 without error",
       "Private download SHA-256 and size match committed output",
-      "159.2s/4776 frames/1920x1080/H264/30fps/AAC independently probed"
+      "159.2s/4776 frames/1920x1080/H264/30fps/AAC independently probed",
+      "Actual0.1.44 current-account reconnect ONLINE verified, then exact idle service paused and every paired rendering device OFFLINE for Cloud proof"
     ],
     "unverified": [
-      "Human narration/audio-sync review",
-      "Real controller create/queue/cleanup",
-      "Current Local execution: existing2GiB free-space gate blocked; safe disposable cache cleanup left about1.1GiB; no ready qualified computer in current tenant"
+      "Real paid Cloud ASR/span/render and independent cleanup",
+      "45-minute render/storage",
+      "New Cloud output private preview/download/playthrough",
+      "Ordinary accepted final promotion"
     ],
     "regular_chrome": true,
     "saved_download": {
       "bytes": 25080526,
       "sha256": "sha256:5d00d93183c2fcf4442fd64674723a331b8fc965ac4ff8c54e4ca57e4fc9e24c",
       "boundary": "Existing accepted output; not fresh Local or Cloud execution proof"
-    }
+    },
+    "regular_chrome_successor": {
+      "start_clicked_once": true,
+      "cloud_no_computer_blocker": true,
+      "physical_tab_close_restore": true,
+      "restored_same_project_and_attempt": true,
+      "boundary": "Pre-placement failure; no rented compute or new output"
+    },
+    "local_native_proof": "NATIVE_RETAINED_PROOF.json"
   },
   "provider": {
-    "last_complete_inventory_utc": "2026-09-28T13:05:45Z",
-    "pods": 0,
+    "last_complete_inventory_utc": "2026-09-28T18:05:39Z",
+    "pods": 1,
     "rank1_gpu_usd_per_hour": 0.72,
     "disk100gb_estimated_usd_per_hour": 0.013889,
     "capacity": "LOW with adjacent NONE; volatile",
@@ -209,18 +256,21 @@
     "spend_usd": 0,
     "inventory_account_boundary": "Actual configured VideoForge credential inventory complete; no Frontier credential copied",
     "owned_new_lane_pods": 0,
-    "owned_shutdown_proof": "No billable POST ever issued; no owned Pod launched, independent owned shutdown not yet exercised",
+    "owned_shutdown_proof": "Two provider-inert ASR failures settled CLEAN; no billable POST. This is not independent real Pod shutdown proof.",
     "inventory_complete": true,
     "catalogue_gpu_count": 48
   },
   "remaining_gates": [
-    "short real Cloud and cancellation",
-    "representative45-minute VideoForge",
-    "full browser acceptance",
-    "production rollout/readback"
+    "Diagnose/fix real Cloudflare catalogue transport before fresh bounded attempt",
+    "Real Cloud ASR/span/short render",
+    "Real cancellation and independent owned cleanup",
+    "Representative45-minute rendering/storage",
+    "New output regular Chrome preview/private download/playback after compute off",
+    "Ordinary live accepted final promotion",
+    "Conditional production rollout/readback"
   ],
-  "implementation_commit": "21f2e3ce112d406149c3b73f55222aa3419ec2db",
-  "image_identity": "ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:d054d17bef2178593d96b8d579c41446f272330044e79ef1bbde976a859f2c62",
+  "implementation_commit": "7434fc0cf652ae696c1f1e3a0799b38cb34e842c",
+  "image_identity": "ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:a2ff1f16e4d8990e611f0eb9380c96bcd936ddffdc49be3332ef140888566811",
   "current_cloudflare_settings_read": "200;25secret bindings/current0.1.44/query-redaction/source366d verified; final release parity remains required",
   "unrelated_edit_hash": "UNCHANGED_VERIFIED",
   "public_production_readback": {
@@ -324,9 +374,9 @@
     "credential_copied": false
   },
   "runtime_build": {
-    "source_commit": "fe61f6866a1c9aa52dbc0b27bdcf714ab03cfcc0",
-    "workflow_run": 36437915344,
-    "source_sha256": "sha256:08f7344553c2b493eccd236b61698cae330edbee77eb7ee909e180d13f66b768",
+    "source_commit": "7434fc0cf652ae696c1f1e3a0799b38cb34e842c",
+    "workflow_run": 36458994531,
+    "source_sha256": "sha256:2d5f4f16be8c7f0be96b0608dce905cc22f38426d9e242c0ebc4aa91c8cdcc41",
     "required_cpu_flags": [
       "avx",
       "avx2",
@@ -345,14 +395,18 @@
       }
     ],
     "paid_pods": 0,
-    "run_id": 36437915344,
+    "run_id": 36458994531,
     "status": "OFFLINE_MEDIA_QUALIFIED_PRIVATE_DIGEST_PUBLISHED",
     "publication": true,
-    "runtime_sha256": "sha256:194d1a4cee7acca64661774faa9ad205b31c66470af2011b5dc420ebe447db81",
-    "qualification_boundary": "Real retained-source ASR, selected-span cutting, current Fal full/split composition, final render and technical checks ran offline in Linux. No paid Pod, fresh provider/editorial or desktop binary parity claim.",
+    "runtime_sha256": "sha256:d313eee20b0874f9729c259417e78d02a6c56b11e58ed21350c4c6e503ef73f4",
+    "qualification_boundary": "Private source overlay on exact immutable qualified base, unchanged pinned tools/model/dependency lock; real offline ASR/span/current Fal FULL/SPLIT/final gates passed with network disabled. No paid Pod timing or fresh provider quality proof.",
     "private_authenticated_pull": "PASS; exact Linux digest/config/all layer sizes, anonymous401",
     "narrow_registry_scope": "read:packages only; independent owned registry relist verified",
-    "mistaken_public_package": "Removed through exact owner-authorized normal Chrome confirmation; independent API404, private package200/digest unchanged"
+    "mistaken_public_package": "Removed through exact owner-authorized normal Chrome confirmation; independent API404, private package200/digest unchanged",
+    "repository_unlinked": true,
+    "repository_actions_access": "READ",
+    "anonymous_pull": "401",
+    "exact_authenticated_manifest_config_all_layers": "PASS"
   },
   "live_database_after214": {
     "ledger_rows": 197,
@@ -362,19 +416,72 @@
   },
   "live_fixture_preparation": {
     "budget_scoped_to_new_owned_projects": true,
-    "short_jobs": "PLANNED; no workflow activation or Pod POST",
+    "short_jobs": "Fresh operator qualification successor ASR failed before launch; exact accepted voiceover reused; no accepted provider/approval records invented",
     "derived45_asset": "VERIFIED; whole195749679-byte R2 checksum and actual2700s/44100Hz/stereo/119070000-sample FLAC verified",
-    "new_kie_fal_prompt_calls": 0
+    "new_kie_fal_prompt_calls": 0,
+    "ordinary_215_live_rpc_proof": false,
+    "ordinary_final_promotion_proof": false
   },
   "derived45_audio_fixture_evidence": "RETAINED45_AUDIO_FIXTURE.json",
   "local_live_readiness": {
     "worker_release": "0.1.44",
     "minimum_free_scratch_bytes": 2147483648,
-    "free_space_after_safe_cache_cleanup": "approximately1.1GiB",
-    "current_tenant_windows_fresh_heartbeat_count": 0,
-    "external_volume_free": "613MiB",
     "guard_changed": false,
-    "accepted_media_deleted": false
+    "accepted_media_deleted": false,
+    "offline_retained_execution": "ASR21170ms/span12119ms/render_and_mandatory_checks150151ms",
+    "hosted_current_account_pairing": "ONLINE verified; intentionally paused for Cloud proof",
+    "boundary": "Frozen installed worker retained ASR/span/render passed. Another actual hosted Local ASR completed through existing exact device claim/lease and accepted receipt; service paused after idle for Cloud."
   },
-  "staging_deployment": "STAGING_QUALIFICATION.json"
+  "staging_deployment": "STAGING_QUALIFICATION.json",
+  "migrations": {
+    "versions": [
+      214,
+      215,
+      216
+    ],
+    "ledger_rows_after": 199,
+    "prior_197_rows_exact": true,
+    "historical_omitted_148_preserved": true,
+    "post_commit_read_verified": true
+  },
+  "staging_current": {
+    "source": "5c77b2b2954b614af16fb68cf73782dd39648222",
+    "cloudflare_version": "39842c70-9326-471f-82c3-12269b6528db",
+    "secrets_preserved": 10,
+    "production_unchanged": true,
+    "qualification_only": true,
+    "scoped_cloud_enabled": true,
+    "workflow_definitions_registered": 2,
+    "owned_stale_continuation_terminations": 2,
+    "same_canonical_current_version_restart": 1,
+    "cpu_restarts": 0,
+    "known_instances": 5,
+    "complete_owned_inventory_verified": true
+  },
+  "live_cloud_asr": {
+    "reserved_count": 3,
+    "provider_inert_failures": 2,
+    "paid_pod_posts": 1,
+    "conservative_debited_usd": 0.2,
+    "invoice_observed": false,
+    "third_cpu_state": "FAILED",
+    "third_cleanup": "CLEAN",
+    "independent_owned_absence_verified": true,
+    "callback_defect": "pretty primary JSON versus canonical receipt byte equality",
+    "stored_both_whole_checksums_and_semantic_equality_verified": true,
+    "failed_attempt_rewritten": false,
+    "current_fix_source": "5c77b2b2954b614af16fb68cf73782dd39648222",
+    "new_provider_generation": 0
+  },
+  "normal_asr_acceptance": {
+    "source": "0cc46390812c7c4f836abc64bb2130fe0f0a7a87",
+    "server_created": true,
+    "state": "SUCCEEDED",
+    "cleanup": "CLEAN",
+    "browser_closed_and_reopened": true,
+    "personal_workers_offline": true,
+    "fresh_generation": false,
+    "whole_r2_hash_and_semantic_verification": true,
+    "proof": "LIVE_NORMAL_ASR_ACCEPTANCE.json"
+  }
 }
