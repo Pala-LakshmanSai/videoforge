@@ -20,7 +20,7 @@ const next = (objectKey: string, id: string) => `<NextKeyMarker>${xml(objectKey)
 let fetcher: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
-  fixture.sign.mockReset().mockImplementation(async (url: URL) => new Request(url, {method: "GET"}));
+  fixture.sign.mockReset().mockImplementation(async (url: URL, options: RequestInit) => new Request(url, options));
   fetcher = vi.fn();
   vi.stubGlobal("fetch", fetcher);
 });
@@ -103,6 +103,35 @@ it("bounds streamed bodies before parsing instead of trusting missing Content-Le
 
 it("rejects broad keys before signing or storage access", async () => {
   await expect(new HostedR2Signer(config).listMultipartUploadsExact("tenant/account/")).rejects.toThrow("KEY_INVALID");
+  expect(fixture.sign).not.toHaveBeenCalled();
+  expect(fetcher).not.toHaveBeenCalled();
+});
+
+it("preserves exact multipart request body, opaque query and controller-only signing", async () => {
+  fetcher.mockResolvedValue(new Response("accepted"));
+  const response = await new HostedR2Signer(config).multipartRequest("POST", key,
+    {uploadId: "opaque/+&%"}, "<CompleteMultipartUpload/>", "application/xml");
+  expect(await response.text()).toBe("accepted");
+  expect(new URL(fixture.sign.mock.calls[0]![0]).searchParams.get("uploadId")).toBe("opaque/+&%");
+  expect(fixture.sign.mock.calls[0]![1]).toEqual({method: "POST", body: "<CompleteMultipartUpload/>",
+    headers: {"content-type": "application/xml"}});
+  await expect(new HostedR2Signer(config).multipartRequest("DELETE", "tenant/account/", {})).rejects.toThrow("KEY_INVALID");
+  expect(fixture.sign).toHaveBeenCalledOnce();
+  expect(fetcher).toHaveBeenCalledOnce();
+});
+
+it("preserves bounded exact part-signing with an opaque upload ID", async () => {
+  const signed = new URL(await new HostedR2Signer(config).signMultipartPart(key, "opaque/+&%", 10_000));
+  expect(signed.searchParams.get("uploadId")).toBe("opaque/+&%");
+  expect(signed.searchParams.get("partNumber")).toBe("10000");
+  expect(signed.searchParams.get("X-Amz-Expires")).toBe("300");
+  expect(fixture.sign.mock.calls[0]![1]).toEqual({method: "PUT", aws: {signQuery: true}});
+  expect(fetcher).not.toHaveBeenCalled();
+});
+
+it.each([["tenant/account/", "id", 1], [key, "", 1], [key, "id", 0],
+  [key, "id", 10_001], [key, "id", 1.5]] as const)("rejects invalid exact part authority %#", async (objectKey, id, part) => {
+  await expect(new HostedR2Signer(config).signMultipartPart(objectKey, id, part)).rejects.toThrow("PART_INVALID");
   expect(fixture.sign).not.toHaveBeenCalled();
   expect(fetcher).not.toHaveBeenCalled();
 });
