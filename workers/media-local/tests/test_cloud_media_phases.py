@@ -7,6 +7,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from videoforge_media_local import runpod_job as cloud
@@ -15,6 +16,60 @@ from test_runpod_job import spec
 
 
 class CloudMediaPhaseTests(unittest.TestCase):
+    def test_disk_samples_preserve_high_water_after_transient_cleanup(self):
+        samples = [SimpleNamespace(total=1000, used=100, free=850),
+                   SimpleNamespace(total=1000, used=700, free=250),
+                   SimpleNamespace(total=1000, used=200, free=750)]
+        with patch.object(cloud.shutil, "disk_usage", side_effect=samples):
+            metrics = cloud._DiskMetrics(Path("scratch"))
+            metrics.sample()
+            metrics.sample()
+        self.assertEqual(metrics.snapshot(), {"filesystem_total_bytes": 1000,
+                         "initial_used_bytes": 100, "peak_used_bytes": 700,
+                         "min_free_bytes": 250, "sample_count": 3})
+        detached = metrics.snapshot()
+        detached["peak_used_bytes"] = 0
+        self.assertEqual(metrics.snapshot()["peak_used_bytes"], 700)
+
+    def test_invalid_or_failed_disk_telemetry_cannot_change_valid_facts(self):
+        valid = SimpleNamespace(total=1000, used=100, free=850)
+        invalid = [SimpleNamespace(total=True, used=0, free=0),
+                   SimpleNamespace(total=0, used=0, free=0),
+                   SimpleNamespace(total=2**53, used=0, free=0),
+                   SimpleNamespace(total=1000, used=-1, free=900),
+                   SimpleNamespace(total=1000, used=100.0, free=850),
+                   SimpleNamespace(total=1000, used=700, free=800),
+                   SimpleNamespace(total=2000, used=100, free=1850), OSError("gone")]
+        with patch.object(cloud.shutil, "disk_usage", side_effect=[valid, *invalid]):
+            metrics = cloud._DiskMetrics(Path("scratch"))
+            before = metrics.snapshot()
+            for _ in invalid:
+                metrics.sample()
+        self.assertEqual(metrics.snapshot(), before)
+        with patch.object(cloud.shutil, "disk_usage", side_effect=OSError("gone")):
+            self.assertIsNone(cloud._DiskMetrics(Path("scratch")).snapshot())
+
+    def test_disk_telemetry_does_not_change_cancel_fencing(self):
+        parsed = cloud.parse_spec(spec())
+        requests = []
+        def control(_url, _token, _lease, body):
+            requests.append(dict(body))
+            return {"schema_version": "videoforge-personal-worker-lease-heartbeat/v1",
+                    "cancel_requested": True, "lease_expires_in_seconds": 300}
+        with patch.object(cloud, "_control", side_effect=control), \
+                patch.object(cloud.shutil, "disk_usage", side_effect=OSError("telemetry unavailable")), \
+                patch.object(cloud.media, "_preflight_disk_space"), \
+                patch.object(cloud.media, "_run_media_subprocess") as child, \
+                patch.object(cloud, "_download_inputs") as download, \
+                patch.object(cloud, "_upload") as upload, \
+                patch.object(cloud.media, "_completion_is_acknowledged", return_value=True):
+            self.assertEqual(cloud.run(parsed, "capability", "lease", MagicMock())[0], "CANCELLED")
+        child.assert_not_called()
+        download.assert_not_called()
+        upload.assert_not_called()
+        self.assertTrue(any(body.get("status") == "CANCELLED" for body in requests))
+        self.assertFalse(any("disk_metrics" in body for body in requests))
+
     def test_atomic_sidecar_has_exact_attempt_and_bounded_monotonic_timing(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -84,7 +139,8 @@ class CloudMediaPhaseTests(unittest.TestCase):
         tools = MagicMock()
         with patch.object(cloud, "_control", side_effect=control), \
                 patch.object(cloud, "_download_inputs"), patch.object(cloud, "_upload"), \
-                patch.object(cloud.shutil, "disk_usage", return_value=MagicMock(free=10 * 1024**3)), \
+                patch.object(cloud.shutil, "disk_usage", return_value=SimpleNamespace(
+                    total=100 * 1024**3, used=20 * 1024**3, free=80 * 1024**3)), \
                 patch.object(cloud.media, "_preflight_disk_space"), \
                 patch.object(cloud.media, "_run_media_subprocess", side_effect=child), \
                 patch.object(cloud.media, "_parse_child_result", return_value=({}, "SUCCEEDED", None)), \
@@ -96,6 +152,9 @@ class CloudMediaPhaseTests(unittest.TestCase):
         self.assertTrue(any(body.get("technical_verification_ms") == 0 for body, _ in requests))
         self.assertTrue(any(body.get("phase") == "SAVING" and
                             type(body.get("artifact_verification_ms")) is int for body, _ in requests))
+        self.assertTrue(all("disk_metrics" in body for body, _ in requests if "phase" in body))
+        completion = next(body for body, _ in requests if body.get("status") == "SUCCEEDED")
+        self.assertGreaterEqual(completion["disk_metrics"]["sample_count"], 3)
 
 
 if __name__ == "__main__":

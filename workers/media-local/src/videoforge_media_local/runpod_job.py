@@ -335,10 +335,45 @@ def _download_inputs(spec: RunPodJob, scratch: Path, token: str, lease: str,
         raise failure
 
 
+class _DiskMetrics:
+    """Sample filesystem high-water facts; this is not an exact job disk peak."""
+
+    def __init__(self, scratch: Path) -> None:
+        self._scratch = scratch
+        self._lock = threading.Lock()
+        self._facts: dict[str, int] | None = None
+        self.sample()
+
+    def sample(self) -> None:
+        try:
+            usage = shutil.disk_usage(self._scratch)
+            total, used, free = usage.total, usage.used, usage.free
+            if (any(type(value) is not int or not 0 <= value <= 2**53 - 1
+                    for value in (total, used, free))
+                    or total == 0 or used + free > total):
+                return
+            with self._lock:
+                if self._facts is None:
+                    self._facts = {"filesystem_total_bytes": total, "initial_used_bytes": used,
+                                   "peak_used_bytes": used, "min_free_bytes": free, "sample_count": 1}
+                elif (self._facts["filesystem_total_bytes"] == total
+                      and self._facts["sample_count"] < 2**53 - 1):
+                    self._facts["peak_used_bytes"] = max(self._facts["peak_used_bytes"], used)
+                    self._facts["min_free_bytes"] = min(self._facts["min_free_bytes"], free)
+                    self._facts["sample_count"] += 1
+        except (OSError, ValueError, TypeError, AttributeError, OverflowError):
+            pass  # Telemetry must not replace the existing disk/cancellation guards.
+
+    def snapshot(self) -> dict[str, int] | None:
+        with self._lock:
+            return dict(self._facts) if self._facts is not None else None
+
+
 def run(spec: RunPodJob, token: str, lease: str, tools: media.ToolPaths, *,
         allow_next_span: bool = False, executed_span_count: int = 1) -> tuple[str, object | None]:
     job = spec.job
     scratch = Path(tempfile.mkdtemp(prefix=f"vf-cloud-{spec.reservation_id}-"))
+    disk_metrics = _DiskMetrics(scratch)
     marker = cancellation_marker(scratch, str(job.input_document.get("cancel_token", job.attempt_id)))
     monitor = media._CancellationMonitor(job.cancellation_url, token, lease, marker, None)
     def remaining() -> float:
@@ -363,6 +398,7 @@ def run(spec: RunPodJob, token: str, lease: str, tools: media.ToolPaths, *,
         last_disk_check = 0.0
         while not disk_stop.wait(1):
             try:
+                disk_metrics.sample()
                 if time.monotonic() - last_disk_check >= 10:
                     last_disk_check = time.monotonic()
                     if shutil.disk_usage(scratch).free < 256 * 1024**2:
@@ -392,6 +428,8 @@ def run(spec: RunPodJob, token: str, lease: str, tools: media.ToolPaths, *,
         if name not in _PHASES or remaining() <= 0 or monitor.is_cancelled():
             raise media._PersonalJobCancelled
         payload = {"phase": name, "elapsed_seconds": round(time.monotonic() - started, 3)}
+        if (disk_facts := disk_metrics.snapshot()) is not None:
+            payload["disk_metrics"] = disk_facts
         if technical_ms is not None:
             payload["technical_verification_ms"] = technical_ms
         if artifact_ms is not None:
@@ -474,10 +512,13 @@ def run(spec: RunPodJob, token: str, lease: str, tools: media.ToolPaths, *,
             facts = {key: None for key in facts}
         disk_stop.set()
         disk_watchdog.join(timeout=1)
+        disk_metrics.sample()
         monitor.close()
         try:
             completion = {"schema_version": "videoforge-personal-worker-completion/v1",
                           "status": status, "failure_code": failure, **facts}
+            if (disk_facts := disk_metrics.snapshot()) is not None:
+                completion["disk_metrics"] = disk_facts
             acknowledged = False
             for _ in range(3):
                 if remaining() <= 0:
