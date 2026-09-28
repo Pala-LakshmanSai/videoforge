@@ -80,7 +80,7 @@ failed-part-only retries and uncertain-completion reconciliation before terminal
 
 ## Exact production operations after authority
 
-### Prepared combined authority proposal (not approved)
+### Approved combined authority (2026-09-28)
 
 The previous unapproved USD20 proposal is withdrawn. The revised finite action cap is
 **USD5 total**: up toUSD3 for at most six Cloud reservations, and up toUSD2 for immutable image
@@ -123,11 +123,11 @@ wasUSD0.72/h andLOW, while an adjacent query reportedNONE; availability is volat
 read at2026-09-28T13:27:09Z still listedUSD0.72/h butNONE. At100–200GB disk, the estimated all-in
 preferred rate isUSD0.733889–0.747778/h; it is not an actual placement or invoice. Actual
 placement CPU/RAM and VideoForge speed remain unverified. Refresh catalog before allocation.
-The cap is an application action guard, not an invoice guarantee. This proposal grants no authority.
+The cap is an application action guard, not an invoice guarantee. User approved this replacement proposal with “Ok approved, go ahead and finish everything”. No paid action occurred before approval.
 
 Re-read production source/version/configuration/bindings and exact local-worker release. Stop on
 baseline drift. Inventory runtime migration ledger through213 and compare retained checksums,
-including archived/omitted entries; prepare one owner transaction for only
+including archived/omitted entries (the verified production ledger has196 rows and deliberately lacks retained148); prepare one owner transaction for only
 `0214_optional_runpod_media.sql`, exact checksum/ledger insert and required minimum runtime grants.
 Do not run a directory-wide migration replay. Add the compatible schema with Cloud still disabled.
 
@@ -139,7 +139,7 @@ configuration and reviewed release commit:
 node deploy/cloud-media/prepare-release.mjs --ledger /private/ledger.json --baseline-config /private/wrangler.json --output-prefix /private/cloud-media-release --commit <reviewed-40-character-commit>
 ```
 
-It validates all retained migration hashes through213, preserves archived entries including omitted148 in an exact complete
+It validates every applied retained migration hash through213, permits only the exact historically omitted148 identity, and preserves all observed archived entries and148 absence in the exact complete
 ledger guard, emits one advisory-locked transaction for214 and its exact ledger insert, and preserves
 baseline configuration/bindings while forcing Cloud off. Output files are private, exclusive writes.
 The tool makes no network call and cannot execute SQL, publish an image or deploy. Restore current

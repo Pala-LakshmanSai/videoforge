@@ -29,8 +29,9 @@ The production target is:
 - deterministic word-timed Ranga-style scheduler and direct FFmpeg output.
 
 Fresh generation has no GPU availability dependency. Historical model volumes are not fresh-path
-inputs and remain subject to their original retention and cleanup rules. Final render and ASR use
-the paired tenant-owned personal worker.
+inputs and remain subject to their original retention and cleanup rules. ASR, selected-span audio
+and final render use the explicitly selected revision backend. Local remains the default and uses the paired tenant-owned personal worker; optional Cloud uses the
+separate qualified on-demand RUNPOD_POD lane under DEC_PERSONAL_WORKER_001.
 
 ## Start every task narrowly
 
@@ -64,7 +65,7 @@ The dependency order is binding even if exact checkpoint labels change:
    prove failure/restart/cancellation states.
 7. Deploy/qualify isolated hosted auth/Neon/R2/Cloudflare staging plus signed personal workers.
 8. Integrate Kie image and Fal audio-to-video generation with the existing tenant queue and receipts.
-9. Render accepted API media on the paired personal worker; complete Chrome playback/download and
+9. Render accepted API media on the selected Local or qualified Cloud backend; complete Chrome playback/download and
    Review regeneration acceptance.
 10. Measure API cost and verify provider-task settlement and GPU dispatch remains disabled.
 11. Complete security, operations, and invited-production release review.

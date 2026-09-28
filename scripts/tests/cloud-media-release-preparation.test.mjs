@@ -35,3 +35,18 @@ test("only214 is emitted with complete observed ledger guard, archived identitie
   assert.throws(() => prepareMigrationSql(ledger, manifest, `${sql}SELECT 1;`));
   assert.throws(() => prepareMigrationSql(ledger.map((entry) => entry.version === 213 ? { ...entry, sha256: `sha256:${"b".repeat(64)}` } : entry), manifest, sql));
 });
+
+test("verified omitted148 stays absent; other omissions and checksum drift fail closed", () => {
+  const sql = "SELECT 214;";
+  const record = (version) => ({ version, name: `migration_${version}`, filename: `${String(version).padStart(4, "0")}_migration_${version}.sql`, sha256: `sha256:${"a".repeat(64)}` });
+  const omitted = { version: 148, name: "hosted_lane_batch_budget_ceiling_bound", filename: "0148_hosted_lane_batch_budget_ceiling_bound.sql", sha256: "sha256:4f1f631326456483b479137affb5991281697e20a6cd35718156022acfa28a38" };
+  const current = { version: 214, name: "optional_runpod_media", filename: "0214_optional_runpod_media.sql", sha256: `sha256:${createHash("sha256").update(sql).digest("hex")}` };
+  const ledger = [record(1), record(213)];
+  const manifest = { migrations: [ledger[0], omitted, ledger[1], current] };
+  const prepared = prepareMigrationSql(ledger, manifest, sql);
+  assert.ok(prepared.includes(JSON.stringify(ledger)));
+  assert.equal(prepared.includes(omitted.filename), false);
+  assert.throws(() => prepareMigrationSql(ledger, { migrations: [...manifest.migrations, record(147)] }, sql));
+  assert.throws(() => prepareMigrationSql(ledger, { migrations: manifest.migrations.map((entry) => entry.version === 148 ? { ...entry, sha256: `sha256:${"b".repeat(64)}` } : entry) }, sql));
+  assert.throws(() => prepareMigrationSql([...ledger, { ...omitted, sha256: `sha256:${"b".repeat(64)}` }], manifest, sql));
+});

@@ -1,6 +1,6 @@
 {
   "schema_version": "videoforge-cloud-media-safe-preparation/v1",
-  "status": "SAFE_READY_UNRELEASED_CLOUD_DISABLED",
+  "status": "APPROVED_LIVE_PREFLIGHT_CLOUD_DISABLED",
   "checkpoint": "VF-10-09",
   "production_source": "366d16c27369b4430a843ae4e6929b7d7156eb89",
   "implementation_base": "f9b9283ca662e73c0ba276741db22521c3b65357",
@@ -22,7 +22,7 @@
       "existing_failure": "preparation-owned adaptive plan binding source-text assertion"
     },
     "config_quarantine_release_preparation_tests": {
-      "pass": 19,
+      "pass": 20,
       "fail": 0
     },
     "canonical_wrangler_dry_run": "PASS_PROVIDER_FREE",
@@ -170,7 +170,6 @@
   },
   "remaining_gates": [
     "qualified Linux image/model/tool identity",
-    "new paid/publication authority",
     "short real Cloud and cancellation",
     "representative45-minute VideoForge",
     "full browser acceptance",
@@ -186,7 +185,7 @@
     "gpu_transport": "DISABLED_UNQUALIFIED"
   },
   "lower_cost_proposal": {
-    "approved": false,
+    "approved": true,
     "supersedes_unapproved_usd20": true,
     "total_usd": 5,
     "compute_cap_usd": 3,
@@ -237,6 +236,46 @@
     "preferred_gpu_usd_per_hour": 0.72,
     "preferred_availability": "NONE",
     "inventory_scope": "existing Frontier reference account; VideoForge preflight remains required",
+    "paid_actions": 0,
+    "approval_recorded_utc": "2026-09-28T13:38:16.915119+00:00",
+    "approval_statement": "Ok approved, go ahead and finish everything"
+  },
+  "fresh_production_readback": {
+    "read_utc": "2026-09-28T13:39:52.972487+00:00",
+    "production_source": "366d16c27369b4430a843ae4e6929b7d7156eb89",
+    "version": [
+      {
+        "version_id": "62524e69-7fea-4796-9d4a-a87124b16009",
+        "percentage": 100
+      }
+    ],
+    "secret_count": 25,
+    "worker_release": "0.1.44",
+    "query_redaction": true,
+    "settings_status": 200,
+    "restored_by": "existing Wrangler OAuth refresh",
+    "mutation": false,
+    "new_lane_owned_pods": 0,
     "paid_actions": 0
+  },
+  "live_database_preflight": {
+    "read_only": true,
+    "ledger_rows": 196,
+    "max_version": 213,
+    "missing_retained_versions": [
+      148
+    ],
+    "other_retained_checksum_drift": 0,
+    "active_admission_leases": 0,
+    "active_generation_requests": 0,
+    "prepared_45_minute_projects": 0,
+    "maximum_retained_voiceover_ms": 1806942
+  },
+  "videoforge_account_inventory": {
+    "read_only": true,
+    "complete": true,
+    "pages": 1,
+    "pod_count": 0,
+    "credential_copied": false
   }
 }

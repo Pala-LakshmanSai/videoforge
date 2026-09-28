@@ -137,10 +137,12 @@ policy, substitute, quality pass, upscaler, or AI-video stage requires a new dec
 
 ## CPU, storage, and orchestration cost
 
-Pinned whisper.cpp transcription and deterministic FFmpeg render/probe run on the authenticated
-account's paired Windows/macOS personal media worker over private R2. Provider compute cost is `$0`,
-while device time, electricity, storage, network, execution duration, and transfer remain measured
-and disclosed. Hosted Cloud Run CPU jobs are superseded and are not an active production dependency.
+Pinned whisper.cpp transcription, selected-span preparation and deterministic FFmpeg render/probe
+use the explicitly selected backend over private R2. Local uses the authenticated account's paired
+Windows/macOS worker with `$0` provider compute; device time, electricity and transfer remain
+measured. Optional Cloud uses a separate qualified RUNPOD_POD reservation with finite approved
+GPU-plus-temporary-disk cost and deadline, and independent cleanup. See the Cloud media release
+runbook for current authority and observed rates. Historical Cloud Run jobs remain superseded.
 
 R2 stores tenant-private inputs, intermediates, results, and receipts. A 30-minute H.264 final at
 8-12 Mbps is roughly 1.8-2.7 GB before intermediates. The 10 GB free allowance holds only a few

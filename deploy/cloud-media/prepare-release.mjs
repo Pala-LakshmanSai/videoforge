@@ -6,6 +6,13 @@ import { fileURLToPath } from "node:url";
 const hash = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const literal = (value) => `'${String(value).replaceAll("'", "''")}'`;
 const fail = () => { throw new Error("CLOUD_MEDIA_RELEASE_INPUT_INVALID"); };
+// This retained historical migration was never applied on the verified production ledger.
+// Preserve its absence; no other missing retained migration is allowed.
+const OMITTED_PRODUCTION_MIGRATION = Object.freeze({
+  version: 148, name: "hosted_lane_batch_budget_ceiling_bound",
+  filename: "0148_hosted_lane_batch_budget_ceiling_bound.sql",
+  sha256: "sha256:4f1f631326456483b479137affb5991281697e20a6cd35718156022acfa28a38",
+});
 export const CLOUD_VARIABLES = Object.freeze([
   "VIDEOFORGE_CLOUD_MEDIA_ENABLED", "VIDEOFORGE_CLOUD_MEDIA_IMAGE",
   "VIDEOFORGE_CLOUD_MEDIA_REGISTRY_ID", "VIDEOFORGE_CLOUD_MEDIA_SOURCE_SHA256",
@@ -63,7 +70,9 @@ export function prepareMigrationSql(observed, manifest, sql) {
       !/^[a-z0-9_]+$/u.test(entry.name) || entry.filename !== `${String(entry.version).padStart(4, "0")}_${entry.name}.sql` ||
       !/^sha256:[0-9a-f]{64}$/u.test(entry.sha256))) fail();
   for (const entry of manifest.migrations.filter((item) => item.version < 214)) {
-    if (JSON.stringify(ledger.find((item) => item.version === entry.version)) !== JSON.stringify(entry)) fail();
+    const observedEntry = ledger.find((item) => item.version === entry.version);
+    if (!observedEntry && JSON.stringify(entry) === JSON.stringify(OMITTED_PRODUCTION_MIGRATION)) continue;
+    if (JSON.stringify(observedEntry) !== JSON.stringify(entry)) fail();
   }
   // Archived source is intentionally absent. Preserve its observed ledger identity in the guard;
   // do not invent its checksum, restore its source, or replay it.
