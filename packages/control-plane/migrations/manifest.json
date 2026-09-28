@@ -1068,6 +1068,12 @@
       "name": "hosted_cloud_asr_recovery",
       "filename": "0215_hosted_cloud_asr_recovery.sql",
       "sha256": "sha256:7011750135e96e84d7ba42d2f73e0f73b619a4110eab2a1000a429de54e9cf02"
+    },
+    {
+      "version": 216,
+      "name": "cloud_media_disk_measurements",
+      "filename": "0216_cloud_media_disk_measurements.sql",
+      "sha256": "sha256:e6dc92ec93ada4832d5f3ec9bc5022273e3c4f2a3d066f47db60415545a7ec60"
     }
   ]
 }

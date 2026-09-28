@@ -3,11 +3,11 @@ on:
   workflow_dispatch:
     inputs:
       operation:
-        description: Offline qualification or private retained audio fixture
+        description: Offline qualification, private source release or private retained audio fixture
         required: true
         type: choice
         default: qualify
-        options: [qualify, derive-audio]
+        options: [qualify, qualify-source, derive-audio]
       image_digest:
         description: Exact already qualified private image digest for fixture preparation
         required: false
@@ -33,7 +33,10 @@ concurrency:
   cancel-in-progress: false
 jobs:
   qualify-runtime:
-    if: inputs.operation == 'qualify'
+    if: inputs.operation == 'qualify' || inputs.operation == 'qualify-source'
+    permissions:
+      contents: read
+      packages: write
     # Public-repository standard runner is free; no larger runner/cache/artifact storage.
     runs-on: ubuntu-24.04
     timeout-minutes: 90
@@ -53,12 +56,10 @@ jobs:
           test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
           [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
           [[ "$PACKAGE" =~ ^videoforge-cloud-media-[a-z0-9-]+$ ]]
-          if gh api "users/$OWNER/packages/container/$PACKAGE" > "$RUNNER_TEMP/package.json" 2> "$RUNNER_TEMP/package-error.txt"; then
-            python -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/package.json"))["visibility"]=="private"'
-          else
-            grep -q 'HTTP 404' "$RUNNER_TEMP/package-error.txt"
-          fi
+          gh api "users/$OWNER/packages/container/$PACKAGE" > "$RUNNER_TEMP/package.json"
+          python -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/package.json"))["visibility"]=="private"'
       - name: Acquire immutable upstream sources and build toolchain
+        if: inputs.operation == 'qualify'
         run: |
           set -euo pipefail
           mkdir -p .videoforge/cloud-media/tool-build
@@ -81,6 +82,7 @@ jobs:
           tar -xzf "$RUNNER_TEMP/uv.tar.gz" -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/uv-x86_64-unknown-linux-gnu" >> "$GITHUB_PATH"
       - name: Prepare current locked Linux runtime
+        if: inputs.operation == 'qualify'
         run: |
           set -euo pipefail
           curl --fail --location --silent --show-error https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-base.en.bin -o "$RUNNER_TEMP/ggml-base.en.bin"
@@ -105,9 +107,31 @@ jobs:
           for key,value in values.items(): print(f"{key}={value}")
           PY
       - name: Build unqualified candidate without publishing
+        if: inputs.operation == 'qualify'
         run: |
           set -euo pipefail
           docker build --platform linux/amd64 -f workers/media-local/Dockerfile.runpod -t vf-cloud-candidate --build-arg FFMPEG_SHA256 --build-arg FFPROBE_SHA256 --build-arg WHISPER_SHA256 .
+      - name: Prepare source update on the exact private qualified runtime
+        if: inputs.operation == 'qualify-source'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE_DIGEST: ${{ inputs.image_digest }}
+          OWNER: ${{ github.repository_owner }}
+          PACKAGE: ${{ inputs.image_package }}
+        run: |
+          set -euo pipefail
+          test "$PACKAGE" = videoforge-cloud-media-runtime-private
+          test "$IMAGE_DIGEST" = sha256:d054d17bef2178593d96b8d579c41446f272330044e79ef1bbde976a859f2c62
+          gh api "users/$OWNER/packages/container/$PACKAGE" > "$RUNNER_TEMP/private-package.json"
+          python -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/private-package.json"))["visibility"]=="private"'
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$OWNER" --password-stdin
+          base="ghcr.io/${OWNER,,}/$PACKAGE@$IMAGE_DIGEST"
+          docker pull "$base"
+          test "$(docker inspect --format '{{index .RepoDigests 0}}' "$base")" = "$base"
+          docker run --rm --network=none --entrypoint cat "$base" /opt/videoforge/runtime.json > "$RUNNER_TEMP/base-runtime.json"
+          python workers/media-local/prepare_runpod_source.py --base-runtime "$RUNNER_TEMP/base-runtime.json" --base-image "$base"
+          docker build --platform linux/amd64 -f workers/media-local/Dockerfile.runpod-source -t vf-cloud-candidate --build-arg BASE_IMAGE="$base" .
+          echo "SOURCE_BASE_IMAGE=$base" >> "$GITHUB_ENV"
       - name: Retrieve exact private qualification inputs
         env:
           VIDEOFORGE_CLOUD_QUALIFICATION_URL: ${{ secrets.VIDEOFORGE_CLOUD_QUALIFICATION_URL }}
@@ -124,18 +148,50 @@ jobs:
             --span-input /qualification/jobs/span.json --render-input /qualification/jobs/render.json \
             --output /qualified/runtime.json
           cp "$RUNNER_TEMP/qualified/runtime.json" .videoforge/cloud-media/build/runtime.json
-          docker build --platform linux/amd64 -f workers/media-local/Dockerfile.runpod -t vf-cloud-qualified --build-arg FFMPEG_SHA256 --build-arg FFPROBE_SHA256 --build-arg WHISPER_SHA256 .
+          if test "${SOURCE_BASE_IMAGE:-}"; then
+            docker build --platform linux/amd64 -f workers/media-local/Dockerfile.runpod-source -t vf-cloud-qualified --build-arg BASE_IMAGE="$SOURCE_BASE_IMAGE" .
+          else
+            docker build --platform linux/amd64 -f workers/media-local/Dockerfile.runpod -t vf-cloud-qualified --build-arg FFMPEG_SHA256 --build-arg FFPROBE_SHA256 --build-arg WHISPER_SHA256 .
+          fi
           docker run --rm --network=none --entrypoint python vf-cloud-qualified -c 'import json; assert json.load(open("/opt/videoforge/runtime.json"))["qualified"] is True'
-      - name: Record qualification; publication requires separate private operator authority
+      - name: Record exact offline qualification
         run: |
           set -euo pipefail
-          printf 'Offline qualification passed. Automatic package publication is disabled.\n\n' >> "$GITHUB_STEP_SUMMARY"
+          printf 'Offline qualification passed. Private publication is permitted only for the reviewed source update.\n\n' >> "$GITHUB_STEP_SUMMARY"
           printf 'Release configuration (no credentials or private media):\n```json\n' >> "$GITHUB_STEP_SUMMARY"
           cat "$RUNNER_TEMP/qualified/release-config.json" >> "$GITHUB_STEP_SUMMARY"
           printf '\n```\n' >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish qualified content address to the existing private package
+        if: inputs.operation == 'qualify-source'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OWNER: ${{ github.repository_owner }}
+          PACKAGE: ${{ inputs.image_package }}
+        run: |
+          set -euo pipefail
+          gh api "users/$OWNER/packages/container/$PACKAGE" > "$RUNNER_TEMP/private-package-before.json"
+          python -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/private-package-before.json"))["visibility"]=="private"'
+          source_sha="$(python -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"]+"/qualified/release-config.json"))["source_sha256"].removeprefix("sha256:"))')"
+          [[ "$source_sha" =~ ^[0-9a-f]{64}$ ]]
+          image="ghcr.io/${OWNER,,}/$PACKAGE:source-$source_sha"
+          # Existing content addresses are never overwritten.
+          if docker manifest inspect "$image" > "$RUNNER_TEMP/existing-manifest.json" 2> "$RUNNER_TEMP/existing-error.txt"; then
+            echo 'Existing immutable source image requires operator reconciliation.' >&2
+            exit 1
+          fi
+          grep -Eq 'manifest unknown|no such manifest' "$RUNNER_TEMP/existing-error.txt"
+          docker tag vf-cloud-qualified "$image"
+          docker push "$image"
+          digest="$(docker inspect --format '{{index .RepoDigests 0}}' "$image")"
+          [[ "$digest" =~ @sha256:[0-9a-f]{64}$ ]]
+          gh api "users/$OWNER/packages/container/$PACKAGE" > "$RUNNER_TEMP/private-package-after.json"
+          python -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/private-package-after.json"))["visibility"]=="private"'
+          printf 'Qualified private immutable image: `%s`\n' "$digest" >> "$GITHUB_STEP_SUMMARY"
       - name: Remove private qualification scratch
         if: always()
-        run: rm -rf "$RUNNER_TEMP/qualification" "$RUNNER_TEMP/qualified"
+        run: |
+          rm -rf "$RUNNER_TEMP/qualification" "$RUNNER_TEMP/qualified"
+          docker logout ghcr.io
   derive-retained-audio:
     if: inputs.operation == 'derive-audio'
     runs-on: ubuntu-24.04

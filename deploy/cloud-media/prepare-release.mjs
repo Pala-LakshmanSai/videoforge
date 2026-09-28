@@ -60,16 +60,17 @@ export function prepareCloudConfig(baseline, commit, cloudVariables = { VIDEOFOR
   return output;
 }
 
-/** Guard the complete observed ledger, including archived entries; apply only214. */
-export function prepareMigrationSql(observed, manifest, sql) {
-  const expected = manifest.migrations.find((entry) => entry.version === 214);
-  if (!expected || expected.filename !== "0214_optional_runpod_media.sql" || hash(sql) !== expected.sha256 || !Array.isArray(observed)) fail();
+/** Guard the complete observed ledger, including archived entries; apply one reviewed additive migration. */
+export function prepareMigrationSql(observed, manifest, sql, version = 214) {
+  const filenames = { 214: "0214_optional_runpod_media.sql", 215: "0215_hosted_cloud_asr_recovery.sql", 216: "0216_cloud_media_disk_measurements.sql" };
+  const expected = manifest.migrations.find((entry) => entry.version === version);
+  if (!Object.hasOwn(filenames, version) || !expected || expected.filename !== filenames[version] || hash(sql) !== expected.sha256 || !Array.isArray(observed)) fail();
   const ledger = observed.map(({ version, name, filename, sha256 }) => ({ version: Number(version), name, filename, sha256 })).sort((a, b) => a.version - b.version);
-  if (!ledger.length || ledger.at(-1).version !== 213 || new Set(ledger.map((entry) => entry.version)).size !== ledger.length ||
-    ledger.some((entry) => !Number.isSafeInteger(entry.version) || entry.version < 1 || entry.version > 213 ||
+  if (!ledger.length || ledger.at(-1).version !== version - 1 || new Set(ledger.map((entry) => entry.version)).size !== ledger.length ||
+    ledger.some((entry) => !Number.isSafeInteger(entry.version) || entry.version < 1 || entry.version >= version ||
       !/^[a-z0-9_]+$/u.test(entry.name) || entry.filename !== `${String(entry.version).padStart(4, "0")}_${entry.name}.sql` ||
       !/^sha256:[0-9a-f]{64}$/u.test(entry.sha256))) fail();
-  for (const entry of manifest.migrations.filter((item) => item.version < 214)) {
+  for (const entry of manifest.migrations.filter((item) => item.version < version)) {
     const observedEntry = ledger.find((item) => item.version === entry.version);
     if (!observedEntry && JSON.stringify(entry) === JSON.stringify(OMITTED_PRODUCTION_MIGRATION)) continue;
     if (JSON.stringify(observedEntry) !== JSON.stringify(entry)) fail();
@@ -77,7 +78,7 @@ export function prepareMigrationSql(observed, manifest, sql) {
   // Archived source is intentionally absent. Preserve its observed ledger identity in the guard;
   // do not invent its checksum, restore its source, or replay it.
   const guard = JSON.stringify(ledger);
-  return `BEGIN;\nSELECT pg_advisory_xact_lock(1448494662,1);\nDO $cloud_guard$ BEGIN\nIF (SELECT COALESCE(jsonb_agg(jsonb_build_object('version',version,'name',name,'filename',filename,'sha256',sha256) ORDER BY version),'[]'::jsonb) FROM public.videoforge_schema_migrations) IS DISTINCT FROM ${literal(guard)}::jsonb THEN RAISE EXCEPTION 'Cloud media migration ledger drift'; END IF;\nEND $cloud_guard$;\n${sql}\nINSERT INTO public.videoforge_schema_migrations(version,name,filename,sha256) VALUES(214,${literal(expected.name)},${literal(expected.filename)},${literal(expected.sha256)});\nCOMMIT;\n`;
+  return `BEGIN;\nSELECT pg_advisory_xact_lock(1448494662,1);\nDO $cloud_guard$ BEGIN\nIF (SELECT COALESCE(jsonb_agg(jsonb_build_object('version',version,'name',name,'filename',filename,'sha256',sha256) ORDER BY version),'[]'::jsonb) FROM public.videoforge_schema_migrations) IS DISTINCT FROM ${literal(guard)}::jsonb THEN RAISE EXCEPTION 'Cloud media migration ledger drift'; END IF;\nEND $cloud_guard$;\n${sql}\nINSERT INTO public.videoforge_schema_migrations(version,name,filename,sha256) VALUES(${version},${literal(expected.name)},${literal(expected.filename)},${literal(expected.sha256)});\nCOMMIT;\n`;
 }
 
 async function main() {

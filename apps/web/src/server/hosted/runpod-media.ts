@@ -19,6 +19,30 @@ export const CLOUD_TERMINAL_EVENT_SQL = `INSERT INTO hosted_cpu_job_events(id,ac
       FROM hosted_cpu_job_events WHERE attempt_id=$1::uuid HAVING NOT EXISTS
         (SELECT 1 FROM hosted_cpu_job_events WHERE attempt_id=$1::uuid AND kind=$4)`;
 
+export const CLOUD_DISK_METRICS_SQL = `UPDATE cloud_media_jobs j SET disk_metrics=CASE
+    WHEN j.disk_metrics IS NULL THEN $4::jsonb ELSE j.disk_metrics || jsonb_build_object(
+      'peak_used_bytes',GREATEST((j.disk_metrics->>'peak_used_bytes')::bigint,($4::jsonb->>'peak_used_bytes')::bigint),
+      'min_free_bytes',LEAST((j.disk_metrics->>'min_free_bytes')::bigint,($4::jsonb->>'min_free_bytes')::bigint),
+      'sample_count',GREATEST((j.disk_metrics->>'sample_count')::bigint,($4::jsonb->>'sample_count')::bigint)) END
+    FROM cloud_media_reservations r JOIN hosted_cpu_job_attempts a ON a.id=r.leased_attempt_id
+    WHERE j.reservation_id=$1::uuid AND j.attempt_id=$2::uuid AND r.id=j.reservation_id
+      AND r.leased_attempt_id=j.attempt_id AND r.fence_id=$3::uuid
+      AND r.state IN ('STARTING','DOWNLOADING','RENDERING','CHECKING','SAVING')
+      AND r.deadline_at>now() AND a.state='RUNNING'
+      AND (j.disk_metrics IS NULL OR (j.disk_metrics->>'filesystem_total_bytes'=$4::jsonb->>'filesystem_total_bytes'
+        AND j.disk_metrics->>'initial_used_bytes'=$4::jsonb->>'initial_used_bytes')) RETURNING j.attempt_id`;
+
+export function validCloudDiskMetrics(value: unknown): boolean {
+  if (!value || typeof value!=="object" || Array.isArray(value)) return false;
+  const facts=value as Record<string,unknown>;
+  if (Object.keys(facts).sort().join()!=="filesystem_total_bytes,initial_used_bytes,min_free_bytes,peak_used_bytes,sample_count" ||
+      Object.values(facts).some(n=>!Number.isSafeInteger(n) || Number(n)<0)) return false;
+  return Number(facts.filesystem_total_bytes)>0 && Number(facts.sample_count)>0 &&
+    Number(facts.initial_used_bytes)<=Number(facts.peak_used_bytes) &&
+    Number(facts.peak_used_bytes)<=Number(facts.filesystem_total_bytes) &&
+    Number(facts.min_free_bytes)<=Number(facts.filesystem_total_bytes);
+}
+
 type Row = Record<string, unknown>;
 function query(sql: SqlExecutor, statement: string, values: readonly unknown[] = []) {
   const parameters: SqlPrimitive[] = values.map(value => {
@@ -100,6 +124,10 @@ async function tenant<T>(config: HostedRuntimeConfiguration, accountId: string,
     await query(sql, "SELECT set_config($1,$2,true)", ["videoforge.account_id", accountId]);
     return action(sql);
   }); } finally { await pool.end(); }
+}
+async function recordCloudDiskMetrics(sql:SqlExecutor,r:Row,metrics:unknown):Promise<boolean> {
+  return metrics===undefined || !!(await query(sql,CLOUD_DISK_METRICS_SQL,
+    [r.id,r.leased_attempt_id,r.fence_id,JSON.stringify(metrics)])).rows[0];
 }
 async function updateReservation(config: HostedRuntimeConfiguration, r: Row, state: string,
   failureCode?: string): Promise<boolean> {
@@ -599,6 +627,8 @@ export async function handleCloudMediaRequest(request:Request,environment:Hosted
     return Response.json({schema_version:"videoforge-personal-worker-completion-accepted/v1",state:"SUCCEEDED"});
   }
   const active=ACTIVE.includes(String(r.state)) && r.verified_at && r.attempt_state==="RUNNING" && Date.parse(String(r.deadline_at))>Date.now();
+  if((action==="heartbeat" || action==="complete") && body.disk_metrics!==undefined && !validCloudDiskMetrics(body.disk_metrics))
+    return new Response(null,{status:400});
   if(action==="heartbeat") {
     const phase=({DOWNLOADING_INPUTS:"DOWNLOADING",RENDERING:"RENDERING",CHECKING_VIDEO:"CHECKING",SAVING:"SAVING"} as Record<string,string>)[String(body.phase)];
     for(const [key,expected] of [["technical_verification_ms","CHECKING"],["artifact_verification_ms","SAVING"]]) {
@@ -619,7 +649,7 @@ export async function handleCloudMediaRequest(request:Request,environment:Hosted
         saving_started_at=CASE WHEN $3='SAVING' THEN COALESCE(saving_started_at,now()) ELSE saving_started_at END,
         technical_verification_ms=COALESCE(technical_verification_ms,$4),artifact_verification_ms=COALESCE(artifact_verification_ms,$5)
         WHERE reservation_id=$1 AND attempt_id=$2`,[r.id,r.leased_attempt_id,phase ?? null,body.technical_verification_ms ?? null,body.artifact_verification_ms ?? null]);
-      return !!changed.rows[0];
+      return !!changed.rows[0] && await recordCloudDiskMetrics(sql,r,body.disk_metrics);
     }) : false;
     return Response.json({schema_version:"videoforge-personal-worker-lease-heartbeat/v1",cancel_requested:!accepted,lease_expires_in_seconds:300});
   }
@@ -731,6 +761,7 @@ async function cloudMultipart(action:string,body:Row,r:Row,environment:HostedRun
 async function cloudComplete(body:Row,r:Row,environment:HostedRuntimeEnvironment,config:HostedRuntimeConfiguration):Promise<Response> {
   if(body.schema_version!=="videoforge-personal-worker-completion/v1" || !["SUCCEEDED","FAILED","CANCELLED"].includes(String(body.status))) return new Response(null,{status:400});
   if(body.status!=="SUCCEEDED") {
+    if(!await tenant(config,String(r.account_id),sql=>recordCloudDiskMetrics(sql,r,body.disk_metrics))) return new Response(null,{status:409});
     r={...r,failure_code:typeof body.failure_code==="string" && /^[A-Z][A-Z0-9_]{2,63}$/u.test(body.failure_code) ? body.failure_code : "CLOUD_MEDIA_FAILED"};
     await finishAttempt(config,r,String(body.status));
   } else {
@@ -779,6 +810,7 @@ async function cloudComplete(body:Row,r:Row,environment:HostedRuntimeEnvironment
     const fresh=await tenant(config,String(r.account_id),async sql=>(await query(sql, `SELECT 1 FROM cloud_media_reservations r JOIN hosted_cpu_job_attempts a ON a.id=r.leased_attempt_id
       WHERE r.id=$1 AND r.fence_id=$2 AND r.state='SAVING' AND r.deadline_at>now() AND a.state='RUNNING'`,[r.id,r.fence_id])).rows[0]);
     if(!fresh) return new Response(null,{status:409});
+    if(!await tenant(config,String(r.account_id),sql=>recordCloudDiskMetrics(sql,r,body.disk_metrics))) return new Response(null,{status:409});
     if (!await finishAttempt(config,r,"SUCCEEDED",{key:String(result.object_key),size:Number(result.issued_content_length),checksum:String(result.issued_checksum_sha256)})) return new Response(null,{status:409});
   }
   return Response.json({schema_version:"videoforge-personal-worker-completion-accepted/v1",state:body.status});

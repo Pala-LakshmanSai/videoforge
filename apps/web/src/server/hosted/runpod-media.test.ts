@@ -13,7 +13,7 @@ vi.mock("./neon", () => ({ createNeonPool: () => ({ query: fixture.query, end: a
 vi.mock("./r2-checksum", () => ({ verifyHostedObjectChecksum: fixture.checksum }));
 vi.mock("./r2", () => ({ HostedR2Signer: class { multipartRequest = fixture.multipart; signMultipartPart = fixture.part; sign = fixture.sign; listMultipartUploadsExact=fixture.listMultipart; } }));
 vi.mock("./hosted-v209-queue-admission",()=>({ensureHostedV209GenerationAdmission:async()=>({state:"ACTIVE"})}));
-import { CLOUD_TERMINAL_EVENT_SQL, cleanupCloudReservation, cloudRenderDuration, handleCloudMediaRequest, RunPodMediaClient, runCloudMediaObservation, verifyCloudPlacement } from "./runpod-media";
+import { CLOUD_DISK_METRICS_SQL, CLOUD_TERMINAL_EVENT_SQL, cleanupCloudReservation, cloudRenderDuration, handleCloudMediaRequest, RunPodMediaClient, runCloudMediaObservation, validCloudDiskMetrics, verifyCloudPlacement } from "./runpod-media";
 
 type Row = Record<string, unknown>;
 const accountId = "11111111-1111-4111-8111-111111111111", workspaceId = "22222222-2222-4222-8222-222222222222";
@@ -141,6 +141,7 @@ beforeEach(async () => {
     if(sql.includes("UPDATE cloud_media_jobs SET")) {
       measuredJob.technical_verification_ms ??= values[3];measuredJob.artifact_verification_ms ??= values[4];return {rows:[]};
     }
+    if(String(sql).includes("UPDATE cloud_media_jobs j SET disk_metrics")) return {rows:attempt.state==="RUNNING" && values[1]===reservation.leased_attempt_id && values[2]===reservation.fence_id ? [{attempt_id:attemptId}]:[]};
     if (sql.includes("INSERT INTO cloud_media_multipart_parts")) return { rows: [] };
     if (sql.includes("SELECT part_number,content_length FROM cloud_media_multipart_parts")) return { rows: [
       { part_number: 1, content_length: MULTIPART_PART_BYTES }, { part_number: 2, content_length: MULTIPART_PART_BYTES }] };
@@ -295,6 +296,29 @@ it("retains capacity when independent inventory still shows the owned Pod after 
 });
 
 describe("fenced publication and multipart recovery", () => {
+  it("accepts optional bounded disk telemetry only for the exact active lease",async()=>{
+    reservation.state="RENDERING";
+    const disk={filesystem_total_bytes:100,initial_used_bytes:10,peak_used_bytes:30,min_free_bytes:65,sample_count:3};
+    expect(validCloudDiskMetrics(disk)).toBe(true);
+    expect((await runRoute("heartbeat",{phase:"RENDERING",disk_metrics:disk}))?.status).toBe(200);
+    const calls=fixture.query.mock.calls.filter(([sql])=>String(sql).includes("UPDATE cloud_media_jobs j SET disk_metrics"));
+    expect(calls).toHaveLength(1);expect(calls[0]?.[1]).toEqual([reservationId,attemptId,reservation.fence_id,JSON.stringify(disk)]);
+    attempt.state="CANCEL_REQUESTED";
+    expect(await (await runRoute("heartbeat",{phase:"RENDERING",disk_metrics:disk}))?.json()).toMatchObject({cancel_requested:true});
+    expect(fixture.query.mock.calls.filter(([sql])=>String(sql).includes("UPDATE cloud_media_jobs j SET disk_metrics"))).toHaveLength(1);
+  });
+  it("rejects malformed disk facts before changing lease or accepting a result",async()=>{
+    const disk={filesystem_total_bytes:100,initial_used_bytes:10,peak_used_bytes:30,min_free_bytes:65,sample_count:3};
+    for(const facts of [null,[],{...disk,extra:"private"},{...disk,peak_used_bytes:101},{...disk,initial_used_bytes:31},
+      {...disk,min_free_bytes:-1},{...disk,sample_count:0},{...disk,filesystem_total_bytes:Number.MAX_SAFE_INTEGER+1},
+      {...disk,min_free_bytes:"65"},{...disk,sample_count:1.5}]) {
+      expect(validCloudDiskMetrics(facts)).toBe(false);
+      expect((await runRoute("heartbeat",{phase:"RENDERING",disk_metrics:facts}))?.status).toBe(400);
+      expect((await runRoute("complete",{...completion,disk_metrics:facts}))?.status).toBe(400);
+    }
+    expect(fixture.query.mock.calls.filter(([sql])=>String(sql).includes("UPDATE cloud_media_jobs j SET disk_metrics"))).toHaveLength(0);
+    expect(attempt.state).toBe("RUNNING");
+  });
   it("persists bounded verification timing for the exact attempt without regressing phase",async()=>{
     reservation.state="RENDERING";
     expect((await runRoute("heartbeat",{phase:"CHECKING_VIDEO",technical_verification_ms:125}))?.status).toBe(200);
@@ -529,6 +553,36 @@ it("compiles and idempotently inserts exact terminal lineage in PostgreSQL with 
     ]);
   } finally { await db.close(); }
 }, 30000);
+
+it("records monotonic sampled disk facts with PostgreSQL constraints and exact lease fencing",async()=>{
+  vi.unstubAllGlobals();
+  const {PGlite}=await import("@electric-sql/pglite");
+  const {readFile}=await import("node:fs/promises");
+  const db=new PGlite();
+  const disk={filesystem_total_bytes:100,initial_used_bytes:10,peak_used_bytes:30,min_free_bytes:65,sample_count:3};
+  try {
+    await db.exec(`CREATE ROLE videoforge_v209_runtime_dc9612d6;
+      CREATE TABLE cloud_media_jobs(reservation_id uuid,attempt_id uuid);
+      CREATE TABLE cloud_media_reservations(id uuid,leased_attempt_id uuid,fence_id uuid,state text,deadline_at timestamptz);
+      CREATE TABLE hosted_cpu_job_attempts(id uuid,state text);`);
+    await db.exec(await readFile(new URL("../../../../../packages/control-plane/migrations/0216_cloud_media_disk_measurements.sql",import.meta.url),"utf8"));
+    await db.query("INSERT INTO cloud_media_jobs VALUES($1,$2,NULL)",[reservationId,attemptId]);
+    await db.query("INSERT INTO cloud_media_reservations VALUES($1,$2,$3,'RENDERING',now()+interval '1 hour')",[reservationId,attemptId,reservation.fence_id]);
+    await db.query("INSERT INTO hosted_cpu_job_attempts VALUES($1,'RUNNING')",[attemptId]);
+    const save=(facts:unknown,fence=reservation.fence_id)=>db.query(CLOUD_DISK_METRICS_SQL,[reservationId,attemptId,fence,JSON.stringify(facts)]);
+    expect((await save(disk)).rows).toHaveLength(1);
+    await save({...disk,peak_used_bytes:20,min_free_bytes:80,sample_count:2});
+    expect((await db.query<{disk_metrics:unknown}>("SELECT disk_metrics FROM cloud_media_jobs")).rows[0]?.disk_metrics).toEqual(disk);
+    expect((await save({...disk,initial_used_bytes:11})).rows).toHaveLength(0);
+    expect((await save({...disk,peak_used_bytes:50},"33333333-3333-4333-8333-333333333333")).rows).toHaveLength(0);
+    await db.exec("UPDATE hosted_cpu_job_attempts SET state='CANCEL_REQUESTED'");
+    expect((await save({...disk,peak_used_bytes:50})).rows).toHaveLength(0);
+    await expect(db.query("UPDATE cloud_media_jobs SET disk_metrics=$1::jsonb",[JSON.stringify({...disk,peak_used_bytes:101})])).rejects.toThrow();
+    await expect(db.query("UPDATE cloud_media_jobs SET disk_metrics=$1::jsonb",[JSON.stringify({...disk,min_free_bytes:"65"})])).rejects.toThrow();
+    await db.exec("UPDATE cloud_media_jobs SET disk_metrics=NULL");
+    expect((await db.query<{disk_metrics:unknown}>("SELECT disk_metrics FROM cloud_media_jobs")).rows[0]?.disk_metrics).toBeNull();
+  } finally {await db.close();}
+},30000);
 
 describe("bounded cloud observation diagnostics", () => {
   it.each(["42P01", "signed-private-value"])("returns only a validated SQLSTATE from the budget phase: %s", async code => {

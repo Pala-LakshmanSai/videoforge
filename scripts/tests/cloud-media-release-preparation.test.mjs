@@ -50,3 +50,23 @@ test("verified omitted148 stays absent; other omissions and checksum drift fail 
   assert.throws(() => prepareMigrationSql(ledger, { migrations: manifest.migrations.map((entry) => entry.version === 148 ? { ...entry, sha256: `sha256:${"b".repeat(64)}` } : entry) }, sql));
   assert.throws(() => prepareMigrationSql([...ledger, { ...omitted, sha256: `sha256:${"b".repeat(64)}` }], manifest, sql));
 });
+
+
+test("new additive recovery and telemetry migrations guard exact214 before215 and exact215 before216", () => {
+  const entry = (version, name, sql) => ({ version, name, filename: `${String(version).padStart(4,"0")}_${name}.sql`, sha256: `sha256:${createHash("sha256").update(sql).digest("hex")}` });
+  const original = entry(214,"optional_runpod_media","SELECT 214;");
+  const recovery = entry(215,"hosted_cloud_asr_recovery","SELECT 215;");
+  const disk = entry(216,"cloud_media_disk_measurements","SELECT 216;");
+  const manifest = { migrations: [original,recovery,disk] };
+  const first = prepareMigrationSql([original],manifest,"SELECT 215;",215);
+  assert.match(first,/VALUES\(215,/u);
+  assert.ok(first.includes(JSON.stringify([original])));
+  assert.equal(first.includes("SELECT 214;"),false);
+  const second = prepareMigrationSql([original,recovery],manifest,"SELECT 216;",216);
+  assert.match(second,/VALUES\(216,/u);
+  assert.ok(second.includes(JSON.stringify([original,recovery])));
+  assert.throws(()=>prepareMigrationSql([original],manifest,"SELECT 216;",216));
+  assert.throws(()=>prepareMigrationSql([original,recovery,disk],manifest,"SELECT 216;",216));
+  assert.throws(()=>prepareMigrationSql([original],manifest,"SELECT 216;",215));
+  assert.throws(()=>prepareMigrationSql([original],manifest,"SELECT 217;",217));
+});
