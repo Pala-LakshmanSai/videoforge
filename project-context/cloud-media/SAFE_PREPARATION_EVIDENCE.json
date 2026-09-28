@@ -8,7 +8,7 @@
   "published_ui_preserved": true,
   "migration": {
     "version": 214,
-    "sha256": "e6785466e23defa47fe080bd5dfcd7582e9f8e83a3407824835efbd6119c8081",
+    "sha256": "b3c02a87e193254db7d83832e50d49edbbe09dbc54a7f1d56bd2c3059711d4e3",
     "applied": false
   },
   "validations": {
@@ -32,7 +32,7 @@
       "fail": 0
     },
     "migration_tests": {
-      "pass": 8,
+      "pass": 9,
       "fail": 0
     },
     "python_cloud_runtime_tests": {
@@ -41,8 +41,8 @@
       "ruff": "PASS"
     },
     "local_media_tests": {
-      "total": 90,
-      "pass": 89,
+      "total": 100,
+      "pass": 99,
       "skip": 1
     },
     "asr_tests": {
@@ -72,60 +72,92 @@
     },
     "vnext_dispatch_firewall": "PASS",
     "changed_file_lint": "PASS",
-    "main_full_web_build": "PASS"
+    "main_full_web_build": "PASS",
+    "cloud_controller_phase_cleanup_tests": {
+      "pass": 50,
+      "fail": 0,
+      "worker_typecheck": "PASS",
+      "lint": "PASS"
+    },
+    "cloud_phase_render_cli_tests": {
+      "pass": 57,
+      "fail": 0
+    },
+    "cloud_r2_inventory_checksum_tests": {
+      "pass": 29,
+      "fail": 0
+    },
+    "cloud_continuation_qualification_tests": {
+      "pass": 17,
+      "fail": 0
+    }
   },
   "bundles": {
     "production": {
-      "static_closure_bytes": 2778357,
+      "static_closure_bytes": 2778234,
       "previous_ceiling": 2766872,
-      "growth_bytes": 11485,
+      "growth_bytes": 11362,
       "static_files": [
         {
           "manifest_key": "virtual:cloudflare/worker-entry",
           "file": "index.js",
           "bytes": 233,
-          "sha256": "2f6c48b5ca92449635954c470f7f85e90893598ec1f0239d4e7aab6aca124609"
+          "sha256": "140f289953d9bb8962dc78535940d256e459fc9448aedccbbedff4306198b8c8"
         },
         {
-          "manifest_key": "_index-C8VTuhfu.js",
-          "file": "assets/index-C8VTuhfu.js",
-          "bytes": 2778124,
-          "sha256": "a9ef97b11cf230be79b7bee862e80abe7e1e9867962002e13df78ba33d7d2ba2"
+          "manifest_key": "_index-BoHFoDYO.js",
+          "file": "assets/index-BoHFoDYO.js",
+          "bytes": 2778001,
+          "sha256": "65e8b35e0ec5b3b3d130315eede7cdfe25fb941fc9e59809335565dec6fb1b94"
         }
       ],
       "cloud_dynamic": {
         "manifest_key": "src/server/hosted/runpod-media.ts",
-        "file": "assets/runpod-media-C_EUg23y.js",
-        "bytes": 56679,
-        "sha256": "a2d9773c9fe27a39c4ee4eceb04a3aee7a3e918f10c6a4766574feb05b2a35cb",
+        "file": "assets/runpod-media-A1u5SDPQ.js",
+        "bytes": 61957,
+        "sha256": "2a6052c54caa30097b3fbb830b67a08fd92d7fb760ae9701bbe5df1ddc1db525",
         "isDynamicEntry": true,
+        "statically_reachable": false
+      },
+      "multipart_dynamic": {
+        "manifest_key": "src/server/hosted/r2-multipart-inventory.ts",
+        "file": "assets/r2-multipart-inventory-CYobU17d.js",
+        "bytes": 9280,
+        "sha256": "b2dacf86a8c41932d96b21b95172e4fbadfbab52c8102d0212d4727e7ac1def8",
         "statically_reachable": false
       }
     },
     "staging": {
-      "static_closure_bytes": 2776188,
+      "static_closure_bytes": 2775622,
       "previous_ceiling": 2767117,
-      "growth_bytes": 9071,
+      "growth_bytes": 8505,
       "static_files": [
         {
           "manifest_key": "virtual:cloudflare/worker-entry",
           "file": "index.js",
           "bytes": 193,
-          "sha256": "8ab33696b6b8a79d73f65652c53037b962d1930de4b9e390c88546e203e38701"
+          "sha256": "359bc59c309b76f278b2847a5570fd50c08dc6ce151a50da7fb96d5f1b6d7e3e"
         },
         {
-          "manifest_key": "_index-CErqLMJw.js",
-          "file": "assets/index-CErqLMJw.js",
-          "bytes": 2775995,
-          "sha256": "ac32c370d860fa194e18a0fac059cb5200c33e580878137219517d1b735a3853"
+          "manifest_key": "_index-ChjZuccZ.js",
+          "file": "assets/index-ChjZuccZ.js",
+          "bytes": 2775429,
+          "sha256": "092b39c8dad7aed9388cfe965c0816a5efdb52bdf583c222c71ccaf4dcb9efe4"
         }
       ],
       "cloud_dynamic": {
         "manifest_key": "src/server/hosted/runpod-media.ts",
-        "file": "assets/runpod-media-C3XRFDop.js",
-        "bytes": 56050,
-        "sha256": "cc13c5d88cdeae5316a9aa7ccac8837fd8f2f249de51f1e57cb00edf6d463d4d",
+        "file": "assets/runpod-media-DEXWgKO8.js",
+        "bytes": 61185,
+        "sha256": "12ac200225a40ad5f94ec390952c4e2586600545f8a34749737e024fb9a6b7cc",
         "isDynamicEntry": true,
+        "statically_reachable": false
+      },
+      "multipart_dynamic": {
+        "manifest_key": "src/server/hosted/r2-multipart-inventory.ts",
+        "file": "assets/r2-multipart-inventory-CYobU17d.js",
+        "bytes": 9280,
+        "sha256": "b2dacf86a8c41932d96b21b95172e4fbadfbab52c8102d0212d4727e7ac1def8",
         "statically_reachable": false
       }
     }
@@ -141,18 +173,21 @@
       "navigation reload recovery"
     ],
     "production_readonly": [
-      "Settings/Library mounted",
-      "Windows0.1.44 offline",
-      "saved MP4 metadata 1920x1080/159.2s/no media error",
-      "first10.077s native playback",
-      "private download requested"
+      "Regular signed-in Chrome saved playback to ended=true; reload restores readyState4 without error",
+      "Private download SHA-256 and size match committed output",
+      "159.2s/4776 frames/1920x1080/H264/30fps/AAC independently probed"
     ],
     "unverified": [
-      "full playback/audio sync",
-      "download bytes/hash",
-      "real controller create/queue/cleanup",
-      "current Local execution"
-    ]
+      "Human narration/audio-sync review",
+      "Real controller create/queue/cleanup",
+      "Current Local execution: existing2GiB free-space gate blocked; user disk action pending"
+    ],
+    "regular_chrome": true,
+    "saved_download": {
+      "bytes": 25080526,
+      "sha256": "sha256:5d00d93183c2fcf4442fd64674723a331b8fc965ac4ff8c54e4ca57e4fc9e24c",
+      "boundary": "Existing accepted output; not fresh Local or Cloud execution proof"
+    }
   },
   "provider": {
     "last_complete_inventory_utc": "2026-09-28T13:05:45Z",
@@ -164,9 +199,11 @@
     "speed": "UNMEASURED",
     "paid_actions": 0,
     "spend_usd": 0,
-    "inventory_account_boundary": "Read-only configured Frontier reference credential account; no credential copied. Preflight the configured VideoForge account before any paid allocation.",
+    "inventory_account_boundary": "Actual configured VideoForge credential inventory complete; no Frontier credential copied",
     "owned_new_lane_pods": 0,
-    "owned_shutdown_proof": "No billable POST ever issued; no owned Pod launched, independent owned shutdown not yet exercised"
+    "owned_shutdown_proof": "No billable POST ever issued; no owned Pod launched, independent owned shutdown not yet exercised",
+    "inventory_complete": true,
+    "catalogue_gpu_count": 48
   },
   "remaining_gates": [
     "qualified Linux image/model/tool identity",
@@ -175,9 +212,9 @@
     "full browser acceptance",
     "production rollout/readback"
   ],
-  "implementation_commit": "2cdda790adcf16c1c33f7d2286a3b64972bab9c3",
-  "image_identity": "UNBUILT_UNQUALIFIED",
-  "current_cloudflare_settings_read": "401; fresh production binding/config parity gate open",
+  "implementation_commit": "21f2e3ce112d406149c3b73f55222aa3419ec2db",
+  "image_identity": "FREE_CI_OFFLINE_QUALIFICATION_PENDING",
+  "current_cloudflare_settings_read": "200;25secret bindings/current0.1.44/query-redaction/source366d verified; final release parity remains required",
   "unrelated_edit_hash": "UNCHANGED_VERIFIED",
   "public_production_readback": {
     "utc": "2026-09-28T13:17:47Z",
@@ -277,5 +314,31 @@
     "pages": 1,
     "pod_count": 0,
     "credential_copied": false
+  },
+  "runtime_build": {
+    "source_commit": "fe61f6866a1c9aa52dbc0b27bdcf714ab03cfcc0",
+    "workflow_run": 36434928433,
+    "source_sha256": "sha256:08f7344553c2b493eccd236b61698cae330edbee77eb7ee909e180d13f66b768",
+    "required_cpu_flags": [
+      "avx",
+      "avx2",
+      "f16c",
+      "fma"
+    ],
+    "state": "RUNNING",
+    "earlier_runs": [
+      {
+        "id": 36431796947,
+        "state": "FAILED_TOOL_PACKAGING_BEFORE_QUALIFICATION_OR_PUBLICATION"
+      },
+      {
+        "id": 36434115551,
+        "state": "CANCELLED_BEFORE_PUBLICATION_FOR_CPU_GUARD"
+      }
+    ],
+    "paid_pods": 0,
+    "run_id": 36437915344,
+    "status": "REAL_OFFLINE_QUALIFICATION_RUNNING",
+    "publication": false
   }
 }
