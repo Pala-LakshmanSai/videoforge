@@ -31,6 +31,24 @@ from .cloud_media_cli import PHASE_FILENAME
 _HASH = re.compile(r"sha256:[0-9a-f]{64}")
 _PHASES = {"DOWNLOADING_INPUTS", "RENDERING", "CHECKING_VIDEO", "SAVING"}
 _SINGLE_PUT_MAX_BYTES = 5 * 1024**3 - 5 * 1024**2
+REQUIRED_CPU_FLAGS = ["avx", "avx2", "f16c", "fma"]
+
+
+def _verify_cpu_features(required: object, cpuinfo: Path = Path("/proc/cpuinfo")) -> None:
+    if required != REQUIRED_CPU_FLAGS:
+        raise ValueError("RunPod runtime CPU requirements differ from qualified build")
+    with cpuinfo.open("rb") as source:
+        encoded = source.read(4 * 1024**2 + 1)
+    if len(encoded) > 4 * 1024**2:
+        raise ValueError("RunPod CPU inventory exceeds bound")
+    lines = encoded.decode("ascii").splitlines()
+    processor_count = sum(line.partition(":")[0].strip() == "processor" for line in lines)
+    processors = [set(line.partition(":")[2].split())
+                  for line in lines
+                  if line.partition(":")[0].strip() == "flags"]
+    if (not processors or len(processors) != processor_count
+            or not all(set(REQUIRED_CPU_FLAGS).issubset(flags) for flags in processors)):
+        raise ValueError("RunPod CPU lacks qualified runtime features")
 
 
 def _read_render_phase(root: Path, attempt_id: str, earliest_ns: int) -> dict | None:
@@ -113,6 +131,7 @@ def verify_runtime(spec: RunPodJob, manifest_path: Path) -> media.ToolPaths:
             or platform.machine() != "x86_64"
             or sys.version_info[:2] != (3, 12)):
         raise ValueError("RunPod runtime is not qualified")
+    _verify_cpu_features(manifest.get("required_cpu_flags"))
     source_files = manifest.get("source_files")
     if not isinstance(source_files, dict) or not source_files:
         raise ValueError("RunPod source inventory is missing")

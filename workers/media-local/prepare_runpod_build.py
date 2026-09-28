@@ -126,6 +126,7 @@ def main() -> int:
     (target / "tools/whisper-build.json").write_bytes(canonical(whisper) + b"\n")
     manifest = {"schema_version": "videoforge-linux-media-runtime/v1", "platform": "linux",
                 "qualified": False, "tools": tools, "source_files": sources,
+                "required_cpu_flags": ["avx", "avx2", "f16c", "fma"],
                 "source_sha256": "sha256:" + hashlib.sha256(canonical(sources)).hexdigest(),
                 "dependency_lock_sha256": digest(requirements_path)}
     (target / "runtime.json").write_bytes(canonical(manifest) + b"\n")

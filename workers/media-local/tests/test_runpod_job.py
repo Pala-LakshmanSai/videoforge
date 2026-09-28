@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import io
 import copy
+import hashlib
+import json
 import tempfile
 import urllib.error
 import unittest
@@ -46,6 +48,48 @@ def span_specs(count=4):
 
 
 class RunPodJobTests(unittest.TestCase):
+    def test_cpu_runtime_rejection_requests_exact_cleanup_without_starting_job(self):
+        document = spec()
+        manifest = {"schema_version": "videoforge-linux-media-runtime/v1", "platform": "linux",
+                    "qualified": True, "source_sha256": document["source_sha256"],
+                    "required_cpu_flags": []}
+        document["runtime_sha256"] = "sha256:" + hashlib.sha256(cloud.media._canonical(manifest)).hexdigest()
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = Path(directory) / "runtime.json"
+            runtime.write_text(json.dumps(manifest))
+            with patch("sys.argv", ["runpod", "--spec-url", "https://app.test/reservation/spec",
+                                    "--runtime-manifest", str(runtime)]), \
+                    patch.dict("os.environ", {"VIDEOFORGE_CLOUD_CAPABILITY": "private-capability"}), \
+                    patch.object(cloud, "_fetch_spec", return_value=document), \
+                    patch.object(cloud.sys, "platform", "linux"), \
+                    patch.object(cloud.platform, "machine", return_value="x86_64"), \
+                    patch.object(cloud, "execute_batch") as execute, \
+                    patch.object(cloud, "_control") as control, patch("sys.stderr", io.StringIO()):
+                self.assertEqual(cloud.main(), 1)
+            execute.assert_not_called()
+            self.assertEqual(control.call_args.args[0], "https://app.test/reservation/cleanup")
+            self.assertEqual(control.call_args.args[3], {
+                "state": "FAILED", "reason": "RUNTIME_OR_STARTUP_REJECTED",
+                "completed_attempt_id": document["job"]["attempt_id"]})
+
+    def test_cpu_inventory_checks_every_processor_before_media_work(self):
+        with tempfile.TemporaryDirectory() as directory:
+            inventory = Path(directory) / "cpuinfo"
+            inventory.write_text("processor: 0\nflags: sse2 avx avx2 f16c fma\n")
+            cloud._verify_cpu_features(cloud.REQUIRED_CPU_FLAGS, inventory)
+            for requirements in (None, [], ["avx2"], ["avx", "avx2", "f16c", "fma", "avx512f"]):
+                with self.assertRaisesRegex(ValueError, "requirements differ"):
+                    cloud._verify_cpu_features(requirements, inventory)
+            inventory.write_text("processor: 0\nflags: avx avx2 f16c fma\n\nprocessor: 1\nflags: avx f16c fma\n")
+            with self.assertRaisesRegex(ValueError, "lacks qualified"):
+                cloud._verify_cpu_features(cloud.REQUIRED_CPU_FLAGS, inventory)
+            inventory.write_text("processor: 0\nmodel name: unknown\n")
+            with self.assertRaisesRegex(ValueError, "lacks qualified"):
+                cloud._verify_cpu_features(cloud.REQUIRED_CPU_FLAGS, inventory)
+            inventory.write_text("processor: 0\nflags: avx avx2 f16c fma\n\nprocessor: 1\n")
+            with self.assertRaisesRegex(ValueError, "lacks qualified"):
+                cloud._verify_cpu_features(cloud.REQUIRED_CPU_FLAGS, inventory)
+
     def test_failed_input_renews_exact_ports_without_redownloading_success(self):
         document = spec()
         document["job"]["completion_url"] = "https://app.test/reservation/complete?attempt_id=" + document["job"]["attempt_id"]

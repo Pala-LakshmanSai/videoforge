@@ -35,6 +35,8 @@ def main() -> int:
     args = parser.parse_args()
     if sys.platform != "linux" or platform.machine() != "x86_64" or sys.version_info[:2] != (3, 12):
         raise ValueError("Qualification requires Linux Python 3.12")
+    from videoforge_media_local.runpod_job import REQUIRED_CPU_FLAGS, _verify_cpu_features
+    _verify_cpu_features(REQUIRED_CPU_FLAGS)
     import cv2
     import numpy
     tools = {}
@@ -98,6 +100,7 @@ def main() -> int:
                 files[str(path.relative_to(args.root))] = digest(path)
     manifest = {"schema_version": "videoforge-linux-media-runtime/v1", "platform": "linux",
                 "qualified": True, "tools": tools, "source_files": files,
+                "required_cpu_flags": REQUIRED_CPU_FLAGS,
                 "source_sha256": "sha256:" + hashlib.sha256(canonical(files)).hexdigest(),
                 "opencv_version": cv2.__version__, "numpy_version": numpy.__version__,
                 "offline_acceptance": evidence}
@@ -105,6 +108,7 @@ def main() -> int:
     runtime_sha256 = "sha256:" + hashlib.sha256(canonical(manifest)).hexdigest()
     release = {"schema_version": "videoforge-runpod-media-release/v1", "platform": "linux/amd64",
                "qualified": True, "runtime_sha256": runtime_sha256,
+               "required_cpu_flags": REQUIRED_CPU_FLAGS,
                "source_sha256": manifest["source_sha256"], "tooling": {
                    "whisper_model_sha256": MODEL_SHA256,
                    "ffmpeg_version": "8.1.2", "ffprobe_version": "8.1.2", "whisper_version": "1.8.4",
