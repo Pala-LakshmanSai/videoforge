@@ -12,6 +12,7 @@ vi.mock("./neon", () => ({ createNeonPool: () => ({ query: fixture.query, end: a
   createNeonExecutor: () => ({ transaction: async (run: (sql: unknown) => unknown) => run({ query: fixture.query }) }) }));
 vi.mock("./r2-checksum", () => ({ verifyHostedObjectChecksum: fixture.checksum }));
 vi.mock("./r2", () => ({ HostedR2Signer: class { multipartRequest = fixture.multipart; signMultipartPart = fixture.part; sign = fixture.sign; listMultipartUploadsExact=fixture.listMultipart; } }));
+vi.mock("./app",()=>({createHostedV209RenderTerminalLiveCoordinator:()=>({acceptCompleted:async()=>{}})}));
 vi.mock("./hosted-v209-queue-admission",()=>({ensureHostedV209GenerationAdmission:async()=>({state:"ACTIVE"})}));
 import { CLOUD_DISK_METRICS_SQL, CLOUD_TERMINAL_EVENT_SQL, cleanupCloudReservation, cloudRenderDuration, handleCloudMediaRequest, RunPodMediaClient, runCloudMediaObservation, validCloudDiskMetrics, verifyCloudPlacement } from "./runpod-media";
 
@@ -70,7 +71,7 @@ function request(action: string, body: unknown, token = capability): Request {
   });
 }
 const runRoute = (action: string, body: unknown, token = capability) => handleCloudMediaRequest(request(action, body, token), environment, config, { waitUntil() {} });
-const primary = { source: "PRIMARY_RESULT_OUTPUT", object_key: "primary", issued_content_length: 100, issued_checksum_sha256: hash, content_type: "video/mp4" };
+const primary = { source: "PRIMARY_RESULT_OUTPUT", object_key: "primary", max_bytes:16_777_216, issued_content_length: 100, issued_checksum_sha256: hash, content_type: "video/mp4" };
 const result = { source: "RESULT_DOCUMENT", object_key: "result", issued_content_length: 50, issued_checksum_sha256: hash, content_type: "application/json" };
 const completion = { schema_version: "videoforge-personal-worker-completion/v1", status: "SUCCEEDED", result_object_key: "result", result_content_length: 50, result_checksum_sha256: hash };
 
@@ -154,13 +155,20 @@ beforeEach(async () => {
     if (sql.includes("SELECT id FROM cloud_media_reservations")) return { rows: reservation.state === "WAITING_CAPACITY" ? [{ id: reservationId }] : [] };
     if (sql.includes("SELECT state FROM hosted_cpu_job_attempts")) return { rows: [{ state: attempt.state }] };
     if (sql.trimStart().startsWith("SELECT 1 FROM cloud_media_reservations")) {
-      const fresh = attempt.state === "RUNNING" && reservation.state === "SAVING";
+      const fresh = attempt.state === "RUNNING" && Date.parse(String(reservation.deadline_at))>Date.now() &&
+        Date.parse(String(attempt.deadline_at))>Date.now() && values[1]===reservation.fence_id &&
+        (values.length<3 || values[2]===reservation.leased_attempt_id) &&
+        (reservation.state === "SAVING" || (values[3]===true && reservation.state==="STOPPING" && reservation.failure_code==="CLOUD_MEDIA_RECEIPT_PENDING"));
       if (raceCancel) attempt.state = "CANCEL_REQUESTED";
       return { rows: fresh ? [{}] : [] };
     }
     if (sql.includes("UPDATE hosted_cpu_job_attempts SET state=$2")) {
-      if (values[1] === "SUCCEEDED" && attempt.state !== "RUNNING") return { rows: [] };
-      attempt.state = values[1]; return { rows: [{ id: attemptId }] };
+      if (values[1] === "SUCCEEDED" && (attempt.state !== "RUNNING" || values[7]!==reservation.id ||
+        values[8]!==reservation.fence_id || values[0]!==reservation.leased_attempt_id ||
+        Date.parse(String(reservation.deadline_at))<=Date.now() || Date.parse(String(attempt.deadline_at))<=Date.now() ||
+        !(reservation.state==="SAVING" || (values[9]===true && reservation.state==="STOPPING" && reservation.failure_code==="CLOUD_MEDIA_RECEIPT_PENDING")))) return { rows: [] };
+      if(values[1]==="SUCCEEDED") {attempt.failure_code=null;attempt.result_object_key=values[2];attempt.result_content_length=values[3];attempt.result_checksum_sha256=values[4];attempt.result_receipt_sha256=values[5];}
+      attempt.state = values[1];if(values[1]==="FAILED") attempt.failure_code=values[6]; return { rows: [{ id: attemptId }] };
     }
     if (sql.includes("UPDATE hosted_cpu_job_attempts SET state='RUNNING'")) { attempt.state = "RUNNING"; return { rows: [{ id: attemptId }] }; }
     if (sql.includes("UPDATE cloud_media_reservations SET state='CREATING'")) {
@@ -176,16 +184,27 @@ beforeEach(async () => {
       reservation.pod_id = values[1]; reservation.launch_outcome = "CONFIRMED"; return { rows: [] };
     }
     if (sql.includes("UPDATE cloud_media_reservations SET state='STARTING'")) { reservation.state = "STARTING"; return { rows: [] }; }
+    if(sql.includes("UPDATE cloud_media_reservations SET cleanup_verified_at=now()")) {
+      if(reservation.state!=="STOPPING" || reservation.failure_code!=="CLOUD_MEDIA_RECEIPT_PENDING" ||
+        values[1]!==reservation.leased_attempt_id || values[2]!==reservation.fence_id) return {rows:[]};
+      reservation.cleanup_verified_at=new Date().toISOString();return {rows:[{id:reservationId}]};
+    }
     if (sql.includes("UPDATE cloud_media_reservations SET state='CLEAN'")) {
       if (values.length > 1 && (values[1] !== reservation.leased_attempt_id || values[2] !== reservation.fence_id)) return { rows: [] };
       reservation.state = "CLEAN"; return { rows: [{ id: reservationId }] };
+    }
+    if(sql.includes("SET state='STOPPING',failure_code='CLOUD_MEDIA_RECEIPT_PENDING'")) {
+      if(reservation.state!=="SAVING" || reservation.failure_code || attempt.state!=="RUNNING" ||
+        values[1]!==reservation.leased_attempt_id || values[2]!==reservation.fence_id ||
+        Date.parse(String(reservation.deadline_at))<=Date.now() || Date.parse(String(attempt.deadline_at))<=Date.now()) return {rows:[]};
+      reservation.state="STOPPING";reservation.failure_code="CLOUD_MEDIA_RECEIPT_PENDING";return {rows:[{id:reservationId}]};
     }
     if (sql.includes("UPDATE cloud_media_reservations SET state=$2")) {
       if (rotateBeforeStop && values[1] === "STOPPING") {
         rotateBeforeStop = false; reservation.leased_attempt_id = "99999999-9999-4999-8999-999999999999";
       }
       if (values.length > 3 && (values[3] !== reservation.leased_attempt_id || values[4] !== reservation.fence_id)) return { rows: [] };
-      reservation.state = values[1]; return { rows: [{ id: reservationId }] };
+      reservation.state = values[1];if(values[2]!=null) reservation.failure_code=values[2]; return { rows: [{ id: reservationId }] };
     }
     if (sql.includes("UPDATE cloud_media_multipart_uploads SET state='COMPLETING'")) { upload.state = "COMPLETING"; return { rows: [] }; }
     if (sql.includes("UPDATE cloud_media_multipart_uploads SET state='VERIFIED'")) { upload.state = "VERIFIED"; return { rows: [] }; }
@@ -512,6 +531,27 @@ it("validates ASR contract and exact committed source/model before publishing",a
   await setTemplate("ASR",{project_revision_id:doc.transcript.project_revision_id,voiceover:{...doc.transcript.source},model:{sha256:doc.model_sha256}});
   expect((await runRoute("complete",completion))?.status).toBe(200);expect(attempt.state).toBe("SUCCEEDED");
 });
+it.each(["same-pretty","different-transcript","invalid-json","invalid-model","oversize","checksum-mismatch"])("binds independently serialized ASR primary and receipt before promotion: %s",async mode=>{
+  reservation.state="SAVING";attempt.kind="ASR";
+  const doc=structuredClone(asrResultFixture);doc.attempt_id=attemptId;
+  await setResultDocument(doc);
+  await setTemplate("ASR",{project_revision_id:doc.transcript.project_revision_id,voiceover:{...doc.transcript.source},model:{sha256:doc.model_sha256}});
+  const primaryDoc=structuredClone(doc);
+  if(mode==="different-transcript") primaryDoc.transcript.words[0]!.text="different accepted words";
+  if(mode==="invalid-model") primaryDoc.model_sha256=`sha256:${"c".repeat(64)}`;
+  const text=mode==="invalid-json"?"{invalid":JSON.stringify(primaryDoc,null,2)+"\n";
+  const bytes=new TextEncoder().encode(text);
+  primary.content_type="application/json";primary.issued_content_length=mode==="oversize"?16_777_217:bytes.byteLength;
+  primary.issued_checksum_sha256=mode==="checksum-mismatch"?hash:await sha256(text);
+  const get=vi.mocked(environment.PRIVATE_ARTIFACTS!.get), prior=get.getMockImplementation()!;
+  const read=vi.fn(async()=>bytes.buffer);
+  get.mockImplementation(async(key:string)=>key==="primary"?{size:primary.issued_content_length,
+    httpMetadata:{contentType:"application/json"},arrayBuffer:read}:prior(key));
+  expect((await runRoute("complete",completion))?.status).toBe(mode==="same-pretty"?200:409);
+  expect(attempt.state).toBe(mode==="same-pretty"?"SUCCEEDED":"RUNNING");
+  if(mode==="same-pretty") expect(primary.issued_content_length).not.toBe(result.issued_content_length);
+  if(mode==="oversize") expect(read).not.toHaveBeenCalled();
+});
 it("validates selected-span input identity, waveform facts and selection before publishing",async()=>{
   reservation.state="SAVING";attempt.kind="SPAN_AUDIO";primary.content_type="audio/wav";
   const input={span_id:"span",timeline_plan_id:"timeline",transcript_id:"transcript",timeline_segment_id:"segment",task_key:"task",
@@ -658,4 +698,98 @@ describe("bounded cloud observation diagnostics", () => {
     await runCloudMediaObservation(environment,config,scope);
     expect(fixture.transport.mock.calls.filter(([,options])=>options.method==="POST")).toHaveLength(1);
   });
+});
+
+describe("lost completion receipt reconciliation",()=>{
+  async function finishedWithoutCallbacks() {
+    reservation.state="SAVING";reservation.launch_outcome="CONFIRMED";upload.state="VERIFIED";
+    expect((await runRoute("cleanup",{completed_attempt_id:attemptId,state:"FAILED",reason:"JOB_FINISHED"}))?.status).toBe(200);
+    expect(reservation.state).toBe("STOPPING");expect(reservation.failure_code).toBe("CLOUD_MEDIA_RECEIPT_PENDING");
+  }
+  it("accepts the same stored immutable receipt after every completion callback is lost, then independently cleans",async()=>{
+    await finishedWithoutCallbacks();attempt.failure_code="OLD_DIAGNOSTIC";
+    expect((await runRoute("complete",completion))?.status).toBe(409);
+    expect((await runCloudMediaObservation(environment,config,scope)).state).toBe("SUCCEEDED");
+    expect(attempt.state).toBe("SUCCEEDED");expect(attempt.failure_code).toBeNull();expect(reservation.state).toBe("CLEAN");
+    expect(attempt.result_object_key).toBe(result.object_key);expect(attempt.result_checksum_sha256).toBe(result.issued_checksum_sha256);
+    const receipt=attempt.result_receipt_sha256;
+    expect((await runCloudMediaObservation(environment,config,scope)).state).toBe("SUCCEEDED");
+    expect(attempt.result_receipt_sha256).toBe(receipt);
+    expect(fixture.transport.mock.calls.some(([,options])=>options.method==="POST")).toBe(false);
+    expect(fixture.query.mock.calls.filter(([sql])=>String(sql).includes("UPDATE hosted_cpu_job_attempts SET state=$2"))).toHaveLength(1);
+  });
+  it.each(["malformed","wrong-output","wrong-attempt"])("fails closed for a stored %s receipt",async mode=>{
+    await finishedWithoutCallbacks();const doc=JSON.parse(new TextDecoder().decode(resultBytes));
+    if(mode==="wrong-output") doc.output.sha256=`sha256:${"c".repeat(64)}`;
+    if(mode==="wrong-attempt") doc.attempt_id="99999999-9999-4999-8999-999999999999";
+    await setResultDocument(mode==="malformed"?"{invalid":doc);
+    expect((await runCloudMediaObservation(environment,config,scope)).state).toBe("FAILED");
+    expect(attempt.state).toBe("FAILED");expect(attempt.failure_code).toBe("CLOUD_MEDIA_UPLOAD_FAILED");expect(reservation.state).toBe("CLEAN");expect(attempt.result_receipt_sha256).toBeUndefined();
+  });
+  it("keeps transient storage recovery bounded by the original deadline without renting or accepting",async()=>{
+    await finishedWithoutCallbacks();
+    fixture.transport.mockResolvedValueOnce(response({pods:[placement()],pagination:{hasNextPage:false}}))
+      .mockResolvedValueOnce(new Response(null,{status:204})).mockResolvedValueOnce(emptyInventory());
+    vi.mocked(environment.PRIVATE_ARTIFACTS!.get).mockRejectedValueOnce(new TypeError("private transport detail"));
+    expect((await runCloudMediaObservation(environment,config,scope)).state).toBe("RECONCILING");
+    expect(attempt.state).toBe("RUNNING");expect(reservation.state).toBe("STOPPING");expect(reservation.cleanup_verified_at).toBeTruthy();
+    expect(fixture.transport.mock.calls.map(([,options])=>options.method)).toEqual(["GET","DELETE","GET"]);
+    expect((await runCloudMediaObservation(environment,config,scope)).state).toBe("SUCCEEDED");
+    expect(attempt.state).toBe("SUCCEEDED");expect(reservation.state).toBe("CLEAN");
+    expect(fixture.transport.mock.calls.some(([,options])=>options.method==="POST")).toBe(false);
+  });
+  it.each(["cancel-before","cancel-during","expired","already-failed","runtime-failure","stale-fence"])("never promotes when %s wins",async mode=>{
+    await finishedWithoutCallbacks();
+    if(mode==="cancel-before") attempt.state="CANCEL_REQUESTED";
+    if(mode==="cancel-during") raceCancel=true;
+    if(mode==="expired") attempt.deadline_at=new Date(0).toISOString();
+    if(mode==="already-failed") attempt.state="FAILED";
+    if(mode==="runtime-failure") reservation.failure_code="CLOUD_MEDIA_RUNTIME_REJECTED";
+    if(mode==="stale-fence") fixture.checksum.mockImplementation(async()=>{reservation.fence_id="99999999-9999-4999-8999-999999999999";return true;});
+    await runCloudMediaObservation(environment,config,scope);
+    expect(attempt.state).not.toBe("SUCCEEDED");expect(attempt.result_receipt_sha256).toBeUndefined();
+    expect(fixture.transport.mock.calls.some(([,options])=>options.method==="POST")).toBe(false);
+  });
+});
+
+it("enforces trusted receipt recovery and cancellation fencing in real PostgreSQL",async()=>{
+  reservation.state="STOPPING";reservation.failure_code="CLOUD_MEDIA_RECEIPT_PENDING";upload.state="VERIFIED";
+  await runCloudMediaObservation(environment,config,scope);
+  const terminal=fixture.query.mock.calls.find(([sql,values])=>String(sql).includes("UPDATE hosted_cpu_job_attempts SET state=$2") && values[1]==="SUCCEEDED");
+  expect(terminal).toBeDefined();
+  vi.unstubAllGlobals();const {PGlite}=await import("@electric-sql/pglite");const db=new PGlite();
+  try {
+    await db.exec(`CREATE TABLE hosted_cpu_job_attempts(id uuid PRIMARY KEY,state text,execution_backend text,
+      terminal_at timestamptz,submitted_at timestamptz,retain_until timestamptz,deadline_at timestamptz,
+      result_object_key text,result_content_length bigint,result_checksum_sha256 text,result_receipt_sha256 text,
+      failure_code text,version integer DEFAULT 0,updated_at timestamptz);
+      CREATE TABLE cloud_media_reservations(id uuid,leased_attempt_id uuid,fence_id uuid,state text,failure_code text,deadline_at timestamptz);`);
+    for(const mode of ["trusted","public","cancel","failed","expired-cpu","expired-reservation","stale-fence","wrong-attempt","runtime-failure"]) {
+      await db.exec("TRUNCATE hosted_cpu_job_attempts,cloud_media_reservations");
+      await db.query("INSERT INTO hosted_cpu_job_attempts(id,state,execution_backend,deadline_at,failure_code) VALUES($1,$2,'RUNPOD_POD',$3,'PREVIOUS_DIAGNOSTIC')",
+        [attemptId,mode==="cancel"?"CANCEL_REQUESTED":mode==="failed"?"FAILED":"RUNNING",mode==="expired-cpu"?new Date(0).toISOString():future()]);
+      await db.query("INSERT INTO cloud_media_reservations VALUES($1,$2,$3,'STOPPING',$4,$5)",
+        [reservationId,mode==="wrong-attempt"?reservationId:attemptId,
+          mode==="stale-fence"?reservationId:terminal![1][8],mode==="runtime-failure"?"CLOUD_MEDIA_RUNTIME_REJECTED":"CLOUD_MEDIA_RECEIPT_PENDING",
+          mode==="expired-reservation"?new Date(0).toISOString():future()]);
+      const values=[...terminal![1]];if(mode==="public") values[9]=false;
+      const accepted=await db.query(String(terminal![0]),values);
+      expect(accepted.rows,mode).toHaveLength(mode==="trusted"?1:0);
+      const cpu=(await db.query<{state:string;failure_code:string|null}>("SELECT state,failure_code FROM hosted_cpu_job_attempts")).rows[0]!;
+      if(mode==="trusted") expect(cpu).toEqual({state:"SUCCEEDED",failure_code:null});
+      else {expect(cpu.state).not.toBe("SUCCEEDED");expect(cpu.failure_code).toBe("PREVIOUS_DIAGNOSTIC");}
+    }
+  } finally {await db.close();}
+},30000);
+
+it.each(["missing","expired"])("settles pending receipt with a fixed %s failure instead of a pending diagnostic",async mode=>{
+  reservation.state="STOPPING";reservation.failure_code="CLOUD_MEDIA_RECEIPT_PENDING";upload.state="VERIFIED";reservation.launch_outcome="CONFIRMED";
+  if(mode==="expired") reservation.deadline_at=new Date(0).toISOString();
+  if(mode==="missing") {
+    const prior=fixture.query.getMockImplementation()!;
+    fixture.query.mockImplementation(async(sql:string,values:unknown[])=>sql.includes("SELECT * FROM hosted_cpu_upload_authorities")?{rows:[]}:prior(sql,values));
+  }
+  expect((await runCloudMediaObservation(environment,config,scope)).state).toBe("FAILED");
+  expect(attempt.failure_code).toBe(mode==="missing"?"CLOUD_MEDIA_UPLOAD_FAILED":"CLOUD_MEDIA_DEADLINE_EXCEEDED");
+  expect(reservation.state).toBe("CLEAN");
 });

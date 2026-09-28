@@ -54,7 +54,7 @@ function query(sql: SqlExecutor, statement: string, values: readonly unknown[] =
 }
 type Scope = {attemptId: string; accountId: string; workspaceId: string};
 type ObservationPhase = "TEMPLATE" | "ADMISSION" | "RESERVATION" | "ADMISSION_RENEWAL" |
-  "ATTEMPT_TERMINATION" | "CLEANUP" | "FAILURE_SETTLEMENT" | "RESULT_FINALIZATION" |
+  "RECEIPT_RECONCILIATION" | "ATTEMPT_TERMINATION" | "CLEANUP" | "FAILURE_SETTLEMENT" | "RESULT_FINALIZATION" |
   "INVENTORY" | "PLACEMENT_ADOPTION" | "CATALOGUE" | "CAPACITY_CHECK" |
   "BUDGET_RESERVATION" | "CREATE_FENCE" | "LEASE_TOKEN" | "POD_CREATE";
 type ObservationDiagnostic = {phase: ObservationPhase; code: string};
@@ -71,6 +71,15 @@ function observationDiagnostic(error: unknown, phase: ObservationPhase): Observa
 const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u;
 const ACTIVE = ["STARTING", "DOWNLOADING", "RENDERING", "CHECKING", "SAVING"];
 const TERMINAL = ["SUCCEEDED", "FAILED", "CANCELLED", "EXPIRED"];
+const RECEIPT_PENDING = "CLOUD_MEDIA_RECEIPT_PENDING";
+class ReceiptStorageError extends Error {}
+async function receiptRead<T>(recover:boolean,read:()=>Promise<T>):Promise<T> {
+  try {return await read();} catch(error) {
+    if(recover && !(error instanceof Error && error.message==="CLOUD_MEDIA_TEMPLATE_INVALID"))
+      throw new ReceiptStorageError("CLOUD_MEDIA_RECEIPT_STORAGE_UNAVAILABLE");
+    throw error;
+  }
+}
 
 export class RunPodMediaClient {
   constructor(private readonly apiKey: string, private readonly transport: typeof fetch = fetch) {}
@@ -141,20 +150,21 @@ async function updateReservation(config: HostedRuntimeConfiguration, r: Row, sta
   });
 }
 async function finishAttempt(config: HostedRuntimeConfiguration, r: Row, state: string,
-  facts?: {key: string; size: number; checksum: string}): Promise<boolean> {
+  facts?: {key: string; size: number; checksum: string}, receiptRecovery=false): Promise<boolean> {
   return tenant(config, String(r.account_id), async sql => {
     const receipt = facts ? await sha256(JSON.stringify({attempt_id:r.leased_attempt_id,content_length:facts.size,
       object_key:facts.key,result_checksum_sha256:facts.checksum})) : null;
     const changed = await query(sql, `UPDATE hosted_cpu_job_attempts SET state=$2,terminal_at=now(),submitted_at=COALESCE(submitted_at,now()),
       retain_until=CASE WHEN $2='SUCCEEDED' THEN NULL ELSE GREATEST(deadline_at,now()+interval '30 minutes') END,
       result_object_key=COALESCE($3,result_object_key),result_content_length=$4,result_checksum_sha256=$5,
-      result_receipt_sha256=$6,failure_code=CASE WHEN $2='FAILED' THEN $7 ELSE failure_code END,
+      result_receipt_sha256=$6,failure_code=CASE WHEN $2='SUCCEEDED' THEN NULL WHEN $2='FAILED' THEN $7 ELSE failure_code END,
       version=version+1,updated_at=now() WHERE id=$1 AND execution_backend='RUNPOD_POD'
       AND (($2<>'SUCCEEDED' AND state IN ('PLANNED','OUTBOXED','RUNNING','CANCEL_REQUESTED','RECONCILING'))
         OR ($2='SUCCEEDED' AND state='RUNNING' AND EXISTS(SELECT 1 FROM cloud_media_reservations r
           WHERE r.id=$8 AND r.leased_attempt_id=hosted_cpu_job_attempts.id AND r.fence_id=$9
-          AND r.state='SAVING' AND r.deadline_at>now()))) RETURNING id`,
-    [r.leased_attempt_id ?? r.attempt_id,state,facts?.key ?? null,facts?.size ?? null,facts?.checksum ?? null,receipt,r.failure_code ?? "CLOUD_MEDIA_FAILED",r.id,r.fence_id]);
+          AND (r.state='SAVING' OR ($10::boolean AND r.state='STOPPING' AND r.failure_code='CLOUD_MEDIA_RECEIPT_PENDING'))
+          AND r.deadline_at>now() AND hosted_cpu_job_attempts.deadline_at>now()))) RETURNING id`,
+    [r.leased_attempt_id ?? r.attempt_id,state,facts?.key ?? null,facts?.size ?? null,facts?.checksum ?? null,receipt,r.failure_code ?? "CLOUD_MEDIA_FAILED",r.id,r.fence_id,receiptRecovery]);
     if(!changed.rows[0]) return false;
     await query(sql, CLOUD_TERMINAL_EVENT_SQL,
       [r.leased_attempt_id ?? r.attempt_id,r.account_id,r.workspace_id,state,await sha256(`${r.id}:${state}:${receipt ?? ""}`)]);
@@ -163,7 +173,7 @@ async function finishAttempt(config: HostedRuntimeConfiguration, r: Row, state: 
 }
 
 /** A DELETE response is insufficient. Unknown create + empty inventory remains reserved. */
-export async function cleanupCloudReservation(client: RunPodMediaClient, config: HostedRuntimeConfiguration, r: Row): Promise<boolean> {
+export async function cleanupCloudReservation(client: RunPodMediaClient, config: HostedRuntimeConfiguration, r: Row, retainReceiptPending=false): Promise<boolean> {
   if(r.launch_outcome==null || r.launch_outcome==="REFUSED") {
     // No accepted create: this durable outcome is provider-inert, including auth failures.
     const clean=await tenant(config,String(r.account_id),async sql=>(await query(sql,
@@ -199,6 +209,10 @@ export async function cleanupCloudReservation(client: RunPodMediaClient, config:
     await tenant(config,String(r.account_id),async sql=>{await query(sql,
       "UPDATE cloud_media_multipart_uploads SET state='ABORTED' WHERE id=$1 AND reservation_id=$2 AND state<>'VERIFIED'",[upload.id,r.id]);});
   }
+  if(retainReceiptPending) return tenant(config,String(r.account_id),async sql=>!!(await query(sql,
+    `UPDATE cloud_media_reservations SET cleanup_verified_at=now(),updated_at=now()
+      WHERE id=$1 AND state='STOPPING' AND failure_code='CLOUD_MEDIA_RECEIPT_PENDING'
+        AND leased_attempt_id=$2 AND fence_id=$3 RETURNING id`,[r.id,r.leased_attempt_id,r.fence_id])).rows[0]);
   return tenant(config,String(r.account_id), async sql => !!(await query(sql,
     `UPDATE cloud_media_reservations SET state='CLEAN',cleanup_verified_at=now(),updated_at=now()
       WHERE id=$1 AND state='STOPPING' AND leased_attempt_id=$2 AND fence_id=$3 RETURNING id`,
@@ -250,8 +264,8 @@ export async function runCloudMediaObservation(environment: HostedRuntimeEnviron
       ? (await query(sql, "SELECT * FROM hosted_cpu_job_attempts WHERE id=$1", [r.leased_attempt_id])).rows[0] : a;
     return {a:current,r};
   });
-  const a = loaded.a; let r = loaded.r;
-  if (!a) return {state:"FAILED"};
+  if (!loaded.a) return {state:"FAILED"};
+  let a:Row = loaded.a; let r = loaded.r;
   if(cloudMediaQualificationOnly(environment)) {
     const authority=environment.VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID!;
     if((r && r.budget_authority_id!==authority) || (!r && !await tenant(config,scope.accountId,async sql=>
@@ -334,6 +348,42 @@ export async function runCloudMediaObservation(environment: HostedRuntimeEnviron
     }
     if(a.kind==="SPAN_AUDIO" && a.state==="SUCCEEDED" && ACTIVE.includes(String(r.state)) &&
       Date.parse(String(r.updated_at))+30_000>Date.now()) return {state:"SAVING",delaySeconds:5};
+    // A completed process may lose every callback. Reconcile its existing receipt before failing it.
+    // Only the trusted observer can publish from this explicit, fenced cleanup marker.
+    if(r.state==="STOPPING" && r.failure_code===RECEIPT_PENDING && a.state==="RUNNING" &&
+      Date.parse(String(r.deadline_at))>Date.now() && Date.parse(String(a.deadline_at))>Date.now()) {
+      phase="RECEIPT_RECONCILIATION";
+      const authority=await tenant(config,scope.accountId,async sql=>(await query(sql,
+        "SELECT * FROM hosted_cpu_upload_authorities WHERE attempt_id=$1 AND issued_at IS NOT NULL",[r!.leased_attempt_id])).rows
+        .find(row=>row.source==="RESULT_DOCUMENT"));
+      let accepted=false;
+      if(authority) {
+        try {
+          accepted=(await cloudComplete({schema_version:"videoforge-personal-worker-completion/v1",status:"SUCCEEDED",
+            result_object_key:authority.object_key,result_content_length:authority.issued_content_length,
+            result_checksum_sha256:authority.issued_checksum_sha256},{...r,kind:a.kind},environment,config,true)).ok;
+        } catch(error) {
+          if(!(error instanceof ReceiptStorageError)) throw error;
+          // Retry durable storage independently after stopping compute. Capacity remains fenced.
+          phase="CLEANUP";
+          await cleanupCloudReservation(client,config,r,true);
+          return {state:"RECONCILING",delaySeconds:30};
+        }
+      }
+      if(!accepted) {
+        const code="CLOUD_MEDIA_UPLOAD_FAILED";
+        if(!await updateReservation(config,r,"STOPPING",code)) return {state:"RECONCILING",delaySeconds:30};
+        r={...r,failure_code:code};
+      }
+      // Cancellation or lease replacement during reads must win; never rewrite a terminal attempt.
+      a=await tenant(config,scope.accountId,async sql=>(await query(sql,
+        "SELECT * FROM hosted_cpu_job_attempts WHERE id=$1",[r!.leased_attempt_id])).rows[0]) ?? a;
+    }
+    if(r.state==="STOPPING" && r.failure_code===RECEIPT_PENDING && a.state==="RUNNING" &&
+      (Date.parse(String(r.deadline_at))<=Date.now() || Date.parse(String(a.deadline_at))<=Date.now())) {
+      if(!await updateReservation(config,r,"STOPPING","CLOUD_MEDIA_DEADLINE_EXCEEDED")) return {state:"RECONCILING",delaySeconds:30};
+      r={...r,failure_code:"CLOUD_MEDIA_DEADLINE_EXCEEDED"};
+    }
     if (TERMINAL.includes(String(a.state)) || a.state === "CANCEL_REQUESTED" ||
       (r.deadline_at && Date.parse(String(r.deadline_at)) <= Date.now()) ||
       (r.last_heartbeat_at && Date.parse(String(r.last_heartbeat_at)) + 300_000 <= Date.now()) || r.state === "STOPPING") {
@@ -617,7 +667,14 @@ export async function handleCloudMediaRequest(request:Request,environment:Hosted
     }
     if(completed!==undefined && completed!==r.leased_attempt_id) return new Response(null,{status:409});
     const reason=({DEADLINE_EXCEEDED:"CLOUD_MEDIA_DEADLINE_EXCEEDED",RUNTIME_OR_STARTUP_REJECTED:"CLOUD_MEDIA_RUNTIME_REJECTED"} as Record<string,string>)[String(body.reason)];
-    await updateReservation(config,r,"STOPPING",reason);
+    if(body.reason==="JOB_FINISHED" && r.state==="SAVING" && r.attempt_state==="RUNNING" && !r.failure_code) {
+      await tenant(config,String(r.account_id),async sql=>{await query(sql,`UPDATE cloud_media_reservations r
+        SET state='STOPPING',failure_code='CLOUD_MEDIA_RECEIPT_PENDING',updated_at=now(),next_check_at=now()
+        WHERE r.id=$1 AND r.leased_attempt_id=$2 AND r.fence_id=$3 AND r.state='SAVING' AND r.failure_code IS NULL
+          AND r.deadline_at>now() AND EXISTS(SELECT 1 FROM hosted_cpu_job_attempts a
+            WHERE a.id=r.leased_attempt_id AND a.state='RUNNING' AND a.deadline_at>now()) RETURNING id`,
+        [r.id,r.leased_attempt_id,r.fence_id]);});
+    } else await updateReservation(config,r,"STOPPING",reason);
     return Response.json({cleanup_requested:true});
   }
   if(action==="complete" && r.attempt_state==="SUCCEEDED") {
@@ -760,7 +817,7 @@ async function cloudMultipart(action:string,body:Row,r:Row,environment:HostedRun
   return Response.json({verified:true});
 }
 
-async function cloudComplete(body:Row,r:Row,environment:HostedRuntimeEnvironment,config:HostedRuntimeConfiguration):Promise<Response> {
+async function cloudComplete(body:Row,r:Row,environment:HostedRuntimeEnvironment,config:HostedRuntimeConfiguration,receiptRecovery=false):Promise<Response> {
   if(body.schema_version!=="videoforge-personal-worker-completion/v1" || !["SUCCEEDED","FAILED","CANCELLED"].includes(String(body.status))) return new Response(null,{status:400});
   if(body.status!=="SUCCEEDED") {
     if(!await tenant(config,String(r.account_id),sql=>recordCloudDiskMetrics(sql,r,body.disk_metrics))) return new Response(null,{status:409});
@@ -771,26 +828,38 @@ async function cloudComplete(body:Row,r:Row,environment:HostedRuntimeEnvironment
     const primary=authorities.find(a=>a.source==="PRIMARY_RESULT_OUTPUT"), result=authorities.find(a=>a.source==="RESULT_DOCUMENT"),bucket=environment.PRIVATE_ARTIFACTS;
     if(!primary || !result || !bucket || body.result_object_key!==result.object_key || Number(body.result_content_length)!==Number(result.issued_content_length) || body.result_checksum_sha256!==result.issued_checksum_sha256)
       return new Response(null,{status:409});
-    const head=await bucket.head(String(primary.object_key));
+    const head=await receiptRead(receiptRecovery,()=>bucket.head(String(primary.object_key)));
     if(!head || head.size!==Number(primary.issued_content_length) || head.httpMetadata?.contentType!==primary.content_type ||
-      !await verifyHostedObjectChecksum(bucket,String(primary.object_key),head,String(primary.issued_checksum_sha256))) return new Response(null,{status:409});
+      !await receiptRead(receiptRecovery,()=>verifyHostedObjectChecksum(bucket,String(primary.object_key),head,String(primary.issued_checksum_sha256)))) return new Response(null,{status:409});
     // Match the desktop JSON boundary before publishing success; downstream terminal logic retains its exact input gates.
     try {
-      const object=await bucket.get(String(result.object_key));
+      const object=await receiptRead(receiptRecovery,()=>bucket.get(String(result.object_key)));
       if(!object || object.size!==Number(result.issued_content_length) || object.size>1_048_576 ||
         object.httpMetadata?.contentType!=="application/json") return new Response(null,{status:409});
-      const bytes=await object.arrayBuffer();
+      const bytes=await receiptRead(receiptRecovery,()=>object.arrayBuffer());
       if(bytes.byteLength!==object.size || await sha256Bytes(bytes)!==result.issued_checksum_sha256) return new Response(null,{status:409});
       const document=JSON.parse(new TextDecoder("utf-8",{fatal:true,ignoreBOM:false}).decode(bytes)) as Row;
-      const template=await cloudTemplate(environment,r),input=template.input_document as Row;
+      const template=await receiptRead(receiptRecovery,()=>cloudTemplate(environment,r)),input=template.input_document as Row;
       if(!document || typeof document!=="object" || Array.isArray(document) || document.attempt_id!==r.leased_attempt_id ||
         document.status!=="SUCCEEDED" || document.error!==null || !input || typeof input!=="object") return new Response(null,{status:409});
       if(r.kind==="ASR") {
         const parsed=await validateAndHashHostedContractDocument("asrJobResult",document);
         if(parsed.value.status!=="SUCCEEDED" || !parsed.value.transcript || parsed.value.source_voiceover_sha256!==(input.voiceover as Row)?.sha256 || parsed.value.model_sha256!==(input.model as Row)?.sha256 ||
           parsed.value.transcript.project_revision_id!==input.project_revision_id || parsed.value.transcript.source.asset_id!==(input.voiceover as Row)?.asset_id ||
-          parsed.value.transcript.source.duration_ms!==(input.voiceover as Row)?.duration_ms ||
-          primary.issued_checksum_sha256!==result.issued_checksum_sha256 || Number(primary.issued_content_length)!==object.size) return new Response(null,{status:409});
+          parsed.value.transcript.source.duration_ms!==(input.voiceover as Row)?.duration_ms) return new Response(null,{status:409});
+        // The primary file and callback receipt can serialize the same ASR document differently.
+        // Bind both separately to their uploaded bytes, then compare validated contract semantics.
+        const primaryObject=await receiptRead(receiptRecovery,()=>bucket.get(String(primary.object_key)));
+        if(!primaryObject || primaryObject.size!==Number(primary.issued_content_length) ||
+          !Number.isSafeInteger(Number(primary.max_bytes)) ||
+          primaryObject.size>16_777_216 || primaryObject.size>Number(primary.max_bytes) ||
+          primaryObject.httpMetadata?.contentType!=="application/json") return new Response(null,{status:409});
+        const primaryBytes=await receiptRead(receiptRecovery,()=>primaryObject.arrayBuffer());
+        if(primaryBytes.byteLength!==primaryObject.size || await sha256Bytes(primaryBytes)!==primary.issued_checksum_sha256)
+          return new Response(null,{status:409});
+        const primaryDocument=JSON.parse(new TextDecoder("utf-8",{fatal:true,ignoreBOM:false}).decode(primaryBytes));
+        const parsedPrimary=await validateAndHashHostedContractDocument("asrJobResult",primaryDocument);
+        if(parsedPrimary.sha256!==parsed.sha256) return new Response(null,{status:409});
       } else if(r.kind==="RENDER") {
         const parsed=await validateAndHashHostedContractDocument("renderJobResult",document);
         if(parsed.value.status!=="SUCCEEDED" ||
@@ -807,13 +876,15 @@ async function cloudComplete(body:Row,r:Row,environment:HostedRuntimeEnvironment
           audio.sample_rate_hz!==48000 || audio.channels!==1 || audio.duration_ms!==Number((input.selection as Row)?.padded_end_ms_exclusive)-Number((input.selection as Row)?.padded_start_ms) ||
           audio.artifact_uri!==`vf-local://objects/sha256/${String(audio.sha256).slice(7,9)}/${String(audio.sha256).slice(7)}.wav`) return new Response(null,{status:409});
       } else return new Response(null,{status:409});
-    } catch {return new Response(null,{status:409});}
+    } catch(error) {if(error instanceof ReceiptStorageError) throw error;return new Response(null,{status:409});}
     // Recheck the exact fence after verification; cancellation must win over a stale publication.
     const fresh=await tenant(config,String(r.account_id),async sql=>(await query(sql, `SELECT 1 FROM cloud_media_reservations r JOIN hosted_cpu_job_attempts a ON a.id=r.leased_attempt_id
-      WHERE r.id=$1 AND r.fence_id=$2 AND r.state='SAVING' AND r.deadline_at>now() AND a.state='RUNNING'`,[r.id,r.fence_id])).rows[0]);
+      WHERE r.id=$1 AND r.fence_id=$2 AND r.leased_attempt_id=$3 AND
+      (r.state='SAVING' OR ($4::boolean AND r.state='STOPPING' AND r.failure_code='CLOUD_MEDIA_RECEIPT_PENDING'))
+      AND r.deadline_at>now() AND a.deadline_at>now() AND a.state='RUNNING'`,[r.id,r.fence_id,r.leased_attempt_id,receiptRecovery])).rows[0]);
     if(!fresh) return new Response(null,{status:409});
     if(!await tenant(config,String(r.account_id),sql=>recordCloudDiskMetrics(sql,r,body.disk_metrics))) return new Response(null,{status:409});
-    if (!await finishAttempt(config,r,"SUCCEEDED",{key:String(result.object_key),size:Number(result.issued_content_length),checksum:String(result.issued_checksum_sha256)})) return new Response(null,{status:409});
+    if (!await finishAttempt(config,r,"SUCCEEDED",{key:String(result.object_key),size:Number(result.issued_content_length),checksum:String(result.issued_checksum_sha256)},receiptRecovery)) return new Response(null,{status:409});
   }
   return Response.json({schema_version:"videoforge-personal-worker-completion-accepted/v1",state:body.status});
 }
