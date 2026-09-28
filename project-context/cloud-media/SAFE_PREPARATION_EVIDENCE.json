@@ -184,5 +184,59 @@
     "utc": "2026-09-28T13:17:47Z",
     "source": "366d16c27369b4430a843ae4e6929b7d7156eb89",
     "gpu_transport": "DISABLED_UNQUALIFIED"
+  },
+  "lower_cost_proposal": {
+    "approved": false,
+    "supersedes_unapproved_usd20": true,
+    "total_usd": 5,
+    "compute_cap_usd": 3,
+    "build_publication_storage_cap_usd": 2,
+    "max_reservations": 6,
+    "max_all_in_hourly_usd": 0.8,
+    "temporary_disk_gb_range": [
+      100,
+      200
+    ],
+    "phase_limits": [
+      {
+        "proof": "ASR",
+        "rental_seconds": 900,
+        "reservation_usd": 0.2
+      },
+      {
+        "proof": "SPAN_AUDIO",
+        "rental_seconds": 900,
+        "reservation_usd": 0.2
+      },
+      {
+        "proof": "SHORT_RENDER",
+        "rental_seconds": 900,
+        "reservation_usd": 0.2
+      },
+      {
+        "proof": "CANCELLATION",
+        "rental_seconds": 300,
+        "reservation_usd": 0.07
+      },
+      {
+        "proof": "LONG_RENDER",
+        "rental_seconds": 7200,
+        "reservation_usd": 1.6
+      },
+      {
+        "proof": "ONE_RECOVERY",
+        "rental_seconds": 900,
+        "reservation_usd": 0.2
+      }
+    ],
+    "reservation_sum_usd": 2.47,
+    "speed_qualified": false,
+    "quality_gates_unchanged": true,
+    "live_gates_remain_if_infeasible": true,
+    "catalogue_read_utc": "2026-09-28T13:27:09Z",
+    "preferred_gpu_usd_per_hour": 0.72,
+    "preferred_availability": "NONE",
+    "inventory_scope": "existing Frontier reference account; VideoForge preflight remains required",
+    "paid_actions": 0
   }
 }

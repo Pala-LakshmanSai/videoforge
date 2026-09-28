@@ -82,11 +82,30 @@ failed-part-only retries and uncertain-completion reconciliation before terminal
 
 ### Prepared combined authority proposal (not approved)
 
-The proposed finite action cap is **USD20 total**: up toUSD15 for at most six Cloud reservations,
-each at mostUSD2.50 and two hours; up toUSD5 for immutable image publication, CI and related
-storage actions. Require all-in GPU plus temporary disk rate at mostUSD1.25/h. Derive temporary
+The previous unapproved USD20 proposal is withdrawn. The revised finite action cap is
+**USD5 total**: up toUSD3 for at most six Cloud reservations, and up toUSD2 for immutable image
+publication, CI and related storage actions. Verify billing/quota before any chargeable build or
+publication; use existing free quota when available, without assuming it exists.
+Require all-in GPU plus temporary disk rate at mostUSD0.80/h. Derive temporary
 disk from validated exact-job inputs/intermediates using the release formula, bounded100–200GB;
 fail rather than rent above200GB. No retained network volume or recurring retained-volume charge.
+
+| Exact retained-input proof | Rental deadline | Maximum reservation |
+|---|---:|---:|
+| Short ASR | 15 minutes | USD0.20 |
+| Selected-span batch | 15 minutes | USD0.20 |
+| Short final render and technical checks | 15 minutes | USD0.20 |
+| Cancellation and independently verified cleanup | 5 minutes | USD0.07 |
+| Representative45-minute render and storage proof | 2 hours | USD1.60 |
+| One recovery, only if needed | 15 minutes | USD0.20 |
+
+These six reservations sum toUSD2.47; the remaining USD0.53 compute allowance is contingency,
+not permission for more rentals. Before each ready proof, set the corresponding approved rental
+deadline/reservation limit in control-plane configuration; persist those limits on its reservation.
+The existing operator budget authority enforces the USD3 aggregate and scoped project identities.
+Short-proof measurements determine whether the45-minute proof is feasible within its limit.
+If it cannot finish safely, stop and retain that acceptance gate; preserve encoding, mandatory
+decode/frame-count verification, resource floors and accepted media. Do not claim an unrun gate.
 
 Operations: qualify/publish the Linux runtime; retained-input short ASR, selected-span batch and
 render; one cancellation with independent cleanup; representative45-minute retained-input render;
@@ -100,7 +119,9 @@ Fresh read-only inventory at2026-09-28T13:05:45Z used the configured Frontier re
 account and was complete with zero Pods; no credential was copied. The configured VideoForge
 account must receive its own preflight before paid allocation. No billable POST has been issued
 for this new lane, so owned Pods are zero; live independent shutdown remains unexercised. Rank1 GPU listing
-wasUSD0.72/h andLOW, while an adjacent query reportedNONE; availability is volatile. Actual
+wasUSD0.72/h andLOW, while an adjacent query reportedNONE; availability is volatile. A fresh catalog
+read at2026-09-28T13:27:09Z still listedUSD0.72/h butNONE. At100–200GB disk, the estimated all-in
+preferred rate isUSD0.733889–0.747778/h; it is not an actual placement or invoice. Actual
 placement CPU/RAM and VideoForge speed remain unverified. Refresh catalog before allocation.
 The cap is an application action guard, not an invoice guarantee. This proposal grants no authority.
 

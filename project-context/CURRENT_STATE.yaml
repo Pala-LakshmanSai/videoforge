@@ -20,6 +20,7 @@ optional_cloud_media_2026_09_28:
   current_rate: At2026-09-28T13:05:45Z Secure Cloud rank1 RTX_PRO_4500_Blackwell_Server32GB observedUSD0.72_per_hour_GPU_LOW with adjacentNONE;100GBdisk estimatedUSD0.013889_per_hour;CPU_RAM_actual_placement_and_VideoForge_speed_unverified.
   production_bindings: Current Cloudflare settings read401; historical62524e69 readback only, fresh parity gate open.
   authority: Provider-free implementation/tests/read-only inventory only; new paid/image-publication/production-release authority missing.
+  lower_cost_proposal: Previous unapprovedUSD20 withdrawn; unapprovedUSD5 total, computeUSD3/six phase-bounded reservations summingUSD2.47 plus contingency, CI_publication_storageUSD2, all_in_rate_maxUSD0.80_hour, disk100_200GB. Short proofs15min, cancellation5min, long45minute_render2h; stop without weakening gates if infeasible.
   remaining_gates: Offline qualified Linux runtime/image digest/model hashes; authorized short Cloud and cancellation; current Local execution; representative45minute VideoForge storage/render; full realChrome queue/reload/private download/playback; production rollout/readback.
   provider_spend: USD0; no Kie/Fal generation, Pod POST/DELETE, image/model/volume publication or mutation.
   paid_compute_shutdown: At2026-09-28T13:05:45Z complete read-only configured Frontier-reference-account inventory zero Pods; no credential copied, VideoForge account preflight required before paid work. New lane owned0 because no POST issued; independent owned shutdown live gate unrun.
