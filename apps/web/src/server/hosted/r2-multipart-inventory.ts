@@ -105,10 +105,11 @@ async function inventoryBody(response: Response): Promise<string> {
   return new TextDecoder("utf-8", {fatal: true, ignoreBOM: false}).decode(bytes);
 }
 
-/** Internal lazy inventory; caller validates the exact hosted object key before import. */
+/** Complete exact-object inventory; prefix neighbors are never owned. */
 export async function listMultipartUploadsExact(
-  client: Pick<AwsClient, "sign">, endpoint: string, bucketName: string, objectKey: string,
+  client: Pick<AwsClient, "sign">, endpoint: string, bucketName: string, exactKey: RegExp, objectKey: string,
 ): Promise<readonly string[]> {
+  if (!exactKey.test(objectKey)) throw new Error("CLOUD_MULTIPART_KEY_INVALID");
   const ids = new Set<string>(), markers = new Set<string>();
   let keyMarker: string | undefined, uploadMarker: string | undefined;
   for (let page = 0; page < 100; page++) {
@@ -163,7 +164,7 @@ export async function listMultipartUploadsExact(
   throw new Error("CLOUD_MULTIPART_INVENTORY_PAGE_LIMIT");
 }
 
-/** Cloud-only transport; the signer supplies its unchanged exact-key grammar. */
+/** Exact attempt object only; controller retains reusable credentials and supplies its exact-key grammar. */
 export async function multipartRequest(
   client: Pick<AwsClient, "sign">, endpoint: string, exactKey: RegExp,
   method: "POST" | "DELETE", objectKey: string, query: Readonly<Record<string, string>>,

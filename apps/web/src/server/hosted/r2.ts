@@ -156,23 +156,19 @@ export class HostedR2Signer {
     this.#endpoint = `https://${config.accountId}.r2.cloudflarestorage.com/${encodeURIComponent(config.bucketName)}`;
   }
 
-  /** Exact attempt object only; controller retains reusable storage credentials. */
+  #multipart() { return import("./r2-multipart-inventory"); }
+
   async multipartRequest(method: "POST" | "DELETE", objectKey: string,
     query: Readonly<Record<string, string>>, body?: string, contentType?: string): Promise<Response> {
-    const multipart = await import("./r2-multipart-inventory");
-    return multipart.multipartRequest(this.#client, this.#endpoint, EXACT_KEY, method, objectKey, query, body, contentType);
+    return (await this.#multipart()).multipartRequest(this.#client, this.#endpoint, EXACT_KEY, method, objectKey, query, body, contentType);
   }
 
-  /** Complete inventory of only this exact object; prefix neighbors are never owned. */
   async listMultipartUploadsExact(objectKey: string): Promise<readonly string[]> {
-    if (!EXACT_KEY.test(objectKey)) throw new Error("CLOUD_MULTIPART_KEY_INVALID");
-    const inventory = await import("./r2-multipart-inventory");
-    return inventory.listMultipartUploadsExact(this.#client, this.#endpoint, this.config.bucketName, objectKey);
+    return (await this.#multipart()).listMultipartUploadsExact(this.#client, this.#endpoint, this.config.bucketName, EXACT_KEY, objectKey);
   }
 
   async signMultipartPart(objectKey: string, uploadId: string, partNumber: number): Promise<string> {
-    const multipart = await import("./r2-multipart-inventory");
-    return multipart.signMultipartPart(this.#client, this.#endpoint, EXACT_KEY, objectKey, uploadId, partNumber);
+    return (await this.#multipart()).signMultipartPart(this.#client, this.#endpoint, EXACT_KEY, objectKey, uploadId, partNumber);
   }
 
   async sign(input: {
