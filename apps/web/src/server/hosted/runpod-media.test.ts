@@ -205,6 +205,13 @@ beforeEach(async () => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("RunPod exact inventory and placement", () => {
+  it("calls the transport without binding the client as its receiver", async () => {
+    const transport = function(this: unknown): Promise<Response> {
+      expect(this).toBeUndefined();
+      return Promise.resolve(response({ gpus: [] }));
+    };
+    expect(await new RunPodMediaClient("fixture", transport).request("GET", "/catalog/gpus")).toEqual({gpus:[]});
+  });
   it("reads every inventory page before claiming completeness", async () => {
     const transport = vi.fn().mockResolvedValueOnce(response({ pods: [{ id: "first" }], pagination: { hasNextPage: true, nextCursor: "next page" } }))
       .mockResolvedValueOnce(response({ pods: [{ id: "last" }], pagination: { hasNextPage: false } }));

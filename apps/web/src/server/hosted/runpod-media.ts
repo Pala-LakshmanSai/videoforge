@@ -76,7 +76,9 @@ export class RunPodMediaClient {
   constructor(private readonly apiKey: string, private readonly transport: typeof fetch = fetch) {}
   async request(method: "GET" | "POST" | "DELETE", path: string, body?: unknown): Promise<Row> {
     // No retry wrapper: a create response can be lost after the provider has billed.
-    const response = await this.transport(`https://api.runpod.io/v2${path}`, {method,
+    // Workers fetch rejects a client instance as its receiver (Illegal invocation).
+    const transport = this.transport;
+    const response = await transport(`https://api.runpod.io/v2${path}`, {method,
       headers: {authorization: `Bearer ${this.apiKey}`, "content-type": "application/json"},
       body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(20_000)});
     if (method === "DELETE" && response.status === 404) return {};
