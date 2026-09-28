@@ -7,14 +7,14 @@ import renderResultFixture from "../../../../../packages/contracts/generated/fix
 import renderManifestFixture from "../../../../../packages/contracts/generated/fixtures/resolved_render_manifest.valid.json";
 import { MULTIPART_PART_BYTES } from "./runpod-media-policy";
 
-const fixture = vi.hoisted(() => ({ query: vi.fn(), transport: vi.fn(), checksum: vi.fn(), multipart: vi.fn(), part: vi.fn(), sign: vi.fn(), listMultipart:vi.fn() }));
+const fixture = vi.hoisted(() => ({ query: vi.fn(), finalize:vi.fn(), transport: vi.fn(), checksum: vi.fn(), multipart: vi.fn(), part: vi.fn(), sign: vi.fn(), listMultipart:vi.fn() }));
 vi.mock("./neon", () => ({ createNeonPool: () => ({ query: fixture.query, end: async () => {} }),
   createNeonExecutor: () => ({ transaction: async (run: (sql: unknown) => unknown) => run({ query: fixture.query }) }) }));
 vi.mock("./r2-checksum", () => ({ verifyHostedObjectChecksum: fixture.checksum }));
 vi.mock("./r2", () => ({ HostedR2Signer: class { multipartRequest = fixture.multipart; signMultipartPart = fixture.part; sign = fixture.sign; listMultipartUploadsExact=fixture.listMultipart; } }));
-vi.mock("./app",()=>({createHostedV209RenderTerminalLiveCoordinator:()=>({acceptCompleted:async()=>{}})}));
+vi.mock("./app",()=>({createHostedV209RenderTerminalLiveCoordinator:()=>({acceptCompleted:fixture.finalize})}));
 vi.mock("./hosted-v209-queue-admission",()=>({ensureHostedV209GenerationAdmission:async()=>({state:"ACTIVE"})}));
-import { CLOUD_COMPUTE_ABSENCE_EVENT_SQL, CLOUD_DISK_METRICS_SQL, CLOUD_TERMINAL_EVENT_SQL, cleanupCloudReservation, cloudRenderDuration, handleCloudMediaRequest, RunPodMediaClient, runCloudMediaObservation, validCloudDiskMetrics, verifyCloudPlacement } from "./runpod-media";
+import { CLOUD_COMPUTE_ABSENCE_EVENT_SQL, CLOUD_DISK_METRICS_SQL, CLOUD_QUALIFICATION_RENDER_ARTIFACT_SQL, CLOUD_TERMINAL_EVENT_SQL, cleanupCloudReservation, cloudRenderDuration, handleCloudMediaRequest, RunPodMediaClient, runCloudMediaObservation, validCloudDiskMetrics, verifyCloudPlacement } from "./runpod-media";
 
 type Row = Record<string, unknown>;
 const accountId = "11111111-1111-4111-8111-111111111111", workspaceId = "22222222-2222-4222-8222-222222222222";
@@ -148,6 +148,7 @@ async function setResultDocument(value:unknown):Promise<void> {
 beforeEach(async () => {
   for(const key of ["VIDEOFORGE_CLOUD_MEDIA_QUALIFICATION_ONLY","VIDEOFORGE_ENVIRONMENT","VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID"]) Reflect.deleteProperty(environment,key);
   qualificationAllowed=true;
+  fixture.finalize.mockReset();fixture.finalize.mockResolvedValue(undefined);
   vi.clearAllMocks(); raceCancel = false; rotateBeforeStop = false; generationActive = false; cpuSettled = true; noReservation = false; tokenHash = await sha256(capability);
   attempt = { id: attemptId, account_id: accountId, workspace_id: workspaceId, state: "RUNNING", kind: "RENDER",
     project_id: "55555555-5555-4555-8555-555555555555", project_revision_id: "66666666-6666-4666-8666-666666666666", deadline_at: future() };
@@ -179,6 +180,7 @@ beforeEach(async () => {
     httpMetadata: { contentType: key === "result" ? "application/json" : primary.content_type } }));
   fixture.query.mockImplementation(async (sql: string, values: unknown[] = []) => {
     if (sql.includes("SELECT set_config")) return { rows: [] };
+    if(sql.includes("qualification_artifact_attempt_id")) return {rows:qualificationAllowed && attempt.state==="SUCCEEDED" && attempt.kind==="RENDER" && attempt.result_receipt_sha256 && attempt.result_object_key && Number(attempt.result_content_length)>0 && attempt.result_checksum_sha256 && reservation.state==="CLEAN" && reservation.cleanup_verified_at && values[3]===reservation.budget_authority_id ? [{qualification_artifact_attempt_id:attemptId}]:[]};
     if (sql.includes("videoforge_cloud_media_qualification_scope")) return {rows:[{allowed:qualificationAllowed}]};
     if (sql.includes("pg_advisory_xact_lock")) return { rows: [] };
     if (sql.includes("SELECT r.id FROM cloud_media_reservations r")) return {rows:[{id:reservationId}]};
@@ -249,7 +251,7 @@ beforeEach(async () => {
     }
     if (sql.includes("UPDATE cloud_media_reservations SET state='CLEAN'")) {
       if (values.length > 1 && (values[1] !== reservation.leased_attempt_id || values[2] !== reservation.fence_id)) return { rows: [] };
-      reservation.state = "CLEAN"; return { rows: [{ id: reservationId }] };
+      reservation.state = "CLEAN"; reservation.cleanup_verified_at=new Date().toISOString(); return { rows: [{ id: reservationId }] };
     }
     if(sql.includes("SET state='STOPPING',failure_code='CLOUD_MEDIA_RECEIPT_PENDING'")) {
       if(reservation.state!=="SAVING" || reservation.failure_code || attempt.state!=="RUNNING" ||
@@ -882,4 +884,83 @@ it("records idempotent owned absence while preserving the applied CLEAN iff time
     await db.exec("UPDATE cloud_media_reservations SET state='CLEAN',cleanup_verified_at=now()");
     expect((await db.query("SELECT state FROM cloud_media_reservations")).rows).toEqual([{state:"CLEAN"}]);
   } finally {await db.close();}
+},30000);
+
+describe("staging retained-render artifact terminal",()=>{
+  const authority="99999999-9999-4999-8999-999999999999";
+  function qualify(){Object.assign(environment,{VIDEOFORGE_ENVIRONMENT:"staging",VIDEOFORGE_CLOUD_MEDIA_QUALIFICATION_ONLY:"true",VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID:authority});reservation.budget_authority_id=authority;}
+  async function acceptArtifact(){reservation.state="SAVING";reservation.launch_outcome="CONFIRMED";expect((await runRoute("complete",completion))?.status).toBe(200);expect(attempt.state).toBe("SUCCEEDED");}
+  it("finishes only the verified CPU artifact after independent cleanup, without ordinary promotion",async()=>{
+    qualify();await acceptArtifact();const outcome=await runCloudMediaObservation(environment,config,scope);
+    expect(outcome).toMatchObject({state:"SUCCEEDED",qualificationArtifactOnly:true,ordinaryFinalPromotion:false});
+    expect(reservation.state).toBe("CLEAN");expect(reservation.cleanup_verified_at).toBeDefined();expect(fixture.finalize).not.toHaveBeenCalled();
+    expect(attempt.result_receipt_sha256).toBeDefined();expect(attempt.result_checksum_sha256).toBe(result.issued_checksum_sha256);
+  });
+  it("does not publish a qualification terminal without its durable completion receipt",async()=>{
+    qualify();attempt.state="SUCCEEDED";reservation.state="CLEAN";reservation.cleanup_verified_at=new Date().toISOString();
+    expect((await runCloudMediaObservation(environment,config,scope)).state).toBe("FINALIZATION_PENDING");expect(fixture.finalize).not.toHaveBeenCalled();
+  });
+  it("keeps cleanup uncertainty pending before qualification artifact publication",async()=>{
+    qualify();await acceptArtifact();fixture.transport.mockImplementation(async(_url:string,options:RequestInit)=>options.method==="DELETE"?new Response(null,{status:500}):response({pods:[placement()],pagination:{hasNextPage:false}}));
+    const outcome=await runCloudMediaObservation(environment,config,scope);expect(outcome.state).toBe("RECONCILING");expect(outcome.qualificationArtifactOnly).toBeUndefined();expect(reservation.state).not.toBe("CLEAN");expect(fixture.finalize).not.toHaveBeenCalled();
+  });
+  it("rejects a reservation outside the exact qualification authority",async()=>{
+    qualify();reservation.budget_authority_id="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";attempt.state="SUCCEEDED";reservation.state="CLEAN";
+    expect((await runCloudMediaObservation(environment,config,scope)).state).toBe("QUALIFICATION_SCOPE_REJECTED");expect(fixture.finalize).not.toHaveBeenCalled();
+  });
+  it("keeps production ordinary promotion and its missing-barrier rejection",async()=>{
+    await acceptArtifact();fixture.finalize.mockRejectedValue(new Error("HOSTED_V209_RENDER_TERMINAL_NOT_FOUND"));
+    const outcome=await runCloudMediaObservation(environment,config,scope);expect(outcome).toMatchObject({state:"RECONCILING",observationError:{phase:"RESULT_FINALIZATION"}});
+    expect(outcome.qualificationArtifactOnly).toBeUndefined();expect(fixture.finalize).toHaveBeenCalledWith(scope);expect(attempt.state).toBe("SUCCEEDED");expect(reservation.state).toBe("CLEAN");
+  });
+});
+
+it("executes the exact qualification artifact query with PostgreSQL scope, lineage, receipt and cleanup guards",async()=>{
+  vi.unstubAllGlobals();const {PGlite}=await import("@electric-sql/pglite");const db=new PGlite();
+  const project="55555555-5555-4555-8555-555555555555",revision="66666666-6666-4666-8666-666666666666",authority="99999999-9999-4999-8999-999999999999",other="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  try{
+    await db.exec(`CREATE TABLE hosted_cpu_job_attempts(id uuid PRIMARY KEY,account_id uuid,workspace_id uuid,project_id uuid,project_revision_id uuid,
+      kind text,execution_backend text,state text,result_receipt_sha256 text,result_object_key text,result_content_length bigint,result_checksum_sha256 text);
+      CREATE TABLE cloud_media_jobs(attempt_id uuid,account_id uuid,workspace_id uuid,reservation_id uuid);
+      CREATE TABLE cloud_media_reservations(id uuid PRIMARY KEY,leased_attempt_id uuid,account_id uuid,workspace_id uuid,project_id uuid,project_revision_id uuid,
+        budget_authority_id uuid,state text,cleanup_verified_at timestamptz,CHECK((state='CLEAN')=(cleanup_verified_at IS NOT NULL)));
+      CREATE TABLE cloud_media_budget_authorities(id uuid PRIMARY KEY,allowed_account_ids uuid[],allowed_project_ids uuid[]);
+      CREATE TABLE video_runtime_events(kind text); CREATE TABLE artifact_approvals(state text);`);
+    const substitutions:ReadonlyArray<readonly[string,string]>=[
+      ["accepted","SELECT 1"],
+      ["reservation-project",`UPDATE cloud_media_reservations SET project_id='${other}'`],
+      ["reservation-revision",`UPDATE cloud_media_reservations SET project_revision_id='${other}'`],
+      ["leased-attempt",`UPDATE cloud_media_reservations SET leased_attempt_id='${other}'`],
+      ["reservation-account",`UPDATE cloud_media_reservations SET account_id='${other}'`],
+      ["reservation-workspace",`UPDATE cloud_media_reservations SET workspace_id='${other}'`],
+      ["job-account",`UPDATE cloud_media_jobs SET account_id='${other}'`],
+      ["job-workspace",`UPDATE cloud_media_jobs SET workspace_id='${other}'`],
+      ["authority",`UPDATE cloud_media_reservations SET budget_authority_id='${other}'`],
+      ["account-membership",`UPDATE cloud_media_budget_authorities SET allowed_account_ids=ARRAY['${other}'::uuid]`],
+      ["project-membership",`UPDATE cloud_media_budget_authorities SET allowed_project_ids=ARRAY['${other}'::uuid]`],
+      ["missing-receipt","UPDATE hosted_cpu_job_attempts SET result_receipt_sha256=NULL"],
+      ["missing-checksum","UPDATE hosted_cpu_job_attempts SET result_checksum_sha256=NULL"],
+      ["missing-object","UPDATE hosted_cpu_job_attempts SET result_object_key=NULL"],
+      ["zero-bytes","UPDATE hosted_cpu_job_attempts SET result_content_length=0"],
+      ["cleanup-unconfirmed","UPDATE cloud_media_reservations SET state='STOPPING',cleanup_verified_at=NULL"],
+      ["cpu-running","UPDATE hosted_cpu_job_attempts SET state='RUNNING'"],
+      ["local-backend","UPDATE hosted_cpu_job_attempts SET execution_backend='PERSONAL_WORKER'"],
+      ["wrong-kind","UPDATE hosted_cpu_job_attempts SET kind='ASR'"],
+    ];
+    for(const [mode,mutation] of substitutions){
+      await db.exec("TRUNCATE hosted_cpu_job_attempts,cloud_media_jobs,cloud_media_reservations,cloud_media_budget_authorities");
+      await db.query("INSERT INTO hosted_cpu_job_attempts VALUES($1,$2,$3,$4,$5,'RENDER','RUNPOD_POD','SUCCEEDED',$6,'private-object',100,$6)",[attemptId,accountId,workspaceId,project,revision,hash]);
+      await db.query("INSERT INTO cloud_media_jobs VALUES($1,$2,$3,$4)",[attemptId,accountId,workspaceId,reservationId]);
+      await db.query("INSERT INTO cloud_media_reservations VALUES($1,$2,$3,$4,$5,$6,$7,'CLEAN',now())",[reservationId,attemptId,accountId,workspaceId,project,revision,authority]);
+      await db.query("INSERT INTO cloud_media_budget_authorities VALUES($1,ARRAY[$2::uuid],ARRAY[$3::uuid])",[authority,accountId,project]);
+      await db.exec(mutation);
+      const snapshot="SELECT jsonb_build_object('cpu',(SELECT jsonb_agg(to_jsonb(a)) FROM hosted_cpu_job_attempts a),'jobs',(SELECT jsonb_agg(to_jsonb(j)) FROM cloud_media_jobs j),'reservation',(SELECT jsonb_agg(to_jsonb(r)) FROM cloud_media_reservations r),'ordinary_events',(SELECT count(*) FROM video_runtime_events),'approvals',(SELECT count(*) FROM artifact_approvals)) AS facts";
+      const before=(await db.query(snapshot)).rows;
+      const accepted=await db.query(CLOUD_QUALIFICATION_RENDER_ARTIFACT_SQL,[attemptId,accountId,workspaceId,authority]);
+      expect(accepted.rows,mode).toHaveLength(mode==="accepted"?1:0);
+      expect((await db.query(snapshot)).rows,mode).toEqual(before);
+      if(mode==="accepted")for(const values of [[other,accountId,workspaceId,authority],[attemptId,other,workspaceId,authority],[attemptId,accountId,other,authority],[attemptId,accountId,workspaceId,other]])
+        expect((await db.query(CLOUD_QUALIFICATION_RENDER_ARTIFACT_SQL,values)).rows).toHaveLength(0);
+    }
+  }finally{await db.close();}
 },30000);

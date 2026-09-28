@@ -63,7 +63,7 @@ type ObservationPhase = "TEMPLATE" | "ADMISSION" | "RESERVATION" | "ADMISSION_RE
   "INVENTORY" | "PLACEMENT_ADOPTION" | "CATALOGUE" | "CAPACITY_CHECK" |
   "BUDGET_RESERVATION" | "CREATE_FENCE" | "LEASE_TOKEN" | "POD_CREATE";
 type ObservationDiagnostic = {phase: ObservationPhase; code: string};
-type ObservationOutcome = {state:string;delaySeconds?:number;observationError?:ObservationDiagnostic};
+type ObservationOutcome = {state:string;delaySeconds?:number;observationError?:ObservationDiagnostic;qualificationArtifactOnly?:true;ordinaryFinalPromotion?:false};
 function observationDiagnostic(error: unknown, phase: ObservationPhase): ObservationDiagnostic {
   // Only structured protocol codes cross the durable Workflow boundary. Never include messages,
   // request parameters, provider bodies, URLs, or driver properties other than validated SQLSTATE.
@@ -251,7 +251,20 @@ async function settleFailedCpu(config:HostedRuntimeConfiguration,a:Row):Promise<
   });
 }
 
-async function finalizeMedia(environment: HostedRuntimeEnvironment, config: HostedRuntimeConfiguration, a: Row): Promise<boolean> {
+export const CLOUD_QUALIFICATION_RENDER_ARTIFACT_SQL = `SELECT a.id AS qualification_artifact_attempt_id FROM hosted_cpu_job_attempts a
+       JOIN cloud_media_jobs j ON j.attempt_id=a.id AND j.account_id=a.account_id AND j.workspace_id=a.workspace_id
+       JOIN cloud_media_reservations r ON r.id=j.reservation_id AND r.leased_attempt_id=a.id
+         AND r.account_id=a.account_id AND r.workspace_id=a.workspace_id
+         AND r.project_id=a.project_id AND r.project_revision_id=a.project_revision_id
+       JOIN cloud_media_budget_authorities b ON b.id=r.budget_authority_id
+       WHERE a.id=$1 AND a.account_id=$2 AND a.workspace_id=$3 AND a.kind='RENDER'
+         AND a.execution_backend='RUNPOD_POD' AND a.state='SUCCEEDED'
+         AND a.result_receipt_sha256 IS NOT NULL AND a.result_object_key IS NOT NULL
+         AND a.result_content_length>0 AND a.result_checksum_sha256 IS NOT NULL
+         AND r.state='CLEAN' AND r.cleanup_verified_at IS NOT NULL
+         AND b.id=$4 AND a.account_id=ANY(b.allowed_account_ids) AND a.project_id=ANY(b.allowed_project_ids)`;
+
+async function finalizeMedia(environment: HostedRuntimeEnvironment, config: HostedRuntimeConfiguration, a: Row): Promise<boolean | "QUALIFICATION_ARTIFACT"> {
   const scope = {accountId:String(a.account_id),workspaceId:String(a.workspace_id),attemptId:String(a.id)};
   if (a.kind === "ASR") {
     await startHostedStageContinuation(environment,{accountId:scope.accountId,projectId:String(a.project_id),
@@ -259,6 +272,14 @@ async function finalizeMedia(environment: HostedRuntimeEnvironment, config: Host
     return !!environment.HOSTED_CONTINUATION_WORKFLOW;
   }
   if (a.kind === "SPAN_AUDIO") return (await reconcileHostedV209SpanWorkflowTerminal(environment,config,scope)).state !== "FINALIZATION_PENDING";
+  if (cloudMediaQualificationOnly(environment)) {
+    // Retained-media qualification accepts a verified CPU artifact, without manufacturing
+    // an ordinary provider barrier, project final output, or human approval.
+    const accepted = await tenant(config,scope.accountId,async sql => (await query(sql,
+      CLOUD_QUALIFICATION_RENDER_ARTIFACT_SQL,
+      [a.id,a.account_id,a.workspace_id,environment.VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID])).rows[0]);
+    return accepted ? "QUALIFICATION_ARTIFACT" : false;
+  }
   const { createHostedV209RenderTerminalLiveCoordinator } = await import("./app");
   await createHostedV209RenderTerminalLiveCoordinator(environment).acceptCompleted(scope);
   return true;
@@ -408,8 +429,10 @@ export async function runCloudMediaObservation(environment: HostedRuntimeEnviron
       phase="FAILURE_SETTLEMENT";
       if(clean && a.state!=="SUCCEEDED" && !await settleFailedCpu(config,a)) return {state:"FINALIZATION_PENDING",delaySeconds:30};
       phase="RESULT_FINALIZATION";
-      if (clean && a.state === "SUCCEEDED" && !await finalizeMedia(environment,config,a)) return {state:"FINALIZATION_PENDING",delaySeconds:30};
-      return {state:clean ? (TERMINAL.includes(String(a.state)) ? String(a.state) : a.state === "CANCEL_REQUESTED" ? "CANCELLED" : "FAILED") : "RECONCILING",delaySeconds:30};
+      const finalized=clean && a.state === "SUCCEEDED" ? await finalizeMedia(environment,config,a) : true;
+      if (!finalized) return {state:"FINALIZATION_PENDING",delaySeconds:30};
+      return {state:clean ? (TERMINAL.includes(String(a.state)) ? String(a.state) : a.state === "CANCEL_REQUESTED" ? "CANCELLED" : "FAILED") : "RECONCILING",delaySeconds:30,
+        ...(finalized==="QUALIFICATION_ARTIFACT" ? {qualificationArtifactOnly:true as const,ordinaryFinalPromotion:false as const} : {})};
     }
     if (r.state === "CLEAN") {phase="FAILURE_SETTLEMENT";if(a.state!=="SUCCEEDED" && !await settleFailedCpu(config,a)) return {state:"FINALIZATION_PENDING",delaySeconds:30};return {state:String(a.state)};}
     if (["CREATING","AMBIGUOUS"].includes(String(r.state))) {
