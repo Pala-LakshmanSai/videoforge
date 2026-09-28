@@ -30,7 +30,7 @@ R2 keys, provider job IDs, or callbacks cannot grant access.
 | Image prompt/style | Runware DeepSeek V4 Flash 0731; Gemini 3.5 Flash only for new style analysis | Existing pinned provider choices |
 | GPU | Two RunPod queue-based Serverless endpoints in `EU-RO-1` | Mage images; SoulX avatar spans |
 | Model storage | Two existing isolated sealed 50 GB RunPod network volumes | Read-only-by-app offline model loading |
-| ASR/render | Tenant-owned Windows/macOS personal worker | Pinned whisper.cpp and FFmpeg/FFprobe; outbound HTTPS only |
+| ASR/span/render | Revision-selected Local worker or qualified `RUNPOD_POD` | Same accepted media and technical gates; exact tenant/attempt ports; Cloud ephemeral disk and verified cleanup |
 | Contracts | Zod TypeScript + Pydantic Python | Validate every trust boundary |
 | Repository | Public pnpm/Turborepo source; digest-pinned worker images; no private bytes or model weights in Git | Shared contracts and reproducible builds |
 
@@ -55,7 +55,7 @@ flowchart TB
     SV["Existing sealed SoulX 50 GB volume"] -->|"/runpod-volume"| SE
     ME --> R2
     SE --> R2
-    WF --> CPU["Tenant-owned personal worker: whisper.cpp and FFmpeg"] --> R2
+    WF --> CPU["Selected Local or Cloud: whisper.cpp and FFmpeg"] --> R2
     R2 --> APP
 ```
 
@@ -190,8 +190,10 @@ revive the attempt. Endpoint queue purge cannot be used because it affects unrel
 
 ## CPU/media and artifact flow
 
-Production voiceover timing and rendering run on an authenticated account-owned Windows/macOS
-personal worker. It claims only exact leases for its paired account/workspace, consumes fresh
+Production voiceover timing, selected-span cutting and rendering use explicit Local or Cloud
+selection under `DEC_PERSONAL_WORKER_001`. Local runs on an authenticated account-owned Windows/macOS
+personal worker. Cloud uses a separate `RUNPOD_POD` execution identity with durable Postgres
+reservations and Cloudflare workflow reconciliation; see `09_RUNPOD_AND_QUEUE_OPERATIONS.md`. It claims only exact leases for its paired account/workspace, consumes fresh
 tenant-scoped R2 ports, and writes only exact expected tenant-scoped results. It has no database,
 R2, RunPod, Runware, Google, admin credential, or model-volume access. The same pinned entrypoints run in
 provider-free development parity, which is not hosted evidence.

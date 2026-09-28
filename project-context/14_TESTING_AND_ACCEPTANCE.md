@@ -387,3 +387,14 @@ Production release requires all active V2 gates green:
 The release handoff also requires clean Git state, exact deployed commit/digests, migration/backup
 evidence, runbooks/alerts, no unexplained Chrome errors, settled paid evidence, zero endpoint jobs,
 zero total GPU workers (`Active + Flex`), and the two expected retained volumes only.
+
+## Optional Cloud media acceptance — 2026-09-28
+
+Provider-free tests/real Chrome fixture selectors prove UI and controller contracts only. Release
+requires qualified immutable Linux image/tool/model hashes and offline ASR/span/Fal composition/
+render checks; explicit bounded authority; short retained-media Cloud ASR/span/render, cancellation
+with independently verified owned-Pod cleanup, existing Local execution and representative45-minute
+VideoForge render/storage measurements. Real Chrome must prove backend selection, queue recovery
+with browser closed, private download and full result playback after compute termination. Measure
+placement, runtime-ready, download, render, technical checking, upload and termination separately.
+Retained-media or repeated-source fixtures do not establish fresh Kie/Fal/editorial quality.

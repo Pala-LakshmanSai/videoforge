@@ -16,10 +16,18 @@ export default {
     );
   },
   async scheduled(controller, environment, executionContext) {
+    const { reconcileCloudMediaReservations } = await import("../src/server/hosted/runpod-media");
+    try {
+      await reconcileCloudMediaReservations(environment);
+    } catch (error) {
+      console.warn("cloud_media_reconciliation_failed", {
+        cause: error instanceof Error ? error.name : typeof error,
+      });
+    }
     // `17 2 * * *` is the daily retention pass; the per-minute cron was meant to drive stage
     // continuation, but its handler is never invoked in this deployment (the sweep's heartbeat table
     // stayed empty for 40+ minutes with the schedule registered). Continuation now runs as the
-    // durable `HostedContinuationWorkflow`, started from the desktop worker's claim poll; this
+    // durable `HostedContinuationWorkflow`, started when CPU work is queued and from desktop polls; this
     // branch is kept only as a best-effort fallback if cron delivery is ever repaired.
     if (controller.cron === "* * * * *") {
       // Await rather than defer: work queued through `waitUntil` is cut before a multi-minute

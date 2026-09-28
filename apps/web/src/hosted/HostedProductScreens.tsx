@@ -130,6 +130,7 @@ export interface CatalogResponse {
   /** Workspace-owned style versions that are not published yet. */
   readonly style_drafts?: readonly HostedStyleDraft[];
   readonly media_worker_state: "ONLINE" | "WAITING_FOR_YOUR_COMPUTER";
+  readonly cloud_media?: { readonly available: boolean };
   readonly generation_provider?: "KIE_FAL" | "RUNPOD";
   readonly gpu_transport: "DISABLED_UNQUALIFIED" | "QUALIFIED_EXACT";
   readonly gpu_readiness: {
@@ -537,6 +538,8 @@ interface HostedAttempt {
   readonly id: string;
   readonly kind: "ASR" | "SPAN_AUDIO" | "RENDER" | "MAGE_IMAGE" | "SOULX_AVATAR";
   readonly state: string;
+  readonly execution_backend?: "PERSONAL_WORKER" | "CLOUD_RUN" | "RUNPOD_POD";
+  readonly cloud_phase?: string | null;
   readonly version: number;
   readonly created_at: string;
   readonly updated_at: string;
@@ -558,6 +561,17 @@ function cancellableAttemptLabel(kind: HostedAttempt["kind"]): string {
   if (kind === "ASR") return "transcription";
   if (kind === "SPAN_AUDIO") return "audio preparation";
   return "assembly";
+}
+
+export function cloudMediaPhaseLabel(phase: string | null | undefined, state: string): string {
+  if (phase === "STOPPING") return "Stopping compute";
+  if (state === "SUCCEEDED") return ["CLEAN", "COMPLETE"].includes(phase ?? "") ? "Complete" : "Saving";
+  if (state === "FAILED") return "Failed";
+  if (state === "CANCELLED") return "Cancelled";
+  return ({ WAITING_CAPACITY: "Waiting for capacity", CREATING: "Starting", STARTING: "Starting",
+    AMBIGUOUS: "Reconciling launch", DOWNLOADING: "Downloading inputs", RENDERING: "Rendering",
+    CHECKING: "Checking video", SAVING: "Saving", STOPPING: "Stopping compute",
+    CLEAN: "Compute stopped" } as Record<string,string>)[phase ?? ""] ?? "Waiting for cloud status";
 }
 
 function hostedContinuationKey(
@@ -945,8 +959,10 @@ interface ProjectDetailResponse {
     created_at: string;
     revision_id: string;
     revision_state: string;
+    media_execution_backend?: "PERSONAL_WORKER" | "RUNPOD_POD";
   };
   readonly attempts: readonly HostedAttempt[];
+  readonly cloud_media?: { readonly available: boolean };
   readonly generation_provider?: "KIE_FAL" | "RUNPOD";
   readonly api_recovery?: { readonly can_resume_saved_work: boolean; readonly provider_calls_authorized: false };
   readonly render_retry?: { readonly eligible: boolean; readonly reason: string;
@@ -2499,6 +2515,7 @@ export function HostedCreateProjectScreen() {
     queryFn: readHostedCatalog,
   });
   const [title, setTitle] = useState("");
+  const [executionBackend, setExecutionBackend] = useState<"PERSONAL_WORKER" | "RUNPOD_POD">("PERSONAL_WORKER");
   const [avatarVersionId, setAvatarVersionId] = useState("");
   const [styleVersionId, setStyleVersionId] = useState("");
   const [voiceover, setVoiceover] = useState<File | null>(null);
@@ -2539,6 +2556,8 @@ export function HostedCreateProjectScreen() {
   };
   const keywordsValid = extraPromptKeywords.length <= 500;
   const workerOnline = catalog.data?.media_worker_state === "ONLINE";
+  const executionReady = executionBackend === "RUNPOD_POD"
+    ? catalog.data?.cloud_media?.available === true : workerOnline;
   const inputChecklist = [
     { label: "Video title", complete: Boolean(title.trim()) },
     { label: "Voiceover", complete: Boolean(voiceover) },
@@ -2576,6 +2595,7 @@ export function HostedCreateProjectScreen() {
           method: "POST",
           body: JSON.stringify({
             schema_version: "videoforge-hosted-project-preflight/v1",
+            execution_backend: executionBackend,
             title: title.trim(),
             avatar_profile_version_id: avatarVersionId,
             image_style_version_id: styleVersionId,
@@ -2622,6 +2642,7 @@ export function HostedCreateProjectScreen() {
         })();
       const body = {
         schema_version: HOSTED_CREATE_SCHEMA,
+        execution_backend: executionBackend,
         title: title.trim(),
         avatar_profile_version_id: avatarVersionId,
         image_style_version_id: styleVersionId,
@@ -2896,20 +2917,38 @@ export function HostedCreateProjectScreen() {
         </Panel>
 
         <Panel className="create-run-panel hosted-project-summary" heading="Cost & readiness">
-          <div className={`run-readiness ${workerOnline ? "ready" : "blocked"}`} role="status">
-            {workerOnline ? <Check size={18} /> : <AlertTriangle size={18} />}
+          <div className="field">
+            <label htmlFor="media-execution-backend">Media execution</label>
+            <select id="media-execution-backend" className="input" value={executionBackend}
+              aria-describedby="media-execution-help"
+              disabled={preflightMutation.isPending || submit.isPending}
+              onChange={(event) => {
+                setExecutionBackend(event.target.value as "PERSONAL_WORKER" | "RUNPOD_POD");
+                setPreflightResult(null);
+              }}>
+              <option value="PERSONAL_WORKER">Local</option>
+              <option value="RUNPOD_POD">Cloud</option>
+            </select>
+            <small id="media-execution-help">Local uses your connected computer. Cloud adds compute cost.</small>
+          </div>
+          <div className={`run-readiness ${executionReady ? "ready" : "blocked"}`} role="status">
+            {executionReady ? <Check size={18} /> : <AlertTriangle size={18} />}
             <span>
               <strong>
-                {workerOnline ? "Your computer is connected" : "Connect your computer"}
+                {executionBackend === "RUNPOD_POD"
+                  ? executionReady ? "Cloud execution is enabled" : "Cloud execution is unavailable"
+                  : workerOnline ? "Your computer is connected" : "Connect your computer"}
               </strong>
               <small>
-                {workerOnline
+                {executionBackend === "RUNPOD_POD"
+                  ? "No connected computer is required. Capacity is checked when your video is admitted."
+                  : workerOnline
                   ? "Ready when inputs are complete."
                   : "Connect your media worker in Settings."}
               </small>
             </span>
           </div>
-          {!workerOnline ? (
+          {executionBackend === "PERSONAL_WORKER" && !workerOnline ? (
             <Link className="button button-secondary" to="/settings">
               Open Settings
             </Link>
@@ -2967,8 +3006,9 @@ export function HostedCreateProjectScreen() {
           {catalog.data.generation_provider !== "KIE_FAL" &&
           !catalog.data.gpu_readiness.dispatch_available ? (
             <p className="helper hosted-beta-note" role="note">
-              Creation runs through prompt writing. Final video generation is unavailable; no paid
-              GPU work will start.
+              {executionBackend === "RUNPOD_POD"
+                ? "Image and avatar generation is unavailable in this release. Cloud media compute adds cost."
+                : "Creation runs through prompt writing. Final video generation is unavailable; no paid GPU work will start."}
             </p>
           ) : null}
           <Button
@@ -2977,7 +3017,7 @@ export function HostedCreateProjectScreen() {
               (!canPreflight && !preflightReady(preflightResult)) ||
               preflightMutation.isPending ||
               submit.isPending ||
-              (preflightReady(preflightResult) && catalog.data.media_worker_state !== "ONLINE")
+              (preflightReady(preflightResult) && !executionReady)
             }
             onClick={() => submit.mutate()}
           >
@@ -4518,6 +4558,12 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     (attempt) => attempt.kind === "RENDER",
   );
   const render = renderAttempts.at(-1);
+  const latestCloudAttempt = [...(query.data?.attempts ?? [])].reverse()
+    .find(attempt => attempt.execution_backend === "RUNPOD_POD");
+  const [renderRetryBackend, setRenderRetryBackend] = useState<"PERSONAL_WORKER" | "RUNPOD_POD" | null>(null);
+  const selectedRenderRetryBackend = renderRetryBackend ??
+    (render?.execution_backend === "RUNPOD_POD" ? "RUNPOD_POD" : "PERSONAL_WORKER");
+  useEffect(() => setRenderRetryBackend(null), [render?.id]);
   const automaticContextAttempt = useRef<string | null>(null);
   const automaticContextReconciliationAttempt = useRef<string | null>(null);
   const automaticPromptAttempt = useRef<string | null>(null);
@@ -4617,7 +4663,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     mutationFn: (failedAttemptId: string) =>
       readJson(`/api/v2/hosted/projects/${projectId}/render-retry`, {
         method: "POST",
-        body: JSON.stringify({
+        body: JSON.stringify(selectedRenderRetryBackend === "RUNPOD_POD" ? {
+          schema_version: "videoforge-hosted-render-retry/v2",
+          failed_attempt_id: failedAttemptId,
+          execution_backend: "RUNPOD_POD",
+        } : {
           schema_version: "videoforge-hosted-render-disk-retry/v1",
           failed_attempt_id: failedAttemptId,
         }),
@@ -4823,7 +4873,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       <Panel className="loading-panel" eyebrow="Hosted project" heading="Opening live progress">
         <div className="empty-state" aria-busy="true">
           <span className="spinner" aria-hidden="true" />
-          <p>Connecting to your project and personal media worker…</p>
+          <p>Connecting to your project…</p>
         </div>
       </Panel>
     );
@@ -4843,14 +4893,29 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const stages = query.data.stages?.length
     ? query.data.stages
     : fallbackHostedStages(asr, render, query.data.generation, query.data.voiceover_context);
+  const cloudStageAttempts: Readonly<Record<string, HostedAttempt | undefined>> = {
+    transcription: asr,
+    "audio-spanning": [...query.data.attempts].reverse().find(attempt => attempt.kind === "SPAN_AUDIO"),
+    render,
+    "technical-check": render,
+  };
+  const isCloudMediaStage = (id: string) => id in cloudStageAttempts &&
+    (cloudStageAttempts[id]?.execution_backend ?? query.data.project.media_execution_backend) === "RUNPOD_POD";
+  const cloudFinalPhasePending = render?.execution_backend === "RUNPOD_POD" &&
+    !["CLEAN", "COMPLETE"].includes(render.cloud_phase ?? "");
+  const cloudCleanupPending = render?.execution_backend === "RUNPOD_POD" && render.state === "SUCCEEDED" &&
+    !["CLEAN", "COMPLETE"].includes(render.cloud_phase ?? "");
   const uiStages = hostedProjectStages(
     stages,
     query.data.gpu_lanes ?? [],
     query.data.generation_provider === "KIE_FAL",
   ).map((stage) => ({
     ...stage,
+    status: cloudCleanupPending && ["render", "technical-check"].includes(stage.id) ? "RUNNING" : stage.status,
     detail:
-      stage.status === "COMPLETE"
+      isCloudMediaStage(stage.id)
+        ? cloudMediaPhaseLabel(cloudStageAttempts[stage.id]?.cloud_phase, cloudStageAttempts[stage.id]?.state ?? "WAITING")
+        : stage.status === "COMPLETE"
         ? "Complete"
         : stage.status === "PENDING" && stage.detail === "Waiting for an authoritative update."
           ? "Waiting"
@@ -5397,9 +5462,18 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       : {}),
     ...(renderRecoveryEligible && render
       ? {
-          render: stageRetryButton(renderDiskRetry.isPending, () =>
-            renderDiskRetry.mutate(render.id),
-          ),
+          render: <div className="field">
+            <label htmlFor="render-retry-backend">Retry media execution</label>
+            <select id="render-retry-backend" className="input" value={selectedRenderRetryBackend}
+              disabled={renderDiskRetry.isPending}
+              aria-describedby="render-retry-help"
+              onChange={(event) => setRenderRetryBackend(event.target.value as "PERSONAL_WORKER" | "RUNPOD_POD")}>
+              <option value="PERSONAL_WORKER" disabled={render.execution_backend === "RUNPOD_POD"}>Local</option>
+              <option value="RUNPOD_POD" disabled={query.data.cloud_media?.available !== true}>Cloud</option>
+            </select>
+            <small id="render-retry-help">Reuse accepted media. Local uses your computer; Cloud adds compute cost.</small>
+            {stageRetryButton(renderDiskRetry.isPending, () => renderDiskRetry.mutate(render.id))}
+          </div>,
         }
       : {}),
   };
@@ -5500,12 +5574,16 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         }
       />
       <section className="progress-hero" aria-label="Live video progress">
-        <ProgressRing value={overallProgress} label="Overall video progress" detail="complete" />
+        {cloudFinalPhasePending ? (
+          <div className="run-readiness" role="status" aria-label="Cloud media phase" aria-live="polite">
+            <strong>{cloudMediaPhaseLabel(render.cloud_phase, render.state)}</strong>
+          </div>
+        ) : <ProgressRing value={overallProgress} label="Overall video progress" detail="complete" />}
         <div className="progress-hero-body">
           <div className="progress-hero-heading">
             <div>
               <p className="eyebrow">Happening now</p>
-              <h2>{activeStage?.label ?? "Preparing project"}</h2>
+              <h2>{cloudCleanupPending ? cloudMediaPhaseLabel(render.cloud_phase, render.state) : activeStage?.label ?? "Preparing project"}</h2>
             </div>
             <Badge tone={statusToneValue}>{overallStatus}</Badge>
           </div>
@@ -5554,7 +5632,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               detail="includes waits"
             />
           </div>
-          <ProgressBar value={overallProgress} label="Overall video progress" />
+          {cloudFinalPhasePending ? null : <ProgressBar value={overallProgress} label="Overall video progress" />}
         </div>
       </section>
 
@@ -5607,7 +5685,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       <div className="progress-workspace">
         <Panel className="pipeline-panel" eyebrow="Pipeline" heading="Video production stages">
           <StageTimeline
-            stages={displayedStages}
+            stages={displayedStages.map(stage => isCloudMediaStage(stage.id) ? {...stage, total: 0} : stage)}
             actions={stageMediaActions}
             retries={visibleStageRetries}
             retryNotices={stageRetryNotices}
@@ -5813,10 +5891,18 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           ) : null}
           <Panel eyebrow="Activity" heading="Current run">
             <div className="detail-facts">
+              {latestCloudAttempt ? (
+                <span>
+                  <small>Cloud phase</small>
+                  <strong>{cloudMediaPhaseLabel(latestCloudAttempt.cloud_phase, latestCloudAttempt.state)}</strong>
+                </span>
+              ) : null}
               <span>
                 <small>Queue</small>
                 <strong>
-                  {queue?.position ? `Position ${queue.position}` : "Direct personal worker"}
+                  {queue?.position ? `Position ${queue.position}`
+                    : (render?.execution_backend ?? query.data.project.media_execution_backend) === "RUNPOD_POD"
+                      ? "Cloud media execution" : "Local media execution"}
                 </strong>
               </span>
               <span>

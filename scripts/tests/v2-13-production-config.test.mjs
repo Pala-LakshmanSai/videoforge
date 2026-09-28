@@ -464,6 +464,35 @@ test("bundle firewall still rejects Worker GPU lifecycle controls", async () => 
   }
 });
 
+test("bundle firewall confines Cloud GPU vocabulary to the isolated dynamic server adapter", async () => {
+  const cloudKey = "src/server/hosted/runpod-media.ts";
+  for (const scenario of ["isolated", "static", "client", "other-chunk", "manual-pod"]) {
+    const directory = await productionBundle("const worker = true;\n",
+      scenario === "client" ? 'const gpu = "NVIDIA RTX A6000";\n' : "const client = true;\n", {
+        mutateManifest(manifest) {
+          manifest[cloudKey] = { file: "assets/runpod-media.js", isDynamicEntry: true, imports: ["_worker-common.js"] };
+          manifest["_worker-common.js"].dynamicImports.push(cloudKey);
+          if (scenario === "static") manifest["_worker-common.js"].imports = [cloudKey];
+          if (scenario === "other-chunk") manifest["other.ts"] = { file: "assets/other.js", isDynamicEntry: true };
+        },
+        extraAssets: {
+          "runpod-media.js": scenario === "manual-pod" ? 'const forbidden = "startPod";\n' : 'const gpu = "NVIDIA RTX A6000";\n',
+          ...(scenario === "other-chunk" ? { "other.js": 'const gpu = "NVIDIA RTX A6000";\n' } : {}),
+        },
+      });
+    try {
+      const result = spawnSync(process.execPath, [bundleVerifier], { cwd: root, encoding: "utf8",
+        env: { ...process.env, VIDEOFORGE_BUNDLE_DIR: path.basename(directory) } });
+      if (scenario === "isolated") assert.equal(result.status, 0, result.stderr);
+      else {
+        assert.notEqual(result.status, 0, scenario);
+        assert.match(result.stderr, scenario === "static" ? /Cloud media adapter must remain a dynamic server entry/u
+          : scenario === "manual-pod" ? /contains startPod/u : /contains NVIDIA RTX A6000/u);
+      }
+    } finally { await rm(directory, { recursive: true, force: true }); }
+  }
+});
+
 test("bundle firewall rejects broad modules from the Stage 5 prompt closure", async () => {
   for (const forbidden of [
     { key: "_product.js", file: null },
@@ -565,8 +594,8 @@ test("bundle firewall caps the Stage 5 incremental closure at 256 KiB", async ()
 test("bundle firewall rejects one byte of static Worker-entry growth above each target baseline", async () => {
   const workerSource = "const worker = true;\n";
   for (const { wranglerConfig, acceptedStaticBytes } of [
-    { wranglerConfig: "wrangler.production.jsonc", acceptedStaticBytes: 2_744_669 },
-    { wranglerConfig: "wrangler.staging.jsonc", acceptedStaticBytes: 2_750_271 },
+    { wranglerConfig: "wrangler.production.jsonc", acceptedStaticBytes: 2_778_357 },
+    { wranglerConfig: "wrangler.staging.jsonc", acceptedStaticBytes: 2_776_188 },
   ]) {
     const directory = await productionBundle(workerSource, "const client = true;\n", {
       wranglerConfig,

@@ -47,9 +47,13 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // prompt/provider code remains in its dedicated dynamic route chunk.
 // Resuming an admitted API generation with no materialized jobs adds 563 bytes to the
 // production static closure; the sweep reuses the exact active generation request.
+// Optional Cloud configuration/routing and independent continuation add measured11,485 production
+// and9,071 staging bytes. The paid controller/GPU preferences remain only in a dynamic server
+// chunk (56,679 production bytes); native/Python code is absent. Exact2026-09-28 builds are
+// recorded in .videoforge/cloud-media/bundle-measurements.json; these are no-growth ceilings.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_766_872,
-  "wrangler.staging.jsonc": 2_767_117,
+  "wrangler.production.jsonc": 2_778_357,
+  "wrangler.staging.jsonc": 2_776_188,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",
@@ -206,6 +210,14 @@ for (const route of [
 }
 let workerCodeFiles = 0;
 let clientCodeFiles = 0;
+const workerManifestPath = path.join(root, emittedWorkerDirectory, ".vite/manifest.json");
+let releaseManifest = {};
+try { releaseManifest = JSON.parse(await readFile(workerManifestPath, "utf8")); } catch {
+  // The manifest guard below reports this alongside all other quarantine failures.
+}
+const cloudMediaEntry = Object.entries(releaseManifest).find(([key, value]) =>
+  /(?:^|\/)runpod-media\.ts$/u.test(key) && value?.isDynamicEntry === true)?.[1];
+const cloudMediaFile = cloudMediaEntry?.file;
 const emittedFiles = await filesBelow(root);
 for (const file of emittedFiles) {
   const relative = path.relative(root, file).split(path.sep).join("/");
@@ -227,11 +239,13 @@ for (const file of emittedFiles) {
   const source = await readFile(file, "utf8");
   const tokens = workerFile ? workerForbidden : clientForbidden;
   for (const token of tokens) {
-    if (source.includes(token)) failures.push(`${file} contains ${token}`);
+    // Only the isolated server cloud adapter may name the approved automatic GPU preference.
+    const qualifiedCloudVocabulary = workerFile && token === "NVIDIA RTX A6000" &&
+      relative === `${emittedWorkerDirectory}/${cloudMediaFile}`;
+    if (source.includes(token) && !qualifiedCloudVocabulary) failures.push(`${file} contains ${token}`);
   }
 }
 
-const workerManifestPath = path.join(root, emittedWorkerDirectory, ".vite/manifest.json");
 try {
   const workerManifest = JSON.parse(await readFile(workerManifestPath, "utf8"));
   const staticEntryKeys = Object.entries(workerManifest)
@@ -245,6 +259,8 @@ try {
     staticallyReachable.add(key);
     for (const importedKey of workerManifest[key]?.imports ?? []) pending.push(importedKey);
   }
+  if (cloudMediaEntry && [...staticallyReachable].some(key => workerManifest[key]?.file === cloudMediaFile))
+    failures.push("Cloud media adapter must remain a dynamic server entry");
   const eagerValidatorKeys = [...staticallyReachable].filter((key) =>
     /contract-validators/iu.test(`${key} ${workerManifest[key]?.file ?? ""}`),
   );

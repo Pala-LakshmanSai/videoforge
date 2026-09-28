@@ -468,6 +468,7 @@ async function handleCpuSubmission(
     readonly submission: HostedCpuSubmission | HostedSpanAudioSubmission;
     readonly expectedAttemptId?: string;
     readonly renderRecoveryKey?: string;
+    readonly executionBackend?: "PERSONAL_WORKER" | "RUNPOD_POD";
   },
 ): Promise<Response> {
   if (!trusted && !sameOriginBrowserWrite(request, config)) {
@@ -503,11 +504,6 @@ async function handleCpuSubmission(
       if (!scope) return json({ error: { code: "INVITE_ADMISSION_REQUIRED" } }, 403);
     }
 
-    const imageDigest = config.mediaWorkerRelease.executionBundleSha256;
-    const submissionKey = trusted?.renderRecoveryKey ?? (
-      submission.kind === "RENDER"
-        ? `${submission.idempotencyKey}:${imageDigest.slice(7, 23)}`
-        : submission.idempotencyKey);
     const requestSha256 = await sha256(canonicalJson(submission));
     const executor = createNeonExecutor(pool);
     const prepared = await executor.transaction(async (transaction) => {
@@ -519,10 +515,12 @@ async function handleCpuSubmission(
         render_plan_schema_version: string | null;
         render_plan_payload: unknown;
         render_plan_payload_sha256: string | null;
+        media_execution_backend: "PERSONAL_WORKER" | "RUNPOD_POD";
       }>(
         `SELECT render_plan.schema_version AS render_plan_schema_version,
                 render_plan.payload AS render_plan_payload,
-                render_plan.payload_sha256 AS render_plan_payload_sha256
+                render_plan.payload_sha256 AS render_plan_payload_sha256,
+                COALESCE(revision.media_execution_backend, 'PERSONAL_WORKER') AS media_execution_backend
            FROM projects AS project
            JOIN project_revisions AS revision
              ON revision.account_id = project.account_id
@@ -540,6 +538,33 @@ async function handleCpuSubmission(
         [scope.account_id, scope.workspace_id, submission.projectId, submission.projectRevisionId],
       );
       if (!lineage.rows[0]) return null;
+      const executionBackend = trusted?.executionBackend ?? lineage.rows[0].media_execution_backend ?? "PERSONAL_WORKER";
+      if (!["PERSONAL_WORKER", "RUNPOD_POD"].includes(executionBackend))
+        throw new Error("CPU_EXECUTION_BACKEND_REJECTED");
+      if (trusted?.executionBackend && submission.kind !== "RENDER")
+        throw new Error("CPU_EXECUTION_BACKEND_REJECTED");
+      if (executionBackend === "RUNPOD_POD" && !config.cloudMedia)
+        throw new Error("CLOUD_MEDIA_UNAVAILABLE");
+      const imageDigest = executionBackend === "RUNPOD_POD"
+        ? config.cloudMedia!.sourceSha256
+        : config.mediaWorkerRelease.executionBundleSha256;
+      if (trusted?.executionBackend) {
+        const recovery = await transaction.query<{ authorized: boolean }>(
+          `SELECT EXISTS(SELECT 1 FROM cloud_media_render_recoveries recovery
+             WHERE recovery.account_id=$1 AND recovery.workspace_id=$2 AND recovery.project_id=$3
+               AND recovery.project_revision_id=$4 AND recovery.retry_attempt_id=$5
+               AND recovery.replacement_bundle_sha256=$6 AND recovery.state='CONSUMED'
+               AND $7::text='render-cloud-recovery:'||recovery.retry_attempt_id::text) AS authorized`,
+          [scope.account_id, scope.workspace_id, submission.projectId, submission.projectRevisionId,
+            trusted.expectedAttemptId ?? null, imageDigest, trusted.renderRecoveryKey ?? null],
+        );
+        if (trusted.executionBackend !== "RUNPOD_POD" || !recovery.rows[0]?.authorized)
+          throw new Error("CPU_EXECUTION_BACKEND_REJECTED");
+      }
+      const submissionKey = trusted?.renderRecoveryKey ?? (
+        submission.kind === "RENDER"
+          ? `${submission.idempotencyKey}:${imageDigest.slice(7, 23)}`
+          : submission.idempotencyKey);
       if (submission.kind === "RENDER") {
         const configuredPlan =
           lineage.rows[0].render_plan_schema_version === "videoforge-hosted-cpu-submission/v1"
@@ -587,9 +612,11 @@ async function handleCpuSubmission(
         id: string;
         request_sha256: string;
         image_digest: string;
+        execution_backend: string;
+        job_spec_checksum_sha256: string;
         state: string;
       }>(
-        `SELECT id, request_sha256, image_digest, state FROM hosted_cpu_job_attempts
+        `SELECT id, request_sha256, image_digest, execution_backend, job_spec_checksum_sha256, state FROM hosted_cpu_job_attempts
           WHERE account_id = $1 AND workspace_id = $2 AND submission_idempotency_key = $3`,
         [scope.account_id, scope.workspace_id, submissionKey],
       );
@@ -597,6 +624,7 @@ async function handleCpuSubmission(
       if (
         existing.rows[0] &&
         (existing.rows[0].request_sha256 !== requestSha256 ||
+          (existing.rows[0].execution_backend ?? "PERSONAL_WORKER") !== executionBackend ||
           (existing.rows[0].image_digest !== imageDigest &&
             (!trusted?.renderRecoveryKey || existing.rows[0].state === "PLANNED")))
       ) {
@@ -652,9 +680,17 @@ async function handleCpuSubmission(
       const primaryType = primaryContract.contentType;
       const primaryMax = primaryContract.maxBytes;
       const jobSpec = {
-        schema_version: "videoforge-personal-worker-job-template/v1",
+        schema_version: executionBackend === "RUNPOD_POD"
+          ? "videoforge-cloud-media-job-template/v1"
+          : "videoforge-personal-worker-job-template/v1",
         attempt_id: attemptId,
         kind: submission.kind,
+        ...(executionBackend === "RUNPOD_POD" ? { runtime_identity: {
+          image: config.cloudMedia!.image,
+          registry_id: config.cloudMedia!.registryId ?? null,
+          source_sha256: config.cloudMedia!.sourceSha256,
+          runtime_sha256: config.cloudMedia!.runtimeSha256,
+        } } : {}),
         input_document: inputDocument,
         outputs: [
           {
@@ -665,7 +701,7 @@ async function handleCpuSubmission(
           },
         ],
         result: { object_key: resultKey, max_bytes: 1_048_576 },
-        tooling: {
+        tooling: executionBackend === "RUNPOD_POD" ? config.cloudMedia!.tooling : {
           whisper_model_sha256: config.mediaWorkerRelease.whisperModelSha256,
           whisper_version: "1.8.4",
           ffmpeg_version: "8.1.2",
@@ -682,6 +718,9 @@ async function handleCpuSubmission(
       const jobSpecBytes = new TextEncoder().encode(canonicalJson(jobSpec));
       if (jobSpecBytes.byteLength > 1_048_576) throw new Error("CPU_JOB_SPEC_TOO_LARGE");
       const jobSpecChecksum = await sha256Bytes(jobSpecBytes);
+      if (executionBackend === "RUNPOD_POD" && existing.rows[0] &&
+        existing.rows[0].job_spec_checksum_sha256 !== jobSpecChecksum)
+        throw new Error("CPU_SUBMISSION_IDEMPOTENCY_CONFLICT");
       if (!existing.rows[0]) {
         await transaction.query(
           `INSERT INTO hosted_cpu_job_attempts (
@@ -691,7 +730,7 @@ async function handleCpuSubmission(
              result_max_bytes, image_digest, callback_token_sha256, deadline_at,
              execution_backend, execution_bundle_sha256
            ) VALUES ($1,$2,$3,$4,$5,$6,'PLANNED',$7,$8,$9,$10,$11,$12,1048576,$13,$14,
-                     now() + interval '24 hours','PERSONAL_WORKER',$13)`,
+                     now() + interval '24 hours',$15,$13)`,
           [
             attemptId,
             scope.account_id,
@@ -707,6 +746,7 @@ async function handleCpuSubmission(
             resultKey,
             imageDigest,
             await sha256(callbackToken),
+            executionBackend,
           ],
         );
         await transaction.query(
@@ -871,6 +911,12 @@ async function handleCpuSubmission(
       202,
     );
   } catch (error) {
+    if (error instanceof Error && error.message === "CLOUD_MEDIA_UNAVAILABLE") {
+      return json({ error: { code: "CLOUD_MEDIA_UNAVAILABLE" } }, 503);
+    }
+    if (error instanceof Error && error.message === "CPU_EXECUTION_BACKEND_REJECTED") {
+      return json({ error: { code: "CPU_EXECUTION_BACKEND_REJECTED" } }, 409);
+    }
     if (error instanceof Error && error.message === "PROJECT_LIFECYCLE_CLOSED") {
       return json({ error: { code: "PROJECT_LIFECYCLE_CLOSED" } }, 409);
     }
@@ -927,6 +973,7 @@ export async function scheduleHostedRenderSubmission(
     readonly submission: HostedCpuSubmission;
     readonly expectedAttemptId?: string;
     readonly renderRecoveryKey?: string;
+    readonly executionBackend?: "PERSONAL_WORKER" | "RUNPOD_POD";
   },
 ): Promise<{ readonly state: string }> {
   if (input.submission.kind !== "RENDER") throw new Error("HOSTED_V209_RENDER_SCHEDULE_REJECTED");
@@ -940,6 +987,7 @@ export async function scheduleHostedRenderSubmission(
       submission: input.submission,
       expectedAttemptId: input.expectedAttemptId,
       renderRecoveryKey: input.renderRecoveryKey,
+      executionBackend: input.executionBackend,
     },
   );
   const payload = (await result.json()) as Record<string, unknown>;
@@ -962,7 +1010,7 @@ export async function createHostedV209SpanAudioLiveCoordinator(
   return createCoordinator(environment, config, scheduleHostedSpanAudioSubmission);
 }
 
-function createHostedV209RenderTerminalLiveCoordinator(environment: HostedRuntimeEnvironment) {
+export function createHostedV209RenderTerminalLiveCoordinator(environment: HostedRuntimeEnvironment) {
   return Object.freeze({
     async acceptCompleted(input: {
       readonly accountId: string;
@@ -1291,7 +1339,10 @@ export async function startHostedCpuWorkflow(
   }
   const workflow = environment.VIDEO_WORKFLOW;
   if (!workflow) throw new Error("Hosted Workflow binding is unavailable.");
-  return workflow.create({ id: params.attemptId, params });
+  const started = await workflow.create({ id: params.attemptId, params });
+  const { ensureHostedContinuationDriver } = await import("./pair-observer-guard");
+  await ensureHostedContinuationDriver(environment);
+  return started;
 }
 
 export async function startHostedCpuRecoveryWorkflow(
@@ -1522,6 +1573,11 @@ export async function handleHostedRequest(
     return json({ error: { code: "HOSTED_CONFIGURATION_INVALID", retryable: false } }, 503);
   }
   const url = new URL(request.url);
+  if (url.pathname.startsWith("/api/v2/cloud-media/")) {
+    const { handleCloudMediaRequest } = await import("./runpod-media");
+    const cloudResponse = await handleCloudMediaRequest(request, environment, config, executionContext);
+    if (cloudResponse) return cloudResponse;
+  }
   if (url.pathname === HOSTED_INVITE_REDEMPTION_PATH) {
     const pool = createNeonPool(config.neon.databaseUrl);
     try {
@@ -1720,7 +1776,8 @@ export async function handleHostedRequest(
       database: "NEON_POSTGRES_REQUIRED",
       artifact_plane: "PRIVATE_R2_REQUIRED",
       orchestration: "CLOUDFLARE_WORKFLOW_REQUIRED",
-      cpu_jobs: "ACCOUNT_OWNED_PERSONAL_WORKER_REQUIRED",
+      cpu_jobs: "ACCOUNT_OWNED_LOCAL_OR_CLOUD",
+      cloud_media_available: config.cloudMedia !== undefined,
       supported_worker_platforms: ["WINDOWS", "MACOS"],
       provider_cpu_billing: "PROJECT_LEDGER_ENFORCED",
       authentication: ["GOOGLE"],

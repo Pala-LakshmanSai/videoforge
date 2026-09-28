@@ -223,6 +223,40 @@ describe("render-only disk recovery route", () => {
     expect(await result.json()).toMatchObject({provider_calls_authorized:false});
   });
 
+  it("creates only an explicitly authorized Cloud render recovery and reuses its saved attempt", async () => {
+    mocks.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("videoforge_prepare_cloud_media_render_recovery")) return { rows: [{ recovery: {
+        schema_version: "videoforge-hosted-render-disk-recovery/v1", revision_id: ids.revision,
+        retry_attempt_id: ids.retry, recovery_kind: "CLOUD", recovery_key: `render-cloud-recovery:${ids.retry}`,
+      } }] };
+      if (sql.includes("FROM public.hosted_render_plans")) return { rows: [{ payload: { kind: "RENDER" } }] };
+      return { rows: [] };
+    });
+    const cloudRequest = () => new Request(`https://example.test/api/v2/hosted/projects/${ids.project}/render-retry`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
+        schema_version: "videoforge-hosted-render-retry/v2", execution_backend: "RUNPOD_POD", failed_attempt_id: ids.failed,
+      }),
+    });
+    const cloudConfig = { neon: { databaseUrl: "postgres://unused" }, cloudMedia: { sourceSha256: bundleSha256 } } as never;
+    const schedule = vi.fn().mockResolvedValue({ state: "OUTBOXED" });
+    for (let replay = 0; replay < 2; replay += 1) {
+      const value = await retryHostedApiRender(cloudRequest(), ids.project, cloudConfig, { waitUntil() {} } as never, { schedule });
+      expect(value.status).toBe(202);
+      expect(await value.json()).toMatchObject({ attempt_id: ids.retry, provider_calls_authorized: false });
+    }
+    expect(schedule).toHaveBeenCalledWith(expect.objectContaining({ executionBackend: "RUNPOD_POD",
+      expectedAttemptId: ids.retry, renderRecoveryKey: `render-cloud-recovery:${ids.retry}` }));
+    expect(mocks.query.mock.calls.some(([sql]) => String(sql).includes("videoforge_prepare_hosted_api_render_recovery"))).toBe(false);
+  });
+
+  it("rejects an explicit Cloud retry while its qualified lane is disabled", async () => {
+    const value = await retryHostedApiRender(new Request("https://example.test", { method: "POST",
+      headers: { "content-type": "application/json" }, body: JSON.stringify({ schema_version: "videoforge-hosted-render-retry/v2",
+        execution_backend: "RUNPOD_POD", failed_attempt_id: ids.failed }) }), ids.project, config, { waitUntil() {} } as never,
+      { schedule: vi.fn() });
+    expect(value.status).toBe(503); expect(mocks.query).not.toHaveBeenCalled();
+  });
+
   it("rejects failed evidence before any CPU scheduling", async () => {
     mocks.query.mockRejectedValueOnce(Object.assign(new Error("evidence rejected"), { code: "23514" }));
     const schedule = vi.fn();

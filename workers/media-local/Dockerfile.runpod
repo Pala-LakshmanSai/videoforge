@@ -1,0 +1,34 @@
+# syntax=docker/dockerfile:1.7
+# Dedicated cloud release; private build context contains verified Linux artifacts.
+# No dependency, model, or source download runs when the paid Pod starts.
+FROM python@sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2
+ARG FFMPEG_SHA256
+ARG FFPROBE_SHA256
+ARG WHISPER_SHA256
+ARG MODEL_SHA256=a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002
+RUN apt-get update && apt-get install --yes --no-install-recommends \
+    libglib2.0-0 libgomp1 libgl1 ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY .videoforge/cloud-media/build/wheels /tmp/wheels
+COPY workers/media-local/runpod-requirements.lock /tmp/requirements.txt
+RUN python -m pip install --no-index --find-links=/tmp/wheels --require-hashes \
+    -r /tmp/requirements.txt && rm -rf /tmp/wheels /tmp/requirements.txt
+COPY .videoforge/cloud-media/build/tools /opt/videoforge/tools
+RUN test -n "$FFMPEG_SHA256" && test -n "$FFPROBE_SHA256" && test -n "$WHISPER_SHA256" \
+    && echo "$FFMPEG_SHA256  /opt/videoforge/tools/ffmpeg" | sha256sum --check --strict \
+    && echo "$FFPROBE_SHA256  /opt/videoforge/tools/ffprobe" | sha256sum --check --strict \
+    && echo "$WHISPER_SHA256  /opt/videoforge/tools/whisper-cli" | sha256sum --check --strict \
+    && echo "$MODEL_SHA256  /opt/videoforge/tools/ggml-base.en.bin" | sha256sum --check --strict
+COPY packages/contracts/python /opt/videoforge/packages/contracts/python
+COPY workers/image-media/src /opt/videoforge/workers/image-media/src
+COPY workers/media-local/src /opt/videoforge/workers/media-local/src
+COPY .videoforge/cloud-media/build/runtime.json /opt/videoforge/runtime.json
+COPY workers/media-local/qualify_runpod_runtime.py /opt/videoforge/qualify_runpod_runtime.py
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONHASHSEED=0 \
+    PYTHONPATH=/opt/videoforge/packages/contracts/python:/opt/videoforge/workers/image-media/src:/opt/videoforge/workers/media-local/src
+RUN python -c 'import cv2,numpy; import sys; assert sys.version_info[:2] == (3,12)' \
+    && /opt/videoforge/tools/ffmpeg -version | head -1 | grep -F '8.1.2' \
+    && /opt/videoforge/tools/ffprobe -version | head -1 | grep -F '8.1.2' \
+    && mkdir /work && chown 65532:65532 /work
+WORKDIR /work
+USER 65532:65532
+ENTRYPOINT ["python", "-m", "videoforge_media_local.runpod_job"]

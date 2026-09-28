@@ -185,6 +185,15 @@ export type SchemaRegistryTableName = (typeof SCHEMA_REGISTRY_TABLE_NAMES)[numbe
 
 /** Hosted auth rows contain credentials/tokens and rely on Neon native backup/PITR. */
 export const NON_PORTABLE_TABLE_NAMES = [
+  // Live provider ownership and finite spend authority must never be replayed by portable restore.
+  // Neon PITR remains authoritative; reconcile exact provider inventory before enabling allocations.
+  "cloud_media_budget_authorities",
+  "cloud_media_budget_debits",
+  "cloud_media_reservations",
+  "cloud_media_jobs",
+  "cloud_media_render_recoveries",
+  "cloud_media_multipart_uploads",
+  "cloud_media_multipart_parts",
   "hosted_auth_users",
   "hosted_auth_accounts",
   "hosted_auth_sessions",

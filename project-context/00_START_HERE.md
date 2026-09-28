@@ -1,5 +1,10 @@
 # VideoForge: start here
 
+Optional Local/Cloud media execution is being implemented under the2026-09-28 user decision.
+Local stays default; Kie/Fal generation and existing personal-worker releases remain unchanged.
+Cloud is disabled pending runtime/spend/live/45-minute qualification and release approval. Read
+`optional_cloud_media_2026_09_28` in CURRENT_STATE.yaml and `cloud-media/RELEASE_RUNBOOK.md`.
+
 Prompt instructions are locally compacted in request v24: same quality/grounding/output rules,
 39.54% fewer repeated bytes. This supersedes the local v23 release proposal; publication remains
 pending. Read `prompt_instruction_compaction_2026_09_27` in CURRENT_STATE.yaml and the prompt domain.

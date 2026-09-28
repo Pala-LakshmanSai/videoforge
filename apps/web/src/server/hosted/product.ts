@@ -204,6 +204,7 @@ interface ProjectCreateInput {
   readonly applyExtraPromptKeywords: boolean;
   readonly generationMode: "LOWEST_COST" | "BALANCED" | "FASTER";
   readonly userSeed: number | null;
+  readonly executionBackend: "PERSONAL_WORKER" | "RUNPOD_POD";
   readonly voiceover: {
     readonly filename: string;
     readonly contentType: string;
@@ -311,6 +312,7 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
     "generation_mode",
     "optional_script",
     "user_seed",
+    "execution_backend",
   ];
   const schemaVersion = record.schema_version;
   if (
@@ -364,6 +366,7 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
   const applyExtraPromptKeywords = record.apply_extra_prompt_keywords;
   const generationMode = record.generation_mode;
   const userSeed = record.user_seed;
+  const executionBackend = record.execution_backend;
   if (
     (optionalScript !== undefined &&
       optionalScript !== null &&
@@ -381,6 +384,8 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
         !Number.isSafeInteger(userSeed) ||
         Number(userSeed) < 0 ||
         Number(userSeed) > 4_294_967_295)) ||
+    (executionBackend !== undefined &&
+      executionBackend !== "PERSONAL_WORKER" && executionBackend !== "RUNPOD_POD") ||
     (applyExtraPromptKeywords === true &&
       (typeof extraPromptKeywords !== "string" || !/\S/u.test(extraPromptKeywords)))
   ) {
@@ -396,6 +401,7 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
     generationMode:
       generationMode === "BALANCED" || generationMode === "FASTER" ? generationMode : "LOWEST_COST",
     userSeed: typeof userSeed === "number" ? userSeed : null,
+    executionBackend: executionBackend === "RUNPOD_POD" ? "RUNPOD_POD" : "PERSONAL_WORKER",
     voiceover: {
       filename: voiceover.filename,
       contentType: voiceover.content_type,
@@ -4194,6 +4200,7 @@ async function catalog(
       avatar_drafts: avatarDraftRows,
       style_drafts: styleDraftRows,
       media_worker_state: data.workers > 0 ? "ONLINE" : "WAITING_FOR_YOUR_COMPUTER",
+      cloud_media: { available: Boolean(config.cloudMedia?.enabled) },
       generation_provider: config.apiGeneration ? "KIE_FAL" : "RUNPOD",
       gpu_transport: gpuReadiness.gpu_transport,
       gpu_readiness: gpuReadiness,
@@ -4862,10 +4869,17 @@ async function projectPreflight(
         severity: "BLOCKING",
       });
     }
-    if (facts.workers < 1) {
+    if (input.executionBackend === "PERSONAL_WORKER" && facts.workers < 1) {
       blockers.push({
         code: "MEDIA_WORKER_OFFLINE",
         message: "Connect your personal media worker before generating.",
+        severity: "BLOCKING",
+      });
+    }
+    if (input.executionBackend === "RUNPOD_POD" && !config.cloudMedia?.enabled) {
+      blockers.push({
+        code: "CLOUD_MEDIA_UNAVAILABLE",
+        message: "Cloud media execution is not enabled for this release.",
         severity: "BLOCKING",
       });
     }
@@ -4883,12 +4897,15 @@ async function projectPreflight(
       schema_version: "videoforge-hosted-project-preflight/v1",
       ok,
       ready: ok,
+      execution_backend: input.executionBackend,
       estimate: {
         projected_usd: config.apiGeneration ? null : gpuProductState.projectedUsd,
         minimum_usd: 0,
         maximum_usd: null,
         cap_usd: null,
-        detail: config.apiGeneration
+        detail: input.executionBackend === "RUNPOD_POD"
+          ? "Cloud media compute adds cost to Kie image and Fal generation usage."
+          : config.apiGeneration
           ? "Kie image and Fal compute usage is billed after generation."
           : gpuProductState.estimateDetail,
         voiceover_bytes: input.voiceover.contentLength,
@@ -4927,6 +4944,8 @@ async function createProject(
     if (raw instanceof Response) return raw;
     const input = parseCreate(raw);
     if (!input) return response({ error: { code: "PROJECT_CREATE_REJECTED" } }, 400);
+    if (input.executionBackend === "RUNPOD_POD" && !config.cloudMedia?.enabled)
+      return response({ error: { code: "CLOUD_MEDIA_UNAVAILABLE" } }, 409);
     requestedTitle = input.title;
     const requestSha256 = await sha256(canonicalJson(raw));
     const prepared = await createNeonExecutor(pool).transaction(async (transaction) => {
@@ -5081,11 +5100,11 @@ async function createProject(
            extra_prompt_keywords, apply_extra_prompt_keywords, generation_mode,
            maximum_cost_micro_usd, seed, revision_config_contract_name,
            revision_config_contract_version, revision_config_payload, revision_config_hash,
-           created_by_user_id
+           created_by_user_id, media_execution_backend
          ) VALUES (
            $1,$2,$3,1,'DRAFT',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
            'UNTESTED',NULL,NULL,$14,$15,$16,$17,$18,$19,$20,$21,
-           'project-revision-config','v2',$22::jsonb,$23,$24
+           'project-revision-config','v2',$22::jsonb,$23,$24,$25
          )`,
         [
           revisionId,
@@ -5112,6 +5131,7 @@ async function createProject(
           JSON.stringify(revisionPayload),
           revisionHash,
           scope.user_id,
+          input.executionBackend,
         ],
       );
       await transaction.query(`UPDATE assets SET project_revision_id = $1 WHERE id = $2`, [
@@ -6805,7 +6825,8 @@ async function projectDetail(
       const project = await transaction.query(
         `SELECT project.id, project.name AS title, project.created_at,
                 project.generation_provider, revision.id AS revision_id,
-                revision.locked_at, revision.status AS revision_state
+                revision.locked_at, revision.status AS revision_state,
+                revision.media_execution_backend
            FROM projects AS project
            JOIN project_revisions AS revision
              ON revision.account_id = project.account_id
@@ -6828,16 +6849,29 @@ async function projectDetail(
           : null;
       const attempts = await transaction.query(
         `SELECT attempt.id, attempt.kind, attempt.state, attempt.version, attempt.created_at,
+                attempt.execution_backend,
                 attempt.updated_at, attempt.submitted_at, attempt.terminal_at,
                 attempt.result_checksum_sha256, attempt.result_content_length,
                 attempt.result_object_key, attempt.result_content_type,
                 attempt.replay_count,
-                lease.failure_code AS error_code,
+                CASE WHEN cloud.leased_attempt_id=attempt.id THEN cloud.state
+                  WHEN attempt.execution_backend='RUNPOD_POD' AND attempt.state='SUCCEEDED'
+                  THEN 'COMPLETE' ELSE NULL END AS cloud_phase,
+                CASE WHEN attempt.execution_backend='RUNPOD_POD'
+                  THEN COALESCE(attempt.failure_code,
+                    CASE WHEN cloud.leased_attempt_id=attempt.id THEN cloud.failure_code END)
+                  ELSE lease.failure_code END AS error_code,
                 authority.object_key, authority.content_type,
                 authority.issued_content_length AS content_length,
                 authority.issued_checksum_sha256 AS output_checksum_sha256,
                 review.approved_at
            FROM hosted_cpu_job_attempts AS attempt
+           LEFT JOIN cloud_media_jobs AS cloud_job
+             ON cloud_job.account_id=attempt.account_id AND cloud_job.workspace_id=attempt.workspace_id
+            AND cloud_job.attempt_id=attempt.id
+           LEFT JOIN cloud_media_reservations AS cloud
+             ON cloud.account_id=cloud_job.account_id AND cloud.workspace_id=cloud_job.workspace_id
+            AND cloud.id=cloud_job.reservation_id
            LEFT JOIN LATERAL (
              SELECT worker_lease.failure_code
                FROM media_worker_leases AS worker_lease
@@ -7560,9 +7594,11 @@ async function projectDetail(
         terminal_at: timestampOrNull(value.terminal_at),
         preview_url: previewUrl,
         progress_percent:
-          value.kind === "ASR"
-            ? value.state === "SUCCEEDED"
-              ? 100
+          value.execution_backend === "RUNPOD_POD"
+            ? null
+            : value.kind === "ASR"
+              ? value.state === "SUCCEEDED"
+                ? 100
               : value.state === "RUNNING"
                 ? 50
                 : 0
@@ -7574,11 +7610,11 @@ async function projectDetail(
           terminalAt: value.terminal_at,
         }),
         cost: {
-          projected_usd: 0,
-          settled_usd: 0,
+          projected_usd: value.execution_backend === "RUNPOD_POD" ? null : 0,
+          settled_usd: value.execution_backend === "RUNPOD_POD" ? null : 0,
           cap_usd: null,
           billed_seconds: null,
-          provider: "personal-worker",
+          provider: value.execution_backend === "RUNPOD_POD" ? "runpod-pod" : "personal-worker",
         },
       });
     }
@@ -7754,6 +7790,7 @@ async function projectDetail(
         .find((value) => value.kind === kind);
     const asr = latestAttempt("ASR");
     const render = latestAttempt("RENDER");
+    const cloudMedia = (detail.project as Record<string, unknown>).media_execution_backend === "RUNPOD_POD";
     const renderReferenceMs = recentFullRenderDurationMs(
       detail.attempts as Record<string, unknown>[],
     );
@@ -7801,8 +7838,10 @@ async function projectDetail(
         // A transcript exists only once the attempt succeeded, so a stopped attempt reports no
         // progress: the old constant 50 made a failed transcription read as half of the work done.
         progress_percent:
-          asr?.state === "SUCCEEDED"
-            ? 100
+          asr?.execution_backend === "RUNPOD_POD" || (!asr && cloudMedia)
+            ? null
+            : asr?.state === "SUCCEEDED"
+              ? 100
             : asr && ["FAILED", "CANCELLED", "EXPIRED", "DEAD_LETTER"].includes(String(asr.state))
               ? 0
               : asr
@@ -7810,7 +7849,9 @@ async function projectDetail(
                 : 0,
         started_at: timestampOrNull(asr?.submitted_at),
         completed_at: timestampOrNull(asr?.terminal_at),
-        detail: "Your connected computer is converting the voiceover into timed speech.",
+        detail: asr?.execution_backend === "RUNPOD_POD" || (!asr && cloudMedia)
+          ? "Cloud media execution converts the voiceover into timed speech."
+          : "Your connected computer is converting the voiceover into timed speech.",
         eta_ms: null,
       },
       {
@@ -7891,14 +7932,18 @@ async function projectDetail(
                   spanAudioProgress.started_at !== null
                 ? "RUNNING"
                 : "WAITING",
-        progress_percent: hostedProgressPercent(
+        progress_percent: cloudMedia ? null : hostedProgressPercent(
           spanAudioProgress.materialized,
           spanTotal > 0 ? spanTotal : null,
         ),
         started_at: spanAudioProgress.started_at,
         completed_at: spanAudioProgress.completed_at,
         detail:
-          spanTotal > 0
+          cloudMedia
+            ? spanAudioProgress.failed > 0
+              ? `${spanAudioProgress.materialized} of ${spanTotal} clips are saved. Cloud audio preparation failed; accepted clips remain available.`
+              : "Cloud media execution prepares the exact selected audio spans."
+            : spanTotal > 0
             ? spanAudioProgress.failed > 0
               ? spanAudioProgress.retrying > 0
                 ? `${hostedSpanFailureMessage(spanAudioProgress.failure_code, spanTotal, spanAudioProgress.materialized)} The same ${spanAudioProgress.retrying} clip${spanAudioProgress.retrying === 1 ? "" : "s"} retry automatically on your computer.`
@@ -7931,11 +7976,19 @@ async function projectDetail(
         id: "render",
         name: "Assemble final video",
         status: String(render?.state ?? "WAITING"),
-        progress_percent: render ? (render.state === "SUCCEEDED" ? 100 : 50) : 0,
+        progress_percent: render?.execution_backend === "RUNPOD_POD" || (!render && cloudMedia)
+          ? null
+          : render ? (render.state === "SUCCEEDED" ? 100 : 50) : 0,
         started_at: timestampOrNull(render?.submitted_at),
         completed_at: timestampOrNull(render?.terminal_at),
         detail:
-          render?.state === "FAILED"
+          render?.execution_backend === "RUNPOD_POD" || (!render && cloudMedia)
+            ? render?.state === "FAILED"
+              ? "Cloud assembly failed. Accepted media and previous output remain saved."
+              : render?.state === "SUCCEEDED"
+                ? "Cloud media execution assembled the accepted media and original voiceover."
+                : "Cloud media execution assembles the accepted media and original voiceover."
+            : render?.state === "FAILED"
             ? hostedLocalFailureMessage(
                 typeof render.error_code === "string" ? render.error_code : null,
                 "Your computer could not assemble the final video. Open this project again to retry it there.",
@@ -7949,7 +8002,8 @@ async function projectDetail(
         id: "technical-check",
         name: "Technical check",
         status: render?.state === "SUCCEEDED" ? "COMPLETE" : "WAITING",
-        progress_percent: render?.state === "SUCCEEDED" ? 100 : 0,
+        progress_percent: render?.execution_backend === "RUNPOD_POD" || (!render && cloudMedia)
+          ? null : render?.state === "SUCCEEDED" ? 100 : 0,
         started_at: null,
         completed_at: null,
         detail: "VideoForge verifies the final file, duration, audio, and checksum.",
@@ -8152,6 +8206,7 @@ async function projectDetail(
       schema_version: "videoforge-hosted-project-detail/v1",
       project: detail.project,
       attempts,
+      cloud_media: { available: Boolean(config.cloudMedia?.enabled) },
       api_recovery: {
         can_resume_saved_work: apiJobs.some((job) => job.state === "SUBMITTED") &&
           apiJobs.some((job) => ["SUBMITTING", "UNKNOWN_NO_RETRY", "FAILED"].includes(String(job.state))),

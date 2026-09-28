@@ -1,5 +1,6 @@
 import { AwsClient } from "aws4fetch";
 import { quoteOrdinaryVideoBudget } from "../runtime/ordinary-video-budget";
+import { SINGLE_PUT_MAX_BYTES } from "./cloud-media-configuration";
 
 import type { HostedR2BucketBinding, HostedRuntimeConfiguration } from "./configuration";
 
@@ -156,6 +157,27 @@ export class HostedR2Signer {
     this.#endpoint = `https://${config.accountId}.r2.cloudflarestorage.com/${encodeURIComponent(config.bucketName)}`;
   }
 
+  /** Exact attempt object only; controller retains reusable storage credentials. */
+  async multipartRequest(method: "POST" | "DELETE", objectKey: string,
+    query: Readonly<Record<string, string>>, body?: string, contentType?: string): Promise<Response> {
+    if (!EXACT_KEY.test(objectKey)) throw new Error("CLOUD_MULTIPART_KEY_INVALID");
+    const url = new URL(`${this.#endpoint}/${objectKey.split("/").map(encodeURIComponent).join("/")}`);
+    for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
+    const signed = await this.#client.sign(url, {method, body,
+      headers: contentType ? {"content-type": contentType} : undefined});
+    return fetch(signed, {signal: AbortSignal.timeout(20_000)});
+  }
+
+  async signMultipartPart(objectKey: string, uploadId: string, partNumber: number): Promise<string> {
+    if (!EXACT_KEY.test(objectKey) || !uploadId || !Number.isInteger(partNumber) || partNumber < 1 || partNumber > 10_000)
+      throw new Error("CLOUD_MULTIPART_PART_INVALID");
+    const url = new URL(`${this.#endpoint}/${objectKey.split("/").map(encodeURIComponent).join("/")}`);
+    url.searchParams.set("uploadId", uploadId);
+    url.searchParams.set("partNumber", String(partNumber));
+    url.searchParams.set("X-Amz-Expires", "300");
+    return (await this.#client.sign(url, {method: "PUT", aws: {signQuery: true}})).url;
+  }
+
   async sign(input: {
     method: "GET" | "PUT";
     objectKey: string;
@@ -167,6 +189,8 @@ export class HostedR2Signer {
     ordinaryVideoBudget?: Readonly<{ version: "ordinary-video-budget/v1"; durationMs: number }>;
     now?: Date;
   }): Promise<HostedSignedArtifactPort> {
+    if (input.method === "PUT" && input.contentLength > SINGLE_PUT_MAX_BYTES)
+      throw new RangeError("R2 single PUT exceeds 5 GB; a scoped multipart upload is required.");
     if (!EXACT_KEY.test(input.objectKey))
       throw new TypeError("R2 object key is not exact tenant lineage.");
     if (

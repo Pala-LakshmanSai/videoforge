@@ -20,8 +20,8 @@ import {
  *
  * `step.do` is durable and its name is the replay key, so the iteration index is part of every step
  * name: a replayed iteration resumes that exact durable step instead of collapsing with its
- * neighbours. One instance covers ~24 hours; `ensureHostedContinuationDriver` restarts a completed
- * instance from the desktop worker's claim poll, which is the one trigger proven to be delivered.
+ * neighbours. One instance covers ~24 hours. CPU submission starts it for either backend; desktop claim polling
+ * remains a recovery trigger. Cloud reservations are independently swept on every driver tick.
  */
 export interface HostedContinuationWorkflowParameters {
   /** Diagnostic only, supplied by the starting caller; the driver never depends on it. */
@@ -181,6 +181,8 @@ export class HostedContinuationWorkflow extends WorkflowEntrypoint<
     let dispatches = 0;
     let pairObservers = 0;
     let failures = 0;
+    let cloudPending = 0;
+    let cloudObservationUncertain = false;
     console.info("hosted_continuation_workflow", {
       event: "STARTED",
       reason: params.reason ?? "unscheduled",
@@ -191,16 +193,18 @@ export class HostedContinuationWorkflow extends WorkflowEntrypoint<
       // The iteration index is the replay key. `continuation 7` is a different durable step than
       // `continuation 6`, so a replayed instance resumes where it stopped instead of reusing the
       // first iteration's recorded result for every tick.
-      const outcome = await step.do(`continuation ${iteration}`, async () => {
+      const outcome = await step.do(`continuation ${iteration}`, { retries: { limit: 0, delay: "1 second", backoff: "constant" } }, async () => {
         const { context, drain } = drainingExecutionContext();
         try {
+          const { reconcileCloudMediaReservations } = await import("../src/server/hosted/runpod-media");
+          const cloud = await reconcileCloudMediaReservations(this.env);
           const dispatched = await runHostedContinuation(this.env, context);
           const observers = await ensureHostedPairObservers(this.env, context);
-          return { dispatched: dispatched.length, observers, error: null };
+          return { dispatched: dispatched.length, observers, cloud: cloud ?? 0, error: null };
         } catch (error) {
           // One bad tick (a transient database failure, a missing binding) must not kill a
           // 24-hour driver: record it and let the next iteration try again in 60 seconds.
-          return { dispatched: 0, observers: 0, error: errorMessage(error) };
+          return { dispatched: 0, observers: 0, cloud: null, error: errorMessage(error) };
         } finally {
           await drain();
         }
@@ -208,6 +212,8 @@ export class HostedContinuationWorkflow extends WorkflowEntrypoint<
       iterations += 1;
       dispatches += outcome.dispatched;
       pairObservers += outcome.observers;
+      cloudObservationUncertain = outcome.cloud === null;
+      if (outcome.cloud !== null) cloudPending = outcome.cloud;
       if (outcome.error !== null) {
         failures += 1;
         console.warn("hosted_continuation_workflow", {
@@ -217,6 +223,24 @@ export class HostedContinuationWorkflow extends WorkflowEntrypoint<
         });
       }
       await step.sleep(`wait ${iteration}`, HOSTED_CONTINUATION_CADENCE);
+    }
+
+    // Cron delivery is unqualified here. Uncertain cleanup must retain an independent observer
+    // beyond this bounded instance, even when new allocations have been disabled for rollback.
+    if (cloudPending > 0 || (cloudObservationUncertain && (this.env.VIDEOFORGE_CLOUD_MEDIA_ENABLED === "true" || this.env.VIDEOFORGE_CLOUD_MEDIA_IMAGE))) {
+      await step.do("continue cloud cleanup observation", async () => {
+        const binding = this.env.HOSTED_CONTINUATION_WORKFLOW;
+        if (!binding) throw new Error("CLOUD_MEDIA_CLEANUP_OBSERVER_UNAVAILABLE");
+        const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(event.instanceId));
+        const id = `cloud-safety-${Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("").slice(0, 40)}`;
+        try { await binding.create({ id, params: { reason: "cloud-cleanup-recovery" } }); }
+        catch (error) {
+          // A lost creation acknowledgement adopts the same deterministic observer instance.
+          const existing = await binding.get(id);
+          const status = await existing.status() as { status?: unknown };
+          if (!["queued", "running", "waiting", "sleeping", "waitingForPause", "paused"].includes(String(status?.status))) throw error;
+        }
+      });
     }
 
     const summary = Object.freeze({

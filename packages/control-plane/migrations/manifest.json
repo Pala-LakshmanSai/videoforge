@@ -1056,6 +1056,12 @@
       "name": "fal_z_image_regeneration",
       "filename": "0213_fal_z_image_regeneration.sql",
       "sha256": "sha256:13561496cc795473cce4f80d4cc65c31856b00255d5b4dfa4fd1e1a7c82e50ae"
+    },
+    {
+      "version": 214,
+      "name": "optional_runpod_media",
+      "filename": "0214_optional_runpod_media.sql",
+      "sha256": "sha256:e6785466e23defa47fe080bd5dfcd7582e9f8e83a3407824835efbd6119c8081"
     }
   ]
 }

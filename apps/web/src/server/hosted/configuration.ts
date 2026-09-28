@@ -1,4 +1,5 @@
 import type { Pool } from "@neondatabase/serverless";
+import { cloudMediaConfiguration, type CloudMediaConfiguration } from "./cloud-media-configuration";
 import { canonicalSha256, type Sha256 } from "@videoforge/control-plane";
 
 import {
@@ -101,6 +102,15 @@ export interface HostedRuntimeEnvironment {
   readonly KIE_API_KEY?: string;
   readonly FAL_API_KEY?: string;
   readonly RUNPOD_API_BASE_URL?: string;
+  readonly VIDEOFORGE_CLOUD_MEDIA_ENABLED?: string;
+  readonly VIDEOFORGE_CLOUD_MEDIA_IMAGE?: string;
+  readonly VIDEOFORGE_CLOUD_MEDIA_REGISTRY_ID?: string;
+  readonly VIDEOFORGE_CLOUD_MEDIA_SOURCE_SHA256?: string;
+  readonly VIDEOFORGE_CLOUD_MEDIA_RUNTIME_MANIFEST_JSON?: string;
+  readonly VIDEOFORGE_CLOUD_MEDIA_MAX_HOURLY_USD?: string;
+  readonly VIDEOFORGE_CLOUD_MEDIA_BUDGET_USD?: string;
+  readonly VIDEOFORGE_CLOUD_MEDIA_MAX_RENTAL_SECONDS?: string;
+  readonly VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID?: string;
   readonly VIDEOFORGE_MAGE_ENDPOINT_ID?: string;
   readonly VIDEOFORGE_MAGE_ENDPOINT_ID_SHA256?: string;
   readonly VIDEOFORGE_SOULX_ENDPOINT_ID?: string;
@@ -108,6 +118,7 @@ export interface HostedRuntimeEnvironment {
 }
 
 export interface HostedRuntimeConfiguration {
+  readonly cloudMedia?: CloudMediaConfiguration;
   readonly commit: string;
   readonly environment: "staging" | "production";
   readonly gpuTransport: "DISABLED_UNQUALIFIED" | "QUALIFIED_EXACT";
@@ -460,6 +471,10 @@ export function hostedRuntimeConfiguration(
       ...(!apiGeneration.falApiKey ? ["FAL_API_KEY"] : []),
     ]);
   }
+  const desktopRelease = mediaWorkerRelease(required(source, "MEDIA_WORKER_RELEASE_MANIFEST_JSON"));
+  const cloudMedia = cloudMediaConfiguration(source);
+  if (cloudMedia && cloudMedia.tooling.whisper_model_sha256 !== desktopRelease.whisperModelSha256)
+    throw new Error("CLOUD_MEDIA_MODEL_UNQUALIFIED");
   const redacted = Object.freeze({
     schemaVersion: "videoforge-hosted-configuration/v1" as const,
     credentials: "REDACTED" as const,
@@ -489,7 +504,7 @@ export function hostedRuntimeConfiguration(
       accessKeyId: required(source, "R2_ACCESS_KEY_ID"),
       secretAccessKey: required(source, "R2_SECRET_ACCESS_KEY"),
     }),
-    mediaWorkerRelease: mediaWorkerRelease(required(source, "MEDIA_WORKER_RELEASE_MANIFEST_JSON")),
+    mediaWorkerRelease: desktopRelease,
     workflowCallbackSecret,
     mediaWorkerTokenSecret,
     styleAnalysis:
@@ -501,6 +516,7 @@ export function hostedRuntimeConfiguration(
           })
         : null,
     ...(apiGeneration ? { apiGeneration } : {}),
+    cloudMedia,
     toJSON: () => redacted,
   });
 }

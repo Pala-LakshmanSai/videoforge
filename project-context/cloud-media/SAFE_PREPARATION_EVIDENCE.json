@@ -1,0 +1,130 @@
+{
+  "schema_version": "videoforge-cloud-media-safe-preparation/v1",
+  "status": "SAFE_READY_UNRELEASED_CLOUD_DISABLED",
+  "checkpoint": "VF-10-09",
+  "production_source": "366d16c27369b4430a843ae4e6929b7d7156eb89",
+  "implementation_base": "f9b9283ca662e73c0ba276741db22521c3b65357",
+  "unrelated_edit_excluded": "apps/web/src/server/runtime/node-fair-admission.ts",
+  "published_ui_preserved": true,
+  "migration": {
+    "version": 214,
+    "sha256": "e6785466e23defa47fe080bd5dfcd7582e9f8e83a3407824835efbd6119c8081",
+    "applied": false
+  },
+  "validations": {
+    "production_web_build": "PASS",
+    "production_cloudflare_build": "PASS",
+    "staging_build": "PASS",
+    "web_worker_typecheck": "PASS",
+    "ui_product_tests": {
+      "pass": 234,
+      "fail": 1,
+      "existing_failure": "preparation-owned adaptive plan binding source-text assertion"
+    },
+    "config_quarantine_release_preparation_tests": {
+      "pass": 19,
+      "fail": 0
+    },
+    "canonical_wrangler_dry_run": "PASS_PROVIDER_FREE",
+    "source_firewall": "EXISTING_TWO_CONTINUATION_IMPORT_ALLOWLIST_FAILURES_AT_F9_AND_PRODUCTION"
+  },
+  "bundles": {
+    "production": {
+      "static_closure_bytes": 2778357,
+      "previous_ceiling": 2766872,
+      "growth_bytes": 11485,
+      "static_files": [
+        {
+          "manifest_key": "virtual:cloudflare/worker-entry",
+          "file": "index.js",
+          "bytes": 233,
+          "sha256": "2f6c48b5ca92449635954c470f7f85e90893598ec1f0239d4e7aab6aca124609"
+        },
+        {
+          "manifest_key": "_index-C8VTuhfu.js",
+          "file": "assets/index-C8VTuhfu.js",
+          "bytes": 2778124,
+          "sha256": "a9ef97b11cf230be79b7bee862e80abe7e1e9867962002e13df78ba33d7d2ba2"
+        }
+      ],
+      "cloud_dynamic": {
+        "manifest_key": "src/server/hosted/runpod-media.ts",
+        "file": "assets/runpod-media-C_EUg23y.js",
+        "bytes": 56679,
+        "sha256": "a2d9773c9fe27a39c4ee4eceb04a3aee7a3e918f10c6a4766574feb05b2a35cb",
+        "isDynamicEntry": true,
+        "statically_reachable": false
+      }
+    },
+    "staging": {
+      "static_closure_bytes": 2776188,
+      "previous_ceiling": 2767117,
+      "growth_bytes": 9071,
+      "static_files": [
+        {
+          "manifest_key": "virtual:cloudflare/worker-entry",
+          "file": "index.js",
+          "bytes": 193,
+          "sha256": "8ab33696b6b8a79d73f65652c53037b962d1930de4b9e390c88546e203e38701"
+        },
+        {
+          "manifest_key": "_index-CErqLMJw.js",
+          "file": "assets/index-CErqLMJw.js",
+          "bytes": 2775995,
+          "sha256": "ac32c370d860fa194e18a0fac059cb5200c33e580878137219517d1b735a3853"
+        }
+      ],
+      "cloud_dynamic": {
+        "manifest_key": "src/server/hosted/runpod-media.ts",
+        "file": "assets/runpod-media-C3XRFDop.js",
+        "bytes": 56050,
+        "sha256": "cc13c5d88cdeae5316a9aa7ccac8837fd8f2f249de51f1e57cb00edf6d463d4d",
+        "isDynamicEntry": true,
+        "statically_reachable": false
+      }
+    }
+  },
+  "browser": {
+    "real_chrome": true,
+    "fixture_only": [
+      "Local default/offline blocker",
+      "explicit Cloud/offline readiness",
+      "Local restoration",
+      "exact Cloud retry v2 payload",
+      "Saving/Stopping phase with percentages hidden",
+      "navigation reload recovery"
+    ],
+    "production_readonly": [
+      "Settings/Library mounted",
+      "Windows0.1.44 offline",
+      "saved MP4 metadata 1920x1080/159.2s/no media error",
+      "first10.077s native playback",
+      "private download requested"
+    ],
+    "unverified": [
+      "full playback/audio sync",
+      "download bytes/hash",
+      "real controller create/queue/cleanup",
+      "current Local execution"
+    ]
+  },
+  "provider": {
+    "last_complete_inventory_utc": "2026-09-28T13:05:45Z",
+    "pods": 0,
+    "rank1_gpu_usd_per_hour": 0.72,
+    "disk100gb_estimated_usd_per_hour": 0.013889,
+    "capacity": "LOW with adjacent NONE; volatile",
+    "actual_resources": "UNVERIFIED",
+    "speed": "UNMEASURED",
+    "paid_actions": 0,
+    "spend_usd": 0
+  },
+  "remaining_gates": [
+    "qualified Linux image/model/tool identity",
+    "new paid/publication authority",
+    "short real Cloud and cancellation",
+    "representative45-minute VideoForge",
+    "full browser acceptance",
+    "production rollout/readback"
+  ]
+}

@@ -1,6 +1,6 @@
-# RunPod Serverless, queue, and lifecycle operations
+# RunPod media Pods, historical Serverless and queue operations
 
-Status: historical RunPod attempt and cleanup contract; fresh generation uses the API path
+Status: optional Cloud media Pod lifecycle plus historical generation cleanup; fresh generation uses Kie/Fal
 Read when: building admission, dispatch, Serverless handlers/endpoints, progress, cancellation,
 reconciliation, storage isolation, or cost controls.
 
@@ -23,6 +23,35 @@ endpoint, concurrent-read safety, autoscaling, or production dispatch.
 
 No planning or provider-free checkpoint may mutate RunPod. Endpoint/template publication, live
 requests, paid workers, or volume changes require the exact external-checkpoint authority.
+
+## Optional on-demand media Pods — 2026-09-28
+
+Cloud media is separate from historical Mage/SoulX Serverless lanes and uses current RunPod Pod
+REST v2 (`https://api.runpod.io/v2`). Postgres retains fair video admission (one account/two global);
+Cloud belongs to that admitted video and must not acquire a conflicting second provider-workload
+lease. Reserve one Pod/account and two globally, counting startup, upload, ambiguity and uncertain
+cleanup. Waiting, browsing, previews/downloads and Settings rent nothing.
+
+Before each paid POST persist exact tenant/project/revision/attempt, fence/lease, reservation/name,
+image digest/source hash,100GB minimum autosized temporary disk, GPU, expected/actual rate, finite
+budget/deadline and lifecycle state. No generic HTTP/workflow retry may replay creation. Complete
+paginated inventory and exact identity/resource/price checks are required for adoption. Unknown or
+incomplete inventory blocks rentals; empty inventory alone cannot disprove a timed-out POST. Only
+confirmed capacity rejection plus complete empty inventory permits bounded fallback. Permanent
+auth/account/validation errors stop. Never attach historical network volumes or alter old endpoints.
+
+Start with Frontier's exact18-model preference order. Secure Cloud full NVIDIA hosts require16GB
+VRAM,16vCPU,64GB RAM, compatible runtime and known finite approved all-in pricing. Refresh catalog
+at allocation, use at most three rounds/180s placement and delayed durable checks. Unknown capacity
+is unavailable; over-limit returned resources/prices are terminated before work. Speed remains
+unmeasured until VideoForge qualification; GPU FLOPS do not establish this CPU media workload speed.
+
+Job-scoped runtime processes exact committed inputs only. Upload verified artifacts before terminal
+acceptance, then terminate the owned Pod and verify absence independently. Cancellation fences
+publication, kills the exact process group and cleans scratch. Both Pod watchdog/finally and
+external workflow reconciler enforce finite deadlines; unconfirmed cleanup retains capacity.
+Current configuration remains disabled pending authority and runtime/live proof. Operator rates,
+release ledger guards, gates and rollback are in `cloud-media/RELEASE_RUNBOOK.md`.
 
 ## Historical RunPod topology
 

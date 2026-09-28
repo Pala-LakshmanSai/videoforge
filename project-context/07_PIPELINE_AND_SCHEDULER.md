@@ -1,7 +1,7 @@
 # Pipeline and deterministic scheduler
 
 Fresh ordinary generation uses the same fair DB admission, transcript, scheduler, prompt writer,
-selected-span audio, and personal-worker render. After those stages, migration 0188 materializes
+selected-span audio, and revision-selected Local/Cloud render. After those stages, migration 0188 materializes
 Kie image and Fal audio-to-video jobs; the API Workflow claims each before submission, verifies
 private outputs, and hands accepted media to the existing render path. The RunPod diagram and
 queue details below describe historical attempts only.
@@ -26,7 +26,7 @@ queues receive only already-admitted exact jobs; they do not decide fairness.
 flowchart TD
     P["Tenant preflight: probe, hash, avatar/style, cap, durable private R2 voiceover"] --> Q["Private durable queue"]
     Q --> A["Fair DB admission: one/account, two global"]
-    A --> T["Paired personal worker: whisper.cpp word timing"]
+    A --> T["Selected Local or Cloud: whisper.cpp word timing"]
     T --> S["Deterministic scheduler-v2"]
     S --> WM["Immutable generation and render work manifests"]
     WM --> D["DeepSeek prompt batches and selected-span audio"]
@@ -39,7 +39,7 @@ flowchart TD
     MR --> B["Accepted-asset barrier"]
     SR --> B
     B --> RM["Resolved render manifest"]
-    RM --> F["Paired personal worker: FFmpeg render and FFprobe"]
+    RM --> F["Selected Local or Cloud: FFmpeg render and FFprobe"]
     F --> R["Ready for review"]
     R --> AP["Explicit approval and private download"]
 ```
@@ -264,7 +264,7 @@ valid checksum-bound artifact, an explicitly accepted replacement, or an explici
 placeholder. Create immutable `resolved-render-manifest/v1` binding tenant/revision/timeline,
 original voiceover, exact assets, avatar source/crop profile, output profile, and total frames.
 
-The exact authenticated tenant-owned personal-worker lease runs pinned FFmpeg/FFprobe against fresh
+The exact authenticated tenant-owned selected-backend lease runs pinned FFmpeg/FFprobe against fresh
 private R2 ports. It:
 
 - applies the exact source-aware SoulX full/split crop profile only after that Avatar Profile's
@@ -304,3 +304,11 @@ New Image Style analysis is version-scoped and account-private:
 5. Publish one immutable version; keep prior versions usable for pinned work.
 
 Ordinary project generation reads the stored style profile and performs no reference vision call.
+
+## Optional Cloud media boundary — 2026-09-28
+
+Only admitted, input-ready ASR, selected-span batches and final render jobs may rent Cloud compute.
+Cloud stops between expensive Kie/Fal provider-wait stages; continuation uses durable outbox/workflows
+without browser or personal-worker polling. Backend selection and retry lineage are immutable. An
+explicit render-only Cloud retry reuses accepted assets and the resolved manifest, with a fresh
+fenced attempt; it does not regenerate prompts/images/avatars. Local remains the default.

@@ -258,7 +258,7 @@ approved_decisions:
   DEC_QUEUE_003: fair_one_per_account_two_global_admission
   DEC_RENDER_001: superseded_cloud_run_render_decision_history
   DEC_RENDER_002: no_remotion_or_hyperframes
-  DEC_PERSONAL_WORKER_001: tenant_owned_windows_macos_asr_render_worker
+  DEC_PERSONAL_WORKER_001: optional_local_or_qualified_runpod_media_execution
   DEC_RUNPOD_003: superseded_two_serverless_lanes_historical_only
   DEC_RUNTIME_001: kie_fal_api_generation_and_tenant_worker_render_no_manual_pods
   DEC_SCHEDULER_001: seeded_deterministic_bounded_variation

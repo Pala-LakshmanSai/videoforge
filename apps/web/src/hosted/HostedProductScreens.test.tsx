@@ -61,6 +61,7 @@ import {
   HostedElapsed,
   HOSTED_SHA256_CHUNK_BYTES,
   audioDurationMs,
+  cloudMediaPhaseLabel,
   hostedFileSha256,
   hostedVoiceoverFilename,
   hostedProjectPollInterval,
@@ -74,6 +75,17 @@ import {
   stableHostedMediaUrl,
   transcriptionFailureMessage,
 } from "./HostedProductScreens";
+
+it("labels cloud phases from durable state without invented progress", () => {
+  expect(cloudMediaPhaseLabel("WAITING_CAPACITY", "OUTBOXED")).toBe("Waiting for capacity");
+  expect(cloudMediaPhaseLabel("DOWNLOADING", "RUNNING")).toBe("Downloading inputs");
+  expect(cloudMediaPhaseLabel("CHECKING", "RUNNING")).toBe("Checking video");
+  expect(cloudMediaPhaseLabel("SAVING", "RUNNING")).toBe("Saving");
+  expect(cloudMediaPhaseLabel("CLEAN", "SUCCEEDED")).toBe("Complete");
+  expect(cloudMediaPhaseLabel("STOPPING", "FAILED")).toBe("Stopping compute");
+  expect(cloudMediaPhaseLabel("STOPPING", "SUCCEEDED")).toBe("Stopping compute");
+  expect(cloudMediaPhaseLabel(null, "RUNNING")).toBe("Waiting for cloud status");
+});
 
 it("ticks elapsed stage time and freezes on success, failure, cancellation and reload", () => {
   vi.useFakeTimers();
@@ -392,7 +404,7 @@ it("does not render the previous project while a new project detail is loading",
     </QueryClientProvider>,
   );
   expect(screen.queryByText("First project")).not.toBeInTheDocument();
-  expect(screen.getByText("Connecting to your project and personal media worker…")).toBeVisible();
+  expect(screen.getByText("Connecting to your project…")).toBeVisible();
   releaseSecondProject();
   expect(await screen.findByText("Second project")).toBeInTheDocument();
 });
@@ -701,6 +713,58 @@ it("offers local render retry for the exact three failed attempts", async () => 
   await waitFor(() => expect(fetchMock.mock.calls.some(([input]) =>
     String(input).endsWith(`/projects/${projectId}/render-retry`))).toBe(true));
   expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/gpu-dispatch"))).toHaveLength(0);
+});
+
+it.each([
+  { sourceBackend: undefined, backendChoice: "PERSONAL_WORKER" },
+  { sourceBackend: undefined, backendChoice: "RUNPOD_POD" },
+  { sourceBackend: "RUNPOD_POD", backendChoice: "RUNPOD_POD" },
+] as const)("preserves exact retry backend and compatible payload: $sourceBackend to $backendChoice", async ({sourceBackend,backendChoice}) => {
+  const projectId="11111111-1111-4111-8111-111111111111";
+  const failedId="11111111-1111-4111-8111-111111111112";
+  const detail={project:{id:projectId,title:"Cloud recovery",created_at:"2026-09-26T05:00:00Z",
+    revision_id:"22222222-2222-4222-8222-222222222222",revision_state:"LOCKED"},
+    generation_provider:"KIE_FAL",attempts:[{id:failedId,kind:"RENDER",state:"FAILED",execution_backend:sourceBackend}],
+    cloud_media:{available:true},generation:null,gpu_transport:"DISABLED_UNQUALIFIED",gpu_readiness:gpuReadiness,
+    render_retry:{eligible:true,reason:"ELIGIBLE",failed_attempt_id:failedId,attempt_limit:5},stages:stageList({render:"FAILED"})};
+  const fetchMock=vi.fn(async(input:RequestInfo|URL, init?: RequestInit) => {
+    if(String(input).endsWith("/render-retry")) {
+      expect(JSON.parse(String(init?.body))).toEqual(backendChoice === "RUNPOD_POD"
+        ? {schema_version:"videoforge-hosted-render-retry/v2",failed_attempt_id:failedId,execution_backend:"RUNPOD_POD"}
+        : {schema_version:"videoforge-hosted-render-disk-retry/v1",failed_attempt_id:failedId});
+      return Response.json({state:"OUTBOXED"},{status:202});
+    }
+    return Response.json(detail);
+  });
+  vi.stubGlobal("fetch",fetchMock);renderHosted(<HostedProjectScreen projectId={projectId}/>);
+  const backend = await screen.findByLabelText("Retry media execution");
+  expect(backend).toHaveValue(sourceBackend ?? "PERSONAL_WORKER");
+  if (sourceBackend === "RUNPOD_POD")
+    expect(within(backend).getByRole("option", { name: /^Local$/ })).toBeDisabled();
+  fireEvent.change(backend,{target:{value:backendChoice}});
+  expect(screen.getByText(/Cloud adds compute cost/)).toBeInTheDocument();
+  fireEvent.click(within(stageRow("Assemble final video")).getByRole("button",{name:"Retry"}));
+  await waitFor(()=>expect(fetchMock.mock.calls.some(([input])=>String(input).endsWith("/render-retry"))).toBe(true));
+  expect(fetchMock.mock.calls.some(([input])=>/\/(gpu-dispatch|prompts|context)$/.test(String(input)))).toBe(false);
+});
+
+it.each(["STOPPING", "SAVING", "CLEAN"] as const)("shows exact Cloud cleanup phase without CPU percentages: %s", async (phase) => {
+  const projectId="11111111-1111-4111-8111-111111111111";
+  vi.stubGlobal("fetch",vi.fn(async()=>Response.json({
+    project:{id:projectId,title:"Cloud phase proof",created_at:"2026-09-26T05:00:00Z",revision_id:"22222222-2222-4222-8222-222222222222",revision_state:"LOCKED",media_execution_backend:"RUNPOD_POD"},
+    generation_provider:"KIE_FAL",cloud_media:{available:true},generation:null,gpu_transport:"DISABLED_UNQUALIFIED",gpu_readiness:gpuReadiness,
+    attempts:[{id:projectId,kind:"RENDER",state:"SUCCEEDED",execution_backend:"RUNPOD_POD",cloud_phase:phase}],
+    stages:[{id:"render",name:"Assemble final video",status:"COMPLETE",progress_percent:null}],
+  })));
+  renderHosted(<HostedProjectScreen projectId={projectId}/>);
+  const expected=phase === "CLEAN" ? "Complete" : phase === "STOPPING" ? "Stopping compute" : "Saving";
+  expect((await screen.findAllByText(expected, {exact:true})).length).toBeGreaterThan(0);
+  expect(within(stageRow("Assemble final video")).queryByText(/\d+\/100/)).not.toBeInTheDocument();
+  if(phase !== "CLEAN") {
+    expect(screen.queryByText("Production complete")).not.toBeInTheDocument();
+    expect(screen.queryByRole("progressbar", {name:"Overall video progress"})).not.toBeInTheDocument();
+    expect(screen.getByRole("status", {name:"Cloud media phase"})).toHaveTextContent(expected);
+  }
 });
 
 it.each([
@@ -2577,6 +2641,27 @@ describe("hosted product journey", () => {
         /Tenant-private Neon|GPU transport|DISABLED_UNQUALIFIED|V2-07|V2-08|MAGE_IMAGE|SOULX_AVATAR|Missing gates|APPROVED_EXACT|identity_output|cancellation_timeout|sha256:/u,
       ),
     ).not.toBeInTheDocument();
+  });
+
+  it("defaults to Local and removes the computer blocker only for selected enabled Cloud", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+      avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
+      styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
+      media_worker_state: "WAITING_FOR_YOUR_COMPUTER",
+      generation_provider: "KIE_FAL",
+      cloud_media: { available: true },
+      gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
+    })));
+    renderHosted(<HostedCreateProjectScreen />);
+    expect(await screen.findByText("Connect your computer")).toBeInTheDocument();
+    const backend = screen.getByLabelText("Media execution");
+    expect(backend).toHaveValue("PERSONAL_WORKER");
+    fireEvent.change(backend, { target: { value: "RUNPOD_POD" } });
+    expect(screen.getByText("Cloud execution is enabled")).toBeInTheDocument();
+    expect(screen.queryByText("Connect your computer")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open Settings" })).not.toBeInTheDocument();
+    fireEvent.change(backend, { target: { value: "PERSONAL_WORKER" } });
+    expect(screen.getByText("Connect your computer")).toBeInTheDocument();
   });
 
   it("imports a dropped voiceover through the hosted picker", async () => {

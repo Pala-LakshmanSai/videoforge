@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { CLOUD_VARIABLES, validateCloudVariables } from "../cloud-media/prepare-release.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 export const TEMPLATE_PATH = resolve(ROOT, "apps/web/wrangler.production.jsonc");
@@ -215,6 +216,7 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
   )
     fail("R2 or Workflow binding drifted");
   const expectedVars = [
+    ...CLOUD_VARIABLES.filter((key) => Object.hasOwn(config.vars ?? {}, key)),
     "MEDIA_WORKER_RELEASE_MANIFEST_JSON",
     "R2_ACCOUNT_ID",
     "VIDEOFORGE_COMMIT",
@@ -228,6 +230,7 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
     "VIDEOFORGE_R2_BUCKET_NAME",
     "VIDEOFORGE_R2_REGION",
   ];
+  validateCloudVariables(config.vars ?? {});
   if (
     !exactKeys(config.vars, expectedVars) ||
     config.vars.VIDEOFORGE_ENVIRONMENT !== "production" ||

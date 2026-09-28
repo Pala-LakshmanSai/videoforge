@@ -1,0 +1,37 @@
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import test from "node:test";
+import { prepareCloudConfig, prepareMigrationSql, validateCloudVariables } from "../../deploy/cloud-media/prepare-release.mjs";
+
+test("release preparation preserves bindings and defaults Cloud off even when supplied enabled", () => {
+  const baseline = { vars: { VIDEOFORGE_COMMIT: "a".repeat(40), VIDEOFORGE_GENERATION_PROVIDER: "KIE_FAL_API", VIDEOFORGE_CLOUD_MEDIA_ENABLED: "true" }, workflows: [{ binding: "VIDEO_WORKFLOW" }], secrets: ["EXISTING_SECRET_NAME"] };
+  const prepared = prepareCloudConfig(baseline, "b".repeat(40));
+  assert.deepEqual(prepared.workflows, baseline.workflows);
+  assert.deepEqual(prepared.secrets, baseline.secrets);
+  assert.equal(prepared.vars.VIDEOFORGE_GENERATION_PROVIDER, "KIE_FAL_API");
+  assert.equal(prepared.vars.VIDEOFORGE_CLOUD_MEDIA_ENABLED, "false");
+  assert.equal(baseline.vars.VIDEOFORGE_CLOUD_MEDIA_ENABLED, "true");
+  assert.throws(() => validateCloudVariables({ VIDEOFORGE_CLOUD_MEDIA_ENABLED: "true" }));
+  assert.throws(() => prepareCloudConfig(baseline, "b".repeat(40), { RUNPOD_API_KEY: "never-written" }));
+});
+
+test("only214 is emitted with complete observed ledger guard, archived identities retained", () => {
+  const sql = "SELECT 214;";
+  const record = (version) => ({ version, name: `migration_${version}`, filename: `${String(version).padStart(4, "0")}_migration_${version}.sql`, sha256: `sha256:${"a".repeat(64)}` });
+  const prior = [record(1), record(213)];
+  const current = { version: 214, name: "optional_runpod_media", filename: "0214_optional_runpod_media.sql", sha256: `sha256:${createHash("sha256").update(sql).digest("hex")}` };
+  const manifest = { migrations: [...prior, current] };
+  const ledger = [prior[0], record(21), record(148), prior[1]];
+  const prepared = prepareMigrationSql(ledger, manifest, sql);
+  assert.match(prepared, /pg_advisory_xact_lock\(1448494662,1\)/u);
+  assert.match(prepared, /IS DISTINCT FROM/u);
+  assert.ok(prepared.includes(JSON.stringify(ledger)));
+  assert.equal((prepared.match(/INSERT INTO public.videoforge_schema_migrations/gu) ?? []).length, 1);
+  assert.match(prepared, /VALUES\(214,/u);
+  assert.throws(() => prepareMigrationSql(ledger.slice(0, -1), manifest, sql));
+  assert.throws(() => prepareMigrationSql([...ledger, current], manifest, sql));
+  assert.ok(prepareMigrationSql([...ledger, record(212)], manifest, sql).includes("0212_migration_212.sql"));
+  assert.throws(() => prepareMigrationSql([...ledger, record(213)], manifest, sql));
+  assert.throws(() => prepareMigrationSql(ledger, manifest, `${sql}SELECT 1;`));
+  assert.throws(() => prepareMigrationSql(ledger.map((entry) => entry.version === 213 ? { ...entry, sha256: `sha256:${"b".repeat(64)}` } : entry), manifest, sql));
+});

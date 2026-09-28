@@ -482,3 +482,29 @@ PKCE credential retrieval, account ownership, revoked-device recovery, lease che
 approval remain shared. Existing paired workers verify command ownership through `connect-check`
 without replacing their credential. Installer tokens are deleted from private temporary files.
 Scripts refuse to replace a running worker and never interrupt existing jobs.
+
+## Optional media execution compatibility — 2026-09-28
+
+Migration `0214_optional_runpod_media.sql` is additive: revision `media_execution_backend` defaults
+to `PERSONAL_WORKER`; attempts may use a separate `RUNPOD_POD` backend; old `CLOUD_RUN` and personal
+worker rows retain identity. Durable reservations/jobs and multipart authorities are tenant/attempt
+scoped. Apply only exact migration214 after verifying the production ledger and source checksum;
+never replay archived/omitted migrations or change historical migration bytes.
+
+Hosted create/v2 and preflight/v1 accept optional exact `execution_backend` (`PERSONAL_WORKER` or
+`RUNPOD_POD`). Omission retains Local; create/v1 remains unchanged. Selection participates in request
+idempotency/conflict hashing. Revision_config/v2 and accepted immutable media/manifests stay unchanged.
+Legacy render-disk-retry/v1 retains its strict Local payload with no backend field. Explicit Cloud
+uses render-retry/v2 with exact `execution_backend=RUNPOD_POD` for a fresh bounded attempt. The UI
+does not offer Cloud-to-Local retry until that separate recovery is implemented. Stale/replaced leases cannot claim, renew ports or promote outputs.
+
+Cloud upload ports bind exact object, expected size and whole-object SHA256 to durable authority.
+Multipart part ETags identify parts rather than prove the final checksum. Artifacts are verified
+before receipt/terminal acceptance; uncertain upload/callbacks reconcile the same authority without
+rerendering. See `cloud-media/RELEASE_RUNBOOK.md` for release and remaining qualification gates.
+
+Cloud upload uses a conservative single-PUT object-body ceiling of5,363,466,240 bytes: R2 nominal5GiB
+minus5MiB for included headers (official footnote4). The existing10GiB application artifact cap is
+not a single-PUT/storage guarantee. Compatible Local files below that ceiling retain their current
+upload behavior, including decimal5GB+ files; larger Cloud objects require scoped multipart.
+[Cloudflare R2 limits](https://developers.cloudflare.com/r2/platform/limits/).

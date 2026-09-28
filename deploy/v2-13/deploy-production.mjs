@@ -17,6 +17,8 @@ const PROVIDER_FREE_ENV = Object.freeze({
   ...process.env,
   CI: "1",
   WRANGLER_SEND_METRICS: "false",
+  // Build verification must use installed locked dependencies, never implicitly reinstall them.
+  pnpm_config_verify_deps_before_run: "false",
 });
 const fail = (message) => {
   throw new Error(`V2-13 production deployment wrapper: ${message}`);

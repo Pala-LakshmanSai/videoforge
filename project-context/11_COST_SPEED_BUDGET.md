@@ -46,7 +46,7 @@ Other planning references:
   the recorded pricing page. Operations still count.
 - Cloudflare, Neon, R2, Runware, and RunPod pricing/allowances remain deployment-time measurements, not a
   permanent `$0` promise.
-- Personal-worker ASR/render has `$0` provider compute cost, but consumes the user's electricity,
+- Local personal-worker ASR/span/render has `$0` provider compute cost, but consumes the user's electricity,
   device time, storage, and network. Those are disclosed separately and are never used to claim the
   complete video costs `$0`.
 
@@ -218,3 +218,12 @@ Any mandatory model, enhancement pass, multimodal QA call, upscaler, AI-video st
 always-on worker, larger volume, or higher concurrency must update this file with current recurring,
 per-attempt, and representative-video cost before activation. A paid checkpoint proposal states exact
 operations, current GPU/rate, fixed storage effect, finite spend cap, stop conditions, and cleanup.
+
+## Cloud media cost qualification — 2026-09-28
+
+Explicit Cloud adds compute cost and requires its own finite spend authority. Frontier's USD1.12/h,
+USD5 and120-minute settings are references, not VideoForge approval. Read-only catalogue observed
+rank1 RTX PRO4500 Blackwell Server32GB at USD0.72/h GPU/LOW availability, plus estimated100GB
+temporary disk USD0.013889/h (USD0.733889/h all-in). Actual returned CPU/RAM/resources and charge
+must pass approved bounds before execution. VideoForge speed,45-minute scratch peaks and settled
+billing remain unmeasured; no reliability/capacity guarantee follows from the listing.

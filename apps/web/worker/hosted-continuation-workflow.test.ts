@@ -9,6 +9,7 @@ import type { HostedContinuationWorkflowParameters } from "./hosted-continuation
  * shape.
  */
 const collaborators = vi.hoisted(() => ({
+  reconcileCloudMediaReservations: vi.fn(async (): Promise<number> => 0),
   runHostedContinuation: vi.fn(
     async (
       _environment: unknown, _context: unknown, _target?: unknown,
@@ -21,6 +22,10 @@ const collaborators = vi.hoisted(() => ({
 vi.mock("../src/server/hosted/stage-continuation-sweep", () => ({
   runHostedContinuation: collaborators.runHostedContinuation,
   ensureHostedPairObservers: collaborators.ensureHostedPairObservers,
+}));
+
+vi.mock("../src/server/hosted/runpod-media", () => ({
+  reconcileCloudMediaReservations: collaborators.reconcileCloudMediaReservations,
 }));
 
 // Imported after the mock declaration (vitest hoists `vi.mock` above all imports).
@@ -86,6 +91,8 @@ async function runWorkflow(payload: unknown, sequence: string[] = []) {
 }
 
 beforeEach(() => {
+  collaborators.reconcileCloudMediaReservations.mockReset();
+  collaborators.reconcileCloudMediaReservations.mockResolvedValue(0);
   collaborators.runHostedContinuation.mockReset();
   collaborators.runHostedContinuation.mockImplementation(async () => ["project:context"]);
   collaborators.ensureHostedPairObservers.mockReset();
@@ -94,6 +101,19 @@ beforeEach(() => {
 });
 
 describe("hosted continuation Workflow loop", () => {
+  it("retains an independent cleanup observer beyond its bounded window and adopts a lost start acknowledgement", async () => {
+    collaborators.reconcileCloudMediaReservations.mockResolvedValue(1);
+    const create = vi.fn().mockResolvedValueOnce({ id: "accepted" }).mockRejectedValueOnce(new Error("lost acknowledgement"));
+    const get = vi.fn(async () => ({ status: async () => ({ status: "running" }) }));
+    const runner = new HostedContinuationWorkflow({} as never, { ...environment, HOSTED_CONTINUATION_WORKFLOW: { create, get } } as never);
+    for (let replay = 0; replay < 2; replay += 1) {
+      await runner.run(event({ reason: "cloud-cleanup-recovery" }), recordingStep([]).step as unknown as WorkflowStep);
+    }
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(create.mock.calls[0]![0]).toEqual(create.mock.calls[1]![0]);
+    expect(create.mock.calls[0]![0].id).toMatch(/^cloud-safety-[0-9a-f]{40}$/u);
+    expect(get).toHaveBeenCalledWith(create.mock.calls[0]![0].id);
+  });
   it("runs a targeted prompt handoff one durable step per accepted batch", async () => {
     const target = {
       accountId: "bbbbbbbb-bbbb-bbbb-7bbb-bbbbbbbbbbbb",
@@ -166,6 +186,7 @@ describe("hosted continuation Workflow loop", () => {
     expect(collaborators.runHostedContinuation).toHaveBeenCalledTimes(
       HOSTED_CONTINUATION_ITERATIONS,
     );
+    expect(collaborators.reconcileCloudMediaReservations).toHaveBeenCalledTimes(HOSTED_CONTINUATION_ITERATIONS);
     expect(summary).toMatchObject({
       schema_version: "videoforge-hosted-continuation-driver/v1",
       state: "BOUNDED_WINDOW_COMPLETE",

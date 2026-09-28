@@ -698,6 +698,7 @@ def _run_media_subprocess(
     *,
     retry_once: bool,
     before_retry: Callable[[], None],
+    timeout_seconds: float = 86_400,
 ) -> tuple[int, bytes]:
     """Run one claimed job, replacing only an abnormal local child-process exit once."""
 
@@ -715,7 +716,7 @@ def _run_media_subprocess(
         )
         monitor.attach(process)
         try:
-            stdout, _stderr = process.communicate(timeout=86_400)
+            stdout, _stderr = process.communicate(timeout=timeout_seconds)
         except subprocess.TimeoutExpired:
             _terminate_process(process)
             process.communicate()

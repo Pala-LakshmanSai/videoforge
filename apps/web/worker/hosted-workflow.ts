@@ -29,9 +29,8 @@ function parameters(value: HostedWorkflowParameters): HostedWorkflowParameters {
 }
 
 /**
- * Cloudflare remains the durable coordinator, but it no longer dispatches or observes a paid
- * compute provider. Personal workers claim account-owned attempts through outbound HTTPS. The
- * workflow only repairs abandoned leases, settles queued cancellation, and enforces deadlines.
+ * Cloudflare coordinates exact immutable CPU attempts. Local execution retains its desktop
+ * reconciler; explicit Cloud execution reserves and observes its own temporary RunPod placement.
  */
 export class HostedVideoWorkflow extends WorkflowEntrypoint<
   HostedRuntimeEnvironment,
@@ -46,6 +45,40 @@ export class HostedVideoWorkflow extends WorkflowEntrypoint<
     // Provider-free activation seam. Production remains DISABLED_UNQUALIFIED, which returns before
     // reading any paid-pair secret binding or constructing a provider transport.
     hostedPairProductionBindingState(this.env);
+
+    const executionBackend = await step.do("read immutable execution backend", async () => {
+      const pool = createNeonPool(config.neon.databaseUrl);
+      try {
+        return await createNeonExecutor(pool).transaction(async (transaction) => {
+          await transaction.query("SELECT set_config($1, $2, true)", [
+            TENANT_PRINCIPAL_SETTING, params.accountId,
+          ]);
+          const result = await transaction.query<{ execution_backend: string }>(
+            `SELECT execution_backend FROM hosted_cpu_job_attempts
+              WHERE id = $1 AND account_id = $2 AND workspace_id = $3`,
+            [params.attemptId, params.accountId, params.workspaceId],
+          );
+          if (!result.rows[0]) throw new Error("Hosted CPU execution lineage is unavailable.");
+          return result.rows[0].execution_backend;
+        });
+      } finally {
+        await pool.end();
+      }
+    });
+    if (executionBackend === "RUNPOD_POD") {
+      const { runCloudMediaObservation } = await import("../src/server/hosted/runpod-media");
+      // Every observation owns its durable reservation. Workflow retries must never replay create.
+      for (let observation = 0; observation < 800; observation += 1) {
+        const outcome = await step.do(`reconcile cloud media ${observation}`, {
+          retries: { limit: 0, delay: "1 second", backoff: "constant" },
+        }, () => runCloudMediaObservation(this.env, config, params));
+        if (["SUCCEEDED", "FAILED", "CANCELLED", "EXPIRED"].includes(outcome.state))
+          return outcome;
+        await step.sleep(`wait for cloud media ${observation}`, `${outcome.delaySeconds ?? 30} seconds`);
+      }
+      // Cleanup uncertainty keeps the SQL capacity reservation active for the external reconciler.
+      return { state: "RECONCILING" };
+    }
 
     // Five-minute lease granularity keeps the complete 24-hour offline window inside a bounded
     // 290-observation Workflow while still repairing an abandoned device promptly. The final

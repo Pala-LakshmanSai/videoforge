@@ -206,7 +206,7 @@ export async function reconcileHostedV209SpanWorkflowTerminal(
                 result_checksum_sha256
            FROM hosted_cpu_job_attempts
           WHERE id = $1 AND account_id = $2 AND workspace_id = $3
-            AND execution_backend = 'PERSONAL_WORKER'`,
+            AND execution_backend IN ('PERSONAL_WORKER', 'RUNPOD_POD')`,
         [scope.attemptId, scope.accountId, scope.workspaceId],
       );
       const row = result.rows[0];
