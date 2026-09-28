@@ -355,7 +355,11 @@ async function handleCpuSubmission(
             AND reservation.id = receipt.reservation_id
           WHERE receipt.account_id = $1 AND receipt.workspace_id = $2
             AND receipt.id = ANY($3::uuid[]) AND receipt.deleted_at IS NULL
-            AND reservation.project_id = $4 AND reservation.project_revision_id = $5
+            AND reservation.project_id = $4 AND (reservation.project_revision_id = $5 OR (
+              $6::text IN ('ASR','SPAN_AUDIO','RENDER') AND EXISTS(SELECT 1 FROM cloud_media_asr_recoveries recovery
+                WHERE recovery.account_id=receipt.account_id AND recovery.workspace_id=receipt.workspace_id
+                  AND recovery.project_id=reservation.project_id AND recovery.project_revision_id=$5
+                  AND recovery.source_receipt_id=receipt.id)))
             AND reservation.state = 'COMMITTED'`,
         [
           scope.account_id,
@@ -363,6 +367,7 @@ async function handleCpuSubmission(
           receiptIds as never,
           submission.projectId,
           submission.projectRevisionId,
+          submission.kind,
         ],
       );
       if (artifacts.rows.length !== receiptIds.length) return null;

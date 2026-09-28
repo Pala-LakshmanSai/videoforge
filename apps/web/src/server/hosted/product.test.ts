@@ -2601,3 +2601,51 @@ describe("hosted product route contract", () => {
     expect(query).toContain("attempt.state");
   });
 });
+
+describe("Cloud ASR immutable successor recovery", () => {
+  it("reuses one durable successor and its exact retained receipt on duplicate explicit retries", async () => {
+    const original=testState.query.getMockImplementation()!;
+    const previous=testState.projectRows[0]!;
+    const failedId="77777777-7777-4777-8777-777777777777",successor="88888888-8888-4888-8888-888888888888";
+    testState.projectRows[0]={revision_id:"22222222-2222-4222-8222-222222222222",revision_number:1,
+      voiceover_asset_id:"33333333-3333-4333-8333-333333333333",checksum_sha256:`sha256:${"a".repeat(64)}`,
+      content_type:"audio/mpeg",duration_ms:159216,receipt_id:"44444444-4444-4444-8444-444444444444",
+      asr_attempt_count:1,asr_total_attempt_count:1,latest_asr_state:"FAILED",latest_asr_backend:"RUNPOD_POD",latest_asr_attempt_id:failedId};
+    testState.query.mockImplementation(async (statement,parameters)=>{
+      if(statement.includes("videoforge_prepare_cloud_media_asr_recovery")) {
+        expect(parameters).toEqual([testState.scopeRows[0]?.account_id,testState.scopeRows[0]?.workspace_id,
+          testState.scopeRows[0]?.user_id,PROJECT_ID,failedId]);
+        testState.projectRows[0]={...testState.projectRows[0],revision_id:successor,revision_number:2,
+          asr_attempt_count:0,asr_total_attempt_count:0,latest_asr_state:null,latest_asr_attempt_id:null};
+        return {rows:[{revision_id:successor}],affectedRows:1};
+      }
+      return original(statement,parameters);
+    });
+    try {
+      const cloudConfig={...stagingConfig,cloudMedia:{enabled:true}} as HostedRuntimeConfiguration;
+      const first=await handleHostedProductRequest(request(`/api/v2/hosted/projects/${PROJECT_ID}/asr`),environment,cloudConfig,executionContext);
+      const second=await handleHostedProductRequest(request(`/api/v2/hosted/projects/${PROJECT_ID}/asr`),environment,cloudConfig,executionContext);
+      expect(first?.status).toBe(202);expect(second?.status).toBe(202);
+      const firstBody=await first?.json() as {project_revision_id:string;cpu_submission:{objects:{artifact_receipt_id:string}[];idempotency_key:string}},secondBody=await second?.json();
+      expect(firstBody).toEqual(secondBody);
+      expect(firstBody.project_revision_id).toBe(successor);
+      expect(firstBody.cpu_submission.objects[0]?.artifact_receipt_id).toBe("44444444-4444-4444-8444-444444444444");
+      expect(firstBody.cpu_submission.idempotency_key).toContain(`revision-${successor}-asr-v1`);
+      expect(testState.query.mock.calls.filter(([statement])=>statement.includes("videoforge_prepare_cloud_media_asr_recovery"))).toHaveLength(1);
+    } finally {testState.projectRows[0]=previous;testState.query.mockImplementation(original);}
+  });
+  it("maps an unsettled or ineligible Cloud recovery to a bounded response without changing Local", async () => {
+    const original=testState.query.getMockImplementation()!,previous=testState.projectRows[0]!;
+    testState.projectRows[0]={revision_id:"22222222-2222-4222-8222-222222222222",latest_asr_state:"FAILED",
+      latest_asr_backend:"RUNPOD_POD",latest_asr_attempt_id:"77777777-7777-4777-8777-777777777777"};
+    testState.query.mockImplementation(async (statement,parameters)=>{
+      if(statement.includes("videoforge_prepare_cloud_media_asr_recovery")) throw Object.assign(new Error("private database details"),{code:"23514"});
+      return original(statement,parameters);
+    });
+    try {
+      const result=await handleHostedProductRequest(request(`/api/v2/hosted/projects/${PROJECT_ID}/asr`),environment,
+        {...stagingConfig,cloudMedia:{enabled:true}} as HostedRuntimeConfiguration,executionContext);
+      expect(result?.status).toBe(409);expect(await result?.json()).toEqual({error:{code:"HOSTED_ASR_RECOVERY_NOT_ELIGIBLE"}});
+    } finally {testState.projectRows[0]=previous;testState.query.mockImplementation(original);}
+  });
+});

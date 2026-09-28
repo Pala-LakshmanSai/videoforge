@@ -55,6 +55,8 @@ export interface HostedCommittedArtifact {
   readonly taskKey: string | null;
   /** Generation task UUID returned with the accepted visual by the render-ready database read. */
   readonly generationTaskId?: string;
+  /** Exact persisted Cloud ASR recovery reference, verified by the hosted handoff. */
+  readonly retainedVoiceoverOriginRevisionId?: string;
   readonly assetId: string;
   readonly receiptId: string;
   readonly objectKey: string;
@@ -188,7 +190,9 @@ function exactScope(
     match[1] !== input.accountId ||
     match[2] !== input.workspaceId ||
     match[3] !== input.revision.projectId ||
-    match[4] !== input.revision.projectRevisionId ||
+    match[4] !== (browserVoiceover && artifact.barrierAcceptance==="COMMITTED_INPUT" &&
+      artifact.acceptedAttemptId===null && artifact.retainedVoiceoverOriginRevisionId && UUID.test(artifact.retainedVoiceoverOriginRevisionId)
+        ? artifact.retainedVoiceoverOriginRevisionId : input.revision.projectRevisionId) ||
     match[5] !== expectedLane ||
     (match[7] !== artifact.assetId && !browserVoiceover && !apiVisual) ||
     (artifact.acceptedAttemptId !== null && match[6] !== artifact.acceptedAttemptId) ||

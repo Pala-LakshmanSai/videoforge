@@ -245,7 +245,7 @@ function artifact(
     HostedCommittedArtifact,
     "lane" | "kind" | "taskKey" | "acceptedAttemptId" | "barrierAcceptance"
   > &
-    Partial<Pick<HostedCommittedArtifact, "generationTaskId">>,
+    Partial<Pick<HostedCommittedArtifact, "generationTaskId" | "retainedVoiceoverOriginRevisionId">>,
 ): HostedCommittedArtifact {
   const row = record(source);
   const contentLength = Number(row.contentLength);
@@ -275,6 +275,7 @@ function artifact(
     receiptDeletedAt: null,
     acceptedAttemptId: extra.acceptedAttemptId,
     ...(extra.generationTaskId ? { generationTaskId: extra.generationTaskId } : {}),
+    ...(extra.retainedVoiceoverOriginRevisionId ? {retainedVoiceoverOriginRevisionId:extra.retainedVoiceoverOriginRevisionId} : {}),
     barrierAcceptance: extra.barrierAcceptance,
     kind: extra.kind,
     ...(row.sourceScopeKind === "SYSTEM"
@@ -288,6 +289,36 @@ function artifact(
           }),
         }
       : {}),
+  });
+}
+
+/** A successor may reuse only the immutable voiceover receipt authorized by its ASR recovery. */
+export async function loadHostedCloudRecoveryVoiceoverOrigin(database:TransactionalSqlExecutor,
+  scope:{accountId:string;workspaceId:string;projectId:string;revisionId:string},source:unknown):Promise<string> {
+  const row=record(source);
+  return database.transaction(async transaction=>{
+    await transaction.query("SELECT set_config($1,$2,true)",["videoforge.account_id",scope.accountId]);
+    const result=await transaction.query<{origin_revision_id:string}>(`
+      SELECT reserved.project_revision_id::text AS origin_revision_id
+        FROM cloud_media_asr_recoveries recovery
+        JOIN artifact_receipts receipt ON receipt.id=recovery.source_receipt_id
+          AND receipt.account_id=recovery.account_id AND receipt.workspace_id=recovery.workspace_id
+        JOIN artifact_reservations reserved ON reserved.id=receipt.reservation_id
+          AND reserved.account_id=receipt.account_id AND reserved.workspace_id=receipt.workspace_id
+        JOIN assets asset ON asset.id=reserved.asset_id AND asset.account_id=reserved.account_id AND asset.workspace_id=reserved.workspace_id
+        JOIN project_revisions revision ON revision.id=recovery.project_revision_id
+          AND revision.account_id=recovery.account_id AND revision.workspace_id=recovery.workspace_id
+       WHERE recovery.account_id=$1 AND recovery.workspace_id=$2 AND recovery.project_id=$3 AND recovery.project_revision_id=$4
+         AND receipt.id=$5 AND asset.id=$6 AND asset.id=revision.voiceover_asset_id AND asset.kind='VOICEOVER'
+         AND reserved.project_id=recovery.project_id AND reserved.lane='INPUT' AND reserved.state='COMMITTED'
+         AND receipt.deleted_at IS NULL AND receipt.object_key=$7 AND reserved.object_key=receipt.object_key
+         AND receipt.checksum_sha256=$8 AND asset.binary_sha256=receipt.checksum_sha256
+         AND receipt.content_length=$9 AND receipt.content_type=$10
+         AND asset.state IN ('VERIFIED','ACCEPTED')`,[scope.accountId,scope.workspaceId,scope.projectId,scope.revisionId,
+      text(row.receiptId,UUID),text(row.assetId,UUID),text(row.objectKey),text(row.sha256,SHA256),Number(row.contentLength),text(row.contentType)]);
+    const origin=result.rows[0]?.origin_revision_id;
+    if(result.rows.length!==1 || !origin || !UUID.test(origin)) throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
+    return origin;
   });
 }
 
@@ -364,7 +395,11 @@ export function createHostedV209RenderHandoff(input: {
         projectId,
         revisionId,
       };
+      const rawVoiceover=record(ready.voiceover);
+      const retainedVoiceoverOriginRevisionId=text(rawVoiceover.objectKey).startsWith(revisionPrefix) ? undefined
+        : await loadHostedCloudRecoveryVoiceoverOrigin(input.database,artifactScope,rawVoiceover);
       const voiceover = artifact(ready.voiceover, artifactScope, {
+        ...(retainedVoiceoverOriginRevisionId ? {retainedVoiceoverOriginRevisionId} : {}),
         lane: "INPUT",
         kind: "VOICEOVER",
         taskKey: null,

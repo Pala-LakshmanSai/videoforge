@@ -881,3 +881,14 @@ describe("hosted render-plan materialization", () => {
     });
   });
 });
+
+it("permits only a proven retained browser voiceover origin after Cloud ASR recovery",async()=>{
+  const input=await validInput(),origin="99999999-9999-4999-8999-999999999999";
+  const voiceover={...input.voiceover,objectKey:`tenant/${ACCOUNT}/workspace/${WORKSPACE}/project/${PROJECT}/revision/${origin}/lane/input/job/browser-upload/artifact/voiceover`,
+    retainedVoiceoverOriginRevisionId:origin};
+  expect((await materializeHostedRenderPlan(new MemoryDatabase(),{...input,voiceover})).replayed).toBe(false);
+  await expectCode(materializeHostedRenderPlan(new MemoryDatabase(),{...input,voiceover:{...voiceover,retainedVoiceoverOriginRevisionId:undefined}}),"HOSTED_RENDER_ARTIFACT_DRIFTED");
+  await expectCode(materializeHostedRenderPlan(new MemoryDatabase(),{...input,voiceover:{...voiceover,objectKey:voiceover.objectKey.replace(PROJECT,origin)}}),"HOSTED_RENDER_ARTIFACT_DRIFTED");
+  const visual={...input.acceptedVisuals[0]!,objectKey:input.acceptedVisuals[0]!.objectKey.replace(REVISION,origin),retainedVoiceoverOriginRevisionId:origin};
+  await expectCode(materializeHostedRenderPlan(new MemoryDatabase(),{...input,acceptedVisuals:[visual,...input.acceptedVisuals.slice(1)]}),"HOSTED_RENDER_ARTIFACT_DRIFTED");
+});

@@ -192,6 +192,7 @@ export const NON_PORTABLE_TABLE_NAMES = [
   "cloud_media_reservations",
   "cloud_media_jobs",
   "cloud_media_render_recoveries",
+  "cloud_media_asr_recoveries",
   "cloud_media_multipart_uploads",
   "cloud_media_multipart_parts",
   "hosted_auth_users",

@@ -5504,6 +5504,7 @@ async function asrHandoff(
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
   const pool = createNeonPool(config.neon.databaseUrl);
+  let cloudRecovery=false;
   try {
     const scope = await sessionScope(request, config, pool, executionContext);
     if (scope instanceof Response) return scope;
@@ -5512,7 +5513,7 @@ async function asrHandoff(
         "videoforge.account_id",
         scope.account_id,
       ]);
-      const result = await transaction.query<{
+      const load = () => transaction.query<{
         revision_id: string;
         revision_number: number | string;
         voiceover_asset_id: string;
@@ -5523,6 +5524,8 @@ async function asrHandoff(
         asr_attempt_count: number | string;
         asr_total_attempt_count: number | string;
         latest_asr_state: string | null;
+        latest_asr_backend: string | null;
+        latest_asr_attempt_id: string | null;
       }>(
         `SELECT revision.id::text AS revision_id,
                 revision.revision_number,
@@ -5558,6 +5561,14 @@ async function asrHandoff(
                     AND attempt.project_id = project.id
                     AND attempt.project_revision_id = revision.id
                     AND attempt.kind = 'ASR') AS asr_total_attempt_count,
+                (SELECT attempt.execution_backend FROM hosted_cpu_job_attempts AS attempt
+                  WHERE attempt.account_id=project.account_id AND attempt.workspace_id=project.workspace_id
+                    AND attempt.project_revision_id=revision.id AND attempt.kind='ASR'
+                  ORDER BY attempt.created_at DESC,attempt.id DESC LIMIT 1) AS latest_asr_backend,
+                (SELECT attempt.id::text FROM hosted_cpu_job_attempts AS attempt
+                  WHERE attempt.account_id=project.account_id AND attempt.workspace_id=project.workspace_id
+                    AND attempt.project_revision_id=revision.id AND attempt.kind='ASR'
+                  ORDER BY attempt.created_at DESC,attempt.id DESC LIMIT 1) AS latest_asr_attempt_id,
                 (SELECT attempt.state FROM hosted_cpu_job_attempts AS attempt
                   WHERE attempt.account_id = project.account_id
                     AND attempt.workspace_id = project.workspace_id
@@ -5581,7 +5592,6 @@ async function asrHandoff(
              ON reservation.account_id = revision.account_id
             AND reservation.workspace_id = revision.workspace_id
             AND reservation.project_id = revision.project_id
-            AND reservation.project_revision_id = revision.id
             AND reservation.asset_id = asset.id
             AND reservation.state = 'COMMITTED'
            JOIN artifact_receipts AS receipt
@@ -5589,6 +5599,11 @@ async function asrHandoff(
             AND receipt.workspace_id = reservation.workspace_id
             AND receipt.reservation_id = reservation.id
             AND receipt.deleted_at IS NULL
+            AND (reservation.project_revision_id = revision.id OR EXISTS(
+              SELECT 1 FROM cloud_media_asr_recoveries recovery
+                WHERE recovery.account_id=revision.account_id AND recovery.workspace_id=revision.workspace_id
+                  AND recovery.project_id=revision.project_id AND recovery.project_revision_id=revision.id
+                  AND recovery.source_receipt_id=receipt.id))
             AND receipt.checksum_sha256 = asset.binary_sha256
           WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
             AND project.status = 'ACTIVE'
@@ -5596,6 +5611,21 @@ async function asrHandoff(
           LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId, config.mediaWorkerRelease.executionBundleSha256],
       );
+      let result=await load();
+      const latest=result.rows[0];
+      if(latest?.latest_asr_backend==="RUNPOD_POD" && latest.latest_asr_state==="FAILED") {
+        cloudRecovery=true;
+        if(!config.cloudMedia) throw new Error("CLOUD_MEDIA_UNAVAILABLE");
+        if(!latest.latest_asr_attempt_id || !UUID.test(latest.latest_asr_attempt_id))
+          throw new Error("HOSTED_ASR_RECOVERY_NOT_ELIGIBLE");
+        const recovered=await transaction.query<{revision_id:string}>(
+          "SELECT public.videoforge_prepare_cloud_media_asr_recovery($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid) AS revision_id",
+          [scope.account_id,scope.workspace_id,scope.user_id,projectId,latest.latest_asr_attempt_id]);
+        const revision=recovered.rows[0]?.revision_id;
+        if(!revision || !UUID.test(revision)) throw new Error("HOSTED_ASR_RECOVERY_NOT_ELIGIBLE");
+        result=await load();
+        if(result.rows[0]?.revision_id!==revision) throw new Error("HOSTED_ASR_RECOVERY_NOT_ELIGIBLE");
+      }
       return result.rows[0] ?? null;
     });
     if (!state) return response({ error: { code: "HOSTED_ASR_HANDOFF_NOT_READY" } }, 409);
@@ -5697,6 +5727,13 @@ async function asrHandoff(
       },
       202,
     );
+  } catch(error) {
+    if(error instanceof Error && error.message==="CLOUD_MEDIA_UNAVAILABLE")
+      return response({error:{code:"CLOUD_MEDIA_UNAVAILABLE"}},503);
+    if((error instanceof Error && error.message==="HOSTED_ASR_RECOVERY_NOT_ELIGIBLE") ||
+      (cloudRecovery && error && typeof error==="object" && "code" in error && ["42501","23514","23505","55000"].includes(String(error.code))))
+      return response({error:{code:"HOSTED_ASR_RECOVERY_NOT_ELIGIBLE"}},409);
+    throw error;
   } finally {
     await pool.end();
   }
