@@ -10,6 +10,20 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { QueueScreen } from "./QueueScreen";
 
+function renderQueue(projects: Record<string,unknown>[], workerState="WAITING_FOR_YOUR_COMPUTER", cloudAvailable=false) {
+  vi.stubEnv("VITE_VIDEOFORGE_PROVIDER_MODE", "staging");
+  vi.stubGlobal("fetch",vi.fn(async () => Response.json({schema_version:"videoforge-hosted-queue/v2",
+    worker_state:workerState,cloud_media_available:cloudAvailable,projects})));
+  const router=createRouter({routeTree:createRootRoute({component:QueueScreen}),
+    history:createMemoryHistory({initialEntries:["/"]})});
+  const client=new QueryClient({defaultOptions:{queries:{retry:false}}});
+  render(<QueryClientProvider client={client}><RouterProvider router={router}/></QueryClientProvider>);
+}
+
+const cloudProject={project_id:"22222222-2222-4222-8222-222222222222",title:"Cloud proof",
+  state:"IN_PROGRESS",stage:"Final assembly",cancellable_attempt_id:null,execution_backend:"RUNPOD_POD",
+  created_at:"2026-08-17T10:00:00Z",updated_at:"2026-08-17T10:01:00Z"};
+
 describe("hosted queue", () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -17,6 +31,48 @@ describe("hosted queue", () => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
+  });
+
+  it.each([["WAITING_CAPACITY","Waiting for capacity"],["CREATING","Starting"],["STARTING","Starting"],
+    ["DOWNLOADING","Downloading inputs"],["RENDERING","Rendering"],["CHECKING","Checking video"],
+    ["SAVING","Saving"],["STOPPING","Stopping compute"],["COMPLETE","Complete"]] as const)(
+    "shows durable Cloud phase %s without requiring a computer",async (phase,label) => {
+      renderQueue([{...cloudProject,cloud_phase:phase,latest_job_state:phase==="STOPPING" ? "SUCCEEDED" : "RUNNING"}],"ONLINE");
+      expect(await screen.findByText("Cloud proof")).toBeInTheDocument();
+      expect(screen.getByText(label,{selector:".queue-card__explanation"})).toBeInTheDocument();
+      expect(screen.getByText("no connected computer required")).toBeInTheDocument();
+      expect(screen.queryByText("Connected")).not.toBeInTheDocument();
+      expect(screen.queryByText("Your computer")).not.toBeInTheDocument();
+      expect(screen.queryByText("Work pauses safely if your computer disconnects.")).not.toBeInTheDocument();
+      expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    });
+
+  it("keeps mixed Local and Cloud computer requirements explicit",async () => {
+    renderQueue([{...cloudProject,cloud_phase:"RENDERING"},{...cloudProject,
+      project_id:"33333333-3333-4333-8333-333333333333",title:"Local proof",execution_backend:"PERSONAL_WORKER",
+      active_job_kind:"ASR",cloud_phase:null}]);
+    expect(await screen.findByText("Local proof")).toBeInTheDocument();
+    expect(screen.getByText("Local computer")).toBeInTheDocument();
+    expect(screen.getByText("Not connected")).toBeInTheDocument();
+    expect(screen.getByText("Transcribing voiceover.")).toBeInTheDocument();
+    expect(screen.getByText("Local work pauses safely if your computer disconnects. Cloud work continues independently.")).toBeInTheDocument();
+  });
+
+  it("does not require computer setup for an empty queue with Cloud available",async () => {
+    renderQueue([],"WAITING_FOR_YOUR_COMPUTER",true);
+    expect(await screen.findByText("No media jobs yet")).toBeInTheDocument();
+    expect(screen.getByText("Create a project and choose Local or Cloud execution.")).toBeInTheDocument();
+    expect(screen.queryByText("Connect your computer in Settings before generating a video.")).not.toBeInTheDocument();
+  });
+
+  it("does not claim Cloud compute is active during provider work or a user action",async () => {
+    renderQueue([{...cloudProject,cloud_phase:null,active_job_kind:null},{...cloudProject,
+      project_id:"33333333-3333-4333-8333-333333333333",title:"Ready for review",state:"ACTION_REQUIRED",
+      cloud_phase:"COMPLETE",latest_job_state:"SUCCEEDED"}]);
+    expect(await screen.findByText("Ready for review")).toBeInTheDocument();
+    expect(screen.getByText("Working now.")).toBeInTheDocument();
+    expect(screen.getByText("Ready for your input. Open to continue.")).toBeInTheDocument();
+    expect(screen.queryByText("Waiting for Cloud status.")).not.toBeInTheDocument();
   });
 
   it.each(["staging", "production"] as const)(

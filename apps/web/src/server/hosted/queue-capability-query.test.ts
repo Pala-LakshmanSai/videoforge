@@ -11,7 +11,7 @@ const idleProjectId = "11111111-1111-4111-8111-111111111111";
 const runningProjectId = "22222222-2222-4222-8222-222222222222";
 
 async function queueQuery(): Promise<string> {
-  const source = await readFile(new URL("./app.ts", import.meta.url), "utf8");
+  const source = await readFile(new URL("./hosted-queue.ts", import.meta.url), "utf8");
   const match = source.match(
     /const projects = await transaction\.query<HostedQueueRow>\(\s*`([\s\S]*?)`,\s*\[accountId, workspaceId\],\s*\)/u,
   );
@@ -109,6 +109,17 @@ describe("hosted queue capability query", () => {
             '${runningProjectId}','RENDER','RUNNING',NULL,
             '2026-08-17T09:30:00Z','2026-08-17T09:31:00Z');
       `);
+      await database.exec(`
+        ALTER TABLE project_revisions ADD COLUMN revision_number integer NOT NULL DEFAULT 1;
+        ALTER TABLE project_revisions ADD COLUMN media_execution_backend text NOT NULL DEFAULT 'PERSONAL_WORKER';
+        ALTER TABLE hosted_cpu_job_attempts ADD COLUMN execution_backend text NOT NULL DEFAULT 'PERSONAL_WORKER';
+        ALTER TABLE hosted_cpu_job_attempts ADD COLUMN project_revision_id uuid;
+        CREATE TABLE cloud_media_reservations (
+          id uuid PRIMARY KEY, account_id uuid, workspace_id uuid, project_id uuid,
+          project_revision_id uuid, leased_attempt_id uuid, fence_id uuid, state text
+        );
+        CREATE TABLE cloud_media_jobs (account_id uuid, workspace_id uuid, reservation_id uuid, attempt_id uuid);
+      `);
 
       const result = await database.query<Record<string, unknown>>(await queueQuery(), [
         accountId,
@@ -173,6 +184,51 @@ describe("hosted queue capability query", () => {
         accountId, workspaceId,
       ]);
       expect(finished.rows.some((row) => row.project_id === runningProjectId)).toBe(false);
+      // A fresh Cloud retry keeps the previous valid Local output in Library and appears in Queue.
+      const cloudAttempt = "77777777-7777-4777-8777-777777777777";
+      const revision = "88888888-8888-4888-8888-888888888888";
+      await database.query(`INSERT INTO hosted_cpu_job_attempts
+        (account_id,workspace_id,id,project_id,kind,state,created_at,updated_at,execution_backend,project_revision_id)
+        VALUES($1,$2,$3,$4,'RENDER','RUNNING',now(),now(),'RUNPOD_POD',$5)`,
+      [accountId,workspaceId,cloudAttempt,runningProjectId,revision]);
+      await database.query(`INSERT INTO cloud_media_reservations
+        VALUES($1,$2,$3,$4,$5,$6,$7,'DOWNLOADING')`,
+      [revision,accountId,workspaceId,runningProjectId,revision,cloudAttempt,cloudAttempt]);
+      await database.query("INSERT INTO cloud_media_jobs VALUES($1,$2,$3,$4)", [accountId,workspaceId,revision,cloudAttempt]);
+      const cloudRow = async () => (await database.query<Record<string,unknown>>(await queueQuery(),
+        [accountId,workspaceId])).rows.find(row => row.project_id === runningProjectId);
+      expect(await cloudRow()).toMatchObject({state:"IN_PROGRESS",execution_backend:"RUNPOD_POD",cloud_phase:"DOWNLOADING"});
+      await database.query("UPDATE hosted_cpu_job_attempts SET state='SUCCEEDED' WHERE id=$1", [cloudAttempt]);
+      for (const phase of ["SAVING", "STOPPING"]) {
+        await database.query("UPDATE cloud_media_reservations SET state=$1", [phase]);
+        const pending = await cloudRow();
+        expect(pending).toMatchObject({state:"IN_PROGRESS",cloud_phase:phase});
+        expect(Number(pending?.cloud_reservation_count)).toBe(1);
+      }
+      // Old batch membership cannot expose a current lease's phase for a different attempt.
+      await database.query("UPDATE hosted_cpu_job_attempts SET state='RUNNING' WHERE id=$1", [cloudAttempt]);
+      await database.query("UPDATE cloud_media_reservations SET leased_attempt_id=$1", [revision]);
+      expect((await cloudRow())?.cloud_phase).toBeNull();
+      await database.query("UPDATE cloud_media_reservations SET leased_attempt_id=$1, account_id=$2", [cloudAttempt,idleProjectId]);
+      expect((await cloudRow())?.cloud_phase).toBeNull();
+      await database.query("UPDATE cloud_media_reservations SET account_id=$1,state='CLEAN'", [accountId]);
+      await database.query("UPDATE hosted_cpu_job_attempts SET state='SUCCEEDED' WHERE id=$1", [cloudAttempt]);
+      expect(await cloudRow()).toBeUndefined();
+      // Future planned work cannot mask an owned successful ASR lease that is still stopping.
+      const asr="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", planned="dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+      await database.query(`INSERT INTO hosted_cpu_job_attempts
+        (account_id,workspace_id,id,project_id,kind,state,created_at,updated_at,execution_backend,project_revision_id)
+        VALUES($1,$2,$3,$4,'ASR','SUCCEEDED',now()+interval '1 minute',now(),'RUNPOD_POD',$5),
+        ($1,$2,$6,$4,'RENDER','PLANNED',now()+interval '2 minutes',now(),'RUNPOD_POD',$5)`,
+      [accountId,workspaceId,asr,idleProjectId,revision,planned]);
+      const idleRow=async () => (await database.query<Record<string,unknown>>(await queueQuery(),
+        [accountId,workspaceId])).rows.find(row => row.project_id===idleProjectId);
+      expect(await idleRow()).toMatchObject({state:"WAITING",cloud_phase:null,active_kind:null});
+      await database.query(`INSERT INTO cloud_media_reservations VALUES($1,$2,$3,$4,$5,$6,$7,'STOPPING')`,
+      [planned,accountId,workspaceId,idleProjectId,revision,asr,asr]);
+      await database.query("INSERT INTO cloud_media_jobs VALUES($1,$2,$3,$4)", [accountId,workspaceId,planned,asr]);
+      expect(await idleRow()).toMatchObject({state:"IN_PROGRESS",stage:"Transcription",cloud_phase:"STOPPING",
+        execution_backend:"RUNPOD_POD",active_kind:"ASR"});
       await database.query("UPDATE hosted_cpu_job_attempts SET retention_deleted_at=now() WHERE project_id=$1", [
         runningProjectId,
       ]);

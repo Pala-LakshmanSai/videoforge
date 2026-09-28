@@ -4095,18 +4095,15 @@ async function catalog(
           ORDER BY version.updated_at DESC, style.name`,
         [scope.account_id, scope.workspace_id],
       );
-      const workers = await transaction.query<{ count: string | number }>(
-        `SELECT count(*) AS count FROM media_worker_devices
-          WHERE account_id = $1 AND workspace_id = $2
-            AND status IN ('ONLINE', 'BUSY')`,
-        [scope.account_id, scope.workspace_id],
+      const workers = await (await import("./personal-worker-readiness")).qualifiedPersonalWorkers(
+        transaction, config.mediaWorkerRelease, scope.account_id, scope.workspace_id,
       );
       return {
         avatars: avatars.rows,
         styles: styles.rows,
         avatar_drafts: avatarDrafts.rows,
         style_drafts: styleDrafts.rows,
-        workers: Number(workers.rows[0]?.count ?? 0),
+        workers: workers.count,
       };
     });
     const avatarRows = (data.avatars as Record<string, unknown>[]).map((row) => ({
@@ -4826,11 +4823,8 @@ async function projectPreflight(
             LIMIT 1`,
           [scope.account_id, scope.workspace_id, input.styleVersionId],
         ),
-        transaction.query<{ count: string | number }>(
-          `SELECT count(*) AS count FROM media_worker_devices
-            WHERE account_id = $1 AND workspace_id = $2
-              AND status IN ('ONLINE', 'BUSY')`,
-          [scope.account_id, scope.workspace_id],
+        (await import("./personal-worker-readiness")).qualifiedPersonalWorkers(
+          transaction, config.mediaWorkerRelease, scope.account_id, scope.workspace_id,
         ),
       ]);
       const avatarRow = avatar.rows[0];
@@ -4842,7 +4836,7 @@ async function projectPreflight(
         avatarRuntimeSourceQualified: runtimeSourceQualified,
         qualifiedAvatarName: qualifiedAvatarName === null ? null : String(qualifiedAvatarName),
         styleReady: style.rows.length > 0,
-        workers: Number(workers.rows[0]?.count ?? 0),
+        workers: workers.count,
       };
     });
     const blockers: HostedPreflightBlocker[] = [];

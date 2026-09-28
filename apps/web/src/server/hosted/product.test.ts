@@ -1876,7 +1876,7 @@ describe("hosted product route contract", () => {
 
   it("blocks a pinned avatar version whose runtime source is a pass-through upload", async () => {
     testState.publishedStyleRows.push({});
-    testState.workerDeviceRows.push({ count: "1" });
+    testState.workerDeviceRows.push({ status: "ONLINE", count: "1" });
     testState.preflightAvatarRows.push({
       source_preparation_profile: "hosted-avatar-source-pass-through-v1",
       object_key:
@@ -1915,7 +1915,7 @@ describe("hosted product route contract", () => {
 
   it("blocks a pinned avatar runtime source whose key is not a canonical avatar.png", async () => {
     testState.publishedStyleRows.push({});
-    testState.workerDeviceRows.push({ count: "1" });
+    testState.workerDeviceRows.push({ status: "ONLINE", count: "1" });
     testState.preflightAvatarRows.push({
       source_preparation_profile: "soulx-pro-vf924u-approved-v1",
       object_key:
@@ -1944,7 +1944,7 @@ describe("hosted product route contract", () => {
 
   it("accepts a pinned system avatar version whose runtime source is canonical", async () => {
     testState.publishedStyleRows.push({});
-    testState.workerDeviceRows.push({ count: "1" });
+    testState.workerDeviceRows.push({ status: "ONLINE", count: "1" });
     testState.preflightAvatarRows.push({
       source_preparation_profile: "soulx-pro-vf924u-approved-v1",
       object_key:
@@ -1974,7 +1974,7 @@ describe("hosted product route contract", () => {
 
   it("names the qualified avatar in the blocker when the workspace has one", async () => {
     testState.publishedStyleRows.push({});
-    testState.workerDeviceRows.push({ count: "1" });
+    testState.workerDeviceRows.push({ status: "ONLINE", count: "1" });
     testState.preflightAvatarRows.push({
       source_preparation_profile: "hosted-avatar-source-pass-through-v1",
       object_key:

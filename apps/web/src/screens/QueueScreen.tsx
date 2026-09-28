@@ -29,6 +29,8 @@ interface HostedQueueProject {
   readonly active_job_kind?: string | null;
   readonly latest_job_kind?: string | null;
   readonly latest_job_state?: string | null;
+  readonly execution_backend?: "PERSONAL_WORKER" | "RUNPOD_POD";
+  readonly cloud_phase?: string | null;
   readonly can_cancel_project?: boolean;
   readonly can_delete_project?: boolean;
   readonly created_at: string;
@@ -38,6 +40,7 @@ interface HostedQueueProject {
 interface HostedQueueResponse {
   readonly schema_version: "videoforge-hosted-queue/v2";
   readonly worker_state: "ONLINE" | "BUSY" | "WAITING_FOR_YOUR_COMPUTER";
+  readonly cloud_media_available?: boolean;
   readonly projects: readonly HostedQueueProject[];
 }
 
@@ -92,6 +95,15 @@ function hostedProjectLabel(state: HostedQueueProject["state"]): string {
 }
 
 function hostedProjectExplanation(project: HostedQueueProject): string {
+  if (project.execution_backend === "RUNPOD_POD") {
+    const phase = ({WAITING_CAPACITY: "Waiting for capacity", CREATING: "Starting", STARTING: "Starting",
+      AMBIGUOUS: "Reconciling launch", DOWNLOADING: "Downloading inputs", RENDERING: "Rendering",
+      CHECKING: "Checking video", SAVING: "Saving", STOPPING: "Stopping compute",
+      CLEAN: project.latest_job_state === "SUCCEEDED" ? "Complete" : "Compute stopped", COMPLETE: "Complete"} as Record<string,string>)[project.cloud_phase ?? ""];
+    if (phase && (!["CLEAN","COMPLETE"].includes(project.cloud_phase ?? "") || project.state === "IN_PROGRESS")) return phase;
+    if (project.state === "IN_PROGRESS" && project.active_job_kind) return "Waiting for Cloud status.";
+    if (project.state === "WAITING") return "Queued for Cloud.";
+  }
   if (project.state === "IN_PROGRESS")
     return project.active_job_kind === "ASR"
       ? "Transcribing voiceover."
@@ -246,6 +258,9 @@ function HostedQueueScreen() {
     );
   }
   const projects = queue.data.projects;
+  const hasCloud = projects.some(project => project.execution_backend === "RUNPOD_POD");
+  const hasLocal = projects.some(project => project.execution_backend !== "RUNPOD_POD");
+  const cloudOnly = hasCloud && !hasLocal;
   const active = projects.filter((project) => project.state === "IN_PROGRESS").length;
   const attention = projects.filter((project) =>
     ["ACTION_REQUIRED", "NEEDS_ATTENTION"].includes(project.state),
@@ -300,34 +315,37 @@ function HostedQueueScreen() {
         />
         <Metric label="Waiting" value={String(waiting)} detail="not started" />
         <Metric
-          label="Your computer"
+          label={cloudOnly ? "Rendering" : hasCloud ? "Local computer" : "Your computer"}
           value={
-            queue.data.worker_state === "ONLINE"
+            cloudOnly ? "Cloud" : queue.data.worker_state === "ONLINE"
               ? "Connected"
               : queue.data.worker_state === "BUSY"
                 ? "Working"
                 : "Not connected"
           }
           detail={
-            queue.data.worker_state === "WAITING_FOR_YOUR_COMPUTER"
+            cloudOnly ? "no connected computer required" : hasCloud ? "used by Local projects" : queue.data.worker_state === "WAITING_FOR_YOUR_COMPUTER"
               ? "work waits safely"
               : "transcription and render"
           }
-          tone={queue.data.worker_state === "WAITING_FOR_YOUR_COMPUTER" ? "warning" : "success"}
+          tone={cloudOnly ? "info" : queue.data.worker_state === "WAITING_FOR_YOUR_COMPUTER" ? "warning" : "success"}
         />
       </div>
       <Panel heading="Your projects">
         <div className="notice" role="status">
-          Work pauses safely if your computer disconnects.
+          {cloudOnly ? "Cloud work continues independently of your computer."
+            : hasCloud ? "Local work pauses safely if your computer disconnects. Cloud work continues independently."
+              : "Work pauses safely if your computer disconnects."}
         </div>
         {projects.length === 0 ? (
           <EmptyState
             icon={<Video />}
             title="No media jobs yet"
-            body="Connect your computer in Settings before generating a video."
+            body={queue.data.cloud_media_available ? "Create a project and choose Local or Cloud execution."
+              : "Connect your computer in Settings before generating a video."}
             action={
-              <Link className="button button-primary" to="/settings">
-                Open Settings
+              <Link className="button button-primary" to={queue.data.cloud_media_available ? "/projects/new" : "/settings"}>
+                {queue.data.cloud_media_available ? "New project" : "Open Settings"}
               </Link>
             }
           />
@@ -385,6 +403,7 @@ function HostedQueueScreen() {
                             <strong>{project.title}</strong>
                           </Link>
                           <small>{project.stage}</small>
+                          {project.execution_backend ? <small>{project.execution_backend === "RUNPOD_POD" ? "Cloud" : "Local"}</small> : null}
                           <small className="queue-card__explanation">
                             {hostedProjectExplanation(project)}
                           </small>
