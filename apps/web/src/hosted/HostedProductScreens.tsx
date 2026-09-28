@@ -581,7 +581,22 @@ function hostedContinuationKey(
   return revisionId && entityId ? `${revisionId}:${entityId}` : null;
 }
 
-export function transcriptionFailureMessage(code: string | null | undefined): string {
+export function transcriptionFailureMessage(
+  code: string | null | undefined,
+  backend: HostedAttempt["execution_backend"] = "PERSONAL_WORKER",
+): string {
+  if (backend === "RUNPOD_POD") {
+    const cause = code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT"
+      ? "Cloud transcription stopped because temporary storage was insufficient."
+      : code === "MEDIA_EXECUTION_IO_FAILED"
+        ? "Cloud transcription could not read or save its data."
+        : code === "MEDIA_EXECUTION_CONTRACT_INVALID" || code === "ASR_RESULT_INVALID"
+          ? "Cloud transcription returned a result that failed validation."
+          : code === "MEDIA_EXECUTION_TIMEOUT"
+            ? "Cloud transcription reached its time limit."
+            : "Cloud transcription stopped before its result could be accepted.";
+    return `${cause} Your project and voiceover are saved. Check the failure details before retrying.`;
+  }
   if (code === "MEDIA_EXECUTION_SUBPROCESS_FAILED") {
     return "Your computer's local transcription process stopped unexpectedly after one bounded recovery attempt. Update the personal media worker before retrying.";
   }
@@ -1157,7 +1172,7 @@ interface HostedSpanAudioProgress {
   readonly queued: number;
   readonly succeeded: number;
   readonly failed: number;
-  /** Failed clips that still have automatic retries left on the owner's computer. */
+  /** Failed clips that still have automatic retries left on their selected backend. */
   readonly retrying?: number;
   readonly failure_code?: string | null;
 }
@@ -1477,9 +1492,11 @@ function HostedGpuLaneActivityPanel({
   );
 }
 
-/** Span audio is cut on the account-owned worker, and Stage 6 and Stage 7 cannot
- * dispatch until every span is materialized, so show that preparation rather than a silent wait. */
-function HostedSpanAudioPanel({ progress }: { readonly progress: HostedSpanAudioProgress | null }) {
+/** Stage 6 and Stage 7 wait for every span to be materialized on its selected backend. */
+function HostedSpanAudioPanel({ progress, backend = "PERSONAL_WORKER" }: {
+  readonly progress: HostedSpanAudioProgress | null;
+  readonly backend?: HostedAttempt["execution_backend"];
+}) {
   if (!progress || progress.total === 0) return null;
   const done = progress.materialized;
   const percent = Math.min(100, Math.round((done / progress.total) * 100));
@@ -1490,7 +1507,7 @@ function HostedSpanAudioPanel({ progress }: { readonly progress: HostedSpanAudio
   return (
     <Panel
       className="gpu-lane-panel"
-      eyebrow="Your computer"
+      eyebrow={backend === "RUNPOD_POD" ? "Cloud" : "Your computer"}
       heading={
         complete
           ? "Avatar audio ready"
@@ -1543,8 +1560,8 @@ function HostedSpanAudioPanel({ progress }: { readonly progress: HostedSpanAudio
               : ""}
           </p>
           {progress.failed > 0 ? (
-            <p className="helper gpu-lane-detail">
-              {spanAudioFailureMessage(progress.failure_code ?? null, retrying > 0)}
+            <p className="helper gpu-lane-detail" role={backend === "RUNPOD_POD" ? "alert" : undefined}>
+              {spanAudioFailureMessage(progress.failure_code ?? null, retrying > 0, backend)}
             </p>
           ) : null}
         </li>
@@ -1553,8 +1570,24 @@ function HostedSpanAudioPanel({ progress }: { readonly progress: HostedSpanAudio
   );
 }
 
-/** Stage 6 stops inside the owner's own computer, so name that local cause and the retry state. */
-export function spanAudioFailureMessage(failureCode: string | null, retrying: boolean): string {
+/** Name the execution backend and only the persisted automatic retry state. */
+export function spanAudioFailureMessage(
+  failureCode: string | null,
+  retrying: boolean,
+  backend: HostedAttempt["execution_backend"] = "PERSONAL_WORKER",
+): string {
+  if (backend === "RUNPOD_POD") {
+    const cause = failureCode === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT"
+      ? "Cloud audio preparation stopped because temporary storage was insufficient."
+      : failureCode === "MEDIA_EXECUTION_IO_FAILED"
+        ? "Cloud audio preparation could not read or save the clips."
+        : failureCode === "MEDIA_EXECUTION_TIMEOUT"
+          ? "Cloud audio preparation reached its time limit."
+          : "Cloud audio preparation stopped before all clips were accepted.";
+    return `${cause} Accepted clips remain saved. ${retrying
+      ? "The remaining clips are retrying automatically."
+      : "Check the failure details; no manual replay is available."}`;
+  }
   if (failureCode === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT") {
     return retrying
       ? "Your computer ran out of free disk space. Free space there and the remaining clips finish automatically."
@@ -4899,6 +4932,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     render,
     "technical-check": render,
   };
+  // Stored attempts retain their original backend; a missing legacy field means Local.
+  const spanAudioBackend = cloudStageAttempts["audio-spanning"]
+    ? cloudStageAttempts["audio-spanning"].execution_backend ?? "PERSONAL_WORKER"
+    : query.data.project.media_execution_backend ?? "PERSONAL_WORKER";
   const isCloudMediaStage = (id: string) => id in cloudStageAttempts &&
     (cloudStageAttempts[id]?.execution_backend ?? query.data.project.media_execution_backend) === "RUNPOD_POD";
   const cloudFinalPhasePending = render?.execution_backend === "RUNPOD_POD" &&
@@ -5319,6 +5356,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     </Button>
   );
   const unavailableRetryReason = (stageId: string): string => {
+    if (stageId === "audio-spanning" && spanAudioBackend === "RUNPOD_POD")
+      return "Cloud audio preparation has no automatic retries remaining. Accepted clips stay saved; check the failure details. No manual replay is available.";
     if (stageId === "audio-spanning")
       return "The connected computer has exhausted this span's automatic retries. Check the local worker, then refresh progress; no manual replay is available.";
     if (stageId === "image-generation" || stageId === "avatar-generation")
@@ -5331,8 +5370,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       return "The context response failed validation. A fresh provider request is not authorized for this run.";
     if (stageId === "render" && query.data.render_retry?.reason === "WORKER_UPDATE_REQUIRED")
       return "Update the connected worker before retrying this validation failure. Your saved media stays available.";
+    if (stageId === "render" && query.data.render_retry?.reason === "RETRY_LIMIT_REACHED" &&
+      selectedRenderRetryBackend === "RUNPOD_POD")
+      return "This project has reached its bounded Cloud render retry limit. Saved media stays available; contact support for the remaining blocker.";
     if (stageId === "render" && query.data.render_retry?.reason === "RETRY_LIMIT_REACHED")
       return "This project has reached its five local render attempts. Saved media stays available; contact support for the remaining blocker.";
+    if (stageId === "render" && selectedRenderRetryBackend === "RUNPOD_POD")
+      return "This render failure is outside the verified Cloud retry paths. The accepted images and avatar clips remain saved.";
     if (stageId === "render")
       return "This render failure is outside the verified local retry paths. The accepted images and avatar clips remain saved.";
     return "No safe retry is available for this failed stage. Check the failure details before starting another project.";
@@ -5850,7 +5894,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               )}
             </Panel>
           ) : null}
-          <HostedSpanAudioPanel progress={query.data.span_audio ?? null} />
+          <HostedSpanAudioPanel progress={query.data.span_audio ?? null} backend={spanAudioBackend} />
           <HostedGpuLaneActivityPanel
             lanes={query.data.gpu_lanes ?? []}
             apiGeneration={query.data.generation_provider === "KIE_FAL"}
@@ -5971,7 +6015,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       {asr?.kind === "ASR" && asr.state === "FAILED" ? (
         <div className="notice notice-danger" role="alert">
           <strong>Transcription stopped before the transcript could be saved.</strong>
-          <span>{transcriptionFailureMessage(asr.error_code)}</span>
+          <span>{transcriptionFailureMessage(asr.error_code, asr.execution_backend)}</span>
           {/* A refused retry is shown inside the stage row next to the button that was pressed; this
               notice only carries it when the stage row itself has nothing to show. */}
           {asrHandoff.isError && !failedStageIds.has("transcription") ? (

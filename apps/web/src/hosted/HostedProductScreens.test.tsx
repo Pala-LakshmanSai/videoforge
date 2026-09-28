@@ -74,6 +74,7 @@ import {
   readJson,
   stableHostedMediaUrl,
   transcriptionFailureMessage,
+  spanAudioFailureMessage,
 } from "./HostedProductScreens";
 
 it("labels cloud phases from durable state without invented progress", () => {
@@ -85,6 +86,68 @@ it("labels cloud phases from durable state without invented progress", () => {
   expect(cloudMediaPhaseLabel("STOPPING", "FAILED")).toBe("Stopping compute");
   expect(cloudMediaPhaseLabel("STOPPING", "SUCCEEDED")).toBe("Stopping compute");
   expect(cloudMediaPhaseLabel(null, "RUNNING")).toBe("Waiting for cloud status");
+});
+
+it.each([
+  "MEDIA_EXECUTION_SUBPROCESS_FAILED", "MEDIA_EXECUTION_FAILED",
+  "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT", "MEDIA_EXECUTION_IO_FAILED",
+  "MEDIA_EXECUTION_CONTRACT_INVALID", "ASR_RESULT_INVALID", "MEDIA_EXECUTION_TIMEOUT",
+  "CLOUD_MEDIA_PROVIDER_REJECTED",
+])("explains Cloud transcription failure %s without desktop repair guidance", code => {
+  const message = transcriptionFailureMessage(code, "RUNPOD_POD");
+  expect(message).toMatch(/^Cloud transcription/);
+  expect(message).toContain("Your project and voiceover are saved.");
+  expect(message).not.toMatch(/computer|personal media worker|update|automatically/i);
+  expect(message).not.toContain(code);
+});
+
+it.each([false, true])("uses persisted Cloud span retry state: %s", retrying => {
+  const message = spanAudioFailureMessage("MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT", retrying, "RUNPOD_POD");
+  expect(message).toContain("temporary storage was insufficient");
+  expect(message).toContain("Accepted clips remain saved.");
+  expect(message).not.toMatch(/computer|personal media worker|free space there/i);
+  expect(message.includes("retrying automatically")).toBe(retrying);
+});
+
+it.each([
+  {kind:"ASR", backend:"RUNPOD_POD", cloud:true},
+  {kind:"ASR", backend:undefined, cloud:false},
+  {kind:"SPAN_AUDIO", backend:"RUNPOD_POD", cloud:true},
+  {kind:"SPAN_AUDIO", backend:undefined, cloud:false},
+] as const)("failure guidance follows stored $kind backend $backend before project selection", async ({kind,backend,cloud}) => {
+  const projectId="11111111-1111-4111-8111-111111111111";
+  const detail={project:{id:projectId,title:"Backend failure",created_at:"2026-09-28T10:00:00Z",revision_id:"22222222-2222-4222-8222-222222222222",revision_state:"LOCKED",media_execution_backend:"RUNPOD_POD"},
+    generation:null,gpu_transport:"DISABLED_UNQUALIFIED",gpu_readiness:gpuReadiness,
+    attempts:[{id:"33333333-3333-4333-8333-333333333333",kind,state:"FAILED",execution_backend:backend,error_code:"MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT"}],
+    span_audio:kind === "SPAN_AUDIO" ? {total:2,materialized:1,planned:0,running:0,queued:0,succeeded:1,failed:1,retrying:0,failure_code:"MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT"}:null,
+    stages:stageList({[kind === "ASR" ? "transcription" : "audio-spanning"]:"FAILED"})};
+  const fetchMock=vi.fn(async(_input: RequestInfo | URL, _init?: RequestInit)=>Response.json(detail));vi.stubGlobal("fetch",fetchMock);
+  renderHosted(<HostedProjectScreen projectId={projectId}/>);
+  await screen.findByRole("list",{name:"Project stages"});
+  if(kind === "ASR") {
+    const message=transcriptionFailureMessage("MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT",backend);
+    expect(screen.getByText(message)).toBeInTheDocument();
+    expect(message.startsWith("Cloud")).toBe(cloud);
+  } else {
+    const heading=screen.getByRole("heading",{name:"Avatar audio stopped"});
+    const panel=heading.closest("section");if(!panel)throw Error("Span panel missing");
+    expect(within(panel).getByText(cloud ? /^Cloud$/ : "Your computer")).toBeInTheDocument();
+    expect(within(panel).getByText(spanAudioFailureMessage("MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT",false,backend))).toBeInTheDocument();
+    const row=stageRow("Audio spanning");expect(within(row).getByRole("button",{name:"Retry"})).toBeDisabled();
+    expect(within(row).getByRole("alert")).toHaveTextContent(cloud ? /Cloud audio preparation/ : /connected computer/);
+    if(cloud)expect(within(panel).getByRole("alert")).toHaveTextContent("Accepted clips remain saved.");
+  }
+  expect(fetchMock.mock.calls.every(([, init])=>!init?.method || init.method === "GET")).toBe(true);
+});
+
+it("describes the Cloud render retry limit without changing eligibility", async () => {
+  const projectId="11111111-1111-4111-8111-111111111111",failedId="33333333-3333-4333-8333-333333333333";
+  vi.stubGlobal("fetch",vi.fn(async()=>Response.json({project:{id:projectId,title:"Bounded Cloud retry",created_at:"2026-09-28T10:00:00Z",revision_id:"22222222-2222-4222-8222-222222222222",revision_state:"LOCKED"},generation:null,gpu_transport:"DISABLED_UNQUALIFIED",gpu_readiness:gpuReadiness,
+    attempts:[{id:failedId,kind:"RENDER",state:"FAILED",execution_backend:"RUNPOD_POD"}],render_retry:{eligible:false,reason:"RETRY_LIMIT_REACHED",failed_attempt_id:failedId,attempt_limit:5},stages:stageList({render:"FAILED"})})));
+  renderHosted(<HostedProjectScreen projectId={projectId}/>);await screen.findByRole("list",{name:"Project stages"});
+  const row=stageRow("Assemble final video");expect(within(row).getByRole("button",{name:"Retry"})).toBeDisabled();
+  expect(within(row).getByRole("alert")).toHaveTextContent("bounded Cloud render retry limit");
+  expect(within(row).getByRole("alert")).not.toHaveTextContent("local render");
 });
 
 it("ticks elapsed stage time and freezes on success, failure, cancellation and reload", () => {
