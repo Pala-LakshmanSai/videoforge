@@ -1,22 +1,35 @@
 # Optional Cloud media release preparation
 
-Status: safe local implementation/preparation in progress, Cloud disabled; no production release,
-image publication, new provider generation or paid media execution. Checkpoint VF-10-09/V2-09.
+Status: implementation and offline Linux runtime qualified; immutable private image published.
+Cloud remains disabled; no production application release, new provider generation or paid Pod.
+Checkpoint VF-10-09/V2-09. Current evidence: SAFE_PREPARATION_EVIDENCE.json and QUALIFIED_RUNTIME.json.
 
 ## Source and preservation
 
 Public production status verified2026-09-28 at source
 `366d16c27369b4430a843ae4e6929b7d7156eb89`. Historical readback records Cloudflare version
-`62524e69-7fea-4796-9d4a-a87124b16009`,25 secrets, worker0.1.44 and query redaction; current
-Cloudflare settings GET returned401, so bindings/version must be freshly verified before publication.
+`62524e69-7fea-4796-9d4a-a87124b16009`,25 secrets, worker0.1.44 and query redaction; fresh settings/deployments reads returned200 after existing OAuth refresh. Preserve the verified
+baseline and recheck bindings/version immediately before publication.
 Implementation checkout is `f9b9283ca662e73c0ba276741db22521c3b65357`. It includes unpublished UI
 changes; release preparation uses a registered isolated worktree from production366d and applies
 only task changes with three-way merging, preserving the published timing/details UI. Exclude the
-unrelated `apps/web/src/server/runtime/node-fair-admission.ts` edit. No commit/push/deploy performed.
+unrelated `apps/web/src/server/runtime/node-fair-admission.ts` edit. Isolated task source/evidence are committed and pushed on codex/cloud-media-release; no application deployment.
 
 Local evidence: `.videoforge/cloud-media/baseline.json`, `implementation-from-f9.patch` and
 `release-transplant.json`. These sanitized operator files retain identities/rates/test boundaries,
 not secrets. Worktree location is recorded there; refresh task changes only after owners finish.
+
+## Qualified Linux image and publication boundary
+
+Real offline retained-source ASR, span cutting, current Fal full/split composition and final technical
+checks passed in CI36437915344 at sourcefe61f686. Qualified execution source SHA25608f7344553c2b493eccd236b61698cae330edbee77eb7ee909e180d13f66b768 and runtime SHA256194d1a4cee7acca64661774faa9ad205b31c66470af2011b5dc420ebe447db81 are recorded with exact tool/model hashes in QUALIFIED_RUNTIME.json.
+The immutable image is ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:d054d17bef2178593d96b8d579c41446f272330044e79ef1bbde976a859f2c62.
+Independent GitHub API visibility is private, with no repository link. Controller-local scoped
+registry mounts preserved every qualified layer and digest without rebuilding or transferring media.
+The first public-repository GITHUB_TOKEN push inherited public package visibility; it contained only
+source/upstream tools/model, no private input or credential. Future publication must reject that path.
+Exact private root/Linux manifests, config and all layer sizes were authenticated-pull verified; anonymous pull returned401. A dedicated read:packages-only capability registered one exact owned RunPod media registry and independent inventory verified it. Actual Pod startup/resources/rate and independent cleanup remain live gates. The mistaken newly public package was removed via exact regular-Chrome owner confirmation and independently returned404; the private qualified digest stayed unchanged.
+Linux executable hashes are qualified separately from desktop binaries.
 
 ## Operator rate snapshot
 
@@ -115,18 +128,15 @@ baseline. Stop on missing authority, unknown/incomplete inventory, ambiguous lau
 actual-rate mismatch, exhausted capacity window, failed qualification, budget/deadline risk or
 unverified cleanup. Keep uncertain reservations counted; terminate only exact owned Pods.
 
-Fresh read-only inventory at2026-09-28T13:05:45Z used the configured Frontier reference credential
-account and was complete with zero Pods; no credential was copied. The configured VideoForge
-account must receive its own preflight before paid allocation. No billable POST has been issued
-for this new lane, so owned Pods are zero; live independent shutdown remains unexercised. Rank1 GPU listing
-wasUSD0.72/h andLOW, while an adjacent query reportedNONE; availability is volatile. A fresh catalog
-read at2026-09-28T13:27:09Z still listedUSD0.72/h butNONE. At100–200GB disk, the estimated all-in
-preferred rate isUSD0.733889–0.747778/h; it is not an actual placement or invoice. Actual
-placement CPU/RAM and VideoForge speed remain unverified. Refresh catalog before allocation.
+Fresh configured VideoForge inventory/catalog at approximately2026-09-28T15:20Z was complete with
+zero Pods/one inventory page/48 GPU models. No Frontier credential was copied. Prior Secure listing
+observed RTX4000 Ada atUSD0.28/h, with100GB disk estimatedUSD0.013889/h; refreshed placement facts
+remain required. No paid Pod POST or DELETE has occurred. Rates/resources and VideoForge speed
+remain unmeasured on real rented hosts; listed estimates are not invoices.
 The cap is an application action guard, not an invoice guarantee. User approved this replacement proposal with “Ok approved, go ahead and finish everything”. No paid action occurred before approval.
 
 Re-read production source/version/configuration/bindings and exact local-worker release. Stop on
-baseline drift. Inventory runtime migration ledger through213 and compare retained checksums,
+baseline drift. The exact214 append was executed and independently verified: ledger197/exact checksum, no prior-row or omitted148 change. The preparation below records the applied guard procedure. Before any future schema release, inventory the current migration ledger and compare retained checksums,
 including archived/omitted entries (the verified production ledger has196 rows and deliberately lacks retained148); prepare one owner transaction for only
 `0214_optional_runpod_media.sql`, exact checksum/ledger insert and required minimum runtime grants.
 Do not run a directory-wide migration replay. Add the compatible schema with Cloud still disabled.
@@ -142,8 +152,7 @@ node deploy/cloud-media/prepare-release.mjs --ledger /private/ledger.json --base
 It validates every applied retained migration hash through213, permits only the exact historically omitted148 identity, and preserves all observed archived entries and148 absence in the exact complete
 ledger guard, emits one advisory-locked transaction for214 and its exact ledger insert, and preserves
 baseline configuration/bindings while forcing Cloud off. Output files are private, exclusive writes.
-The tool makes no network call and cannot execute SQL, publish an image or deploy. Restore current
-Cloudflare read access and obtain a fresh production baseline before using its output for release.
+The tool makes no network call and cannot execute SQL, publish an image or deploy. Obtain a fresh production baseline before using its output for release; Cloudflare read access has been restored.
 The production validator accepts only complete qualified Cloud release variables (or the sole
 disabled flag); provider secrets remain existing secret bindings outside plain configuration.
 

@@ -1,6 +1,6 @@
 {
   "schema_version": "videoforge-cloud-media-safe-preparation/v1",
-  "status": "APPROVED_LIVE_PREFLIGHT_CLOUD_DISABLED",
+  "status": "PRIVATE_RUNTIME_QUALIFIED_ADDITIVE_SCHEMA_APPLIED_CLOUD_DISABLED",
   "checkpoint": "VF-10-09",
   "production_source": "366d16c27369b4430a843ae4e6929b7d7156eb89",
   "implementation_base": "f9b9283ca662e73c0ba276741db22521c3b65357",
@@ -9,7 +9,10 @@
   "migration": {
     "version": 214,
     "sha256": "b3c02a87e193254db7d83832e50d49edbbe09dbc54a7f1d56bd2c3059711d4e3",
-    "applied": false
+    "applied": true,
+    "ledger_rows_after": 197,
+    "post_commit_read_verified": true,
+    "historical_omitted_148_preserved": true
   },
   "validations": {
     "production_web_build": "PASS",
@@ -90,6 +93,11 @@
     "cloud_continuation_qualification_tests": {
       "pass": 17,
       "fail": 0
+    },
+    "derived_audio_helper": {
+      "pass": 25,
+      "ruff": "PASS",
+      "yaml_bash_syntax": "PASS"
     }
   },
   "bundles": {
@@ -206,14 +214,13 @@
     "catalogue_gpu_count": 48
   },
   "remaining_gates": [
-    "qualified Linux image/model/tool identity",
     "short real Cloud and cancellation",
     "representative45-minute VideoForge",
     "full browser acceptance",
     "production rollout/readback"
   ],
   "implementation_commit": "21f2e3ce112d406149c3b73f55222aa3419ec2db",
-  "image_identity": "FREE_CI_OFFLINE_QUALIFICATION_PENDING",
+  "image_identity": "ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:d054d17bef2178593d96b8d579c41446f272330044e79ef1bbde976a859f2c62",
   "current_cloudflare_settings_read": "200;25secret bindings/current0.1.44/query-redaction/source366d verified; final release parity remains required",
   "unrelated_edit_hash": "UNCHANGED_VERIFIED",
   "public_production_readback": {
@@ -272,7 +279,7 @@
     "catalogue_read_utc": "2026-09-28T13:27:09Z",
     "preferred_gpu_usd_per_hour": 0.72,
     "preferred_availability": "NONE",
-    "inventory_scope": "existing Frontier reference account; VideoForge preflight remains required",
+    "inventory_scope": "Configured VideoForge credential account; complete inventory observed, no Frontier key copied",
     "paid_actions": 0,
     "approval_recorded_utc": "2026-09-28T13:38:16.915119+00:00",
     "approval_statement": "Ok approved, go ahead and finish everything"
@@ -306,7 +313,8 @@
     "active_admission_leases": 0,
     "active_generation_requests": 0,
     "prepared_45_minute_projects": 0,
-    "maximum_retained_voiceover_ms": 1806942
+    "maximum_retained_voiceover_ms": 1806942,
+    "boundary": "Historical pre-migration read-only snapshot; exact214 append later committed under complete ledger guard"
   },
   "videoforge_account_inventory": {
     "read_only": true,
@@ -317,7 +325,7 @@
   },
   "runtime_build": {
     "source_commit": "fe61f6866a1c9aa52dbc0b27bdcf714ab03cfcc0",
-    "workflow_run": 36434928433,
+    "workflow_run": 36437915344,
     "source_sha256": "sha256:08f7344553c2b493eccd236b61698cae330edbee77eb7ee909e180d13f66b768",
     "required_cpu_flags": [
       "avx",
@@ -325,7 +333,7 @@
       "f16c",
       "fma"
     ],
-    "state": "RUNNING",
+    "state": "OFFLINE_MEDIA_QUALIFIED",
     "earlier_runs": [
       {
         "id": 36431796947,
@@ -338,7 +346,24 @@
     ],
     "paid_pods": 0,
     "run_id": 36437915344,
-    "status": "REAL_OFFLINE_QUALIFICATION_RUNNING",
-    "publication": false
+    "status": "OFFLINE_MEDIA_QUALIFIED_PRIVATE_DIGEST_PUBLISHED",
+    "publication": true,
+    "runtime_sha256": "sha256:194d1a4cee7acca64661774faa9ad205b31c66470af2011b5dc420ebe447db81",
+    "qualification_boundary": "Real retained-source ASR, selected-span cutting, current Fal full/split composition, final render and technical checks ran offline in Linux. No paid Pod, fresh provider/editorial or desktop binary parity claim.",
+    "private_authenticated_pull": "PASS; exact Linux digest/config/all layer sizes, anonymous401",
+    "narrow_registry_scope": "read:packages only; independent owned registry relist verified",
+    "mistaken_public_package": "Removed through exact owner-authorized normal Chrome confirmation; independent API404, private package200/digest unchanged"
+  },
+  "live_database_after214": {
+    "ledger_rows": 197,
+    "max_version": 214,
+    "exact_checksum_verified": true,
+    "paid_compute_started": false
+  },
+  "live_fixture_preparation": {
+    "budget_scoped_to_new_owned_projects": true,
+    "short_jobs": "PLANNED; no workflow activation or Pod POST",
+    "derived45_asset": "UPLOADING bound to exact expected bytes/hash; upload/readback pending",
+    "new_kie_fal_prompt_calls": 0
   }
 }

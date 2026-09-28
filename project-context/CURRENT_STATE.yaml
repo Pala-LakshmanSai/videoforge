@@ -1,19 +1,19 @@
 optional_cloud_media_2026_09_28:
   checkpoint: V2-09
   selected_task: VF-10-09
-  status: APPROVED_LIVE_PREFLIGHT_CLOUD_DISABLED
+  status: PRIVATE_RUNTIME_QUALIFIED_ADDITIVE_SCHEMA_APPLIED_CLOUD_DISABLED
   decision: DEC_PERSONAL_WORKER_001
   production_baseline: 366d16c27369b4430a843ae4e6929b7d7156eb89
   implementation_checkout: f9b9283ca662e73c0ba276741db22521c3b65357
   implementation_commit: 21f2e3ce112d406149c3b73f55222aa3419ec2db
-  image_identity: FREE_CI_OFFLINE_QUALIFICATION_PENDING
+  image_identity: ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:d054d17bef2178593d96b8d579c41446f272330044e79ef1bbde976a859f2c62
   focused_validation: Backend79 plus controller50/continuation17/R2inventory_checksum29/SQL9/CloudPython80/Ruff pass; Localmedia99pass1skip100total; ASR33/span14/render31 pass; contracts123/vNext/changedlint/context pass.
   broad_validation: Worker172pass1historical_Mage_byte_hash_failure_unchanged_at366d_f9; web2250pass22fail1skip, not_all22_individually_reproduced_on_baseline.
-  release_preparation: Isolated production-baseline task branch published; exact Linux runtime source fe61f686 is qualifying in free CI; application not deployed and migration214 not applied.
+  release_preparation: Isolated production-baseline task branch published; offline Linux media qualification passed in CI36437915344/sourcefe61f686 and private exactdigest published/pull verified. Additive214 applied; no application deployment or PodPOST.
   preserved: Local default/worker0.1.44/installers/pairing; Kie/Fal generation; immutable media/manifests/approvals; historical GPU-disabled settings and sealed volumes.
   unrelated_edit_excluded: apps/web/src/server/runtime/node-fair-admission.ts, hash unchanged verified.
   implementation: Explicit revision/attempt backend selection, Cloud ASR/span/render routing, durable reservation/fencing/inventory/cleanup, scoped multipart, dedicated Linux runtime source and bounded retry UI under source/test review.
-  migration: Additive0214_optional_runpod_media.sql prepared; not applied; exact ledger guards required, no archived migration replay.
+  migration: Additive0214_optional_runpod_media.sql applied with exact196-row ledger/advisory guards; independent postcommit ledger197/exactSHA verified; omitted148 preserved, no historical replay.
   browser_proof: Regular signed-in Chrome saved159.2s playback reached ended=true; reload remained ready/error-free; private download25080526bytes checksum matches accepted object, ffprobe4776frames/H264/1080p30/AAC. Existing output only; fresh Local blocked by existing2GiB free-disk gate; Cloud live gates pending.
   baseline_tests: Initial f9 focused UI/product225pass3fail; final production-based UI/product234pass1existing_product_source_text_failure, published timing UI preserved; config/quarantine/release-preparation20pass; broad repository remains non-green.
   release_builds: Production full web and final Cloudflare/staging builds pass; static closure2778234/2775622 bytes, Cloud and multipart helpers dynamic; unchanged quarantine ceilings pass; provider-free canonical Wrangler dry-run passes.
@@ -21,8 +21,8 @@ optional_cloud_media_2026_09_28:
   production_bindings: Fresh settings/deployments read200 after existing OAuth refresh; source366d/version62524e69 at100percent,25secrets,worker0.1.44,query_redaction_true verified; final publication parity remains required.
   authority: User approved replacement USD5 combined proposal on2026-09-28; computeUSD3/max6 reservations, build_publication_storageUSD2; no new Kie/Fal, no retained volumes; qualified production release conditional on gates.
   lower_cost_proposal: Previous unapprovedUSD20 withdrawn; approvedUSD5 total, computeUSD3/six phase-bounded reservations summingUSD2.47 plus contingency, CI_publication_storageUSD2, all_in_rate_maxUSD0.80_hour, disk100_200GB. Short proofs15min, cancellation5min, long45minute_render2h; stop without weakening gates if infeasible.
-  remaining_gates: Offline qualified Linux runtime/image digest/model hashes; authorized short Cloud and cancellation; current Local execution; representative45minute VideoForge storage/render; full realChrome queue/reload/private download/playback; production rollout/readback.
-  provider_spend: USD0 compute; no Kie/Fal or PodPOST/DELETE; approved immutable tool/model acquisition and new privateR2 qualification ZIP prepared; no runtimeimage publication yet.
+  remaining_gates: Authorized short Cloud and cancellation; current Local execution; representative45minute VideoForge storage/render; full realChrome queue/reload/private download/playback; ordinary final-promotion live proof; production rollout/readback.
+  provider_spend: USD0 compute; no Kie/Fal or PodPOST/DELETE; approved immutable tools/model, privateR2 ZIP and private image published. Scoped authority/new inert fixture prepared; exact derived45 asset upload/readback pending.
   paid_compute_shutdown: Actual configuredVideoForge complete provider inventory zeroPods verified; newlaneowned0/noPOSTissued. Independent owned shutdown remains live acceptance gate.
   evidence: .videoforge/cloud-media/baseline.json; .videoforge/cloud-media/release-transplant.json; project-context/cloud-media/RELEASE_RUNBOOK.md
 prompt_instruction_compaction_2026_09_27:

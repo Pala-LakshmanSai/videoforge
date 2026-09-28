@@ -1,0 +1,31 @@
+{
+  "platform": "linux/amd64",
+  "qualified": true,
+  "required_cpu_flags": [
+    "avx",
+    "avx2",
+    "f16c",
+    "fma"
+  ],
+  "runtime_sha256": "sha256:194d1a4cee7acca64661774faa9ad205b31c66470af2011b5dc420ebe447db81",
+  "schema_version": "videoforge-runpod-media-release/v1",
+  "source_sha256": "sha256:08f7344553c2b493eccd236b61698cae330edbee77eb7ee909e180d13f66b768",
+  "tooling": {
+    "ffmpeg_sha256": "sha256:788271d88c9dd311ad914c4ea6776410bf4a81e67b38d34a2270bcca38541dbf",
+    "ffmpeg_version": "8.1.2",
+    "ffprobe_sha256": "sha256:8ab6afa0864f91a807be00406ff48dbb926ca7a7864816b513af455fdaa7c1d2",
+    "ffprobe_version": "8.1.2",
+    "whisper_model_sha256": "sha256:a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+    "whisper_sha256": "sha256:3f1b748fa7e569f6a5aa739f6fcfc5944d748ff04da61c6df0bca3e0413d62b8",
+    "whisper_version": "1.8.4"
+  },
+  "image": "ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:d054d17bef2178593d96b8d579c41446f272330044e79ef1bbde976a859f2c62",
+  "source_commit": "fe61f6866a1c9aa52dbc0b27bdcf714ab03cfcc0",
+  "qualification_ci_run": 36437915344,
+  "qualification_boundary": "Real retained-source ASR, selected-span cutting, current Fal full/split composition, final render and technical checks ran offline in Linux. No paid Pod, fresh provider/editorial or desktop binary parity claim.",
+  "publication": {
+    "visibility": "private",
+    "repository_link": null,
+    "method": "Controller-local scoped GHCR cross-repository blob mounts; identical qualified digest, no rebuild or media transfer"
+  }
+}
