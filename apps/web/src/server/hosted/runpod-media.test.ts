@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
-import { sha256 } from "./crypto";
+import { deriveCallbackToken, sha256 } from "./crypto";
 import asrResultFixture from "../../../../../packages/contracts/generated/fixtures/asr_job_result.valid.json";
 import renderResultFixture from "../../../../../packages/contracts/generated/fixtures/render_job_result.valid.json";
 import renderManifestFixture from "../../../../../packages/contracts/generated/fixtures/resolved_render_manifest.valid.json";
@@ -74,6 +74,63 @@ const runRoute = (action: string, body: unknown, token = capability) => handleCl
 const primary = { source: "PRIMARY_RESULT_OUTPUT", object_key: "primary", max_bytes:16_777_216, issued_content_length: 100, issued_checksum_sha256: hash, content_type: "video/mp4" };
 const result = { source: "RESULT_DOCUMENT", object_key: "result", issued_content_length: 50, issued_checksum_sha256: hash, content_type: "application/json" };
 const completion = { schema_version: "videoforge-personal-worker-completion/v1", status: "SUCCEEDED", result_object_key: "result", result_content_length: 50, result_checksum_sha256: hash };
+
+it.each(["normal-submission", "random-fixture-credential", "stale-lease"])(
+  "issues an exact cloud upload port only with the server-derived credential and current lease: %s", async mode => {
+    reservation.state = mode === "stale-lease" ? "STOPPING" : "SAVING";
+    const expected = await sha256(await deriveCallbackToken(config.workflowCallbackSecret, attemptId));
+    const stored = mode === "random-fixture-credential" ? hash : expected;
+    const previous = fixture.query.getMockImplementation()!;
+    fixture.query.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      if (sql.includes("videoforge_authorize_hosted_cpu_upload")) {
+        expect(values).toEqual([attemptId, expected, primary.source, primary.object_key, primary.content_type, 100, hash]);
+        return { rows: [{ authorized: stored === values[1] }] };
+      }
+      return previous(sql, values);
+    });
+    fixture.sign.mockResolvedValue({ method: "PUT", contentLength: 100, checksumSha256: hash, contentType: primary.content_type });
+    const response = await runRoute("upload-port", { schema_version: "videoforge-personal-worker-upload-authority/v1",
+      source: primary.source, object_key: primary.object_key, content_type: primary.content_type, content_length: 100, checksum_sha256: hash });
+    if (!response) throw new Error("Cloud upload route was not handled");
+    expect(response.status).toBe(mode === "normal-submission" ? 200 : 409);
+    expect(fixture.sign).toHaveBeenCalledTimes(mode === "normal-submission" ? 1 : 0);
+    expect(fixture.transport).not.toHaveBeenCalled();
+  },
+);
+
+it("enforces the applied upload function's callback, ownership, immutable facts and terminal guards in PostgreSQL", async () => {
+  const { PGlite } = await import("@electric-sql/pglite");
+  const { readFile } = await import("node:fs/promises");
+  const db = new PGlite();
+  try {
+    await db.exec(`CREATE TABLE hosted_cpu_job_attempts(id uuid PRIMARY KEY, account_id uuid, workspace_id uuid,
+      project_id uuid, project_revision_id uuid, callback_token_sha256 text, state text, deadline_at timestamptz,
+      result_object_key text, result_content_type text, result_max_bytes bigint);
+      CREATE TABLE hosted_cpu_upload_authorities(id uuid PRIMARY KEY, account_id uuid, workspace_id uuid, attempt_id uuid,
+      source text, object_key text, content_type text, max_bytes bigint, issued_at timestamptz,
+      issued_content_length bigint, issued_checksum_sha256 text);`);
+    const migration = await readFile(new URL("../../../../../packages/control-plane/migrations/0030_v2_06_hosted_upload_authority.sql", import.meta.url), "utf8");
+    const start = migration.indexOf("CREATE FUNCTION public.videoforge_authorize_hosted_cpu_upload(");
+    const end = migration.indexOf("REVOKE ALL ON FUNCTION", start);
+    expect(start).toBeGreaterThan(0); expect(end).toBeGreaterThan(start);
+    await db.exec(migration.slice(start, end));
+    const expected = await sha256(await deriveCallbackToken(config.workflowCallbackSecret, attemptId));
+    const key = `tenant/${accountId}/workspace/${workspaceId}/project/${attempt.project_id}/revision/${attempt.project_revision_id}/lane/render/job/${attemptId}/artifact/final`;
+    await db.query("INSERT INTO hosted_cpu_job_attempts VALUES($1,$2,$3,$4,$5,$6,'RUNNING',now()+interval '1 hour',$7,'application/json',1048576)",
+      [attemptId, accountId, workspaceId, attempt.project_id, attempt.project_revision_id, expected, key + "-result"]);
+    await db.query("INSERT INTO hosted_cpu_upload_authorities(id,account_id,workspace_id,attempt_id,source,object_key,content_type,max_bytes) VALUES($1,$2,$3,$4,'PRIMARY_RESULT_OUTPUT',$5,'video/mp4',1000)",
+      [upload.id, accountId, workspaceId, attemptId, key]);
+    const authorize = async (token: string = expected, objectKey = key, checksum: string = hash) => (await db.query<{ authorized: boolean }>(
+      "SELECT public.videoforge_authorize_hosted_cpu_upload($1,$2,'PRIMARY_RESULT_OUTPUT',$3,'video/mp4',100,$4,now()) AS authorized",
+      [attemptId, token, objectKey, checksum])).rows[0]!.authorized;
+    expect(await authorize(hash)).toBe(false);
+    expect(await authorize(expected, key.replace(accountId, workspaceId))).toBe(false);
+    expect(await authorize()).toBe(true); expect(await authorize()).toBe(true);
+    expect(await authorize(expected, key, `sha256:${"b".repeat(64)}`)).toBe(false);
+    await db.query("UPDATE hosted_cpu_job_attempts SET state='CANCELLED' WHERE id=$1", [attemptId]);
+    expect(await authorize()).toBe(false);
+  } finally { await db.close(); }
+});
 
 async function setTemplate(kind:string,input:Row):Promise<void> {
   const text=JSON.stringify({schema_version:"videoforge-cloud-media-job-template/v1",attempt_id:attemptId,kind,input_document:input,
@@ -545,7 +602,7 @@ it.each(["same-pretty","different-transcript","invalid-json","invalid-model","ov
   primary.content_type="application/json";primary.issued_content_length=mode==="oversize"?16_777_217:bytes.byteLength;
   primary.issued_checksum_sha256=mode==="checksum-mismatch"?hash:await sha256(text);
   const get=vi.mocked(environment.PRIVATE_ARTIFACTS!.get), prior=get.getMockImplementation()!;
-  const read=vi.fn(async()=>bytes.buffer);
+  const read=vi.fn(async()=>bytes.buffer as ArrayBuffer);
   get.mockImplementation(async(key:string)=>key==="primary"?{size:primary.issued_content_length,
     httpMetadata:{contentType:"application/json"},arrayBuffer:read}:prior(key));
   expect((await runRoute("complete",completion))?.status).toBe(mode==="same-pretty"?200:409);

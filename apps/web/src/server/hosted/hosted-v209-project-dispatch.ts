@@ -633,6 +633,11 @@ export async function resumeHostedV209ProjectDispatch(
   const runtimePool = suppliedRuntimePool ?? injected.createPool(config.neon.databaseUrl);
   try {
     const runtimeDatabase = injected.createExecutor(runtimePool);
+    if ((await import("./cloud-media-qualification")).cloudMediaQualificationOnly(environment)) {
+      if (!await cloudMediaQualificationIdentityAllowed(runtimeDatabase, environment, identity, false))
+        return response({ error: { code: "CLOUD_MEDIA_QUALIFICATION_SCOPE_REJECTED" } }, 403);
+      return response({ state: "QUALIFICATION_PROVIDER_INERT" }, 200);
+    }
     if (config.apiGeneration) {
       const existingGeneration = await injected.findExistingGeneration?.(runtimeDatabase, identity);
       const admission = existingGeneration
@@ -738,6 +743,49 @@ export async function resumeHostedV209ProjectDispatch(
   }
 }
 
+async function cloudMediaQualificationIdentityAllowed(
+  database: TransactionalSqlExecutor,
+  environment: HostedRuntimeEnvironment,
+  identity: DispatchIdentity,
+  requireCleanCapacity = true,
+): Promise<boolean> {
+  return database.transaction(async transaction => {
+    await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", identity.accountId]);
+    const result = await transaction.query<{ allowed: boolean }>(
+      `SELECT public.videoforge_cloud_media_qualification_scope($1::uuid,$2::uuid)
+         AND EXISTS(SELECT 1 FROM projects p JOIN project_revisions revision
+           ON revision.account_id=p.account_id AND revision.workspace_id=p.workspace_id
+             AND revision.project_id=p.id
+           JOIN generation_requests g ON g.account_id=p.account_id AND g.workspace_id=p.workspace_id
+             AND g.project_id=p.id AND g.project_revision_id=revision.id
+           JOIN provider_workload_leases lease ON lease.account_id=g.account_id AND lease.workspace_id=g.workspace_id
+             AND lease.generation_request_id=g.id AND lease.request_kind='VIDEO'
+             AND lease.state='ACTIVE' AND lease.expires_at>now()
+           WHERE p.id=$2::uuid AND p.account_id=$3::uuid AND p.workspace_id=$4::uuid
+             AND p.owner_user_id=$5::uuid AND p.status='ACTIVE' AND revision.status='LOCKED'
+             AND revision.media_execution_backend='RUNPOD_POD' AND g.state='ACTIVE'
+             AND revision.revision_number=(SELECT max(current_revision.revision_number) FROM project_revisions current_revision
+               WHERE current_revision.account_id=p.account_id AND current_revision.workspace_id=p.workspace_id
+                 AND current_revision.project_id=p.id)
+             AND NOT EXISTS(SELECT 1 FROM hosted_api_generation_jobs api WHERE api.account_id=p.account_id
+               AND api.workspace_id=p.workspace_id AND api.project_id=p.id
+               AND api.state IN ('SUBMITTING','UNKNOWN_NO_RETRY','SUBMITTED'))
+             AND (NOT $6::boolean OR NOT EXISTS(SELECT 1 FROM cloud_media_reservations owned WHERE owned.account_id=p.account_id
+               AND (owned.state<>'CLEAN' OR owned.cleanup_verified_at IS NULL)))
+             AND EXISTS(SELECT 1 FROM hosted_cpu_job_attempts a JOIN cloud_media_jobs j ON j.attempt_id=a.id
+               JOIN cloud_media_reservations r ON r.id=j.reservation_id
+               WHERE a.account_id=p.account_id AND a.workspace_id=p.workspace_id
+                 AND a.project_id=p.id AND a.project_revision_id=revision.id AND a.kind='ASR'
+                 AND a.execution_backend='RUNPOD_POD' AND a.state='SUCCEEDED'
+                 AND a.result_receipt_sha256 IS NOT NULL AND r.state='CLEAN' AND r.cleanup_verified_at IS NOT NULL))
+         AS allowed`,
+      [environment.VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID!, identity.projectId,
+        identity.accountId, identity.workspaceId, identity.userId, requireCleanCapacity],
+    );
+    return result.rows.length === 1 && result.rows[0]?.allowed === true;
+  });
+}
+
 export async function handleHostedV209ProjectDispatch(
   request: Request,
   environment: HostedRuntimeEnvironment,
@@ -757,7 +805,10 @@ export async function handleHostedV209ProjectDispatch(
   if (!match) return null;
   if (request.method !== "POST" || !UUID.test(match[1]!))
     return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
-  if (config.environment !== "production" ||
+  const qualificationOnly = (await import("./cloud-media-qualification"))
+    .cloudMediaQualificationOnly(environment);
+  if (qualificationOnly ? config.environment !== "staging" || !config.cloudMedia :
+      config.environment !== "production" ||
       (!config.apiGeneration && config.gpuTransport !== "QUALIFIED_EXACT"))
     return response({ error: { code: "GPU_TRANSPORT_DISABLED_UNQUALIFIED" } }, 503);
   if (!sameOrigin(request, config))
@@ -778,6 +829,14 @@ export async function handleHostedV209ProjectDispatch(
       projectId: match[1]!,
     };
     const runtimeDatabase = injected.createExecutor(runtimePool);
+    if (qualificationOnly) {
+      if (!spanAudio || !await cloudMediaQualificationIdentityAllowed(runtimeDatabase, environment, identity))
+        return response({ error: { code: "CLOUD_MEDIA_QUALIFICATION_SCOPE_REJECTED" } }, 403);
+      const preparation = await spanAudio.prepare(identity);
+      return preparation.state === "PREPARING_INPUTS"
+        ? preparationResponse("PREPARING_INPUTS", correlationId)
+        : response({ state: "QUALIFICATION_PROVIDER_INERT" }, 200);
+    }
     const existingGeneration = await injected.findExistingGeneration?.(runtimeDatabase, identity);
     const admission: HostedV209AdmissionResult = existingGeneration
       ? { state: "ACTIVE", generationRequestId: existingGeneration }

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   createCoordinator: vi.fn((dependencies: unknown) => dependencies),
@@ -22,6 +22,16 @@ const identity = {
 };
 
 describe("hosted V2-09 live span audio wiring", () => {
+  beforeEach(() => vi.clearAllMocks());
+  it("never resumes a provider pair from an empty or completed qualification span", async () => {
+    createHostedV209SpanAudioLiveCoordinator({
+      VIDEOFORGE_ENVIRONMENT: "staging", VIDEOFORGE_CLOUD_MEDIA_QUALIFICATION_ONLY: "true",
+      VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID: identity.projectId,
+    } as never, { neon: { databaseUrl: "postgres://unused" } } as never, vi.fn());
+    const dependencies = mocks.createCoordinator.mock.calls[0]?.[0] as { resumePair: (value: typeof identity) => Promise<void> };
+    await dependencies.resumePair(identity);
+    expect(mocks.resumeDispatch).not.toHaveBeenCalled();
+  });
   it("resumes an admitted pair without repeating admission", async () => {
     const environment = {
       VIDEOFORGE_RECONCILER_DATABASE_URL: "postgres://reconciler.invalid/db",

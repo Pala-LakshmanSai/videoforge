@@ -66,6 +66,7 @@ export function createHostedV209SpanAudioLiveCoordinator(
         [input.accountId, input.workspaceId, input.attemptId, canonicalJson(input.resultDocument)],
       ),
     resumePair: async (identity) => {
+      if ((await import("./cloud-media-qualification")).cloudMediaQualificationOnly(environment)) return;
       const { resumeHostedV209ProjectDispatch } = await import("./hosted-v209-project-dispatch");
       const result = await resumeHostedV209ProjectDispatch(
         environment,
