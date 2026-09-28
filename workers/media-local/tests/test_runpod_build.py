@@ -7,9 +7,29 @@ import unittest
 from pathlib import Path
 
 build = runpy.run_path(str(Path(__file__).parents[1] / "prepare_runpod_build.py"))
+qualify = runpy.run_path(str(Path(__file__).parents[1] / "qualify_runpod_runtime.py"))
 
 
 class RunPodBuildTests(unittest.TestCase):
+    def test_qualification_stages_exact_documents_for_shared_cli_containment(self):
+        from videoforge_image_media.local_cli import _read_input
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            artifact_root = root / "artifacts"
+            artifact_root.mkdir()
+            artifact_root = artifact_root.resolve()
+            source = root / "job.json"
+            encoded = b'{"schema_version":"accepted-local-document"}\n'
+            source.write_bytes(encoded)
+            with self.assertRaisesRegex(ValueError, "inside the artifact root"):
+                _read_input(source, artifact_root)
+            for kind in ("asr", "span", "render"):
+                staged = qualify["stage_input"](artifact_root, source, kind)
+                self.assertEqual(staged.read_bytes(), encoded)
+                self.assertEqual(_read_input(staged, artifact_root), {"schema_version": "accepted-local-document"})
+            with self.assertRaises(FileExistsError):
+                qualify["stage_input"](artifact_root, source, "asr")
+
     def test_wheel_lock_accepts_linux_cp312_and_rejects_wrong_platform_or_hash(self):
         payload = b"locked wheel bytes"
         checksum = hashlib.sha256(payload).hexdigest()

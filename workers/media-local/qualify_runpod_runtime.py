@@ -25,6 +25,25 @@ def canonical(value: object) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
 
 
+def stage_input(artifact_root: Path, source: Path, kind: str) -> Path:
+    """Retain exact input bytes inside the existing CLI's trusted artifact root."""
+    if (kind not in {"asr", "span", "render"} or not artifact_root.is_absolute()
+            or artifact_root.is_symlink() or source.is_symlink() or not source.is_file()):
+        raise ValueError("Offline qualification input path is invalid")
+    directory = artifact_root / "qualification-inputs"
+    directory.mkdir(exist_ok=True)
+    if directory.is_symlink() or not directory.resolve().is_relative_to(artifact_root.resolve()):
+        raise ValueError("Offline qualification input escaped artifact root")
+    with source.open("rb") as stream:
+        encoded = stream.read(16 * 1024**2 + 1)
+    if len(encoded) > 16 * 1024**2:
+        raise ValueError("Offline qualification input exceeds bound")
+    destination = directory / f"{kind}.json"
+    with destination.open("xb") as output:
+        output.write(encoded)
+    return destination
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path, default=Path("/opt/videoforge"))
@@ -64,7 +83,7 @@ def main() -> int:
         raise ValueError("Accepted base.en model differs")
     evidence = {}
     for kind, command in (("asr", "transcribe"), ("span", "materialize-span"), ("render", "render")):
-        input_path = getattr(args, f"{kind}_input")
+        input_path = stage_input(args.artifact_root, getattr(args, f"{kind}_input"), kind)
         document = json.loads(input_path.read_bytes())
         arguments = [sys.executable, "-m", "videoforge_media_local.cli", command,
                      "--artifact-root", str(args.artifact_root), "--input", str(input_path),
@@ -87,7 +106,9 @@ def main() -> int:
                                 if segment["render"].get("avatar_source_profile") == "fal-flashhead-512x512p25-wide-v2"}
             if not {"AVATAR_FULL", "AVATAR_SPLIT_IMAGE"}.issubset(fal_compositions):
                 raise ValueError("Qualification render must contain accepted full and split Fal media")
-        result = subprocess.run(arguments, capture_output=True, check=True, timeout=7200)
+        result = subprocess.run(arguments, capture_output=True, check=False, timeout=7200)
+        if result.returncode:
+            raise ValueError(f"Offline {kind} command rejected trusted configuration")
         receipt = json.loads(result.stdout)
         if receipt.get("status") != "SUCCEEDED":
             raise ValueError(f"Real {kind} qualification failed")
