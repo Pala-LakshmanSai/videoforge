@@ -1,0 +1,8 @@
+**
+!.videoforge/
+!.videoforge/cloud-media/
+!.videoforge/cloud-media/tool-build/
+!.videoforge/cloud-media/tool-build/ffmpeg/
+!.videoforge/cloud-media/tool-build/ffmpeg/**
+!.videoforge/cloud-media/tool-build/whisper/
+!.videoforge/cloud-media/tool-build/whisper/**

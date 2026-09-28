@@ -1,0 +1,17 @@
+# Build new Linux binaries from immutable upstream source, outside paid Pod startup.
+FROM python@sha256:4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2
+RUN apt-get update && apt-get install --yes --no-install-recommends \
+    build-essential cmake pkg-config nasm libx264-dev zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+COPY .videoforge/cloud-media/tool-build/ffmpeg /src/ffmpeg
+COPY .videoforge/cloud-media/tool-build/whisper /src/whisper
+RUN cd /src/ffmpeg && test "$(cat RELEASE)" = 8.1.2 \
+    && ./configure --prefix=/opt/tools --disable-shared --enable-static \
+       --disable-debug --disable-doc --disable-ffplay --enable-gpl --enable-libx264 \
+    && make -j 4 && make install
+RUN cmake -S /src/whisper -B /src/whisper/build -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DGGML_CUDA=OFF \
+    -DGGML_METAL=OFF -DGGML_AVX2=ON -DGGML_F16C=ON -DGGML_FMA=ON \
+    -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON -DWHISPER_BUILD_SERVER=OFF \
+    && cmake --build /src/whisper/build --target whisper-cli --parallel 4 \
+    && cp /src/whisper/build/bin/whisper-cli /opt/tools/whisper-cli

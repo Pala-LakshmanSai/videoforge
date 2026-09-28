@@ -7,7 +7,7 @@ ARG FFPROBE_SHA256
 ARG WHISPER_SHA256
 ARG MODEL_SHA256=a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002
 RUN apt-get update && apt-get install --yes --no-install-recommends \
-    libglib2.0-0 libgomp1 libgl1 ca-certificates && rm -rf /var/lib/apt/lists/*
+    libglib2.0-0 libgomp1 libgl1 libx264-164 ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY .videoforge/cloud-media/build/wheels /tmp/wheels
 COPY workers/media-local/runpod-requirements.lock /tmp/requirements.txt
 RUN python -m pip install --no-index --find-links=/tmp/wheels --require-hashes \
