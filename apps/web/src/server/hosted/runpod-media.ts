@@ -14,6 +14,11 @@ import { reconcileHostedV209SpanWorkflowTerminal } from "./hosted-v209-span-work
 import { cloudDiskGb, cloudGpuCandidates, isCapacityRefusal, MULTIPART_PART_BYTES,
   RunPodMediaError, SHA256, SINGLE_PUT_MAX_BYTES, type CloudGpu } from "./runpod-media-policy";
 
+export const CLOUD_TERMINAL_EVENT_SQL = `INSERT INTO hosted_cpu_job_events(id,account_id,workspace_id,attempt_id,sequence,kind,facts_sha256,occurred_at)
+      SELECT md5($1::text||':cloud:'||$4)::uuid,$2::uuid,$3::uuid,$1::uuid,COALESCE(max(sequence),0)+1,$4,$5,now()
+      FROM hosted_cpu_job_events WHERE attempt_id=$1::uuid HAVING NOT EXISTS
+        (SELECT 1 FROM hosted_cpu_job_events WHERE attempt_id=$1::uuid AND kind=$4)`;
+
 type Row = Record<string, unknown>;
 function query(sql: SqlExecutor, statement: string, values: readonly unknown[] = []) {
   const parameters: SqlPrimitive[] = values.map(value => {
@@ -106,10 +111,7 @@ async function finishAttempt(config: HostedRuntimeConfiguration, r: Row, state: 
           AND r.state='SAVING' AND r.deadline_at>now()))) RETURNING id`,
     [r.leased_attempt_id ?? r.attempt_id,state,facts?.key ?? null,facts?.size ?? null,facts?.checksum ?? null,receipt,r.failure_code ?? "CLOUD_MEDIA_FAILED",r.id,r.fence_id]);
     if(!changed.rows[0]) return false;
-    await query(sql, `INSERT INTO hosted_cpu_job_events(id,account_id,workspace_id,attempt_id,sequence,kind,facts_sha256,occurred_at)
-      SELECT md5($1::text||':cloud:'||$4)::uuid,$2::uuid,$3::uuid,$1::uuid,COALESCE(max(sequence),0)+1,$4,$5,now()
-      FROM hosted_cpu_job_events WHERE attempt_id=$1 HAVING NOT EXISTS
-        (SELECT 1 FROM hosted_cpu_job_events WHERE attempt_id=$1 AND kind=$4)`,
+    await query(sql, CLOUD_TERMINAL_EVENT_SQL,
       [r.leased_attempt_id ?? r.attempt_id,r.account_id,r.workspace_id,state,await sha256(`${r.id}:${state}:${receipt ?? ""}`)]);
     return true;
   });

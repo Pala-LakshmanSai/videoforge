@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
 import { sha256 } from "./crypto";
@@ -12,7 +13,7 @@ vi.mock("./neon", () => ({ createNeonPool: () => ({ query: fixture.query, end: a
 vi.mock("./r2-checksum", () => ({ verifyHostedObjectChecksum: fixture.checksum }));
 vi.mock("./r2", () => ({ HostedR2Signer: class { multipartRequest = fixture.multipart; signMultipartPart = fixture.part; sign = fixture.sign; listMultipartUploadsExact=fixture.listMultipart; } }));
 vi.mock("./hosted-v209-queue-admission",()=>({ensureHostedV209GenerationAdmission:async()=>({state:"ACTIVE"})}));
-import { cleanupCloudReservation, cloudRenderDuration, handleCloudMediaRequest, RunPodMediaClient, runCloudMediaObservation, verifyCloudPlacement } from "./runpod-media";
+import { CLOUD_TERMINAL_EVENT_SQL, cleanupCloudReservation, cloudRenderDuration, handleCloudMediaRequest, RunPodMediaClient, runCloudMediaObservation, verifyCloudPlacement } from "./runpod-media";
 
 type Row = Record<string, unknown>;
 const accountId = "11111111-1111-4111-8111-111111111111", workspaceId = "22222222-2222-4222-8222-222222222222";
@@ -506,3 +507,25 @@ it("keeps other ready spans unreserved for the existing account Pod's bounded ba
   expect(statements.some(statement=>statement.includes("reserve_budget"))).toBe(false);
   expect(fixture.transport).not.toHaveBeenCalled();expect(attempt.state).toBe("OUTBOXED");
 });
+
+it("compiles and idempotently inserts exact terminal lineage in PostgreSQL with the text hash parameter", async () => {
+  vi.unstubAllGlobals();
+  const { PGlite } = await import("@electric-sql/pglite");
+  const db = new PGlite();
+  try {
+    await db.exec(`CREATE TABLE hosted_cpu_job_events(
+      id uuid PRIMARY KEY,account_id uuid NOT NULL,workspace_id uuid NOT NULL,attempt_id uuid NOT NULL,
+      sequence integer NOT NULL,kind text NOT NULL,facts_sha256 text NOT NULL,occurred_at timestamptz NOT NULL
+    );`);
+    // Native parameter inference previously typed $1 as text at md5, breaking UUID comparisons.
+    const oldSql = CLOUD_TERMINAL_EVENT_SQL.replaceAll("attempt_id=$1::uuid", "attempt_id=$1");
+    await expect(db.exec(`PREPARE broken_terminal AS ${oldSql}`)).rejects.toThrow("operator does not exist: uuid = text");
+    await db.exec(`PREPARE exact_terminal AS ${CLOUD_TERMINAL_EVENT_SQL}`);
+    const statement = `EXECUTE exact_terminal('${attemptId}','${accountId}','${workspaceId}','FAILED','${hash}')`;
+    await db.exec(statement);
+    await db.exec(statement);
+    expect((await db.query("SELECT account_id,workspace_id,attempt_id,sequence,kind,facts_sha256 FROM hosted_cpu_job_events")).rows).toEqual([
+      { account_id: accountId, workspace_id: workspaceId, attempt_id: attemptId, sequence: 1, kind: "FAILED", facts_sha256: hash },
+    ]);
+  } finally { await db.close(); }
+}, 30000);

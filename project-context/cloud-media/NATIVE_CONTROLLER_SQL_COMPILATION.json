@@ -1,0 +1,18 @@
+{
+  "verified_at": "2026-09-28",
+  "read_only_native_compilation": true,
+  "native_runtime_role_verified": true,
+  "old_terminal_sqlstate": "42883",
+  "old_uuid_text_comparison_error_reproduced": true,
+  "fixed_controller_sql_statements_prepared": 57,
+  "mutating_statements_executed_by_native_probe": 0,
+  "regression_postgresql_engine": true,
+  "regression_old_error_reproduced": true,
+  "regression_fixed_terminal_insert_idempotent": true,
+  "controller_tests_passed": 51,
+  "changed_file_lint_passed": true,
+  "web_worker_typechecks_passed": true,
+  "initial_placement_exception": "UNPROVEN",
+  "media_output_accepted": false,
+  "paid_provider_create_replayed": false
+}
