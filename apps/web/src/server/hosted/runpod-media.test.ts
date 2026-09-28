@@ -14,7 +14,7 @@ vi.mock("./r2-checksum", () => ({ verifyHostedObjectChecksum: fixture.checksum }
 vi.mock("./r2", () => ({ HostedR2Signer: class { multipartRequest = fixture.multipart; signMultipartPart = fixture.part; sign = fixture.sign; listMultipartUploadsExact=fixture.listMultipart; } }));
 vi.mock("./app",()=>({createHostedV209RenderTerminalLiveCoordinator:()=>({acceptCompleted:async()=>{}})}));
 vi.mock("./hosted-v209-queue-admission",()=>({ensureHostedV209GenerationAdmission:async()=>({state:"ACTIVE"})}));
-import { CLOUD_DISK_METRICS_SQL, CLOUD_TERMINAL_EVENT_SQL, cleanupCloudReservation, cloudRenderDuration, handleCloudMediaRequest, RunPodMediaClient, runCloudMediaObservation, validCloudDiskMetrics, verifyCloudPlacement } from "./runpod-media";
+import { CLOUD_COMPUTE_ABSENCE_EVENT_SQL, CLOUD_DISK_METRICS_SQL, CLOUD_TERMINAL_EVENT_SQL, cleanupCloudReservation, cloudRenderDuration, handleCloudMediaRequest, RunPodMediaClient, runCloudMediaObservation, validCloudDiskMetrics, verifyCloudPlacement } from "./runpod-media";
 
 type Row = Record<string, unknown>;
 const accountId = "11111111-1111-4111-8111-111111111111", workspaceId = "22222222-2222-4222-8222-222222222222";
@@ -184,10 +184,11 @@ beforeEach(async () => {
       reservation.pod_id = values[1]; reservation.launch_outcome = "CONFIRMED"; return { rows: [] };
     }
     if (sql.includes("UPDATE cloud_media_reservations SET state='STARTING'")) { reservation.state = "STARTING"; return { rows: [] }; }
-    if(sql.includes("UPDATE cloud_media_reservations SET cleanup_verified_at=now()")) {
+    if(sql.includes("SELECT id FROM hosted_cpu_job_attempts") && sql.includes("FOR UPDATE")) return {rows:values[0]===attemptId?[{id:attemptId}]:[]};
+    if(sql.includes("UPDATE cloud_media_reservations SET updated_at=now()")) {
       if(reservation.state!=="STOPPING" || reservation.failure_code!=="CLOUD_MEDIA_RECEIPT_PENDING" ||
         values[1]!==reservation.leased_attempt_id || values[2]!==reservation.fence_id) return {rows:[]};
-      reservation.cleanup_verified_at=new Date().toISOString();return {rows:[{id:reservationId}]};
+      return {rows:[{id:reservationId}]};
     }
     if (sql.includes("UPDATE cloud_media_reservations SET state='CLEAN'")) {
       if (values.length > 1 && (values[1] !== reservation.leased_attempt_id || values[2] !== reservation.fence_id)) return { rows: [] };
@@ -732,7 +733,8 @@ describe("lost completion receipt reconciliation",()=>{
       .mockResolvedValueOnce(new Response(null,{status:204})).mockResolvedValueOnce(emptyInventory());
     vi.mocked(environment.PRIVATE_ARTIFACTS!.get).mockRejectedValueOnce(new TypeError("private transport detail"));
     expect((await runCloudMediaObservation(environment,config,scope)).state).toBe("RECONCILING");
-    expect(attempt.state).toBe("RUNNING");expect(reservation.state).toBe("STOPPING");expect(reservation.cleanup_verified_at).toBeTruthy();
+    expect(attempt.state).toBe("RUNNING");expect(reservation.state).toBe("STOPPING");expect(reservation.cleanup_verified_at).toBeUndefined();
+    expect(fixture.query.mock.calls.some(([sql])=>sql===CLOUD_COMPUTE_ABSENCE_EVENT_SQL)).toBe(true);
     expect(fixture.transport.mock.calls.map(([,options])=>options.method)).toEqual(["GET","DELETE","GET"]);
     expect((await runCloudMediaObservation(environment,config,scope)).state).toBe("SUCCEEDED");
     expect(attempt.state).toBe("SUCCEEDED");expect(reservation.state).toBe("CLEAN");
@@ -793,3 +795,34 @@ it.each(["missing","expired"])("settles pending receipt with a fixed %s failure 
   expect(attempt.failure_code).toBe(mode==="missing"?"CLOUD_MEDIA_UPLOAD_FAILED":"CLOUD_MEDIA_DEADLINE_EXCEEDED");
   expect(reservation.state).toBe("CLEAN");
 });
+
+it("records idempotent owned absence while preserving the applied CLEAN iff timestamp and event constraints",async()=>{
+  reservation.state="STOPPING";reservation.failure_code="CLOUD_MEDIA_RECEIPT_PENDING";reservation.launch_outcome="CONFIRMED";upload.state="VERIFIED";
+  expect(await cleanupCloudReservation(new RunPodMediaClient("fixture-key"),config,reservation,true)).toBe(true);
+  const retained=fixture.query.mock.calls.find(([sql])=>String(sql).includes("UPDATE cloud_media_reservations SET updated_at=now()"))!;
+  const event=fixture.query.mock.calls.find(([sql])=>sql===CLOUD_COMPUTE_ABSENCE_EVENT_SQL)!;
+  expect(retained).toBeDefined();expect(event).toBeDefined();
+  vi.unstubAllGlobals();const {PGlite}=await import("@electric-sql/pglite");const {readFile}=await import("node:fs/promises");const db=new PGlite();
+  try {
+    const migration=await readFile(new URL("../../../../../packages/control-plane/migrations/0214_optional_runpod_media.sql",import.meta.url),"utf8");
+    const cleanConstraint=migration.match(/CHECK\(\(state='CLEAN'\)=\(cleanup_verified_at IS NOT NULL\)\)/u)![0];
+    const foundation=await readFile(new URL("../../../../../packages/control-plane/migrations/0029_v2_06_hosted_foundation.sql",import.meta.url),"utf8");
+    const events=foundation.slice(foundation.indexOf("CREATE TABLE hosted_cpu_job_events ("),foundation.indexOf("CREATE INDEX hosted_cpu_job_events",foundation.indexOf("CREATE TABLE hosted_cpu_job_events (")));
+    const table=events.slice(0,events.indexOf("\n);"))+"\n);";
+    await db.exec(`CREATE TABLE hosted_cpu_job_attempts(account_id uuid,workspace_id uuid,id uuid,state text,execution_backend text,
+      PRIMARY KEY(account_id,workspace_id,id));
+      CREATE TABLE cloud_media_reservations(id uuid,leased_attempt_id uuid,fence_id uuid,state text,failure_code text,
+        cleanup_verified_at timestamptz,updated_at timestamptz,${cleanConstraint});`);
+    await db.exec(table);
+    await db.query("INSERT INTO hosted_cpu_job_attempts VALUES($1,$2,$3,'RUNNING','RUNPOD_POD')",[accountId,workspaceId,attemptId]);
+    await db.query("INSERT INTO cloud_media_reservations VALUES($1,$2,$3,'STOPPING','CLOUD_MEDIA_RECEIPT_PENDING',NULL,now())",[reservationId,attemptId,reservation.fence_id]);
+    await db.query(String(retained[0]),retained[1]);
+    await db.query(CLOUD_COMPUTE_ABSENCE_EVENT_SQL,event[1]);await db.query(CLOUD_COMPUTE_ABSENCE_EVENT_SQL,event[1]);
+    const polls=(await db.query<{kind:string;sequence:number;facts_sha256:string}>("SELECT kind,sequence,facts_sha256 FROM hosted_cpu_job_events")).rows;
+    expect(polls).toEqual([{kind:"POLL_OBSERVATION",sequence:1,facts_sha256:event[1][3]}]);
+    expect((await db.query("SELECT state,cleanup_verified_at FROM cloud_media_reservations")).rows).toEqual([{state:"STOPPING",cleanup_verified_at:null}]);
+    await expect(db.exec("UPDATE cloud_media_reservations SET cleanup_verified_at=now() WHERE state='STOPPING'")).rejects.toThrow();
+    await db.exec("UPDATE cloud_media_reservations SET state='CLEAN',cleanup_verified_at=now()");
+    expect((await db.query("SELECT state FROM cloud_media_reservations")).rows).toEqual([{state:"CLEAN"}]);
+  } finally {await db.close();}
+},30000);

@@ -19,6 +19,11 @@ export const CLOUD_TERMINAL_EVENT_SQL = `INSERT INTO hosted_cpu_job_events(id,ac
       FROM hosted_cpu_job_events WHERE attempt_id=$1::uuid HAVING NOT EXISTS
         (SELECT 1 FROM hosted_cpu_job_events WHERE attempt_id=$1::uuid AND kind=$4)`;
 
+export const CLOUD_COMPUTE_ABSENCE_EVENT_SQL = `INSERT INTO hosted_cpu_job_events(id,account_id,workspace_id,attempt_id,sequence,kind,facts_sha256,occurred_at)
+    SELECT md5($4::text)::uuid,$2::uuid,$3::uuid,$1::uuid,COALESCE(max(sequence),0)+1,'POLL_OBSERVATION',$4,now()
+    FROM hosted_cpu_job_events WHERE attempt_id=$1::uuid HAVING NOT EXISTS
+      (SELECT 1 FROM hosted_cpu_job_events WHERE id=md5($4::text)::uuid)`;
+
 export const CLOUD_DISK_METRICS_SQL = `UPDATE cloud_media_jobs j SET disk_metrics=CASE
     WHEN j.disk_metrics IS NULL THEN $4::jsonb ELSE j.disk_metrics || jsonb_build_object(
       'peak_used_bytes',GREATEST((j.disk_metrics->>'peak_used_bytes')::bigint,($4::jsonb->>'peak_used_bytes')::bigint),
@@ -209,10 +214,19 @@ export async function cleanupCloudReservation(client: RunPodMediaClient, config:
     await tenant(config,String(r.account_id),async sql=>{await query(sql,
       "UPDATE cloud_media_multipart_uploads SET state='ABORTED' WHERE id=$1 AND reservation_id=$2 AND state<>'VERIFIED'",[upload.id,r.id]);});
   }
-  if(retainReceiptPending) return tenant(config,String(r.account_id),async sql=>!!(await query(sql,
-    `UPDATE cloud_media_reservations SET cleanup_verified_at=now(),updated_at=now()
+  if(retainReceiptPending) return tenant(config,String(r.account_id),async sql=>{
+    // Terminal publication also locks the CPU row before writing its event sequence.
+    // Keep CLEAN's timestamp invariant; a poll receipt records compute absence while storage is pending.
+    if(!(await query(sql,`SELECT id FROM hosted_cpu_job_attempts WHERE id=$1 AND account_id=$2 AND workspace_id=$3
+      AND execution_backend='RUNPOD_POD' FOR UPDATE`,[r.leased_attempt_id,r.account_id,r.workspace_id])).rows[0]) return false;
+    if(!(await query(sql,`UPDATE cloud_media_reservations SET updated_at=now()
       WHERE id=$1 AND state='STOPPING' AND failure_code='CLOUD_MEDIA_RECEIPT_PENDING'
-        AND leased_attempt_id=$2 AND fence_id=$3 RETURNING id`,[r.id,r.leased_attempt_id,r.fence_id])).rows[0]);
+        AND leased_attempt_id=$2 AND fence_id=$3 RETURNING id`,[r.id,r.leased_attempt_id,r.fence_id])).rows[0]) return false;
+    const facts=await sha256(canonicalJson({schema_version:"videoforge-cloud-media-owned-absence/v1",
+      reservation_id:r.id,attempt_id:r.leased_attempt_id,fence_id:r.fence_id,inventory_complete:true,owned_pods:0}));
+    await query(sql,CLOUD_COMPUTE_ABSENCE_EVENT_SQL,[r.leased_attempt_id,r.account_id,r.workspace_id,facts]);
+    return true;
+  });
   return tenant(config,String(r.account_id), async sql => !!(await query(sql,
     `UPDATE cloud_media_reservations SET state='CLEAN',cleanup_verified_at=now(),updated_at=now()
       WHERE id=$1 AND state='STOPPING' AND leased_attempt_id=$2 AND fence_id=$3 RETURNING id`,
