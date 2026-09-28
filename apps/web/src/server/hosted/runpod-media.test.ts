@@ -14,7 +14,7 @@ vi.mock("./r2-checksum", () => ({ verifyHostedObjectChecksum: fixture.checksum }
 vi.mock("./r2", () => ({ HostedR2Signer: class { multipartRequest = fixture.multipart; signMultipartPart = fixture.part; sign = fixture.sign; listMultipartUploadsExact=fixture.listMultipart; } }));
 vi.mock("./app",()=>({createHostedV209RenderTerminalLiveCoordinator:()=>({acceptCompleted:fixture.finalize})}));
 vi.mock("./hosted-v209-queue-admission",()=>({ensureHostedV209GenerationAdmission:async()=>({state:"ACTIVE"})}));
-import { CLOUD_COMPUTE_ABSENCE_EVENT_SQL, CLOUD_DISK_METRICS_SQL, CLOUD_QUALIFICATION_RENDER_ARTIFACT_SQL, CLOUD_TERMINAL_EVENT_SQL, cleanupCloudReservation, cloudRenderDuration, handleCloudMediaRequest, RunPodMediaClient, runCloudMediaObservation, validCloudDiskMetrics, verifyCloudPlacement } from "./runpod-media";
+import { CLOUD_COMPUTE_ABSENCE_EVENT_SQL, CLOUD_CREATE_RENTAL_SQL, CLOUD_PRE_CREATE_ALLOWED_SQL, CLOUD_PLACEMENT_READY_SQL, CLOUD_DISK_METRICS_SQL, CLOUD_QUALIFICATION_RENDER_ARTIFACT_SQL, CLOUD_TERMINAL_EVENT_SQL, cleanupCloudReservation, cloudRenderDuration, handleCloudMediaRequest, RunPodMediaClient, runCloudMediaObservation, validCloudDiskMetrics, verifyCloudPlacement } from "./runpod-media";
 
 type Row = Record<string, unknown>;
 const accountId = "11111111-1111-4111-8111-111111111111", workspaceId = "22222222-2222-4222-8222-222222222222";
@@ -24,7 +24,7 @@ const scope = { accountId, workspaceId, attemptId };
 const environment = { RUNPOD_API_KEY: "fixture-key", PRIVATE_ARTIFACTS: { head: vi.fn(),get: vi.fn() } } as unknown as HostedRuntimeEnvironment;
 const config = { publicOrigin: "https://videoforge.example", neon: { databaseUrl: "fixture" }, workflowCallbackSecret: "fixture-secret",
   cloudMedia: { apiKey: "fixture-key", image: `ghcr.io/example/media@${hash}`, sourceSha256: hash,runtimeSha256:hash,tooling:{ffmpeg_version:"8.1.2"} } } as unknown as HostedRuntimeConfiguration;
-let attempt: Row, reservation: Row, upload: Row, measuredJob:Row, tokenHash: string, raceCancel = false, rotateBeforeStop = false, generationActive = false, cpuSettled = true, noReservation = false, qualificationAllowed=true;
+let attempt: Row, reservation: Row, upload: Row, measuredJob:Row, tokenHash: string, raceCancel = false, rotateBeforeStop = false, generationActive = false, cpuSettled = true, noReservation = false, qualificationAllowed=true, expiresBeforePost=false, placementExpired=false;
 let resultBytes:Uint8Array, templateBytes:Uint8Array;
 const future = () => new Date(Date.now() + 3_600_000).toISOString();
 
@@ -147,7 +147,7 @@ async function setResultDocument(value:unknown):Promise<void> {
 
 beforeEach(async () => {
   for(const key of ["VIDEOFORGE_CLOUD_MEDIA_QUALIFICATION_ONLY","VIDEOFORGE_ENVIRONMENT","VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID"]) Reflect.deleteProperty(environment,key);
-  qualificationAllowed=true;
+  qualificationAllowed=true;expiresBeforePost=false;placementExpired=false;
   fixture.finalize.mockReset();fixture.finalize.mockResolvedValue(undefined);
   vi.clearAllMocks(); raceCancel = false; rotateBeforeStop = false; generationActive = false; cpuSettled = true; noReservation = false; tokenHash = await sha256(capability);
   attempt = { id: attemptId, account_id: accountId, workspace_id: workspaceId, state: "RUNNING", kind: "RENDER",
@@ -156,7 +156,7 @@ beforeEach(async () => {
     fence_id: "77777777-7777-4777-8777-777777777777", state: "WAITING_CAPACITY", pod_name: `videoforge-media-${reservationId}`,
     image: `ghcr.io/example/media@${hash}`, gpu: "NVIDIA GeForce RTX 4090", disk_gb: 100, max_hourly_usd: 1,
     budget_usd: 2, rental_seconds: 7200, round: 0, candidate_index: 0, next_check_at: new Date(0).toISOString(),
-    placement_deadline_at: future(), deadline_at: future(), launch_outcome: "UNKNOWN", verified_at: new Date().toISOString() };
+    placement_deadline_at: future(), deadline_at: future(), authority_expires_at:future(),authority_enabled:true, launch_outcome: "UNKNOWN", verified_at: new Date().toISOString() };
   upload = { id: "88888888-8888-4888-8888-888888888888", reservation_id: reservationId, upload_id: "fixture-upload",
     object_key: "primary", content_length: MULTIPART_PART_BYTES * 2, checksum_sha256: hash, state: "OPEN" };
   measuredJob={};
@@ -180,13 +180,14 @@ beforeEach(async () => {
     httpMetadata: { contentType: key === "result" ? "application/json" : primary.content_type } }));
   fixture.query.mockImplementation(async (sql: string, values: unknown[] = []) => {
     if (sql.includes("SELECT set_config")) return { rows: [] };
+    if(sql.includes("allowed_create_reservation")) return {rows:attempt.state==="RUNNING" && Date.parse(String(reservation.deadline_at))>Date.now() && reservation.authority_enabled===true && Date.parse(String(reservation.authority_expires_at))>Date.now() && values[1]===reservation.leased_attempt_id && values[2]===reservation.fence_id ? [{id:reservationId}]:[]};
     if(sql.includes("qualification_artifact_attempt_id")) return {rows:qualificationAllowed && attempt.state==="SUCCEEDED" && attempt.kind==="RENDER" && attempt.result_receipt_sha256 && attempt.result_object_key && Number(attempt.result_content_length)>0 && attempt.result_checksum_sha256 && reservation.state==="CLEAN" && reservation.cleanup_verified_at && values[3]===reservation.budget_authority_id ? [{qualification_artifact_attempt_id:attemptId}]:[]};
     if (sql.includes("videoforge_cloud_media_qualification_scope")) return {rows:[{allowed:qualificationAllowed}]};
     if (sql.includes("pg_advisory_xact_lock")) return { rows: [] };
     if (sql.includes("SELECT r.id FROM cloud_media_reservations r")) return {rows:[{id:reservationId}]};
     if (sql.includes("videoforge_cloud_media_capability_scope")) return { rows: values[1] === tokenHash ? [{ account_id: accountId }] : [] };
     if (sql.includes("SELECT a.*,p.owner_user_id")) return { rows: [{ ...attempt }] };
-    if (sql.includes("SELECT r.* FROM cloud_media_reservations")) return { rows: noReservation ? [] : [{ ...reservation }] };
+    if (sql.includes("SELECT r.*,b.expires_at AS authority_expires_at")) return { rows: noReservation ? [] : [{ ...reservation }] };
     if (sql.includes("SELECT r.*,a.state AS attempt_state")) return { rows: [{ ...reservation, attempt_state: attempt.state, kind: attempt.kind }] };
     if (sql.includes("SELECT * FROM hosted_cpu_job_attempts")) return { rows: [{ ...attempt }] };
     if (sql.includes("SELECT * FROM hosted_cpu_upload_authorities")) return { rows: [primary, result] };
@@ -209,7 +210,9 @@ beforeEach(async () => {
     if (sql.includes("videoforge_settle_cloud_media_cpu_failure")) return { rows: [{ settled: cpuSettled }] };
     if (sql.includes("SELECT id FROM generation_requests WHERE account_id=")) return { rows: generationActive ? [{ id: "fixture-generation" }] : [] };
     if (sql.includes("SET failure_settled_at=COALESCE")) { reservation.failure_settled_at = new Date().toISOString(); return { rows: [] }; }
-    if (sql.includes("UPDATE cloud_media_reservations SET launch_outcome='REFUSED'")) { reservation.launch_outcome = "REFUSED"; return { rows: [] }; }
+    if (sql.includes("UPDATE cloud_media_reservations SET launch_outcome='REFUSED'")) {
+      if(sql.includes("RETURNING id") && (values[1]!==reservation.leased_attempt_id || values[2]!==reservation.fence_id || reservation.state!=="CREATING"))return{rows:[]};
+      reservation.launch_outcome = "REFUSED"; return { rows: sql.includes("RETURNING id")?[{id:reservationId,attempt_state:attempt.state}]:[] }; }
     if (sql.includes("videoforge_cloud_media_reserve_budget") || sql.includes("videoforge_cloud_media_renew_admission")) return { rows: [{ reserved: true }] };
     if (sql.includes("SELECT id FROM cloud_media_reservations")) return { rows: reservation.state === "WAITING_CAPACITY" ? [{ id: reservationId }] : [] };
     if (sql.includes("SELECT state FROM hosted_cpu_job_attempts")) return { rows: [{ state: attempt.state }] };
@@ -232,7 +235,7 @@ beforeEach(async () => {
     if (sql.includes("UPDATE hosted_cpu_job_attempts SET state='RUNNING'")) { attempt.state = "RUNNING"; return { rows: [{ id: attemptId }] }; }
     if (sql.includes("UPDATE cloud_media_reservations SET state='CREATING'")) {
       if (reservation.state !== "WAITING_CAPACITY") return { rows: [] };
-      reservation.state = "CREATING"; reservation.gpu = values[1]; reservation.launch_outcome = "UNKNOWN";
+      reservation.state = "CREATING"; reservation.gpu = values[1]; reservation.launch_outcome = "UNKNOWN";if(expiresBeforePost)reservation.deadline_at=new Date(0).toISOString();
       return { rows: [{ ...reservation }] };
     }
     if (sql.includes("UPDATE cloud_media_reservations SET state='WAITING_CAPACITY'")) {
@@ -240,9 +243,11 @@ beforeEach(async () => {
       reservation.candidate_index = Number(reservation.candidate_index) + 1; return { rows: [] };
     }
     if (sql.includes("UPDATE cloud_media_reservations SET pod_id=")) {
-      reservation.pod_id = values[1]; reservation.launch_outcome = "CONFIRMED"; return { rows: [] };
+      if(values[3]!==reservation.leased_attempt_id || values[4]!==reservation.fence_id)return{rows:[]};
+      reservation.pod_id = values[1]; reservation.launch_outcome = "CONFIRMED"; return { rows: [{id:reservationId}] };
     }
-    if (sql.includes("UPDATE cloud_media_reservations SET state='STARTING'")) { reservation.state = "STARTING"; return { rows: [] }; }
+    if (sql.includes("UPDATE cloud_media_reservations SET state='STARTING'")) { if(placementExpired)return{rows:[]};reservation.state = "STARTING"; return { rows: [{...reservation}] }; }
+    if(sql.includes("expired_placement_reservation"))return{rows:placementExpired?[{id:reservationId}]:[]};
     if(sql.includes("SELECT id FROM hosted_cpu_job_attempts") && sql.includes("FOR UPDATE")) return {rows:values[0]===attemptId?[{id:attemptId}]:[]};
     if(sql.includes("UPDATE cloud_media_reservations SET updated_at=now()")) {
       if(reservation.state!=="STOPPING" || reservation.failure_code!=="CLOUD_MEDIA_RECEIPT_PENDING" ||
@@ -961,6 +966,77 @@ it("executes the exact qualification artifact query with PostgreSQL scope, linea
       expect((await db.query(snapshot)).rows,mode).toEqual(before);
       if(mode==="accepted")for(const values of [[other,accountId,workspaceId,authority],[attemptId,other,workspaceId,authority],[attemptId,accountId,other,authority],[attemptId,accountId,workspaceId,other]])
         expect((await db.query(CLOUD_QUALIFICATION_RENDER_ARTIFACT_SQL,values)).rows).toHaveLength(0);
+    }
+  }finally{await db.close();}
+},30000);
+
+describe("authority deadline at launch and adoption",()=>{
+  it("settles an already expired unlaunched authority without catalogue, sweeps or paid POST",async()=>{
+    reservation.authority_expires_at=new Date(0).toISOString();reservation.launch_outcome=null;
+    expect((await runCloudMediaObservation(environment,config,scope)).state).toBe("FAILED");
+    expect(reservation.state).toBe("CLEAN");expect(attempt.failure_code).toBe("CLOUD_MEDIA_DEADLINE_EXCEEDED");expect(fixture.transport).not.toHaveBeenCalled();
+  });
+  it("records a no-send refusal when the bounded deadline passes immediately before POST",async()=>{
+    expiresBeforePost=true;
+    expect((await runCloudMediaObservation(environment,config,scope)).state).toBe("FAILED");
+    expect(attempt.failure_code).toBe("CLOUD_MEDIA_DEADLINE_EXCEEDED");expect(reservation.state).toBe("CLEAN");expect(reservation.launch_outcome).toBe("REFUSED");
+    expect(fixture.transport.mock.calls.every(([,options])=>options.method==="GET")).toBe(true);
+  });
+  it.each(["cancel","revoke","replacement"])("rechecks exact lease and authority immediately before paid POST: %s",async mode=>{
+    const prior=fixture.query.getMockImplementation()!;
+    fixture.query.mockImplementation(async(statement:string,values:unknown[])=>{
+      if(statement.includes("allowed_create_reservation")) {
+        if(mode==="cancel")attempt.state="CANCEL_REQUESTED";
+        else if(mode==="revoke")reservation.authority_enabled=false;
+        else reservation.fence_id="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+      }
+      return prior(statement,values);
+    });
+    const outcome=await runCloudMediaObservation(environment,config,scope);
+    expect(outcome.state).toBe(mode==="cancel"?"CANCELLED":mode==="revoke"?"FAILED":"RECONCILING");
+    expect(fixture.transport.mock.calls.filter(([,options])=>options.method==="POST")).toHaveLength(0);
+    if(mode==="replacement"){expect(attempt.state).toBe("RUNNING");expect(reservation.state).toBe("CREATING");expect(reservation.launch_outcome).toBe("UNKNOWN");}
+    else expect(reservation.state).toBe("CLEAN");
+  });
+  it("adopts ownership then cleans a placement that arrives after the authority expiry without starting media",async()=>{
+    placementExpired=true;reservation.state="AMBIGUOUS";let reads=0;
+    fixture.transport.mockImplementation(async(_url:string,options:RequestInit)=>options.method==="DELETE"?new Response(null,{status:204}):++reads<=2?response({pods:[placement()],pagination:{hasNextPage:false}}):emptyInventory());
+    expect((await runCloudMediaObservation(environment,config,scope)).state).toBe("FAILED");
+    expect(reservation.pod_id).toBeDefined();expect(reservation.launch_outcome).toBe("CONFIRMED");expect(reservation.state).toBe("CLEAN");
+    expect(fixture.transport.mock.calls.filter(([,options])=>options.method==="POST")).toHaveLength(0);expect(fixture.transport.mock.calls.filter(([,options])=>options.method==="DELETE")).toHaveLength(1);
+  });
+});
+it("bounds real PostgreSQL create and placement deadlines by the exact authority expiry",async()=>{
+  vi.unstubAllGlobals();const {PGlite}=await import("@electric-sql/pglite");const db=new PGlite();const authority="99999999-9999-4999-8999-999999999999";
+  try{
+    await db.exec(`CREATE TABLE hosted_cpu_job_attempts(id uuid PRIMARY KEY,deadline_at timestamptz,state text,account_id uuid,workspace_id uuid);
+      CREATE TABLE cloud_media_budget_authorities(id uuid PRIMARY KEY,enabled boolean,expires_at timestamptz);
+      CREATE TABLE cloud_media_reservations(id uuid PRIMARY KEY,leased_attempt_id uuid,fence_id uuid,budget_authority_id uuid,account_id uuid,workspace_id uuid,state text,gpu text,
+        expected_hourly_usd numeric,rental_seconds integer,deadline_at timestamptz,placement_deadline_at timestamptz,launch_outcome text,updated_at timestamptz,verified_at timestamptz,last_heartbeat_at timestamptz);`);
+    for(const mode of ["authority-first","cpu-first","rental-first","authority-expired","authority-disabled"]){
+      await db.exec("TRUNCATE hosted_cpu_job_attempts,cloud_media_budget_authorities,cloud_media_reservations");
+      const now=Date.now(),expiry=new Date(now+(mode==="authority-expired"?-1000:mode==="authority-first"?60_000:3600_000)).toISOString(),cpuDeadline=new Date(now+(mode==="cpu-first"?30_000:3600_000)).toISOString();
+      await db.query("INSERT INTO hosted_cpu_job_attempts VALUES($1,$2,'RUNNING',$3,$4)",[attemptId,cpuDeadline,accountId,workspaceId]);
+      await db.query("INSERT INTO cloud_media_budget_authorities VALUES($1,$2,$3)",[authority,mode!=="authority-disabled",expiry]);
+      await db.query("INSERT INTO cloud_media_reservations(id,leased_attempt_id,fence_id,budget_authority_id,state,rental_seconds,placement_deadline_at,account_id,workspace_id) VALUES($1,$2,$3,$4,'WAITING_CAPACITY',$5,now()+interval '3 minutes',$6,$7)",[reservationId,attemptId,reservation.fence_id,authority,mode==="rental-first"?10:900,accountId,workspaceId]);
+      for(const stale of [[reservationId,"NVIDIA A40",.6,reservationId,reservation.fence_id],[reservationId,"NVIDIA A40",.6,attemptId,reservationId]])
+        expect((await db.query(CLOUD_CREATE_RENTAL_SQL,stale)).rows,mode).toHaveLength(0);
+      const created=await db.query<{deadline_at:Date;state:string}>(CLOUD_CREATE_RENTAL_SQL,[reservationId,"NVIDIA A40",.6,attemptId,reservation.fence_id]);
+      expect(created.rows,mode).toHaveLength(["authority-expired","authority-disabled"].includes(mode)?0:1);
+      if(!created.rows.length)continue;
+      const chosen=created.rows[0]!.deadline_at instanceof Date ? created.rows[0]!.deadline_at.getTime():Date.parse(String(created.rows[0]!.deadline_at));expect(chosen).toBeLessThanOrEqual(Date.parse(expiry));expect(chosen).toBeLessThanOrEqual(Date.parse(cpuDeadline));
+      if(mode==="authority-first")expect(chosen).toBe(Date.parse(expiry));if(mode==="cpu-first")expect(chosen).toBe(Date.parse(cpuDeadline));if(mode==="rental-first")expect(chosen).toBeLessThan(now+15_000);
+      expect((await db.query(CLOUD_PRE_CREATE_ALLOWED_SQL,[reservationId,attemptId,reservation.fence_id])).rows).toHaveLength(1);
+      for(const sql of ["UPDATE hosted_cpu_job_attempts SET state='CANCEL_REQUESTED'","UPDATE cloud_media_budget_authorities SET enabled=false"]){
+        await db.exec(sql);expect((await db.query(CLOUD_PRE_CREATE_ALLOWED_SQL,[reservationId,attemptId,reservation.fence_id])).rows).toHaveLength(0);
+        await db.exec("UPDATE hosted_cpu_job_attempts SET state='RUNNING';UPDATE cloud_media_budget_authorities SET enabled=true");
+      }
+      for(const stale of [[reservationId,reservationId,reservation.fence_id],[reservationId,attemptId,reservationId]])
+        {expect((await db.query(CLOUD_PLACEMENT_READY_SQL,stale)).rows,mode).toHaveLength(0);expect((await db.query(CLOUD_PRE_CREATE_ALLOWED_SQL,stale)).rows,mode).toHaveLength(0);}
+      expect((await db.query(CLOUD_PLACEMENT_READY_SQL,[reservationId,attemptId,reservation.fence_id])).rows).toHaveLength(1);
+      await db.exec("UPDATE cloud_media_reservations SET state='AMBIGUOUS';UPDATE cloud_media_budget_authorities SET expires_at=now()-interval '1 second'");
+      expect((await db.query(CLOUD_PLACEMENT_READY_SQL,[reservationId,attemptId,reservation.fence_id])).rows).toHaveLength(0);
+      expect((await db.query<{state:string}>("SELECT state FROM cloud_media_reservations")).rows[0]!.state).toBe("AMBIGUOUS");
     }
   }finally{await db.close();}
 },30000);

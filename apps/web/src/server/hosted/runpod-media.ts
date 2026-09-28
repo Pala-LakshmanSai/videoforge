@@ -251,6 +251,28 @@ async function settleFailedCpu(config:HostedRuntimeConfiguration,a:Row):Promise<
   });
 }
 
+export const CLOUD_CREATE_RENTAL_SQL = `UPDATE cloud_media_reservations SET state='CREATING',gpu=$2,expected_hourly_usd=$3,
+  deadline_at=LEAST(now()+make_interval(secs=>rental_seconds),a.deadline_at,b.expires_at),
+  launch_outcome='UNKNOWN',updated_at=now() FROM hosted_cpu_job_attempts a,cloud_media_budget_authorities b
+  WHERE cloud_media_reservations.id=$1 AND cloud_media_reservations.state='WAITING_CAPACITY'
+    AND cloud_media_reservations.placement_deadline_at>now()
+    AND cloud_media_reservations.leased_attempt_id=$4 AND cloud_media_reservations.fence_id=$5
+    AND a.id=cloud_media_reservations.leased_attempt_id AND a.deadline_at>now()
+    AND b.id=cloud_media_reservations.budget_authority_id AND b.enabled AND b.expires_at>now()
+  RETURNING cloud_media_reservations.*`;
+export const CLOUD_PRE_CREATE_ALLOWED_SQL = `SELECT r.id AS allowed_create_reservation FROM cloud_media_reservations r
+  JOIN hosted_cpu_job_attempts a ON a.id=r.leased_attempt_id AND a.account_id=r.account_id AND a.workspace_id=r.workspace_id
+  JOIN cloud_media_budget_authorities b ON b.id=r.budget_authority_id
+  WHERE r.id=$1 AND r.leased_attempt_id=$2 AND r.fence_id=$3 AND r.state='CREATING' AND r.launch_outcome='UNKNOWN'
+    AND a.state='RUNNING' AND a.deadline_at>now() AND r.deadline_at>now() AND b.enabled AND b.expires_at>now()`;
+export const CLOUD_PLACEMENT_READY_SQL = `UPDATE cloud_media_reservations SET state='STARTING',verified_at=now(),
+  deadline_at=LEAST(cloud_media_reservations.deadline_at,b.expires_at),last_heartbeat_at=now(),updated_at=now()
+  FROM cloud_media_budget_authorities b WHERE cloud_media_reservations.id=$1
+    AND cloud_media_reservations.leased_attempt_id=$2 AND cloud_media_reservations.fence_id=$3
+    AND cloud_media_reservations.state IN ('CREATING','AMBIGUOUS') AND cloud_media_reservations.deadline_at>now()
+    AND b.id=cloud_media_reservations.budget_authority_id AND b.enabled AND b.expires_at>now()
+  RETURNING cloud_media_reservations.*`;
+
 export const CLOUD_QUALIFICATION_RENDER_ARTIFACT_SQL = `SELECT a.id AS qualification_artifact_attempt_id FROM hosted_cpu_job_attempts a
        JOIN cloud_media_jobs j ON j.attempt_id=a.id AND j.account_id=a.account_id AND j.workspace_id=a.workspace_id
        JOIN cloud_media_reservations r ON r.id=j.reservation_id AND r.leased_attempt_id=a.id
@@ -294,7 +316,7 @@ export async function runCloudMediaObservation(environment: HostedRuntimeEnviron
       LEFT JOIN assets v ON v.id=r.voiceover_asset_id AND v.account_id=a.account_id AND v.workspace_id=a.workspace_id
       WHERE a.id=$1 AND a.account_id=$2 AND a.workspace_id=$3 AND a.execution_backend='RUNPOD_POD'`,
     [scope.attemptId,scope.accountId,scope.workspaceId])).rows[0];
-    const r = (await query(sql, "SELECT r.* FROM cloud_media_reservations r JOIN cloud_media_jobs j ON j.reservation_id=r.id WHERE j.attempt_id=$1 ORDER BY r.created_at DESC LIMIT 1",[scope.attemptId])).rows[0];
+    const r = (await query(sql, "SELECT r.*,b.expires_at AS authority_expires_at,b.enabled AS authority_enabled FROM cloud_media_reservations r JOIN cloud_media_jobs j ON j.reservation_id=r.id JOIN cloud_media_budget_authorities b ON b.id=r.budget_authority_id WHERE j.attempt_id=$1 ORDER BY r.created_at DESC LIMIT 1",[scope.attemptId])).rows[0];
     const current = r && r.leased_attempt_id !== a?.id
       ? (await query(sql, "SELECT * FROM hosted_cpu_job_attempts WHERE id=$1", [r.leased_attempt_id])).rows[0] : a;
     return {a:current,r};
@@ -421,8 +443,11 @@ export async function runCloudMediaObservation(environment: HostedRuntimeEnviron
     }
     if (TERMINAL.includes(String(a.state)) || a.state === "CANCEL_REQUESTED" ||
       (r.deadline_at && Date.parse(String(r.deadline_at)) <= Date.now()) ||
+      r.authority_enabled===false || (r.authority_expires_at && Date.parse(String(r.authority_expires_at))<=Date.now()) ||
       (r.last_heartbeat_at && Date.parse(String(r.last_heartbeat_at)) + 300_000 <= Date.now()) || r.state === "STOPPING") {
       phase="ATTEMPT_TERMINATION";
+      if(r.authority_enabled===false || (r.authority_expires_at && Date.parse(String(r.authority_expires_at))<=Date.now()))
+        r={...r,failure_code:"CLOUD_MEDIA_DEADLINE_EXCEEDED"};
       if (!TERMINAL.includes(String(a.state))) await finishAttempt(config,r,a.state === "CANCEL_REQUESTED" ? "CANCELLED" : "FAILED");
       phase="CLEANUP";
       const clean = r.state === "CLEAN" || await cleanupCloudReservation(client,config,r);
@@ -482,10 +507,13 @@ export async function runCloudMediaObservation(environment: HostedRuntimeEnviron
       }
       // One winner claims the durable fence. A concurrent or replayed observation cannot POST.
       phase="CREATE_FENCE";
-      const selected=await query(sql, `UPDATE cloud_media_reservations SET state='CREATING',gpu=$2,expected_hourly_usd=$3,
-        deadline_at=LEAST(now()+make_interval(secs=>rental_seconds),(SELECT deadline_at FROM hosted_cpu_job_attempts WHERE id=attempt_id)),
-        launch_outcome='UNKNOWN',updated_at=now() WHERE id=$1 AND state='WAITING_CAPACITY' AND placement_deadline_at>now() RETURNING *`,
-      [r!.id,candidate.id,candidate.price.secure+Number(r!.disk_gb)*.10/720]);
+      const selected=await query(sql,CLOUD_CREATE_RENTAL_SQL,
+      [r!.id,candidate.id,candidate.price.secure+Number(r!.disk_gb)*.10/720,r!.leased_attempt_id,r!.fence_id]);
+      if(!selected.rows[0] && (await query(sql,`SELECT r.id AS expired_authority_reservation FROM cloud_media_reservations r
+        JOIN cloud_media_budget_authorities b ON b.id=r.budget_authority_id
+        WHERE r.id=$1 AND r.leased_attempt_id=$2 AND r.fence_id=$3 AND r.state='WAITING_CAPACITY'
+          AND (NOT b.enabled OR b.expires_at<=now())`,[r!.id,r!.leased_attempt_id,r!.fence_id])).rows[0])
+        throw new Error("CLOUD_MEDIA_BUDGET_UNAVAILABLE");
       if (selected.rows[0]) await query(sql, `UPDATE hosted_cpu_job_attempts SET state='RUNNING',submitted_at=COALESCE(submitted_at,now()),
         version=version+1,updated_at=now() WHERE id=$1 AND state='OUTBOXED'`,[a.id]);
       return selected.rows[0];
@@ -496,6 +524,20 @@ export async function runCloudMediaObservation(environment: HostedRuntimeEnviron
     const token=await deriveScopedToken(config.workflowCallbackSecret,"cloud-reservation",String(r.id));
     let pod:Row;
     phase="POD_CREATE";
+    // A deadline reached before sending is a confirmed no-send refusal, unlike an ambiguous response.
+    const allowedCreate=await tenant(config,scope.accountId,async sql=>(await query(sql,CLOUD_PRE_CREATE_ALLOWED_SQL,[r!.id,r!.leased_attempt_id,r!.fence_id])).rows[0]);
+    if(Date.parse(String(r.deadline_at))<=Date.now() || !allowedCreate) {
+      const refused=await tenant(config,scope.accountId,async sql=>(await query(sql,
+        `UPDATE cloud_media_reservations SET launch_outcome='REFUSED',updated_at=now()
+          WHERE id=$1 AND leased_attempt_id=$2 AND fence_id=$3 AND state='CREATING' RETURNING id,
+            (SELECT state FROM hosted_cpu_job_attempts WHERE id=leased_attempt_id) AS attempt_state`,
+        [r!.id,r!.leased_attempt_id,r!.fence_id])).rows[0]);
+      if(!refused) return {state:"RECONCILING",delaySeconds:30};
+      r={...r,launch_outcome:"REFUSED",failure_code:"CLOUD_MEDIA_DEADLINE_EXCEEDED"};
+      const terminal=refused.attempt_state==="CANCEL_REQUESTED"?"CANCELLED":"FAILED";
+      await finishAttempt(config,r,terminal);const clean=await cleanupCloudReservation(client,config,r);
+      return {state:clean?(await settleFailedCpu(config,a)?terminal:"FINALIZATION_PENDING"):"RECONCILING",delaySeconds:30};
+    }
     try { pod=await client.request("POST","/pods",{name:r.pod_name,image:r.image,registry:r.registry_id ?? null,cloud:"SECURE",disk:Number(r.disk_gb),
       gpu:{id:r.gpu,count:1,minVcpuCountPerGpu:16,minRamPerGpu:64},ports:[],startSsh:false,startJupyter:false,
       env:{VIDEOFORGE_CLOUD_CAPABILITY:token,VIDEOFORGE_CLOUD_SPEC_URL:`${config.publicOrigin}/api/v2/cloud-media/reservations/${r.id}/spec`}}); }
@@ -562,17 +604,29 @@ async function adopt(client:RunPodMediaClient,config:HostedRuntimeConfiguration,
     if(matching.length===1 && typeof matching[0]!.id==="string" && /^[A-Za-z0-9_-]{1,80}$/u.test(String(matching[0]!.id))) return adopt(client,config,r,matching[0]!,a);
     await updateReservation(config,r,"AMBIGUOUS");return {state:"RECONCILING",delaySeconds:30};
   }
-  await tenant(config,String(r.account_id),async sql=>{await query(sql, `UPDATE cloud_media_reservations SET pod_id=$2,
-    launch_outcome='CONFIRMED',actual_hourly_usd=$3,updated_at=now() WHERE id=$1`,
-    [r.id,pod.id,Number(pod.cost)>0 ? Number(pod.cost)+Number(r.disk_gb)*.10/720 : null]);});
+  const owned=await tenant(config,String(r.account_id),async sql=>(await query(sql, `UPDATE cloud_media_reservations SET pod_id=$2,
+    launch_outcome='CONFIRMED',actual_hourly_usd=$3,updated_at=now() WHERE id=$1 AND leased_attempt_id=$4 AND fence_id=$5
+      AND state IN ('CREATING','AMBIGUOUS') RETURNING id`,
+    [r.id,pod.id,Number(pod.cost)>0 ? Number(pod.cost)+Number(r.disk_gb)*.10/720 : null,r.leased_attempt_id,r.fence_id])).rows[0]);
+  if(!owned) return {state:"RECONCILING",delaySeconds:30};
   r={...r,pod_id:pod.id,launch_outcome:"CONFIRMED"};
   if(!verifyCloudPlacement(pod,r)) {
     r={...r,failure_code:"CLOUD_MEDIA_PLACEMENT_REJECTED"}; await finishAttempt(config,r,"FAILED");
     const clean=await cleanupCloudReservation(client,config,r);
         return {state:clean?(await settleFailedCpu(config,a)?"FAILED":"FINALIZATION_PENDING"):"RECONCILING",delaySeconds:30};
   }
-  await tenant(config,String(r.account_id),async sql=>{await query(sql, `UPDATE cloud_media_reservations SET state='STARTING',verified_at=now(),
-    last_heartbeat_at=now(),updated_at=now() WHERE id=$1 AND state IN ('CREATING','AMBIGUOUS')`,[r.id]);});
+  const ready=await tenant(config,String(r.account_id),async sql=>(await query(sql,CLOUD_PLACEMENT_READY_SQL,[r.id,r.leased_attempt_id,r.fence_id])).rows[0]);
+  if(!ready) {
+    const expired=await tenant(config,String(r.account_id),async sql=>(await query(sql,
+      `SELECT r.id AS expired_placement_reservation FROM cloud_media_reservations r
+        JOIN cloud_media_budget_authorities b ON b.id=r.budget_authority_id
+        WHERE r.id=$1 AND r.leased_attempt_id=$2 AND r.fence_id=$3 AND r.state IN ('CREATING','AMBIGUOUS')
+          AND (r.deadline_at<=now() OR NOT b.enabled OR b.expires_at<=now())`,[r.id,r.leased_attempt_id,r.fence_id])).rows[0]);
+    if(!expired) return {state:"RECONCILING",delaySeconds:30};
+    r={...r,failure_code:"CLOUD_MEDIA_DEADLINE_EXCEEDED"};await finishAttempt(config,r,"FAILED");
+    const clean=await cleanupCloudReservation(client,config,r);
+    return {state:clean?(await settleFailedCpu(config,a)?"FAILED":"FINALIZATION_PENDING"):"RECONCILING",delaySeconds:30};
+  }
   return {state:"STARTING",delaySeconds:30};
 }
 
