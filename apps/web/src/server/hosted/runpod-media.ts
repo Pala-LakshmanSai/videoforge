@@ -29,6 +29,21 @@ function query(sql: SqlExecutor, statement: string, values: readonly unknown[] =
   return sql.query(statement, parameters);
 }
 type Scope = {attemptId: string; accountId: string; workspaceId: string};
+type ObservationPhase = "TEMPLATE" | "ADMISSION" | "RESERVATION" | "ADMISSION_RENEWAL" |
+  "ATTEMPT_TERMINATION" | "CLEANUP" | "FAILURE_SETTLEMENT" | "RESULT_FINALIZATION" |
+  "INVENTORY" | "PLACEMENT_ADOPTION" | "CATALOGUE" | "CAPACITY_CHECK" |
+  "BUDGET_RESERVATION" | "CREATE_FENCE" | "LEASE_TOKEN" | "POD_CREATE";
+type ObservationDiagnostic = {phase: ObservationPhase; code: string};
+type ObservationOutcome = {state:string;delaySeconds?:number;observationError?:ObservationDiagnostic};
+function observationDiagnostic(error: unknown, phase: ObservationPhase): ObservationDiagnostic {
+  // Only structured protocol codes cross the durable Workflow boundary. Never include messages,
+  // request parameters, provider bodies, URLs, or driver properties other than validated SQLSTATE.
+  if (error instanceof RunPodMediaError && Number.isInteger(error.status) && error.status >= 100 && error.status <= 599)
+    return {phase,code:`RUNPOD_HTTP_${error.status}`};
+  if (error && typeof error === "object" && "code" in error && typeof error.code === "string" && /^[0-9A-Z]{5}$/u.test(error.code))
+    return {phase,code:`SQLSTATE_${error.code}`};
+  return {phase,code:"UNCLASSIFIED"};
+}
 const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u;
 const ACTIVE = ["STARTING", "DOWNLOADING", "RENDERING", "CHECKING", "SAVING"];
 const TERMINAL = ["SUCCEEDED", "FAILED", "CANCELLED", "EXPIRED"];
@@ -193,7 +208,7 @@ async function finalizeMedia(environment: HostedRuntimeEnvironment, config: Host
 
 /** One observation; Workflow step retry is disabled. A restart always reads persisted state. */
 export async function runCloudMediaObservation(environment: HostedRuntimeEnvironment, config: HostedRuntimeConfiguration,
-  scope: Scope): Promise<{state:string;delaySeconds?:number}> {
+  scope: Scope): Promise<ObservationOutcome> {
   const loaded = await tenant(config,scope.accountId, async sql => {
     const a = (await query(sql, `SELECT a.*,p.owner_user_id,r.revision_config_payload AS payload,v.duration_ms AS voiceover_duration_ms FROM hosted_cpu_job_attempts a
       JOIN projects p ON p.id=a.project_id JOIN project_revisions r ON r.id=a.project_revision_id
@@ -227,17 +242,22 @@ export async function runCloudMediaObservation(environment: HostedRuntimeEnviron
   const apiKey = config.cloudMedia?.apiKey ?? environment.RUNPOD_API_KEY;
   if (r && !apiKey) return {state:"RECONCILING",delaySeconds:30};
   const client = new RunPodMediaClient(apiKey ?? "");
+  let phase: ObservationPhase = "TEMPLATE";
   try {
     if (!r) {
       if (!config.cloudMedia) return {state:"CLOUD_MEDIA_DISABLED",delaySeconds:30};
+      phase="TEMPLATE";
       const committed=await cloudTemplate(environment,a), cloud=config.cloudMedia;
       if(!committed.runtime_identity || !committed.tooling || canonicalJson(committed.runtime_identity)!==canonicalJson({image:cloud.image,registry_id:cloud.registryId ?? null,
         source_sha256:cloud.sourceSha256,runtime_sha256:cloud.runtimeSha256}) || canonicalJson(committed.tooling)!==canonicalJson(cloud.tooling)) {
+        phase="ATTEMPT_TERMINATION";
         await finishAttempt(config,{...a,id:null,attempt_id:a.id,leased_attempt_id:a.id,fence_id:null,failure_code:"CLOUD_MEDIA_RUNTIME_PIN_MISMATCH"},"FAILED");
+        phase="FAILURE_SETTLEMENT";
         if(!await settleFailedCpu(config,a)) return {state:"FINALIZATION_PENDING",delaySeconds:30};
         return {state:"FAILED"};
       }
       if (a.kind !== "RENDER") {
+        phase="ADMISSION";
         const pool = createNeonPool(config.neon.databaseUrl);
         try {
           const admission = await ensureHostedV209GenerationAdmission(createNeonExecutor(pool),{
@@ -245,6 +265,7 @@ export async function runCloudMediaObservation(environment: HostedRuntimeEnviron
           if (admission.state !== "ACTIVE") return {state:"WAITING_CAPACITY",delaySeconds:30};
         } finally { await pool.end(); }
       }
+      phase="RESERVATION";
       r = await tenant(config,scope.accountId,async sql => {
         if(a.kind==="SPAN_AUDIO") {
           // Only the first ready span owns a reservation. Other exact jobs stay available for
@@ -277,23 +298,31 @@ export async function runCloudMediaObservation(environment: HostedRuntimeEnviron
       });
       if(!r) return {state:"WAITING_CAPACITY",delaySeconds:5};
     }
-    if(!["WAITING_CAPACITY","CLEAN"].includes(String(r.state)))
+    if(!["WAITING_CAPACITY","CLEAN"].includes(String(r.state))) {
+      phase="ADMISSION_RENEWAL";
       await tenant(config,scope.accountId,async sql=>{await query(sql,'SELECT videoforge_cloud_media_renew_admission($1)',[r!.id]);});
+    }
     if(a.kind==="SPAN_AUDIO" && a.state==="SUCCEEDED" && ACTIVE.includes(String(r.state)) &&
       Date.parse(String(r.updated_at))+30_000>Date.now()) return {state:"SAVING",delaySeconds:5};
     if (TERMINAL.includes(String(a.state)) || a.state === "CANCEL_REQUESTED" ||
       (r.deadline_at && Date.parse(String(r.deadline_at)) <= Date.now()) ||
       (r.last_heartbeat_at && Date.parse(String(r.last_heartbeat_at)) + 300_000 <= Date.now()) || r.state === "STOPPING") {
+      phase="ATTEMPT_TERMINATION";
       if (!TERMINAL.includes(String(a.state))) await finishAttempt(config,r,a.state === "CANCEL_REQUESTED" ? "CANCELLED" : "FAILED");
+      phase="CLEANUP";
       const clean = r.state === "CLEAN" || await cleanupCloudReservation(client,config,r);
+      phase="FAILURE_SETTLEMENT";
       if(clean && a.state!=="SUCCEEDED" && !await settleFailedCpu(config,a)) return {state:"FINALIZATION_PENDING",delaySeconds:30};
+      phase="RESULT_FINALIZATION";
       if (clean && a.state === "SUCCEEDED" && !await finalizeMedia(environment,config,a)) return {state:"FINALIZATION_PENDING",delaySeconds:30};
       return {state:clean ? (TERMINAL.includes(String(a.state)) ? String(a.state) : a.state === "CANCEL_REQUESTED" ? "CANCELLED" : "FAILED") : "RECONCILING",delaySeconds:30};
     }
-    if (r.state === "CLEAN") {if(a.state!=="SUCCEEDED" && !await settleFailedCpu(config,a)) return {state:"FINALIZATION_PENDING",delaySeconds:30};return {state:String(a.state)};}
+    if (r.state === "CLEAN") {phase="FAILURE_SETTLEMENT";if(a.state!=="SUCCEEDED" && !await settleFailedCpu(config,a)) return {state:"FINALIZATION_PENDING",delaySeconds:30};return {state:String(a.state)};}
     if (["CREATING","AMBIGUOUS"].includes(String(r.state))) {
+      phase="INVENTORY";
       const matches=(await client.inventory()).filter(p=>p.name===r!.pod_name);
       if (matches.length!==1) { await updateReservation(config,r,"AMBIGUOUS"); return {state:"RECONCILING",delaySeconds:30}; }
+      phase="PLACEMENT_ADOPTION";
       return await adopt(client,config,r,matches[0]!,a);
     }
     if (ACTIVE.includes(String(r.state))) {
@@ -302,14 +331,20 @@ export async function runCloudMediaObservation(environment: HostedRuntimeEnviron
     if (!config.cloudMedia) return {state:"WAITING_CAPACITY",delaySeconds:30};
     if (Date.parse(String(r.next_check_at))>Date.now()) return {state:"WAITING_CAPACITY",delaySeconds:30};
     if (Date.parse(String(r.placement_deadline_at))<=Date.now() || Number(r.round)>=3) {
+      phase="CAPACITY_CHECK";
       await updateReservation(config,r,"STOPPING","CLOUD_MEDIA_CAPACITY_EXHAUSTED");
       r={...r,failure_code:"CLOUD_MEDIA_CAPACITY_EXHAUSTED"};
+      phase="ATTEMPT_TERMINATION";
       await finishAttempt(config,r,"FAILED");
+      phase="CLEANUP";
       const clean=await cleanupCloudReservation(client,config,r);
+      phase="FAILURE_SETTLEMENT";
       return {state:clean?(await settleFailedCpu(config,a)?"FAILED":"FINALIZATION_PENDING"):"RECONCILING",delaySeconds:30};
     }
+    phase="CATALOGUE";
     const catalog=await client.request("GET","/catalog/gpus?include=AVAILABILITY&product=POD&cloud=SECURE");
     if (!Array.isArray(catalog.gpus)) return {state:"WAITING_CAPACITY",delaySeconds:30};
+    phase="CAPACITY_CHECK";
     const candidates=cloudGpuCandidates(catalog.gpus as CloudGpu[],Number(r.disk_gb),Number(r.max_hourly_usd),Number(r.budget_usd),Number(r.rental_seconds));
     const candidate=candidates[Number(r.candidate_index)];
     if (!candidate) {
@@ -321,13 +356,15 @@ export async function runCloudMediaObservation(environment: HostedRuntimeEnviron
       // Lock before charging: an observation that lost the fence cannot consume authority.
       const ready=(await query(sql, "SELECT id FROM cloud_media_reservations WHERE id=$1 AND state='WAITING_CAPACITY' AND placement_deadline_at>now() FOR UPDATE",[r!.id])).rows[0];
       if(!ready) return undefined;
+      phase="BUDGET_RESERVATION";
       try {await query(sql, 'SELECT videoforge_cloud_media_reserve_budget($1)',[r!.id]);}
       catch(error) {
         if(error && typeof error==='object' && 'code' in error && ['42501','55000','23514'].includes(String(error.code)))
-          throw new Error('CLOUD_MEDIA_BUDGET_UNAVAILABLE');
+          throw Object.assign(new Error('CLOUD_MEDIA_BUDGET_UNAVAILABLE'),{code:String(error.code)});
         throw error;
       }
       // One winner claims the durable fence. A concurrent or replayed observation cannot POST.
+      phase="CREATE_FENCE";
       const selected=await query(sql, `UPDATE cloud_media_reservations SET state='CREATING',gpu=$2,expected_hourly_usd=$3,
         deadline_at=LEAST(now()+make_interval(secs=>rental_seconds),(SELECT deadline_at FROM hosted_cpu_job_attempts WHERE id=attempt_id)),
         launch_outcome='UNKNOWN',updated_at=now() WHERE id=$1 AND state='WAITING_CAPACITY' AND placement_deadline_at>now() RETURNING *`,
@@ -338,14 +375,18 @@ export async function runCloudMediaObservation(environment: HostedRuntimeEnviron
     });
     if (!reserved) return {state:"RECONCILING",delaySeconds:30};
     r=reserved;
+    phase="LEASE_TOKEN";
     const token=await deriveScopedToken(config.workflowCallbackSecret,"cloud-reservation",String(r.id));
     let pod:Row;
+    phase="POD_CREATE";
     try { pod=await client.request("POST","/pods",{name:r.pod_name,image:r.image,registry:r.registry_id ?? null,cloud:"SECURE",disk:Number(r.disk_gb),
       gpu:{id:r.gpu,count:1,minVcpuCountPerGpu:16,minRamPerGpu:64},ports:[],startSsh:false,startJupyter:false,
       env:{VIDEOFORGE_CLOUD_CAPABILITY:token,VIDEOFORGE_CLOUD_SPEC_URL:`${config.publicOrigin}/api/v2/cloud-media/reservations/${r.id}/spec`}}); }
     catch(error) {
+      const diagnostic=observationDiagnostic(error,"POD_CREATE");
+      phase="INVENTORY";
       const matches=(await client.inventory()).filter(p=>p.name===r!.pod_name);
-      if(matches.length===1) return await adopt(client,config,r,matches[0]!,a);
+      if(matches.length===1) {phase="PLACEMENT_ADOPTION";return await adopt(client,config,r,matches[0]!,a);}
       if(matches.length===0 && error instanceof RunPodMediaError && error.capacityRejected) {
         await tenant(config,scope.accountId,async sql=>{await query(sql, `UPDATE cloud_media_reservations SET state='WAITING_CAPACITY',
           launch_outcome='REFUSED',candidate_index=candidate_index+1,next_check_at=now(),updated_at=now() WHERE id=$1 AND state='CREATING'`,[r!.id]);});
@@ -353,32 +394,48 @@ export async function runCloudMediaObservation(environment: HostedRuntimeEnviron
       }
       if(matches.length===0 && error instanceof RunPodMediaError && [400,401,402,403,404,422].includes(error.status)) {
         await tenant(config,scope.accountId,async sql=>{await query(sql, "UPDATE cloud_media_reservations SET launch_outcome='REFUSED' WHERE id=$1",[r!.id]);});
-        r={...r,launch_outcome:"REFUSED",failure_code:error.message}; await finishAttempt(config,r,"FAILED");
+        r={...r,launch_outcome:"REFUSED",failure_code:error.message}; phase="ATTEMPT_TERMINATION";await finishAttempt(config,r,"FAILED");
+        phase="CLEANUP";
         const clean=await cleanupCloudReservation(client,config,r);
-        return {state:clean?(await settleFailedCpu(config,a)?"FAILED":"FINALIZATION_PENDING"):"RECONCILING",delaySeconds:30};
+        phase="FAILURE_SETTLEMENT";
+        return {state:clean?(await settleFailedCpu(config,a)?"FAILED":"FINALIZATION_PENDING"):"RECONCILING",delaySeconds:30,observationError:diagnostic};
       }
-      await updateReservation(config,r,"AMBIGUOUS"); return {state:"RECONCILING",delaySeconds:30};
+      await updateReservation(config,r,"AMBIGUOUS"); return {state:"RECONCILING",delaySeconds:30,observationError:diagnostic};
     }
+    phase="PLACEMENT_ADOPTION";
     return await adopt(client,config,r,pod,a);
   } catch(error) {
-    // Error messages may contain signed capabilities. Persist only fixed local codes.
-    if(error instanceof Error && ["CLOUD_MEDIA_TEMPLATE_INVALID","CLOUD_MEDIA_INPUT_SIZE_INVALID","CLOUD_MEDIA_BUDGET_UNAVAILABLE"].includes(error.message)) {
-      await finishAttempt(config,r ? {...r,failure_code:error.message} : {...a,id:null,leased_attempt_id:a.id,fence_id:null,failure_code:error.message},"FAILED");
-      const clean=!r || await cleanupCloudReservation(client,config,r);
-      if(clean && !await settleFailedCpu(config,a)) return {state:"FINALIZATION_PENDING",delaySeconds:30};
-      return {state:clean?"FAILED":"RECONCILING",delaySeconds:30};
-    }
-    if (r && error instanceof RunPodMediaError && [400,401,402,403,404,422].includes(error.status)) {
-      r={...r,failure_code:error.message};
-      await finishAttempt(config,r,"FAILED");
-      if(r.launch_outcome==null || r.launch_outcome==="REFUSED") {
-        const clean=await cleanupCloudReservation(client,config,r);
-        if(clean && !await settleFailedCpu(config,a)) return {state:"FINALIZATION_PENDING",delaySeconds:30};
-        return {state:clean?"FAILED":"RECONCILING",delaySeconds:30};
+    const diagnostic=observationDiagnostic(error,phase);
+    try {
+      // Error messages may contain signed capabilities. Persist only fixed local codes.
+      if(error instanceof Error && ["CLOUD_MEDIA_TEMPLATE_INVALID","CLOUD_MEDIA_INPUT_SIZE_INVALID","CLOUD_MEDIA_BUDGET_UNAVAILABLE"].includes(error.message)) {
+        phase="ATTEMPT_TERMINATION";
+        await finishAttempt(config,r ? {...r,failure_code:error.message} : {...a,id:null,leased_attempt_id:a.id,fence_id:null,failure_code:error.message},"FAILED");
+        phase="CLEANUP";
+        const clean=!r || await cleanupCloudReservation(client,config,r);
+        phase="FAILURE_SETTLEMENT";
+        if(clean && !await settleFailedCpu(config,a)) return {state:"FINALIZATION_PENDING",delaySeconds:30,observationError:diagnostic};
+        return {state:clean?"FAILED":"RECONCILING",delaySeconds:30,observationError:diagnostic};
       }
-      await updateReservation(config,r,"STOPPING",error.message);
+      if (r && error instanceof RunPodMediaError && [400,401,402,403,404,422].includes(error.status)) {
+        r={...r,failure_code:error.message};
+        phase="ATTEMPT_TERMINATION";
+        await finishAttempt(config,r,"FAILED");
+        if(r.launch_outcome==null || r.launch_outcome==="REFUSED") {
+          phase="CLEANUP";
+          const clean=await cleanupCloudReservation(client,config,r);
+          phase="FAILURE_SETTLEMENT";
+          if(clean && !await settleFailedCpu(config,a)) return {state:"FINALIZATION_PENDING",delaySeconds:30,observationError:diagnostic};
+          return {state:clean?"FAILED":"RECONCILING",delaySeconds:30,observationError:diagnostic};
+        }
+        phase="CLEANUP";
+        await updateReservation(config,r,"STOPPING",error.message);
+      }
+    } catch(settlementError) {
+      // A failed cleanup/settlement keeps its durable capacity fence and can be observed again.
+      return {state:"RECONCILING",delaySeconds:30,observationError:observationDiagnostic(settlementError,phase)};
     }
-    return {state:"RECONCILING",delaySeconds:30};
+    return {state:"RECONCILING",delaySeconds:30,observationError:diagnostic};
   }
 }
 
@@ -738,7 +795,8 @@ export async function reconcileCloudMediaReservations(environment:HostedRuntimeE
       if(qualificationOnly && !await tenant(config,String(row.account_id),async sql=>(await query(sql,
         `SELECT r.id FROM cloud_media_reservations r JOIN cloud_media_jobs j ON j.reservation_id=r.id
           WHERE j.attempt_id=$1 AND r.budget_authority_id=$2`,[row.attempt_id,environment.VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID])).rows[0])) continue;
-      await runCloudMediaObservation(environment,config,{attemptId:String(row.attempt_id),accountId:String(row.account_id),workspaceId:String(row.workspace_id)});
+      const outcome=await runCloudMediaObservation(environment,config,{attemptId:String(row.attempt_id),accountId:String(row.account_id),workspaceId:String(row.workspace_id)});
+      if(outcome.observationError) console.warn("CLOUD_MEDIA_OBSERVATION_ERROR",outcome.observationError.phase,outcome.observationError.code);
       observed++;
     }
     return observed;

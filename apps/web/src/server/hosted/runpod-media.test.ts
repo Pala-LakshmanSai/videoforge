@@ -529,3 +529,72 @@ it("compiles and idempotently inserts exact terminal lineage in PostgreSQL with 
     ]);
   } finally { await db.close(); }
 }, 30000);
+
+describe("bounded cloud observation diagnostics", () => {
+  it.each(["42P01", "signed-private-value"])("returns only a validated SQLSTATE from the budget phase: %s", async code => {
+    const original=fixture.query.getMockImplementation()!;
+    fixture.query.mockImplementation(async (statement:string, values:unknown[]) => {
+      if(statement.includes("videoforge_cloud_media_reserve_budget"))
+        throw Object.assign(new Error("private URL and bearer credential must never escape"),{code,detail:"private tenant facts"});
+      return original(statement,values);
+    });
+    expect(await runCloudMediaObservation(environment,config,scope)).toEqual({state:"RECONCILING",delaySeconds:30,
+      observationError:{phase:"BUDGET_RESERVATION",code:code==="42P01"?"SQLSTATE_42P01":"UNCLASSIFIED"}});
+    expect(reservation.state).toBe("WAITING_CAPACITY");
+    expect(fixture.transport.mock.calls.some(([,options])=>options.method==="POST")).toBe(false);
+  });
+  it("preserves the exact SQLSTATE when a known budget refusal is translated to a fixed local failure", async () => {
+    reservation.launch_outcome=null;
+    const original=fixture.query.getMockImplementation()!;
+    fixture.query.mockImplementation(async (statement:string, values:unknown[]) => {
+      if(statement.includes("videoforge_cloud_media_reserve_budget"))
+        throw Object.assign(new Error("private budget detail"),{code:"23514"});
+      return original(statement,values);
+    });
+    expect(await runCloudMediaObservation(environment,config,scope)).toEqual({state:"FAILED",delaySeconds:30,
+      observationError:{phase:"BUDGET_RESERVATION",code:"SQLSTATE_23514"}});
+    expect(reservation.state).toBe("CLEAN");
+    expect(fixture.transport.mock.calls.some(([,options])=>options.method==="POST")).toBe(false);
+  });
+  it("reports catalogue HTTP status without retaining its private response body", async () => {
+    fixture.transport.mockResolvedValue(response({detail:"private URL and credential"},429));
+    expect(await runCloudMediaObservation(environment,config,scope)).toEqual({state:"RECONCILING",delaySeconds:30,
+      observationError:{phase:"CATALOGUE",code:"RUNPOD_HTTP_429"}});
+    expect(reservation.state).toBe("WAITING_CAPACITY");expect(fixture.transport).toHaveBeenCalledTimes(1);
+  });
+  it("reports terminal SQLSTATE without releasing an unsettled stopping reservation", async () => {
+    reservation.state="STOPPING";
+    const original=fixture.query.getMockImplementation()!;
+    fixture.query.mockImplementation(async (statement:string, values:unknown[]) => {
+      if(statement.includes("UPDATE hosted_cpu_job_attempts SET state=$2"))
+        throw Object.assign(new Error("private terminal identity"),{code:"42883"});
+      return original(statement,values);
+    });
+    expect(await runCloudMediaObservation(environment,config,scope)).toEqual({state:"RECONCILING",delaySeconds:30,
+      observationError:{phase:"ATTEMPT_TERMINATION",code:"SQLSTATE_42883"}});
+    expect(reservation.state).toBe("STOPPING");expect(fixture.transport).not.toHaveBeenCalled();
+  });
+  it("keeps settlement exceptions observable after a fixed permanent catalogue rejection", async () => {
+    reservation.launch_outcome=null;
+    fixture.transport.mockResolvedValue(response({detail:"private provider response"},401));
+    const original=fixture.query.getMockImplementation()!;
+    fixture.query.mockImplementation(async (statement:string, values:unknown[]) => {
+      if(statement.includes("videoforge_settle_stranded_hosted_v209_requests"))
+        throw Object.assign(new Error("private settlement facts"),{code:"55000"});
+      return original(statement,values);
+    });
+    expect(await runCloudMediaObservation(environment,config,scope)).toEqual({state:"RECONCILING",delaySeconds:30,
+      observationError:{phase:"FAILURE_SETTLEMENT",code:"SQLSTATE_55000"}});
+    expect(reservation.state).toBe("CLEAN");expect(fixture.transport).toHaveBeenCalledTimes(1);
+  });
+  it("preserves an ambiguous paid create error without another create", async () => {
+    fixture.transport.mockImplementation(async (url:string,options:RequestInit)=>url.includes("/catalog/")
+      ?response({gpus:[{id:reservation.gpu,memory:24,secure:true,manufacturer:"NVIDIA",price:{secure:.4},availability:"HIGH"}]})
+      :options.method==="POST"?response({detail:"private provider body"},429):emptyInventory());
+    expect(await runCloudMediaObservation(environment,config,scope)).toEqual({state:"RECONCILING",delaySeconds:30,
+      observationError:{phase:"POD_CREATE",code:"RUNPOD_HTTP_429"}});
+    expect(reservation.state).toBe("AMBIGUOUS");
+    await runCloudMediaObservation(environment,config,scope);
+    expect(fixture.transport.mock.calls.filter(([,options])=>options.method==="POST")).toHaveLength(1);
+  });
+});
