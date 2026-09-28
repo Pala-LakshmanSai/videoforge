@@ -1,0 +1,41 @@
+# syntax=docker/dockerfile:1.7
+# Reuse only this qualified immutable dependency/tool/model image. No downloads.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+ARG BASE_IMAGE
+USER 0:0
+RUN test "$BASE_IMAGE" = 'ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:d054d17bef2178593d96b8d579c41446f272330044e79ef1bbde976a859f2c62'
+RUN python - <<'PY'
+import hashlib, json
+from pathlib import Path
+base = json.loads(Path('/opt/videoforge/runtime.json').read_bytes())
+canonical = json.dumps(base, sort_keys=True, separators=(',', ':')).encode()
+assert hashlib.sha256(canonical).hexdigest() == '194d1a4cee7acca64661774faa9ad205b31c66470af2011b5dc420ebe447db81'
+assert base['qualified'] is True and base['platform'] == 'linux'
+PY
+# Delete exact old execution roots so COPY can never retain removed source files.
+RUN rm -rf /opt/videoforge/packages/contracts/python /opt/videoforge/workers/image-media/src /opt/videoforge/workers/media-local/src
+COPY packages/contracts/python /opt/videoforge/packages/contracts/python
+COPY workers/image-media/src /opt/videoforge/workers/image-media/src
+COPY workers/media-local/src /opt/videoforge/workers/media-local/src
+COPY workers/media-local/runpod-requirements.lock /opt/videoforge/runpod-requirements.lock
+COPY workers/media-local/qualify_runpod_runtime.py /opt/videoforge/qualify_runpod_runtime.py
+COPY .videoforge/cloud-media/build/runtime.json /opt/videoforge/runtime.json
+RUN python - <<'PY'
+import hashlib, json, platform, sys
+from pathlib import Path
+root = Path('/opt/videoforge')
+def digest(path):
+    with path.open('rb') as source:
+        return 'sha256:' + hashlib.file_digest(source, 'sha256').hexdigest()
+manifest = json.loads((root / 'runtime.json').read_bytes())
+assert sys.platform == 'linux' and platform.machine() == 'x86_64' and sys.version_info[:2] == (3, 12)
+assert digest(root / 'runpod-requirements.lock') == 'sha256:065037ca5ed47b2117bfa7949abc3b6c4acb66640d9c6f15f31decae02989114'
+files = {str(path.relative_to(root)): digest(path) for relative in ('packages/contracts/python', 'workers/image-media/src', 'workers/media-local/src') for path in sorted((root / relative).rglob('*.py'))}
+assert files == manifest['source_files']
+assert 'sha256:' + hashlib.sha256(json.dumps(files, sort_keys=True, separators=(',', ':')).encode()).hexdigest() == manifest['source_sha256']
+for facts in manifest['tools'].values():
+    assert digest(Path(facts['path'])) == facts['sha256']
+PY
+USER 65532:65532
+# Inherited entrypoint rejects qualified:false until real offline acceptance.
