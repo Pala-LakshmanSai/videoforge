@@ -96,7 +96,10 @@ baseline. Stop on missing authority, unknown/incomplete inventory, ambiguous lau
 actual-rate mismatch, exhausted capacity window, failed qualification, budget/deadline risk or
 unverified cleanup. Keep uncertain reservations counted; terminate only exact owned Pods.
 
-Fresh read-only inventory at2026-09-28T13:05:45Z was complete with zero Pods. Rank1 GPU listing
+Fresh read-only inventory at2026-09-28T13:05:45Z used the configured Frontier reference credential
+account and was complete with zero Pods; no credential was copied. The configured VideoForge
+account must receive its own preflight before paid allocation. No billable POST has been issued
+for this new lane, so owned Pods are zero; live independent shutdown remains unexercised. Rank1 GPU listing
 wasUSD0.72/h andLOW, while an adjacent query reportedNONE; availability is volatile. Actual
 placement CPU/RAM and VideoForge speed remain unverified. Refresh catalog before allocation.
 The cap is an application action guard, not an invoice guarantee. This proposal grants no authority.
@@ -141,6 +144,14 @@ is settled. Never terminate unrelated Pods or touch historical Mage/SoulX volume
 ## Current acceptance boundary
 
 Production-based final UI/product tests:234 pass, one existing product source-text guard failure.
+Implementation code is locally committed as2cdda790adcf16c1c33f7d2286a3b64972bab9c3.
+Focused backend79, migration8, Cloud Python runtime80 and Ruff pass. Existing Local media89pass/
+1skip (90 total), ASR33, span14 and render31 pass. Contracts123, vNext dispatch firewall, changed-file lint
+and context validation pass; context retains profile-budget/optional-asset warnings. Broad worker
+suite172pass/1fail (173 total) has an unchanged historical Mage byte/hash failure at366d/f9.
+Broad web2250pass/22fail/1skip is not green; all22 failures have not individually been reproduced
+on baseline. The unrelated edit hash is unchanged. Linux image identity isUNBUILT_UNQUALIFIED.
+Public production readback at2026-09-28T13:17:47Z still reports source366d16c2 and GPU transport DISABLED_UNQUALIFIED. Current Cloudflare settings read401; fresh production binding/config parity remains a release gate.
 Production full web, final Cloudflare and staging builds pass; their measured static closures are
 2,778,357 and2,776,188 bytes. The Cloud controller remains in an isolated dynamic server chunk
 of56,679 and56,050 bytes. Config/quarantine/release-preparation tests19/19 pass, including a

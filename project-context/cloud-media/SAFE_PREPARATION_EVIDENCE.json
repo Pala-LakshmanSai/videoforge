@@ -26,7 +26,53 @@
       "fail": 0
     },
     "canonical_wrangler_dry_run": "PASS_PROVIDER_FREE",
-    "source_firewall": "EXISTING_TWO_CONTINUATION_IMPORT_ALLOWLIST_FAILURES_AT_F9_AND_PRODUCTION"
+    "source_firewall": "EXISTING_TWO_CONTINUATION_IMPORT_ALLOWLIST_FAILURES_AT_F9_AND_PRODUCTION",
+    "backend_cloud_tests": {
+      "pass": 79,
+      "fail": 0
+    },
+    "migration_tests": {
+      "pass": 8,
+      "fail": 0
+    },
+    "python_cloud_runtime_tests": {
+      "pass": 80,
+      "fail": 0,
+      "ruff": "PASS"
+    },
+    "local_media_tests": {
+      "total": 90,
+      "pass": 89,
+      "skip": 1
+    },
+    "asr_tests": {
+      "pass": 33
+    },
+    "span_tests": {
+      "pass": 14
+    },
+    "render_tests": {
+      "pass": 31
+    },
+    "broad_worker_tests": {
+      "total": 173,
+      "pass": 172,
+      "fail": 1,
+      "failure": "historical Mage byte/hash test; unchanged at366d/f9"
+    },
+    "broad_web_tests": {
+      "pass": 2250,
+      "fail": 22,
+      "skip": 1,
+      "boundary": "All22 failures have not been individually reproduced on baseline; not a whole-repository green claim"
+    },
+    "context_validate": "PASS with existing profile-budget/optional-asset warnings",
+    "contracts_check": {
+      "pass": 123
+    },
+    "vnext_dispatch_firewall": "PASS",
+    "changed_file_lint": "PASS",
+    "main_full_web_build": "PASS"
   },
   "bundles": {
     "production": {
@@ -117,7 +163,10 @@
     "actual_resources": "UNVERIFIED",
     "speed": "UNMEASURED",
     "paid_actions": 0,
-    "spend_usd": 0
+    "spend_usd": 0,
+    "inventory_account_boundary": "Read-only configured Frontier reference credential account; no credential copied. Preflight the configured VideoForge account before any paid allocation.",
+    "owned_new_lane_pods": 0,
+    "owned_shutdown_proof": "No billable POST ever issued; no owned Pod launched, independent owned shutdown not yet exercised"
   },
   "remaining_gates": [
     "qualified Linux image/model/tool identity",
@@ -126,5 +175,14 @@
     "representative45-minute VideoForge",
     "full browser acceptance",
     "production rollout/readback"
-  ]
+  ],
+  "implementation_commit": "2cdda790adcf16c1c33f7d2286a3b64972bab9c3",
+  "image_identity": "UNBUILT_UNQUALIFIED",
+  "current_cloudflare_settings_read": "401; fresh production binding/config parity gate open",
+  "unrelated_edit_hash": "UNCHANGED_VERIFIED",
+  "public_production_readback": {
+    "utc": "2026-09-28T13:17:47Z",
+    "source": "366d16c27369b4430a843ae4e6929b7d7156eb89",
+    "gpu_transport": "DISABLED_UNQUALIFIED"
+  }
 }
