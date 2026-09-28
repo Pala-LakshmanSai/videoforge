@@ -170,9 +170,9 @@ jobs:
           set -euo pipefail
           mkdir "$RUNNER_TEMP/derived-audio"
           python3 - <<'PY'
-          import json,os
+          import base64,json,os
           from pathlib import Path
-          encoded=os.environ.pop("PRIVATE_AUDIO_PLAN")
+          encoded=base64.b64decode(os.environ.pop("PRIVATE_AUDIO_PLAN"),validate=True).decode("utf-8")
           plan=json.loads(encoded)
           assert plan["expected_image_digest"]==os.environ["EXPECTED_IMAGE_DIGEST"]
           path=Path(os.environ["RUNNER_TEMP"])/"derived-audio"/"plan.json"
