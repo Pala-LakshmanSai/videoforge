@@ -1,0 +1,93 @@
+{
+  "schema_version": "videoforge-retained-derived-audio-ci-evidence/v1",
+  "run_id": 36441214616,
+  "source_commit": "5a93df70e69e3e1f518c1a1b4d262e0646a6512b",
+  "workflow_registration_commit": "742ba14787d78d5905eb8d412e6a52bfbaaf9baf",
+  "image": "ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:d054d17bef2178593d96b8d579c41446f272330044e79ef1bbde976a859f2c62",
+  "conclusion": "success",
+  "steps": [
+    {
+      "name": "Set up job",
+      "conclusion": "success",
+      "started_at": "2026-09-28T15:07:47Z",
+      "completed_at": "2026-09-28T15:07:48Z",
+      "elapsed_seconds": 1.0
+    },
+    {
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "conclusion": "success",
+      "started_at": "2026-09-28T15:07:48Z",
+      "completed_at": "2026-09-28T15:07:50Z",
+      "elapsed_seconds": 2.0
+    },
+    {
+      "name": "Verify exact source and private qualified image",
+      "conclusion": "success",
+      "started_at": "2026-09-28T15:07:50Z",
+      "completed_at": "2026-09-28T15:08:11Z",
+      "elapsed_seconds": 21.0
+    },
+    {
+      "name": "Read private exact fixture plan and download verified source",
+      "conclusion": "success",
+      "started_at": "2026-09-28T15:08:11Z",
+      "completed_at": "2026-09-28T15:08:12Z",
+      "elapsed_seconds": 1.0
+    },
+    {
+      "name": "Derive exact lossless audio offline using pinned qualified tools",
+      "conclusion": "success",
+      "started_at": "2026-09-28T15:08:12Z",
+      "completed_at": "2026-09-28T15:08:19Z",
+      "elapsed_seconds": 7.0
+    },
+    {
+      "name": "Wait for exact private object authority and upload once",
+      "conclusion": "success",
+      "started_at": "2026-09-28T15:08:19Z",
+      "completed_at": "2026-09-28T15:17:56Z",
+      "elapsed_seconds": 577.0
+    },
+    {
+      "name": "Remove private fixture scratch and registry login",
+      "conclusion": "success",
+      "started_at": "2026-09-28T15:17:56Z",
+      "completed_at": "2026-09-28T15:17:56Z",
+      "elapsed_seconds": 0.0
+    },
+    {
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "conclusion": "success",
+      "started_at": "2026-09-28T15:17:56Z",
+      "completed_at": "2026-09-28T15:17:56Z",
+      "elapsed_seconds": 0.0
+    },
+    {
+      "name": "Complete job",
+      "conclusion": "success",
+      "started_at": "2026-09-28T15:17:56Z",
+      "completed_at": "2026-09-28T15:17:56Z",
+      "elapsed_seconds": 0.0
+    }
+  ],
+  "known_derived_size_bytes": 195749679,
+  "target_duration_ms": 2700000,
+  "source_sample_rate_hz": 44100,
+  "source_channels": 2,
+  "derivation_guard_target_samples_per_channel": 119070000,
+  "private_put_acknowledged": true,
+  "independent_whole_object_verification": "PASS; whole R2 GET SHA256 and independently probed actual FLAC stream facts",
+  "proof_boundary": "Free offline retained-input audio fixture preparation, not paid 45-minute VideoForge render/storage or fresh provider/browser acceptance.",
+  "paid_pod_created": false,
+  "public_media_artifacts_uploaded": false,
+  "independently_verified_audio": {
+    "bytes": 195749679,
+    "duration_ms": 2700000,
+    "sample_rate_hz": 44100,
+    "channels": 2,
+    "samples_per_channel": 119070000
+  },
+  "durable_asset_state": "VERIFIED after exact guarded operator transaction and independent postcommit read",
+  "artifact_sha256": "sha256:b82b111c9ea3b853ade0b08c1eae5e7db00cfec55bd605fd10c4582ec0cd86e3",
+  "timing_boundary": "577-second wait+upload is a combined interval; standalone upload duration not measured"
+}

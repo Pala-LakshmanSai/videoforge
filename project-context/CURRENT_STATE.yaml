@@ -1,7 +1,7 @@
 optional_cloud_media_2026_09_28:
   checkpoint: V2-09
   selected_task: VF-10-09
-  status: PRIVATE_RUNTIME_QUALIFIED_ADDITIVE_SCHEMA_APPLIED_CLOUD_DISABLED
+  status: QUALIFIED_SCOPED_STAGING_DEPLOYED_AWAITING_LIVE_PROOF
   decision: DEC_PERSONAL_WORKER_001
   production_baseline: 366d16c27369b4430a843ae4e6929b7d7156eb89
   implementation_checkout: f9b9283ca662e73c0ba276741db22521c3b65357
@@ -9,7 +9,7 @@ optional_cloud_media_2026_09_28:
   image_identity: ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:d054d17bef2178593d96b8d579c41446f272330044e79ef1bbde976a859f2c62
   focused_validation: Backend79 plus controller50/continuation17/R2inventory_checksum29/SQL9/CloudPython80/Ruff pass; Localmedia99pass1skip100total; ASR33/span14/render31 pass; contracts123/vNext/changedlint/context pass.
   broad_validation: Worker172pass1historical_Mage_byte_hash_failure_unchanged_at366d_f9; web2250pass22fail1skip, not_all22_individually_reproduced_on_baseline.
-  release_preparation: Isolated production-baseline task branch published; offline Linux media qualification passed in CI36437915344/sourcefe61f686 and private exactdigest published/pull verified. Additive214 applied; no application deployment or PodPOST.
+  release_preparation: Isolated production-baseline task branch published; offline Linux media qualification passed in CI36437915344/sourcefe61f686 and private exactdigest published/pull verified. Additive214 applied; isolated qualification staging source644a9f65 deployed with exact runtime/0.1.44/privacy and two owned workflows; no production release or PodPOST.
   preserved: Local default/worker0.1.44/installers/pairing; Kie/Fal generation; immutable media/manifests/approvals; historical GPU-disabled settings and sealed volumes.
   unrelated_edit_excluded: apps/web/src/server/runtime/node-fair-admission.ts, hash unchanged verified.
   implementation: Explicit revision/attempt backend selection, Cloud ASR/span/render routing, durable reservation/fencing/inventory/cleanup, scoped multipart, dedicated Linux runtime source and bounded retry UI under source/test review.
@@ -22,7 +22,7 @@ optional_cloud_media_2026_09_28:
   authority: User approved replacement USD5 combined proposal on2026-09-28; computeUSD3/max6 reservations, build_publication_storageUSD2; no new Kie/Fal, no retained volumes; qualified production release conditional on gates.
   lower_cost_proposal: Previous unapprovedUSD20 withdrawn; approvedUSD5 total, computeUSD3/six phase-bounded reservations summingUSD2.47 plus contingency, CI_publication_storageUSD2, all_in_rate_maxUSD0.80_hour, disk100_200GB. Short proofs15min, cancellation5min, long45minute_render2h; stop without weakening gates if infeasible.
   remaining_gates: Authorized short Cloud and cancellation; current Local execution; representative45minute VideoForge storage/render; full realChrome queue/reload/private download/playback; ordinary final-promotion live proof; production rollout/readback.
-  provider_spend: USD0 compute; no Kie/Fal or PodPOST/DELETE; approved immutable tools/model, privateR2 ZIP and private image published. Scoped authority/new inert fixture prepared; exact derived45 asset upload/readback pending.
+  provider_spend: USD0 compute; no Kie/Fal or PodPOST/DELETE; approved immutable tools/model, privateR2 ZIP and private image published. Scoped authority/new inert fixture prepared; synthetic derived45 audio independently verified and exact new asset VERIFIED; no45render yet.
   paid_compute_shutdown: Actual configuredVideoForge complete provider inventory zeroPods verified; newlaneowned0/noPOSTissued. Independent owned shutdown remains live acceptance gate.
   evidence: .videoforge/cloud-media/baseline.json; .videoforge/cloud-media/release-transplant.json; project-context/cloud-media/RELEASE_RUNBOOK.md
 prompt_instruction_compaction_2026_09_27:

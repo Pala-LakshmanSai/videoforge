@@ -173,30 +173,30 @@ is settled. Never terminate unrelated Pods or touch historical Mage/SoulX volume
 
 ## Current acceptance boundary
 
-Production-based final UI/product tests:234 pass, one existing product source-text guard failure.
-Implementation code is locally committed as2cdda790adcf16c1c33f7d2286a3b64972bab9c3.
-Focused backend79, migration8, Cloud Python runtime80 and Ruff pass. Existing Local media89pass/
-1skip (90 total), ASR33, span14 and render31 pass. Contracts123, vNext dispatch firewall, changed-file lint
-and context validation pass; context retains profile-budget/optional-asset warnings. Broad worker
-suite172pass/1fail (173 total) has an unchanged historical Mage byte/hash failure at366d/f9.
-Broad web2250pass/22fail/1skip is not green; all22 failures have not individually been reproduced
-on baseline. The unrelated edit hash is unchanged. Linux image identity isUNBUILT_UNQUALIFIED.
-Public production readback at2026-09-28T13:17:47Z still reports source366d16c2 and GPU transport DISABLED_UNQUALIFIED. Current Cloudflare settings read401; fresh production binding/config parity remains a release gate.
-Production full web, final Cloudflare and staging builds pass; their measured static closures are
-2,778,357 and2,776,188 bytes. The Cloud controller remains in an isolated dynamic server chunk
-of56,679 and56,050 bytes. Config/quarantine/release-preparation tests19/19 pass, including a
-provider-free canonical Wrangler dry-run and a guard that rejects Cloud GPU vocabulary in client,
-static Worker closure or any other server chunk. Linux/Python execution code remains outside
-Cloudflare bundles. The source runtime firewall has two existing unlisted continuation imports;
-the same imports/guard are present at bothf9 and the published366d baseline.
-Scoped tests prove Local default, explicit Cloud offline readiness, compatible retry payload,
-and Saving/Stopping compute until verified cleanup. Cloud CPU progress has no numerical percent
-or x/100 counter; accessible exact phase text is shown, Local/pipeline accepted-item counts preserved;
-real Chrome provider-free hosted fixtures on the production-based worktree prove Local/Cloud
-selection and restoration, exact mocked Cloud render-retry payload, and STOPPING phase/full-navigation
-reload with no CPU counter or premature Production complete. These are mocked UI proofs, not
-controller/cleanup or production submission evidence. Current production Settings/Library mounted with
-an offline Windows0.1.44 device; saved MP4 loaded1920x1080/159.2s without media error, advanced
-through the first10.077s using native controls, and its private download was requested. Full
-play-through/audio-sync/downloaded-byte verification was not completed after the tab handle became unavailable; its cause was not established.
-No live Cloud,45-minute VideoForge, runtime image/digest or release proof exists yet.
+Production-based UI/product tests234pass/one unchanged source-text assertion. Focused controller50,
+continuation17, exact R2 inventory/checksum29 and migration9 pass. Python Cloud80, Local99pass/1skip,
+ASR33/span14/render31 and derived-audio helper25 pass; contracts123, typecheck, changed lint and
+context pass. Broad worker172pass/one unchanged historical Mage byte/hash failure; broad web
+2250pass/22fail/1skip, with not all22 individually baseline-reproduced. Source firewall retains two
+unchanged continuation import allowlist failures; emitted bundle quarantine passes. The unrelated
+node-fair-admission edit SHA remains unchanged.
+
+Production/staging builds pass at static closures2,778,234/2,775,622 bytes under unchanged limits;
+Cloud/multipart helpers remain dynamic, Linux execution stays outside Cloudflare bundles.
+Production source366d16c2/version62524e69 remains unchanged; fresh settings/deployments reads200,
+25 secret bindings, worker0.1.44 and query redaction verified. Publication parity is still required.
+
+Real regular Chrome saved159.2s output reached ended=true, reload restored readyState4 without
+error, and private download25,080,526 bytes matches accepted SHA256; independent FFprobe verifies
+4776frames/1080p30/H264/AAC. Fixture selector/offline/Stopping/reload checks remain mocked.
+Current native Local execution remains below its unchanged2GiB scratch guard after clearing only
+verified disposable package/update caches (about1.1GiB remains); external613MiB and stale Windows heartbeat provide no ready alternative. Saved playback is not fresh execution or human AV review.
+
+Real offline qualified Linux image/private pull proof is recorded in QUALIFIED_RUNTIME.json.
+Synthetic45-minute retained audio was derived with that exact runtime in free CI36441214616,
+195,749,679 bytes; independent whole R2 SHA and119,070,000-sample/2700s/44.1kHz/stereo FLAC probe
+passed and the exact new asset became VERIFIED. This is fixture preparation, not a45-minute render.
+Additive214 is independently installed, ledger197 and omitted148 preserved. The scoped authority
+and dormant owned proof jobs are prepared; no paid Pod or new Kie/Fal/prompt request has occurred.
+Short Cloud/cancellation/independent cleanup,45-minute render/storage, actual Cloud Chrome flow,
+current Local, ordinary final-promotion and qualified production rollout remain gates.

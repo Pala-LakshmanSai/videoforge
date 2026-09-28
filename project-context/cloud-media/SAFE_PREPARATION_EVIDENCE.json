@@ -1,6 +1,6 @@
 {
   "schema_version": "videoforge-cloud-media-safe-preparation/v1",
-  "status": "PRIVATE_RUNTIME_QUALIFIED_ADDITIVE_SCHEMA_APPLIED_CLOUD_DISABLED",
+  "status": "QUALIFIED_SCOPED_STAGING_DEPLOYED_AWAITING_LIVE_PROOF",
   "checkpoint": "VF-10-09",
   "production_source": "366d16c27369b4430a843ae4e6929b7d7156eb89",
   "implementation_base": "f9b9283ca662e73c0ba276741db22521c3b65357",
@@ -188,7 +188,7 @@
     "unverified": [
       "Human narration/audio-sync review",
       "Real controller create/queue/cleanup",
-      "Current Local execution: existing2GiB free-space gate blocked; user disk action pending"
+      "Current Local execution: existing2GiB free-space gate blocked; safe disposable cache cleanup left about1.1GiB; no ready qualified computer in current tenant"
     ],
     "regular_chrome": true,
     "saved_download": {
@@ -363,7 +363,18 @@
   "live_fixture_preparation": {
     "budget_scoped_to_new_owned_projects": true,
     "short_jobs": "PLANNED; no workflow activation or Pod POST",
-    "derived45_asset": "UPLOADING bound to exact expected bytes/hash; upload/readback pending",
+    "derived45_asset": "VERIFIED; whole195749679-byte R2 checksum and actual2700s/44100Hz/stereo/119070000-sample FLAC verified",
     "new_kie_fal_prompt_calls": 0
-  }
+  },
+  "derived45_audio_fixture_evidence": "RETAINED45_AUDIO_FIXTURE.json",
+  "local_live_readiness": {
+    "worker_release": "0.1.44",
+    "minimum_free_scratch_bytes": 2147483648,
+    "free_space_after_safe_cache_cleanup": "approximately1.1GiB",
+    "current_tenant_windows_fresh_heartbeat_count": 0,
+    "external_volume_free": "613MiB",
+    "guard_changed": false,
+    "accepted_media_deleted": false
+  },
+  "staging_deployment": "STAGING_QUALIFICATION.json"
 }

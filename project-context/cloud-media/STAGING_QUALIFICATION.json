@@ -1,0 +1,22 @@
+{
+  "deployed": true,
+  "source": "644a9f6528133fbb2e66c1eb742ece07375324d6",
+  "explicitVersionVerified": true,
+  "stageOnly": true,
+  "productionBaselineUnchanged": true,
+  "secretsPreserved": true,
+  "secretCount": 10,
+  "apiProviderSecretsAdded": false,
+  "queryRedaction": true,
+  "localRelease": "0.1.44",
+  "qualificationOnly": true,
+  "privateImage": true,
+  "workflowResourceCount": 2,
+  "workflowBindingCount": 2,
+  "minuteCronOnly": true,
+  "publicStatusVerified": true,
+  "newInstancesCreated": false,
+  "paidPosts": 0,
+  "version_id": "bd37d131-c77e-486d-b052-b6ac6e9051e7",
+  "boundary": "Isolated scoped staging deployment only; no job activation, Workflow instance or paid Pod yet; production unchanged"
+}
