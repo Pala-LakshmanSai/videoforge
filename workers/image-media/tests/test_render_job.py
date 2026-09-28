@@ -393,7 +393,7 @@ class RenderFixture:
             "cancel_token": "local-render-cancel-token-0000000000001",
         }
 
-    def job(self, diagnostics: Any = None) -> RenderJob:
+    def job(self, diagnostics: Any = None, technical_observer: Any = None) -> RenderJob:
         return RenderJob(
             RenderJobDependencies(
                 resolver=self.resolver,
@@ -402,6 +402,7 @@ class RenderFixture:
                 process=self.process,
                 cancellation=self.cancellation,
                 diagnostics=diagnostics,
+                technical_observer=technical_observer,
             )
         )
 
@@ -1187,6 +1188,37 @@ class RenderJobTests(unittest.TestCase):
         self.assertEqual(len(decode_calls), 1)
         self.assertIn("-progress", decode_calls[0])
         self.assertIn("passthrough", decode_calls[0])
+
+    def test_optional_technical_observer_precedes_the_single_mandatory_decode(self) -> None:
+        fixture = RenderFixture()
+        events = []
+        def observe(phase: str, duration_ms: int | None) -> None:
+            events.append((phase, duration_ms, sum("-xerror" in call for call in fixture.process.calls)))
+        with patch("videoforge_image_media.jobs.render.job.time.monotonic_ns",
+                   side_effect=[1_000_000_000, 1_125_000_000]):
+            facts = fixture.job(technical_observer=observe)._probe_output(
+                tools=FakeTools().resolve(), output_path=Path("output.mp4"),
+                expected_total_frames=360, token="cancel_test",
+            )
+        self.assertEqual(facts.total_frames, 360)
+        self.assertEqual(events[0], ("CHECKING_VIDEO", None, 0))
+        self.assertEqual(events[1][0], "TECHNICAL_VERIFICATION_COMPLETE")
+        self.assertEqual(events[1][1], 125)
+        self.assertEqual(events[1][2], 1)
+        self.assertEqual(len(events), 2)
+
+    def test_technical_observation_is_default_off_and_cannot_change_acceptance(self) -> None:
+        original = RenderFixture()
+        self.assertIsNone(original.job()._dependencies.technical_observer)
+        expected = original.job().run(original.document, claimed_attempt_id="attempt_render_local_001")
+        observed = RenderFixture()
+        def unavailable(_phase: str, _duration_ms: int | None) -> None:
+            raise OSError("observation unavailable")
+        actual = observed.job(technical_observer=unavailable).run(
+            observed.document, claimed_attempt_id="attempt_render_local_001"
+        )
+        self.assertEqual(actual, expected)
+        self.assertEqual(sum("-xerror" in call for call in observed.process.calls), 1)
 
     def test_declared_frame_count_cannot_mask_incomplete_or_short_decode(self) -> None:
         for progress in ("", "frame=360\nprogress=continue\n", "frame=359\nprogress=end\n"):

@@ -7,7 +7,8 @@ import os
 import re
 import subprocess
 import tempfile
-from collections.abc import Mapping, Sequence
+import time
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, cast
@@ -85,6 +86,7 @@ class RenderJobDependencies:
     process: ProcessRunner
     cancellation: CancellationProbe
     diagnostics: DiagnosticSink | None = None
+    technical_observer: Callable[[str, int | None], None] | None = None
 
 
 @dataclass(frozen=True)
@@ -905,6 +907,39 @@ class RenderJob:
             verified_checksums.add(binding.sha256)
 
     def _probe_output(
+        self,
+        *,
+        tools: RenderTools,
+        output_path: Path,
+        expected_total_frames: int,
+        token: str,
+    ) -> ProbeFacts:
+        if self._dependencies.technical_observer is None:
+            return self._probe_output_checked(
+                tools=tools, output_path=output_path,
+                expected_total_frames=expected_total_frames, token=token,
+            )
+        started = time.monotonic_ns()
+        self._observe_technical("CHECKING_VIDEO", None)
+        try:
+            return self._probe_output_checked(
+                tools=tools, output_path=output_path,
+                expected_total_frames=expected_total_frames, token=token,
+            )
+        finally:
+            self._observe_technical(
+                "TECHNICAL_VERIFICATION_COMPLETE", (time.monotonic_ns() - started) // 1_000_000
+            )
+
+    def _observe_technical(self, phase: str, duration_ms: int | None) -> None:
+        observer = self._dependencies.technical_observer
+        if observer is not None:
+            try:
+                observer(phase, duration_ms)
+            except Exception:  # observation must not weaken or change media acceptance
+                pass
+
+    def _probe_output_checked(
         self,
         *,
         tools: RenderTools,

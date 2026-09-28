@@ -272,7 +272,10 @@ def _transcribe(arguments: argparse.Namespace, resolver: Any) -> dict[str, Any]:
     ).run(document)
 
 
-def _render(arguments: argparse.Namespace, resolver: Any) -> dict[str, Any]:
+def _render(
+    arguments: argparse.Namespace, resolver: Any,
+    observer_factory: Callable[[Path, str], Callable[[str, int | None], None]] | None = None,
+) -> dict[str, Any]:
     document = _read_input(Path(arguments.input), resolver.root)
     tools = RenderTools(
         ffmpeg=_absolute_tool(arguments.ffmpeg),
@@ -287,6 +290,8 @@ def _render(arguments: argparse.Namespace, resolver: Any) -> dict[str, Any]:
             tools=LocalRenderTools(tools),
             process=RenderSubprocessRunner(),
             cancellation=FileCancellationProbe(resolver.root),
+            technical_observer=(observer_factory(resolver.root, arguments.claimed_attempt_id)
+                                if observer_factory is not None else None),
         )
     ).run(document, claimed_attempt_id=arguments.claimed_attempt_id)
 
@@ -336,6 +341,7 @@ def main(
     *,
     resolver_factory: Callable[[Path], Any] = LocalArtifactResolver,
     accepted_commands: frozenset[str] | None = None,
+    render_observer_factory: Callable[[Path, str], Callable[[str, int | None], None]] | None = None,
 ) -> int:
     arguments = _parser().parse_args()
     try:
@@ -347,7 +353,8 @@ def main(
         elif arguments.command == "materialize-span":
             result = _materialize_span(arguments, resolver)
         else:
-            result = _render(arguments, resolver)
+            result = (_render(arguments, resolver, render_observer_factory)
+                      if render_observer_factory is not None else _render(arguments, resolver))
     except (OSError, TypeError, ValueError):
         print("Local media bridge rejected its trusted configuration.", file=sys.stderr)
         return 2

@@ -9,6 +9,7 @@ import os
 import platform
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -25,10 +26,45 @@ from typing import BinaryIO
 from videoforge_image_media.local_cli import cancellation_marker
 
 from . import personal_execution as media
+from .cloud_media_cli import PHASE_FILENAME
 
 _HASH = re.compile(r"sha256:[0-9a-f]{64}")
 _PHASES = {"DOWNLOADING_INPUTS", "RENDERING", "CHECKING_VIDEO", "SAVING"}
 _SINGLE_PUT_MAX_BYTES = 5 * 1024**3 - 5 * 1024**2
+
+
+def _read_render_phase(root: Path, attempt_id: str, earliest_ns: int) -> dict | None:
+    path = root / PHASE_FILENAME
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    except FileNotFoundError:
+        return None
+    with os.fdopen(descriptor, "rb") as source:
+        if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):
+            raise ValueError("Cloud phase sidecar is not regular")
+        encoded = source.read(1025)
+    if len(encoded) > 1024:
+        raise ValueError("Cloud phase sidecar exceeds bound")
+    value = json.loads(encoded)
+    fields = {"schema_version", "attempt_id", "phase", "sequence", "started_monotonic_ns",
+              "technical_verification_ms"}
+    if (not isinstance(value, dict) or set(value) != fields
+            or value["schema_version"] != "videoforge-cloud-render-phase/v1"
+            or value["attempt_id"] != attempt_id
+            or type(value["started_monotonic_ns"]) is not int
+            or not earliest_ns <= value["started_monotonic_ns"] <= time.monotonic_ns()
+            or type(value["sequence"]) is not int):
+        raise ValueError("Cloud phase sidecar is stale or malformed")
+    duration = value["technical_verification_ms"]
+    if value["sequence"] == 1:
+        valid = value["phase"] == "CHECKING_VIDEO" and duration is None
+    else:
+        valid = (value["sequence"] == 2 and value["phase"] == "TECHNICAL_VERIFICATION_COMPLETE"
+                 and type(duration) is int and 0 <= duration <= 14_400_000
+                 and duration <= (time.monotonic_ns() - value["started_monotonic_ns"]) // 1_000_000 + 100)
+    if not valid:
+        raise ValueError("Cloud phase sidecar timing is invalid")
+    return value
 
 
 @dataclass(frozen=True)
@@ -299,13 +335,32 @@ def run(spec: RunPodJob, token: str, lease: str, tools: media.ToolPaths, *,
             pass
     timer = threading.Timer(remaining(), expired)
     disk_stop = threading.Event()
+    child_finished = threading.Event()
+    phase_lock = threading.RLock()
+    phase_sequence = 0
+    started_ns = time.monotonic_ns()
     def watch_disk() -> None:
-        while not disk_stop.wait(10):
+        nonlocal phase_sequence
+        last_disk_check = 0.0
+        while not disk_stop.wait(1):
             try:
-                if shutil.disk_usage(scratch).free < 256 * 1024**2:
-                    monitor._terminate(media._MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT)
-                    return
-            except OSError:
+                if time.monotonic() - last_disk_check >= 10:
+                    last_disk_check = time.monotonic()
+                    if shutil.disk_usage(scratch).free < 256 * 1024**2:
+                        monitor._terminate(media._MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT)
+                        return
+                with phase_lock:
+                    if job.kind == "RENDER" and not child_finished.is_set():
+                        observed = _read_render_phase(scratch, job.attempt_id, started_ns)
+                        if observed is not None and observed["sequence"] > phase_sequence:
+                            try:
+                                phase("CHECKING_VIDEO", technical_ms=observed["technical_verification_ms"])
+                            except OSError:
+                                continue  # retry observation; existing cancellation/deadline still fence
+                            phase_sequence = observed["sequence"]
+            except media._PersonalJobCancelled:
+                return
+            except (OSError, ValueError):
                 monitor._terminate(media._MEDIA_EXECUTION_IO_FAILED)
                 return
     disk_watchdog = threading.Thread(target=watch_disk, daemon=True)
@@ -313,11 +368,16 @@ def run(spec: RunPodJob, token: str, lease: str, tools: media.ToolPaths, *,
     status, failure = "FAILED", "MEDIA_EXECUTION_FAILED"
     next_spec: object | None = None
     started = time.monotonic()
-    def phase(name: str) -> None:
+    def phase(name: str, *, technical_ms: int | None = None,
+              artifact_ms: int | None = None) -> None:
         if name not in _PHASES or remaining() <= 0 or monitor.is_cancelled():
             raise media._PersonalJobCancelled
-        value = _control(job.cancellation_url, token, lease,
-                         {"phase": name, "elapsed_seconds": round(time.monotonic() - started, 3)})
+        payload = {"phase": name, "elapsed_seconds": round(time.monotonic() - started, 3)}
+        if technical_ms is not None:
+            payload["technical_verification_ms"] = technical_ms
+        if artifact_ms is not None:
+            payload["artifact_verification_ms"] = artifact_ms
+        value = _control(job.cancellation_url, token, lease, payload)
         reason = media._heartbeat_stop_reason(200, value)
         if reason is not None:
             monitor._terminate(reason)
@@ -331,7 +391,8 @@ def run(spec: RunPodJob, token: str, lease: str, tools: media.ToolPaths, *,
         _download_inputs(spec, scratch, token, lease, monitor.is_cancelled)
         input_path = scratch / "job-input.json"
         input_path.write_bytes(media._canonical(job.input_document))
-        command = [sys.executable, "-m", "videoforge_media_local.cli",
+        command = [sys.executable, "-m", ("videoforge_media_local.cloud_media_cli"
+                   if job.kind == "RENDER" else "videoforge_media_local.cli"),
                    {"ASR": "transcribe", "SPAN_AUDIO": "materialize-span", "RENDER": "render"}[job.kind],
                    "--artifact-root", str(scratch), "--input", str(input_path),
                    "--ffmpeg", str(tools.ffmpeg), "--ffprobe", str(tools.ffprobe)]
@@ -346,15 +407,24 @@ def run(spec: RunPodJob, token: str, lease: str, tools: media.ToolPaths, *,
         code, stdout = media._run_media_subprocess(command, monitor, retry_once=False,
                                                   before_retry=lambda: None,
                                                   timeout_seconds=max(1, remaining()))
+        with phase_lock:
+            child_finished.set()
         if code != 0 or monitor.is_cancelled():
             raise ValueError("RunPod shared media process failed")
         result, state, result_failure = media._parse_child_result(job, stdout, int(job.result["max_bytes"]))
         if state != "SUCCEEDED" or result is None:
             status, failure = state or "FAILED", result_failure
         else:
-            phase("CHECKING_VIDEO")
+            technical_ms = None
+            if job.kind == "RENDER":
+                observed = _read_render_phase(scratch, job.attempt_id, started_ns)
+                if observed is None or observed["sequence"] != 2:
+                    raise ValueError("Cloud render technical timing is missing")
+                technical_ms = observed["technical_verification_ms"]
+            phase("CHECKING_VIDEO", technical_ms=technical_ms)
+            artifact_started = time.monotonic_ns()
             with media._verified_primary_source(job, scratch, result) as (source, checksum, size):
-                phase("SAVING")
+                phase("SAVING", artifact_ms=(time.monotonic_ns() - artifact_started) // 1_000_000)
                 output = job.outputs[0]
                 if size > output["max_bytes"]:
                     raise ValueError("RunPod output exceeds exact bound")
