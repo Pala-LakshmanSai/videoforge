@@ -11,6 +11,34 @@ qualify = runpy.run_path(str(Path(__file__).parents[1] / "qualify_runpod_runtime
 
 
 class RunPodBuildTests(unittest.TestCase):
+    def test_qualification_archive_matches_existing_r2_fixture_object_and_run_ports(self):
+        from videoforge_media_local.artifacts import R2PortFixtureArtifactResolver
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            data = b"exact committed bytes"
+            checksum = hashlib.sha256(data).hexdigest()
+            object_path = root / "objects/sha256" / checksum[:2] / f"{checksum}.wav"
+            run_path = root / "runs/revision/attempt/manifest.json"
+            for path in (object_path, run_path):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(data)
+            uri = f"vf-local://objects/sha256/{checksum[:2]}/{checksum}.wav"
+            resolver = R2PortFixtureArtifactResolver(root)
+            with self.assertRaises(FileNotFoundError):
+                resolver.resolve_object(uri)
+            qualify["stage_bundle_objects"](root)
+            self.assertEqual(resolver.resolve_object(uri).read_bytes(), data)
+            self.assertEqual(resolver.resolve_run("vf-local-run://revision/attempt/manifest.json").read_bytes(), data)
+            self.assertEqual(object_path.read_bytes(), data)
+            with self.assertRaises(FileExistsError):
+                qualify["stage_bundle_objects"](root)
+
+    def test_qualification_failure_diagnostics_expose_only_known_error_code(self):
+        self.assertEqual(qualify["failure_code"]({"error": {"code": "ASR_SOURCE_DECODE_FAILED"}}),
+                         "ASR_SOURCE_DECODE_FAILED")
+        for error in (None, {"code": "https://private.test/credential"}, {"message": "private narration"}):
+            self.assertEqual(qualify["failure_code"]({"error": error}), "OFFLINE_RECEIPT_INVALID")
+
     def test_qualification_stages_exact_documents_for_shared_cli_containment(self):
         from videoforge_image_media.local_cli import _read_input
         with tempfile.TemporaryDirectory() as directory:

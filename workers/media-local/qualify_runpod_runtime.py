@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import platform
 import subprocess
 import sys
@@ -42,6 +43,32 @@ def stage_input(artifact_root: Path, source: Path, kind: str) -> Path:
     with destination.open("xb") as output:
         output.write(encoded)
     return destination
+
+
+def stage_bundle_objects(artifact_root: Path) -> None:
+    """Adapt the bounded archive layout to the unchanged private R2 fixture port."""
+    from videoforge_media_local.artifacts import R2PortFixtureArtifactResolver
+    resolver = R2PortFixtureArtifactResolver(artifact_root)
+    for namespace in ("objects", "runs"):
+        source_root = resolver.root / namespace
+        if source_root.is_symlink():
+            raise ValueError("Offline qualification namespace is unsafe")
+        for source in sorted(source_root.rglob("*")):
+            if source.is_symlink():
+                raise ValueError("Offline qualification object is unsafe")
+            if source.is_file():
+                relative = source.relative_to(source_root)
+                parent = resolver._ensure_directory(resolver.bucket, namespace, *relative.parts[:-1])
+                destination = parent / relative.name
+                os.link(source, destination)  # Exact immutable bytes; never overwrite an input.
+
+
+def failure_code(receipt: dict) -> str:
+    from videoforge_media_local import personal_execution as media
+    allowed = media._ASR_FAILURE_CODES | media._SPAN_AUDIO_FAILURE_CODES | media._RENDER_FAILURE_CODES
+    error = receipt.get("error")
+    code = error.get("code") if isinstance(error, dict) else None
+    return code if isinstance(code, str) and code in allowed else "OFFLINE_RECEIPT_INVALID"
 
 
 def main() -> int:
@@ -81,6 +108,7 @@ def main() -> int:
             tools[name]["version"] = version
     if tools["whisper_model"]["sha256"] != MODEL_SHA256:
         raise ValueError("Accepted base.en model differs")
+    stage_bundle_objects(args.artifact_root)
     evidence = {}
     for kind, command in (("asr", "transcribe"), ("span", "materialize-span"), ("render", "render")):
         input_path = stage_input(args.artifact_root, getattr(args, f"{kind}_input"), kind)
@@ -111,7 +139,7 @@ def main() -> int:
             raise ValueError(f"Offline {kind} command rejected trusted configuration")
         receipt = json.loads(result.stdout)
         if receipt.get("status") != "SUCCEEDED":
-            raise ValueError(f"Real {kind} qualification failed")
+            raise ValueError(f"Offline {kind} qualification failed: {failure_code(receipt)}")
         evidence[kind] = {"input_sha256": digest(input_path),
                           "receipt_sha256": "sha256:" + hashlib.sha256(canonical(receipt)).hexdigest()}
     files = {}
