@@ -10,7 +10,7 @@ import { HostedR2Signer } from "./r2";
 import { verifyHostedObjectChecksum } from "./r2-checksum";
 import { ensureHostedV209GenerationAdmission } from "./hosted-v209-queue-admission";
 import { startHostedStageContinuation } from "./stage-continuation";
-import { reconcileHostedV209SpanWorkflowTerminal } from "./hosted-v209-span-workflow-reconciliation";
+import { reconcileHostedV209SpanWorkflowTerminal, type HostedV209SpanDiagnostic } from "./hosted-v209-span-workflow-reconciliation";
 import { cloudDiskGb, cloudGpuCandidates, isCapacityRefusal, MULTIPART_PART_BYTES,
   RunPodMediaError, SHA256, SINGLE_PUT_MAX_BYTES, type CloudGpu } from "./runpod-media-policy";
 
@@ -60,6 +60,7 @@ function query(sql: SqlExecutor, statement: string, values: readonly unknown[] =
 type Scope = {attemptId: string; accountId: string; workspaceId: string};
 type ObservationPhase = "CONTROLLER_ACCESS" | "TEMPLATE" | "ADMISSION" | "RESERVATION" | "ADMISSION_RENEWAL" |
   "RECEIPT_RECONCILIATION" | "ATTEMPT_TERMINATION" | "CLEANUP" | "FAILURE_SETTLEMENT" | "RESULT_FINALIZATION" |
+  "PROJECTION" | "RESULT_READ" | "RESULT_HASH" | "RESULT_PARSE" | "FINALIZE" | "PAIR_RESUME" |
   "INVENTORY" | "PLACEMENT_ADOPTION" | "CATALOGUE" | "CAPACITY_CHECK" |
   "BUDGET_RESERVATION" | "CREATE_FENCE" | "LEASE_TOKEN" | "POD_CREATE";
 type ObservationDiagnostic = {phase: ObservationPhase; code: string};
@@ -292,14 +293,18 @@ export const CLOUD_QUALIFICATION_RENDER_ARTIFACT_SQL = `SELECT a.id AS qualifica
          AND r.state='CLEAN' AND r.cleanup_verified_at IS NOT NULL
          AND b.id=$4`;
 
-async function finalizeMedia(environment: HostedRuntimeEnvironment, config: HostedRuntimeConfiguration, a: Row): Promise<boolean | "QUALIFICATION_ARTIFACT"> {
+async function finalizeMedia(environment: HostedRuntimeEnvironment, config: HostedRuntimeConfiguration, a: Row, reportSpanDiagnostic?: (value: HostedV209SpanDiagnostic) => void): Promise<boolean | "QUALIFICATION_ARTIFACT"> {
   const scope = {accountId:String(a.account_id),workspaceId:String(a.workspace_id),attemptId:String(a.id)};
   if (a.kind === "ASR") {
     await startHostedStageContinuation(environment,{accountId:scope.accountId,projectId:String(a.project_id),
       revisionId:String(a.project_revision_id),step:"context"});
     return !!environment.HOSTED_CONTINUATION_WORKFLOW;
   }
-  if (a.kind === "SPAN_AUDIO") return (await reconcileHostedV209SpanWorkflowTerminal(environment,config,scope)).state !== "FINALIZATION_PENDING";
+  if (a.kind === "SPAN_AUDIO") {
+    const result = await reconcileHostedV209SpanWorkflowTerminal(environment,config,scope);
+    if (result.state === "FINALIZATION_PENDING" && result.diagnostic) reportSpanDiagnostic?.(result.diagnostic);
+    return result.state !== "FINALIZATION_PENDING";
+  }
   if (cloudMediaQualificationOnly(environment)) {
     // Retained-media qualification accepts a verified CPU artifact, without manufacturing
     // an ordinary provider barrier, project final output, or human approval.
@@ -472,8 +477,10 @@ async function observeCloudMedia(environment: HostedRuntimeEnvironment, config: 
       phase="FAILURE_SETTLEMENT";
       if(clean && a.state!=="SUCCEEDED" && !await settleFailedCpu(config,a)) return {state:"FINALIZATION_PENDING",delaySeconds:30};
       phase="RESULT_FINALIZATION";
-      const finalized=clean && a.state === "SUCCEEDED" ? await finalizeMedia(environment,config,a) : true;
-      if (!finalized) return {state:"FINALIZATION_PENDING",delaySeconds:30};
+      const finalizationDiagnostic: { value?: HostedV209SpanDiagnostic } = {};
+      const finalized=clean && a.state === "SUCCEEDED" ? await finalizeMedia(environment,config,a, value => { finalizationDiagnostic.value = value; }) : true;
+      if (!finalized) return {state:"FINALIZATION_PENDING",delaySeconds:30,
+        ...(finalizationDiagnostic.value ? {observationError:finalizationDiagnostic.value} : {})};
       return {state:clean ? (TERMINAL.includes(String(a.state)) ? String(a.state) : a.state === "CANCEL_REQUESTED" ? "CANCELLED" : "FAILED") : "RECONCILING",delaySeconds:30,
         ...(finalized==="QUALIFICATION_ARTIFACT" ? {qualificationArtifactOnly:true as const,ordinaryFinalPromotion:false as const} : {})};
     }

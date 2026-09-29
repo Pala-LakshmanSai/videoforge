@@ -42,9 +42,22 @@ export interface HostedV209SpanWorkflowDependencies {
   }) => Promise<void>;
 }
 
+export type HostedV209SpanDiagnosticPhase =
+  | "PROJECTION" | "RESULT_READ" | "RESULT_HASH" | "RESULT_PARSE" | "FINALIZE" | "PAIR_RESUME";
+export interface HostedV209SpanDiagnostic {
+  readonly phase: HostedV209SpanDiagnosticPhase;
+  readonly code: string;
+}
+const SAFE_SQLSTATES = new Set(["42501", "23514", "23505", "23503", "55000", "25006", "40001", "40P01", "57014", "53300", "08000", "08001", "08003", "08006", "57P01"]);
+function diagnostic(error: unknown, phase: HostedV209SpanDiagnosticPhase): HostedV209SpanDiagnostic {
+  const code = error && typeof error === "object" && "code" in error && typeof error.code === "string" && SAFE_SQLSTATES.has(error.code)
+    ? `SQLSTATE_${error.code}` : "UNCLASSIFIED";
+  return Object.freeze({ phase, code });
+}
+
 export type HostedV209SpanWorkflowReconciliation =
   | { readonly state: "NOT_SPAN_AUDIO" }
-  | { readonly state: "FINALIZATION_PENDING" }
+  | { readonly state: "FINALIZATION_PENDING"; readonly diagnostic?: HostedV209SpanDiagnostic }
   | { readonly state: "FINALIZED"; readonly pairResumed: boolean };
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -122,6 +135,7 @@ function exactFinalization(
 async function reconcile(
   dependencies: HostedV209SpanWorkflowDependencies,
   terminal: HostedV209SpanTerminalProjection,
+  progress: { phase: HostedV209SpanDiagnosticPhase },
 ): Promise<
   Exclude<HostedV209SpanWorkflowReconciliation, { readonly state: "FINALIZATION_PENDING" }>
 > {
@@ -129,6 +143,7 @@ async function reconcile(
     return Object.freeze({ state: "NOT_SPAN_AUDIO" as const });
   }
   const expected = exactTerminal(terminal);
+  progress.phase = "RESULT_READ";
   const object = await dependencies.bucket.get(expected.objectKey);
   if (
     !object ||
@@ -137,6 +152,7 @@ async function reconcile(
   ) {
     throw new Error("HOSTED_V209_SPAN_RESULT_INVALID");
   }
+  progress.phase = "RESULT_HASH";
   const bytes = await object.arrayBuffer();
   if (
     bytes.byteLength !== expected.contentLength ||
@@ -144,6 +160,7 @@ async function reconcile(
   ) {
     throw new Error("HOSTED_V209_SPAN_RESULT_INVALID");
   }
+  progress.phase = "RESULT_PARSE";
   let resultDocument: JsonValue;
   try {
     const decoded = JSON.parse(
@@ -154,6 +171,7 @@ async function reconcile(
   } catch {
     throw new Error("HOSTED_V209_SPAN_RESULT_INVALID");
   }
+  progress.phase = "FINALIZE";
   const finalized = exactFinalization(
     await dependencies.finalize({
       accountId: terminal.accountId,
@@ -163,7 +181,10 @@ async function reconcile(
     }),
     terminal,
   );
-  if (finalized.pairReady) await dependencies.resumePair(finalized.identity);
+  if (finalized.pairReady) {
+    progress.phase = "PAIR_RESUME";
+    await dependencies.resumePair(finalized.identity);
+  }
   return Object.freeze({ state: "FINALIZED" as const, pairResumed: finalized.pairReady });
 }
 
@@ -175,10 +196,11 @@ export async function attemptHostedV209SpanWorkflowReconciliation(
   dependencies: HostedV209SpanWorkflowDependencies,
   terminal: HostedV209SpanTerminalProjection,
 ): Promise<HostedV209SpanWorkflowReconciliation> {
+  const progress: { phase: HostedV209SpanDiagnosticPhase } = { phase: "PROJECTION" };
   try {
-    return await reconcile(dependencies, terminal);
-  } catch {
-    return Object.freeze({ state: "FINALIZATION_PENDING" as const });
+    return await reconcile(dependencies, terminal, progress);
+  } catch (error) {
+    return Object.freeze({ state: "FINALIZATION_PENDING" as const, diagnostic: diagnostic(error, progress.phase) });
   }
 }
 
@@ -222,7 +244,7 @@ export async function reconcileHostedV209SpanWorkflowTerminal(
       } satisfies HostedV209SpanTerminalProjection);
     });
     if (!environment.PRIVATE_ARTIFACTS) {
-      return Object.freeze({ state: "FINALIZATION_PENDING" as const });
+      return Object.freeze({ state: "FINALIZATION_PENDING" as const, diagnostic: diagnostic(undefined, "RESULT_READ") });
     }
     return attemptHostedV209SpanWorkflowReconciliation(
       {
@@ -269,8 +291,8 @@ export async function reconcileHostedV209SpanWorkflowTerminal(
       },
       terminal,
     );
-  } catch {
-    return Object.freeze({ state: "FINALIZATION_PENDING" as const });
+  } catch (error) {
+    return Object.freeze({ state: "FINALIZATION_PENDING" as const, diagnostic: diagnostic(error, "PROJECTION") });
   } finally {
     await pool.end();
   }

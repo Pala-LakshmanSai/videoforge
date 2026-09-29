@@ -65,7 +65,7 @@ describe("durable V2-09 SPAN Workflow reconciliation", () => {
 
     await expect(
       attemptHostedV209SpanWorkflowReconciliation(dependencies, terminal),
-    ).resolves.toEqual({ state: "FINALIZATION_PENDING" });
+    ).resolves.toEqual({ state: "FINALIZATION_PENDING", diagnostic: {phase:"FINALIZE",code:"UNCLASSIFIED"} });
     expect(resumePair).not.toHaveBeenCalled();
 
     await expect(
@@ -132,8 +132,26 @@ describe("durable V2-09 SPAN Workflow reconciliation", () => {
         resultObjectKey: terminal.resultObjectKey!.replace(accountId, userId),
       },
     );
-    expect(result).toEqual({ state: "FINALIZATION_PENDING" });
+    expect(result).toEqual({ state: "FINALIZATION_PENDING", diagnostic: {phase:"PROJECTION",code:"UNCLASSIFIED"} });
     expect(finalize).not.toHaveBeenCalled();
     expect(resumePair).not.toHaveBeenCalled();
   });
+  it.each(["RESULT_READ", "RESULT_HASH", "RESULT_PARSE", "FINALIZE", "PAIR_RESUME"] as const)("reports only fixed %s phase and sanitized SQLSTATE", async phase => {
+    const {bytes,terminal}=await fixture();
+    const privateFailure=Object.assign(new Error("https://private.example/?signed=secret cookie=private"),{code:"42501"});
+    const wrongBytes=new TextEncoder().encode("{malformed").buffer as ArrayBuffer;
+    const usedBytes=phase==="RESULT_PARSE"?wrongBytes:bytes;
+    const observedTerminal=phase==="RESULT_PARSE"?{...terminal,resultContentLength:usedBytes.byteLength,resultChecksumSha256:await sha256Bytes(usedBytes)}:terminal;
+    const result=await attemptHostedV209SpanWorkflowReconciliation({bucket:{get:async()=>{
+      if(phase==="RESULT_READ")throw privateFailure;
+      return{size:usedBytes.byteLength,httpMetadata:{contentType:"application/json"},arrayBuffer:async()=>{if(phase==="RESULT_HASH")throw privateFailure;return usedBytes;}};
+    }} as never,finalize:async()=>{if(phase==="FINALIZE")throw privateFailure;return{schemaVersion:"videoforge.hosted-v209-span-audio-finalization/v1",accountId,workspaceId,userId,projectId,attemptId,pairReady:phase==="PAIR_RESUME"};},resumePair:async()=>{throw privateFailure;}},observedTerminal);
+    expect(result).toEqual({state:"FINALIZATION_PENDING",diagnostic:{phase,code:phase==="RESULT_PARSE"?"UNCLASSIFIED":"SQLSTATE_42501"}});
+    expect(JSON.stringify(result)).not.toMatch(/secret|cookie|private.example/u);
+  });
+  it("does not expose arbitrary error codes, properties or messages",async()=>{
+    const{bytes,terminal}=await fixture();const result=await attemptHostedV209SpanWorkflowReconciliation({bucket:{get:async()=>({size:bytes.byteLength,httpMetadata:{contentType:"application/json"},arrayBuffer:async()=>bytes})} as never,finalize:async()=>{throw {code:"TOKEN",message:"private value",url:"https://private.example/"};},resumePair:vi.fn()},terminal);
+    expect(result).toEqual({state:"FINALIZATION_PENDING",diagnostic:{phase:"FINALIZE",code:"UNCLASSIFIED"}});
+  });
+
 });
