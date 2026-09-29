@@ -1,8 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { sha256Bytes } from "./crypto";
+import { createNeonExecutor, createNeonPool } from "./neon";
+
+vi.mock("./neon", () => ({
+  createNeonPool: vi.fn(),
+  createNeonExecutor: vi.fn(),
+}));
 import {
   attemptHostedV209SpanWorkflowReconciliation,
+  reconcileHostedV209SpanWorkflowTerminal,
   type HostedV209SpanTerminalProjection,
 } from "./hosted-v209-span-workflow-reconciliation";
 
@@ -36,6 +43,50 @@ async function fixture() {
 }
 
 describe("durable V2-09 SPAN Workflow reconciliation", () => {
+  it("keeps the pool open through asynchronous R2 reads and finalization, then closes it once", async () => {
+    const { bytes, terminal } = await fixture();
+    const order: string[] = [];
+    let ended = false;
+    const end = vi.fn(async () => {
+      ended = true;
+      order.push("end");
+    });
+    vi.mocked(createNeonPool).mockReturnValue({ end } as never);
+    const query = vi.fn(async (sql: string) => {
+      if (ended) throw new Error("Cannot use a pool after calling end on the pool");
+      if (sql.includes("FROM hosted_cpu_job_attempts")) {
+        return { rows: [{ kind: terminal.kind, state: terminal.state,
+          result_object_key: terminal.resultObjectKey,
+          result_content_length: String(terminal.resultContentLength),
+          result_checksum_sha256: terminal.resultChecksumSha256 }] };
+      }
+      if (sql.includes("videoforge_finalize_hosted_v209_span_audio")) {
+        order.push("finalize");
+        return { rows: [{ value: {
+          schemaVersion: "videoforge.hosted-v209-span-audio-finalization/v1",
+          accountId, workspaceId, userId, projectId, attemptId, pairReady: false,
+        } }] };
+      }
+      return { rows: [] };
+    });
+    vi.mocked(createNeonExecutor).mockReturnValue({
+      transaction: async (callback: (transaction: { query: typeof query }) => Promise<unknown>) =>
+        callback({ query }),
+    } as never);
+    const result = await reconcileHostedV209SpanWorkflowTerminal({
+      PRIVATE_ARTIFACTS: { get: async () => {
+        await Promise.resolve();
+        order.push("read");
+        return { size: bytes.byteLength, httpMetadata: { contentType: "application/json" },
+          arrayBuffer: async () => { await Promise.resolve(); return bytes; } };
+      } },
+    } as never, { neon: { databaseUrl: "postgresql://fixture" } } as never,
+    { accountId, workspaceId, attemptId });
+    expect(result).toEqual({ state: "FINALIZED", pairResumed: false });
+    expect(order).toEqual(["read", "finalize", "end"]);
+    expect(end).toHaveBeenCalledOnce();
+  });
+
   it("retries after a committed terminal result outlives the client and finalizes/resumes once", async () => {
     const { bytes, terminal } = await fixture();
     const finalize = vi

@@ -246,7 +246,7 @@ export async function reconcileHostedV209SpanWorkflowTerminal(
     if (!environment.PRIVATE_ARTIFACTS) {
       return Object.freeze({ state: "FINALIZATION_PENDING" as const, diagnostic: diagnostic(undefined, "RESULT_READ") });
     }
-    return attemptHostedV209SpanWorkflowReconciliation(
+    return await attemptHostedV209SpanWorkflowReconciliation(
       {
         bucket: environment.PRIVATE_ARTIFACTS,
         finalize: async (input) =>
