@@ -1,7 +1,9 @@
 # Optional Cloud media release — 2026-09-29
 
+Historical initial release snapshot. Current production source2cea7e58 / Cloudflare63a210c4, additive224/ledger207, fresh44.6s provider sample, measured control latency and updated budget/cleanup evidence are in [SAMPLE_OBSERVATION.md](SAMPLE_OBSERVATION.md) and CURRENT_STATE.yaml.
+
 Checkpoint **VF-10-09 / V2-09**, profile `v2_09_short_live_e2e`.
-Production at https://videoforge.buzz uses source **30b0485513f188263e229e7bc787774a8bae94b8**, Cloudflare version **601d8ff3-6d37-43ab-b4bf-073ad6c6c121**, 100% traffic. This release extends verified production366d16c2, excludes Main's unrelated edits, and preserves25 secrets,41 bindings, three existing Workflow resources, Local0.1.44, Kie/Fal, historical disabled GPU generation, private R2 and query redaction.
+The original production release at https://videoforge.buzz used source **30b0485513f188263e229e7bc787774a8bae94b8**, Cloudflare version **601d8ff3-6d37-43ab-b4bf-073ad6c6c121**, 100% traffic. This release extends verified production366d16c2, excludes Main's unrelated edits, and preserves25 secrets,50 total bindings (earlier41 shorthand was stale), three existing Workflow resources, Local0.1.44, Kie/Fal, historical disabled GPU generation, private R2 and query redaction.
 
 ## Identities
 
