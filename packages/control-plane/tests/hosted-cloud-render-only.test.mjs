@@ -100,8 +100,27 @@ test('222 exact accepted source, fresh immutable run, bounded idempotency and pr
   for(const a of artifacts)await db.query(`INSERT INTO media_worker_input_objects(id,account_id,workspace_id,attempt_id,uri,object_key,content_type,content_length,checksum_sha256)
    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,[id(a.id===id(222020)?222060:222061),IDS.accountA,IDS.workspaceA,target,a.id===id(222020)?`vf-local://objects/sha256/aa/${'a'.repeat(64)}.json`:`vf-local://objects/sha256/aa/${'a'.repeat(64)}.wav`,a.object_key,a.content_type,a.content_length,a.checksum_sha256]);
   assert.equal((await db.query('SELECT videoforge_cloud_render_inputs_valid($1) valid',[target])).rows[0].valid,true);
-  // Exercise the actual shared fair owner admission; it must not initialize a fake runtime.
-  const admitted=(await db.query('SELECT * FROM videoforge_admit_hosted_v209_generation_after_reclaim($1,$2,$3,$4)',[IDS.accountA,IDS.workspaceA,IDS.userA,IDS.projectA])).rows;
+  // Component metadata models the genuine successful source's completed bridge/prompts.
+  // The existing accepted-provider predicate is still the explicit fixture above.
+  await db.exec('ALTER TABLE hosted_canonical_timing_bridges DISABLE TRIGGER ALL');
+  await db.query(`INSERT INTO hosted_canonical_timing_bridges(hosted_asr_attempt_id,account_id,workspace_id,project_id,
+   project_revision_id,transcript_id,transcript_document_hash,timeline_plan_id,timeline_document_hash,asr_input_sha256,
+   asr_result_sha256,generation_plan_sha256,task_manifest,append_payload,completed_at)
+   VALUES($1,$2,$3,$4,$5,$6,$7,$8,$7,$7,$7,$7,'[{}]','{"schema_version":"videoforge-hosted-canonical-timing-append/v1"}',now())`,
+   [source,IDS.accountA,IDS.workspaceA,IDS.projectA,IDS.revisionA,id(223001),hash,id(223002)]);
+  await db.exec('ALTER TABLE hosted_canonical_timing_bridges ENABLE TRIGGER ALL');
+  await db.exec('ALTER TABLE generation_tasks DISABLE TRIGGER ALL');
+  await db.query(`INSERT INTO generation_tasks(id,account_id,workspace_id,owner_type,owner_id,project_revision_id,
+   task_key,lane,state,required,finished_at) VALUES($1,$2,$3,'PROJECT_REVISION',$4,$4,'prompt:scene-batch:accepted','PROMPT','COMPLETE',true,now())`,
+   [id(223003),IDS.accountA,IDS.workspaceA,IDS.revisionA]);
+  await db.exec('ALTER TABLE generation_tasks ENABLE TRIGGER ALL');
+  const args=[IDS.accountA,IDS.workspaceA,IDS.userA,IDS.projectA];
+  await assert.rejects(db.query('SELECT videoforge_admit_hosted_v209_generation($1,$2,$3,$4)',args),/cannot generate provider work or runtime/);
+  assert.equal((await db.query('SELECT state FROM generation_requests WHERE id=$1',[newRequest])).rows[0].state,'WAITING');
+  await db.exec(read('0223_hosted_cloud_render_only_admission.sql'));
+  // Exercise the actual outer application RPC, including archive/stranded settlement.
+  const admitted=(await db.query('SELECT videoforge_admit_hosted_v209_generation($1,$2,$3,$4)',args)).rows;
+  await assert.rejects(db.exec(read('0223_hosted_cloud_render_only_admission.sql')),/preimage mismatch/);
   assert.ok(admitted.length>0);assert.equal((await db.query('SELECT state FROM generation_requests WHERE id=$1',[newRequest])).rows[0].state,'ACTIVE');
   assert.equal((await db.query('SELECT count(*) n FROM video_runtime_states WHERE generation_request_id=$1',[newRequest])).rows[0].n,0);
   await db.exec('ALTER TABLE hosted_cpu_job_attempts DISABLE TRIGGER ALL');await db.query(`UPDATE hosted_cpu_job_attempts SET state='SUCCEEDED',submitted_at=now(),terminal_at=now(),result_receipt_sha256=$2,result_checksum_sha256=$2,result_content_length=100 WHERE id=$1`,[target,hash]);await db.exec('ALTER TABLE hosted_cpu_job_attempts ENABLE TRIGGER ALL');

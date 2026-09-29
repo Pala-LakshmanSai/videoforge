@@ -539,6 +539,7 @@ interface HostedAttempt {
   readonly kind: "ASR" | "SPAN_AUDIO" | "RENDER" | "MAGE_IMAGE" | "SOULX_AVATAR";
   readonly state: string;
   readonly execution_backend?: "PERSONAL_WORKER" | "CLOUD_RUN" | "RUNPOD_POD";
+  readonly render_only_run?: boolean;
   readonly cloud_phase?: string | null;
   readonly version: number;
   readonly created_at: string;
@@ -5655,7 +5656,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               label="Wall elapsed"
               value={
                 <HostedElapsed
-                  since={query.data.project.created_at}
+                  since={render?.render_only_run ? render.created_at : query.data.project.created_at}
                   until={render?.state === "SUCCEEDED" ? render.terminal_at : null}
                   label="Wall elapsed time"
                 />

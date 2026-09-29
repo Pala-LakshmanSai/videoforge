@@ -88,6 +88,18 @@ it("labels cloud phases from durable state without invented progress", () => {
   expect(cloudMediaPhaseLabel(null, "RUNNING")).toBe("Waiting for cloud status");
 });
 
+it("times a Cloud render-only run from its fresh attempt", async () => {
+  const projectId="11111111-1111-4111-8111-111111111111";
+  vi.stubGlobal("fetch",vi.fn(async()=>Response.json({
+    project:{id:projectId,title:"Retained Cloud retry",created_at:"2026-09-01T10:00:00Z",revision_id:"22222222-2222-4222-8222-222222222222",revision_state:"LOCKED",media_execution_backend:"PERSONAL_WORKER"},
+    generation_provider:"KIE_FAL",cloud_media:{available:true},generation:null,gpu_transport:"DISABLED_UNQUALIFIED",gpu_readiness:gpuReadiness,
+    attempts:[{id:projectId,kind:"RENDER",state:"SUCCEEDED",execution_backend:"RUNPOD_POD",render_only_run:true,created_at:"2026-09-29T10:12:00Z",terminal_at:"2026-09-29T10:15:00Z",cloud_phase:"CLEAN"}],
+    stages:[{id:"render",name:"Assemble final video",status:"COMPLETE",progress_percent:null}],
+  })));
+  renderHosted(<HostedProjectScreen projectId={projectId}/>);
+  expect(await screen.findByLabelText("Wall elapsed time")).toHaveTextContent("3m 00s");
+});
+
 it.each([
   "MEDIA_EXECUTION_SUBPROCESS_FAILED", "MEDIA_EXECUTION_FAILED",
   "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT", "MEDIA_EXECUTION_IO_FAILED",

@@ -6883,13 +6883,17 @@ async function projectDetail(
       const attempts = await transaction.query(
         `SELECT attempt.id, attempt.kind, attempt.state, attempt.version, attempt.created_at,
                 attempt.execution_backend,
+                EXISTS(SELECT 1 FROM hosted_render_only_runs run WHERE run.id=attempt.id
+                  AND run.account_id=attempt.account_id AND run.workspace_id=attempt.workspace_id) AS render_only_run,
                 attempt.updated_at, attempt.submitted_at, attempt.terminal_at,
                 attempt.result_checksum_sha256, attempt.result_content_length,
                 attempt.result_object_key, attempt.result_content_type,
                 attempt.replay_count,
                 CASE WHEN cloud.leased_attempt_id=attempt.id THEN cloud.state
                   WHEN attempt.execution_backend='RUNPOD_POD' AND attempt.state='SUCCEEDED'
-                  THEN 'COMPLETE' ELSE NULL END AS cloud_phase,
+                  THEN 'COMPLETE'
+                  WHEN attempt.execution_backend='RUNPOD_POD' AND attempt.state IN('PLANNED','OUTBOXED')
+                  THEN 'WAITING_CAPACITY' ELSE NULL END AS cloud_phase,
                 CASE WHEN attempt.execution_backend='RUNPOD_POD'
                   THEN COALESCE(attempt.failure_code,
                     CASE WHEN cloud.leased_attempt_id=attempt.id THEN cloud.failure_code END)
