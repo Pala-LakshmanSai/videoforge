@@ -1,3 +1,11 @@
+## Current creation-only correction and cleared workstation gates — 2026-09-29
+
+Source78e467b4 confines Local/Cloud selection to New Project. Existing projects derive retry execution from their saved attempt backend; Settings keeps worker controls. Six focused UI checks, typecheck, changed-file lint, both builds and bundle firewall pass. The control-plane bundle is byte-identical to qualified85a/885872; current client assets are frozen separately with manifesta5f1f3aa. Private Cloud-disabled candidate configuration7689db18 preserves all baseline bindings and has no allocation authority. It is prepared, not published.
+
+Regular Chrome is connected. New Project Local default and Cloud cost/no-computer readiness pass without creating a project or rental. Genuine existing Local159.2s saved video played to end; browser private download25,080,526 bytes matches its accepted SHA. Disk now exceeds the existing2GiB job guard; exact Local0.1.44 remains Online. See CREATE_ONLY_FINAL_BROWSER_PROOF.json. Earlier306MiB/Chrome-disconnected snapshots below are historical.
+
+Ordinary Cloud final promotion and conditional production rollout remain unrun. The genuine retained source already has a successful immutable final; existing failed-render recovery must not fabricate FAILED history or replace that output. A new explicit successful-project rerender would need separate run lineage/output approval plus an exact source scope amendment. Do not infer it from the two-project qualification authority, and do not infer unrestricted ongoing Cloud spend. Production366d/62524 remains Cloud disabled.
+
 # Optional Cloud media release preparation
 
 Status: implementation and offline Linux runtime qualified; immutable private image published.

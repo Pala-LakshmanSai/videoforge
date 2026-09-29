@@ -1,9 +1,9 @@
 {
   "schema_version": "videoforge-cloud-media-prepared-handoff/v1",
-  "at": "2026-09-29T08:13:10.827Z",
+  "at": "2026-09-29T11:09:10.399960+00:00",
   "checkpoint": "VF-10-09/V2-09",
-  "source": "85a73919eb857c7d5917ba4b501c7dc85b91f721",
-  "source_pushed": true,
+  "source": "78e467b47f8fe8077293f4d694275c0064e45b3b",
+  "source_pushed": false,
   "draft_pr": "https://github.com/Pala-LakshmanSai/videoforge/pull/1",
   "implementation_complete_claimed": false,
   "production_released": false,
@@ -68,10 +68,9 @@
   "same_usd5_max10_deadline23_migration217_amendment_approved": true,
   "staging880_preparation": "HELD_EXPIRED_AUTHORITY_OLD_V6_REGISTRY",
   "remaining_live_gates": [
-    "local_media_disk_headroom",
-    "regular_chrome_reconnection",
-    "ordinary_final_promotion",
-    "conditional_production_rollout"
+    "ordinary_cloud_final_promotion",
+    "conditional_production_rollout_and_current_ui_hosted_readback",
+    "exact_finite_production_allocation_scope"
   ],
   "fresh_provider_editorial_acceptance_claimed": false,
   "broad_repository_green_claimed": false,
@@ -231,7 +230,7 @@
   ],
   "current_work_in_progress": {
     "phase": "FINAL_RELEASE_GATES",
-    "state": "BLOCKED_LOCAL_DISK_AND_BROWSER_CONNECTION",
+    "state": "ORDINARY_PROMOTION_AND_CONDITIONAL_PRODUCTION_HELD",
     "additional_allocation_claimed": false
   },
   "normal_cloud_span": {
@@ -365,26 +364,23 @@
     "additional_project_owner_cancel_required": false
   },
   "local_worker_restore_status": {
-    "status": "BLOCKED_DISK",
+    "status": "ONLINE_DISK_GUARD_SATISFIED",
     "exact_installed_release": "0.1.44",
-    "failed_bootstrap_exit": 255,
-    "reason": "ENOSPC",
-    "failed_exact_service_booted_out": true,
-    "available_disk_mib_approx": 610,
-    "signed_archive_startup_bytes_approx": 892000000,
-    "existing_media_scratch_floor_bytes": 2147483648,
+    "available_disk_bytes": 5175324672,
     "installed_app_identity_credentials_and_accepted_media_preserved": true,
-    "active_native_leases": 0,
-    "existing_native_and_hosted_local_proof_retained": true,
-    "fresh_restore_proved": false
+    "fresh_restore_proved": true,
+    "new_native_render_claimed": false
   },
-  "regular_chrome_connection": "DISCONNECTED_AFTER_ACCEPTED_CANCEL",
+  "regular_chrome_connection": "CONNECTED_REGULAR_CHROME",
   "production_final_readonly_preparation": "PASS_2026-09-29T08:13:10.827Z_CLOUD_DISABLED_NO_PUBLICATION",
   "active_admission_count": 0,
   "active_cloud_compute_count": 0,
   "local_worker_restored_at": "2026-09-29T10:04:55.001873+00:00",
-  "local_worker_media_disk_ready": false,
+  "local_worker_media_disk_ready": true,
   "local_worker_reconnection_proof": "FINAL_LOCAL_RESTORE_BLOCKER.json",
   "owned_media_pod_count": 0,
-  "unrelated_pods_untouched": true
+  "unrelated_pods_untouched": true,
+  "cloud_execution_proof_source": "85a73919eb857c7d5917ba4b501c7dc85b91f721",
+  "local_cloud_selector_location": "NEW_PROJECT_ONLY",
+  "browser_proof": "CREATE_ONLY_FINAL_BROWSER_PROOF.json"
 }

@@ -1,0 +1,33 @@
+{
+  "schema_version": "videoforge-create-only-final-browser-proof/v1",
+  "at": "2026-09-29T11:09:10.399960+00:00",
+  "candidate_source": "78e467b47f8fe8077293f4d694275c0064e45b3b",
+  "hosted_staging_source": "85a73919eb857c7d5917ba4b501c7dc85b91f721",
+  "hosted_candidate_ui_published": false,
+  "regular_chrome_connected": true,
+  "incognito_used": false,
+  "new_project_local_default_verified": true,
+  "new_project_cloud_selected_verified": true,
+  "cloud_cost_copy_verified": true,
+  "cloud_no_connected_computer_readiness_verified": true,
+  "creation_submitted": false,
+  "no_project_or_settings_execution_selector_source_and_six_ui_checks_pass": true,
+  "current_typecheck_builds_lint_bundle_firewall_pass": true,
+  "existing_local_saved_playthrough": {
+    "observed_at": "2026-09-29T10:54:08Z",
+    "duration_seconds": 159.2,
+    "ended": true,
+    "error": null,
+    "new_native_render_claimed": false
+  },
+  "existing_local_private_browser_download": {
+    "bytes": 25080526,
+    "sha256": "sha256:5d00d93183c2fcf4442fd64674723a331b8fc965ac4ff8c54e4ca57e4fc9e24c",
+    "matches_accepted_source_output": true
+  },
+  "free_disk_bytes": 5175324672,
+  "existing_local_media_disk_floor_bytes": 2147483648,
+  "disk_guard_now_satisfied": true,
+  "new_compute": false,
+  "ordinary_cloud_final_promotion_claimed": false
+}

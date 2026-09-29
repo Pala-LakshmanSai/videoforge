@@ -1,11 +1,11 @@
 {
-  "schema_version": "videoforge-local-final-restoration-blocker/v2",
+  "schema_version": "videoforge-local-final-restoration-blocker/v3",
   "source_commit": "85a73919eb857c7d5917ba4b501c7dc85b91f721",
   "worker_release": "0.1.44",
   "existing_native_execution_and_hosted_asr_proof_retained": true,
   "final_restoration_verified": true,
   "startup_extraction_required_bytes": 892154056,
-  "available_disk_approximately_mib": 306,
+  "available_disk_approximately_mib": 4936,
   "existing_media_disk_guard_bytes": 2147483648,
   "installed_executable_and_bundle_unchanged": true,
   "credentials_unchanged": true,
@@ -17,15 +17,15 @@
   "older_extractions_preserved": false,
   "accepted_media_deleted": false,
   "historical_generated_dry_runs_and_package_download_cache_only_removed": true,
-  "chrome_final_connection_available": false,
-  "requires_disk_headroom_and_chrome_reconnection": true,
+  "chrome_final_connection_available": true,
+  "requires_disk_headroom_and_chrome_reconnection": false,
   "no_installer_model_or_release_changes": true,
   "verified_at": "2026-09-29T10:04:55.001873+00:00",
   "service_running": true,
   "recent_online_heartbeat": true,
   "local_reconnection_sha256": "c8807d65c6f49afe5dc887855a111450a943e1b16fc924558e6e87c5f6876d8c",
-  "existing_media_disk_readiness": false,
-  "media_processing_still_requires_disk_headroom": true,
+  "existing_media_disk_readiness": true,
+  "media_processing_still_requires_disk_headroom": false,
   "old_bootstrap_failure_preserved_as_history": true,
   "older_extractions_removed_after_installed_archive_attribution_and_no_open_handles": true,
   "obsolete_unmounted_043_installer_cache_removed": true,
@@ -52,5 +52,14 @@
     "requires_disk_headroom_and_chrome_reconnection": true,
     "no_installer_model_or_release_changes": true
   },
-  "current_bootstrap_exit_status": 0
+  "current_bootstrap_exit_status": 0,
+  "prior_disk_and_browser_blocker_snapshot": {
+    "available_disk_approximately_mib": 306,
+    "chrome_final_connection_available": false,
+    "existing_media_disk_readiness": false,
+    "verified_at": "2026-09-29T10:04:55.001873+00:00"
+  },
+  "available_disk_bytes": 5175324672,
+  "disk_rechecked_at": "2026-09-29T11:09:10.399960+00:00",
+  "browser_proof": "CREATE_ONLY_FINAL_BROWSER_PROOF.json"
 }
