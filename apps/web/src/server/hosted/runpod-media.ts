@@ -692,10 +692,13 @@ async function reservationForToken(request:Request,config:HostedRuntimeConfigura
   const pool=createNeonPool(config.neon.databaseUrl);
   try {const scope=(await pool.query("SELECT * FROM videoforge_cloud_media_capability_scope($1,$2)",[id,await sha256(token)])).rows[0];
     if(!scope) return null;
-    return await tenant(config,String(scope.account_id),async sql=>(await query(sql, `SELECT r.*,a.state AS attempt_state,a.kind,
+    return await createNeonExecutor(pool).transaction(async sql=>{
+      await query(sql,"SELECT set_config($1,$2,true)",["videoforge.account_id",String(scope.account_id)]);
+      return (await query(sql, `SELECT r.*,a.state AS attempt_state,a.kind,
       a.job_spec_object_key,a.job_spec_content_length,a.job_spec_checksum_sha256,a.deadline_at AS attempt_deadline
       FROM cloud_media_reservations r JOIN hosted_cpu_job_attempts a ON a.id=r.leased_attempt_id
-      WHERE r.id=$1 AND r.capability_sha256=$2`,[id,await sha256(token)])).rows[0] ?? null);
+      WHERE r.id=$1 AND r.capability_sha256=$2`,[id,await sha256(token)])).rows[0] ?? null;
+    });
   } finally {await pool.end();}
 }
 

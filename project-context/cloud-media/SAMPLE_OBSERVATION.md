@@ -35,6 +35,26 @@ RunPod system logs confirm the pinned image. Successful container command logs w
 not emitted; phase telemetry is not claimed as detailed FFmpeg profiling. Independent
 complete inventory verifies owned ASR Pod absence; unrelated compute was untouched.
 
+The planning repair is published at source41f74259 / Cloudflareee91ee4c. The same
+canonical continuation instance adopted the new definition and progressed without
+a new project, ASR attempt or browser retry. Live settings contain50 total bindings:
+25 secrets,19 plain variables and6 resource bindings; earlier41-count shorthand was
+stale. All existing values/resources and23 client assets were preserved.
+
+Nine prompts were accepted in55.901s with reported costUSD0.041855. All three Cloud
+spans reused one RTXPRO4500BlackwellServer Pod atUSD0.733888889/hour including100GB.
+All9 Kie images and3 Fal avatar clips were accepted once; the span Pod is independently
+CLEAN while the APIs run. Final assembly is searching bounded qualifying capacity;
+no render Pod had launched at14:38UTC.
+
+Two further narrow fixes are locally verified: capability lookup reuses the same
+database pool for the tenant transaction, and progress prefers the actively executing
+span over queued siblings. Controller126 tests and3 selected UI checks pass, plus
+both typechecks, changed lint, production build and firewalls. Eight post-warmup
+read-only requests to the exact cleaned ASR spec have a baseline median471.456ms.
+The after measurement remains pending; this control-path benchmark is not a render
+or end-to-end speed benchmark. No model, encoding or image publication changes.
+
 Fresh sample completion, editorial review, matched speed/cost comparison and final
 production readback remain pending. The source voiceover itself repeats its opening;
 ASR also joined "scrape knee" into one token. Neither is a proven rendering defect.

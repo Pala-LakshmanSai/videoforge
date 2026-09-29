@@ -62,6 +62,7 @@ import {
   HOSTED_SHA256_CHUNK_BYTES,
   audioDurationMs,
   cloudMediaPhaseLabel,
+  currentHostedAttempt,
   hostedFileSha256,
   hostedVoiceoverFilename,
   hostedProjectPollInterval,
@@ -86,6 +87,15 @@ it("labels cloud phases from durable state without invented progress", () => {
   expect(cloudMediaPhaseLabel("STOPPING", "FAILED")).toBe("Stopping compute");
   expect(cloudMediaPhaseLabel("STOPPING", "SUCCEEDED")).toBe("Stopping compute");
   expect(cloudMediaPhaseLabel(null, "RUNNING")).toBe("Waiting for cloud status");
+});
+
+it("shows the active span ahead of queued and completed Cloud attempts", () => {
+  const complete={state:"SUCCEEDED",cloud_phase:"CLEAN"},active={state:"RUNNING",cloud_phase:"RENDERING"},queued={state:"OUTBOXED",cloud_phase:"WAITING_CAPACITY"};
+  expect(currentHostedAttempt([complete,active,queued])).toBe(active);
+  expect(currentHostedAttempt([complete,{state:"SUCCEEDED",cloud_phase:"STOPPING"},queued])?.cloud_phase).toBe("STOPPING");
+  expect(currentHostedAttempt([complete,queued])).toBe(queued);
+  expect(currentHostedAttempt([complete])).toBe(complete);
+  expect(currentHostedAttempt([])).toBeUndefined();
 });
 
 it("times a Cloud render-only run from its fresh attempt", async () => {

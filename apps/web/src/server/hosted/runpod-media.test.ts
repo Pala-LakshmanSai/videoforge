@@ -6,9 +6,10 @@ import asrResultFixture from "../../../../../packages/contracts/generated/fixtur
 import renderResultFixture from "../../../../../packages/contracts/generated/fixtures/render_job_result.valid.json";
 import renderManifestFixture from "../../../../../packages/contracts/generated/fixtures/resolved_render_manifest.valid.json";
 import { MULTIPART_PART_BYTES } from "./runpod-media-policy";
+import { createNeonPool } from "./neon";
 
 const fixture = vi.hoisted(() => ({ query: vi.fn(), admission:vi.fn(), finalize:vi.fn(), transport: vi.fn(), checksum: vi.fn(), multipart: vi.fn(), part: vi.fn(), sign: vi.fn(), listMultipart:vi.fn() }));
-vi.mock("./neon", () => ({ createNeonPool: () => ({ query: fixture.query, end: async () => {} }),
+vi.mock("./neon", () => ({ createNeonPool: vi.fn(() => ({ query: fixture.query, end: async () => {} })),
   createNeonExecutor: () => ({ transaction: async (run: (sql: unknown) => unknown) => run({ query: fixture.query }) }) }));
 vi.mock("./r2-checksum", () => ({ verifyHostedObjectChecksum: fixture.checksum }));
 vi.mock("./r2", () => ({ HostedR2Signer: class { multipartRequest = fixture.multipart; signMultipartPart = fixture.part; sign = fixture.sign; listMultipartUploadsExact=fixture.listMultipart; } }));
@@ -501,6 +502,17 @@ describe("fenced publication and multipart recovery", () => {
     reservation.state="RENDERING";attempt.state="CANCEL_REQUESTED";
     const value=await runRoute("heartbeat",{phase:"CHECKING_VIDEO",technical_verification_ms:125});
     expect(await value?.json()).toMatchObject({cancel_requested:true});expect(measuredJob).toEqual({});
+  });
+  it("reuses one connection for capability scope and tenant-fenced reservation reads",async()=>{
+    vi.mocked(createNeonPool).mockClear();
+    reservation.state="CLEAN";attempt.state="SUCCEEDED";
+    const value=await handleCloudMediaRequest(new Request(
+      `https://videoforge.example/api/v2/cloud-media/reservations/${reservationId}/spec`,
+      {headers:{authorization:`Bearer ${capability}`}},
+    ),environment,config,{} as never);
+    expect(value?.status).toBe(409);
+    expect(createNeonPool).toHaveBeenCalledTimes(1);
+    expect(fixture.query.mock.calls.some(([sql,args])=>String(sql).includes("SELECT set_config") && args[1]===accountId)).toBe(true);
   });
   it("aborts owned unfinished multipart storage only after independent Pod absence",async()=>{
     reservation.state="RENDERING";reservation.launch_outcome="CONFIRMED";

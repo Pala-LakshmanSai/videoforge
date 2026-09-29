@@ -564,6 +564,14 @@ function cancellableAttemptLabel(kind: HostedAttempt["kind"]): string {
   return "assembly";
 }
 
+export function currentHostedAttempt<T extends Pick<HostedAttempt, "state" | "cloud_phase">>(attempts: readonly T[]): T | undefined {
+  const newest = [...attempts].reverse();
+  return newest.find(attempt => ["RUNNING", "RECONCILING", "CANCEL_REQUESTED"].includes(attempt.state))
+    ?? newest.find(attempt => attempt.cloud_phase === "STOPPING")
+    ?? newest.find(attempt => ["PLANNED", "OUTBOXED", "SUBMITTED"].includes(attempt.state))
+    ?? newest[0];
+}
+
 export function cloudMediaPhaseLabel(phase: string | null | undefined, state: string): string {
   if (phase === "STOPPING") return "Stopping compute";
   if (state === "SUCCEEDED") return ["CLEAN", "COMPLETE"].includes(phase ?? "") ? "Complete" : "Saving";
@@ -4592,8 +4600,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     (attempt) => attempt.kind === "RENDER",
   );
   const render = renderAttempts.at(-1);
-  const latestCloudAttempt = [...(query.data?.attempts ?? [])].reverse()
-    .find(attempt => attempt.execution_backend === "RUNPOD_POD");
+  const latestCloudAttempt = currentHostedAttempt((query.data?.attempts ?? [])
+    .filter(attempt => attempt.execution_backend === "RUNPOD_POD"));
   const renderRetryBackend = render?.execution_backend === "RUNPOD_POD"
     ? "RUNPOD_POD" : "PERSONAL_WORKER";
   const automaticContextAttempt = useRef<string | null>(null);
@@ -4927,7 +4935,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     : fallbackHostedStages(asr, render, query.data.generation, query.data.voiceover_context);
   const cloudStageAttempts: Readonly<Record<string, HostedAttempt | undefined>> = {
     transcription: asr,
-    "audio-spanning": [...query.data.attempts].reverse().find(attempt => attempt.kind === "SPAN_AUDIO"),
+    "audio-spanning": currentHostedAttempt(query.data.attempts.filter(attempt => attempt.kind === "SPAN_AUDIO")),
     render,
     "technical-check": render,
   };
