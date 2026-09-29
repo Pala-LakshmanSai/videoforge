@@ -26,6 +26,8 @@ requests, paid workers, or volume changes require the exact external-checkpoint 
 
 ## Optional on-demand media Pods — 2026-09-28
 
+User clarification2026-09-29: choose Local or Cloud only on New Project. Existing projects retain their saved execution backend for readiness, execution and retry; Project and Settings have no backend selector. The explicit scoped Cloud render-only recovery API remains compatible for authorized retained-media recovery.
+
 Cloud media is separate from historical Mage/SoulX Serverless lanes and uses current RunPod Pod
 REST v2 (`https://api.runpod.io/v2`). Postgres retains fair video admission (one account/two global);
 Cloud belongs to that admitted video and must not acquire a conflicting second provider-workload

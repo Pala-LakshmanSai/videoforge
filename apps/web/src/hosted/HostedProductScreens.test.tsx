@@ -780,13 +780,14 @@ it("offers local render retry for the exact three failed attempts", async () => 
 
 it.each([
   { sourceBackend: undefined, backendChoice: "PERSONAL_WORKER" },
-  { sourceBackend: undefined, backendChoice: "RUNPOD_POD" },
+  { sourceBackend: "PERSONAL_WORKER", backendChoice: "PERSONAL_WORKER" },
   { sourceBackend: "RUNPOD_POD", backendChoice: "RUNPOD_POD" },
-] as const)("preserves exact retry backend and compatible payload: $sourceBackend to $backendChoice", async ({sourceBackend,backendChoice}) => {
+] as const)("retries the persisted backend without an in-project selector: $sourceBackend", async ({sourceBackend,backendChoice}) => {
   const projectId="11111111-1111-4111-8111-111111111111";
   const failedId="11111111-1111-4111-8111-111111111112";
   const detail={project:{id:projectId,title:"Cloud recovery",created_at:"2026-09-26T05:00:00Z",
-    revision_id:"22222222-2222-4222-8222-222222222222",revision_state:"LOCKED"},
+    revision_id:"22222222-2222-4222-8222-222222222222",revision_state:"LOCKED",
+    media_execution_backend:sourceBackend ?? "PERSONAL_WORKER"},
     generation_provider:"KIE_FAL",attempts:[{id:failedId,kind:"RENDER",state:"FAILED",execution_backend:sourceBackend}],
     cloud_media:{available:true},generation:null,gpu_transport:"DISABLED_UNQUALIFIED",gpu_readiness:gpuReadiness,
     render_retry:{eligible:true,reason:"ELIGIBLE",failed_attempt_id:failedId,attempt_limit:5},stages:stageList({render:"FAILED"})};
@@ -800,12 +801,9 @@ it.each([
     return Response.json(detail);
   });
   vi.stubGlobal("fetch",fetchMock);renderHosted(<HostedProjectScreen projectId={projectId}/>);
-  const backend = await screen.findByLabelText("Retry media execution");
-  expect(backend).toHaveValue(sourceBackend ?? "PERSONAL_WORKER");
-  if (sourceBackend === "RUNPOD_POD")
-    expect(within(backend).getByRole("option", { name: /^Local$/ })).toBeDisabled();
-  fireEvent.change(backend,{target:{value:backendChoice}});
-  expect(screen.getByText(/Cloud adds compute cost/)).toBeInTheDocument();
+  await screen.findByRole("list", { name: "Project stages" });
+  expect(screen.queryByLabelText("Retry media execution")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Media execution")).not.toBeInTheDocument();
   fireEvent.click(within(stageRow("Assemble final video")).getByRole("button",{name:"Retry"}));
   await waitFor(()=>expect(fetchMock.mock.calls.some(([input])=>String(input).endsWith("/render-retry"))).toBe(true));
   expect(fetchMock.mock.calls.some(([input])=>/\/(gpu-dispatch|prompts|context)$/.test(String(input)))).toBe(false);

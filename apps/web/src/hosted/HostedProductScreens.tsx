@@ -4593,10 +4593,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const render = renderAttempts.at(-1);
   const latestCloudAttempt = [...(query.data?.attempts ?? [])].reverse()
     .find(attempt => attempt.execution_backend === "RUNPOD_POD");
-  const [renderRetryBackend, setRenderRetryBackend] = useState<"PERSONAL_WORKER" | "RUNPOD_POD" | null>(null);
-  const selectedRenderRetryBackend = renderRetryBackend ??
-    (render?.execution_backend === "RUNPOD_POD" ? "RUNPOD_POD" : "PERSONAL_WORKER");
-  useEffect(() => setRenderRetryBackend(null), [render?.id]);
+  const renderRetryBackend = render?.execution_backend === "RUNPOD_POD"
+    ? "RUNPOD_POD" : "PERSONAL_WORKER";
   const automaticContextAttempt = useRef<string | null>(null);
   const automaticContextReconciliationAttempt = useRef<string | null>(null);
   const automaticPromptAttempt = useRef<string | null>(null);
@@ -4696,7 +4694,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     mutationFn: (failedAttemptId: string) =>
       readJson(`/api/v2/hosted/projects/${projectId}/render-retry`, {
         method: "POST",
-        body: JSON.stringify(selectedRenderRetryBackend === "RUNPOD_POD" ? {
+        body: JSON.stringify(renderRetryBackend === "RUNPOD_POD" ? {
           schema_version: "videoforge-hosted-render-retry/v2",
           failed_attempt_id: failedAttemptId,
           execution_backend: "RUNPOD_POD",
@@ -5371,11 +5369,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     if (stageId === "render" && query.data.render_retry?.reason === "WORKER_UPDATE_REQUIRED")
       return "Update the connected worker before retrying this validation failure. Your saved media stays available.";
     if (stageId === "render" && query.data.render_retry?.reason === "RETRY_LIMIT_REACHED" &&
-      selectedRenderRetryBackend === "RUNPOD_POD")
+      renderRetryBackend === "RUNPOD_POD")
       return "This project has reached its bounded Cloud render retry limit. Saved media stays available; contact support for the remaining blocker.";
     if (stageId === "render" && query.data.render_retry?.reason === "RETRY_LIMIT_REACHED")
       return "This project has reached its five local render attempts. Saved media stays available; contact support for the remaining blocker.";
-    if (stageId === "render" && selectedRenderRetryBackend === "RUNPOD_POD")
+    if (stageId === "render" && renderRetryBackend === "RUNPOD_POD")
       return "This render failure is outside the verified Cloud retry paths. The accepted images and avatar clips remain saved.";
     if (stageId === "render")
       return "This render failure is outside the verified local retry paths. The accepted images and avatar clips remain saved.";
@@ -5506,18 +5504,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       : {}),
     ...(renderRecoveryEligible && render
       ? {
-          render: <div className="field">
-            <label htmlFor="render-retry-backend">Retry media execution</label>
-            <select id="render-retry-backend" className="input" value={selectedRenderRetryBackend}
-              disabled={renderDiskRetry.isPending}
-              aria-describedby="render-retry-help"
-              onChange={(event) => setRenderRetryBackend(event.target.value as "PERSONAL_WORKER" | "RUNPOD_POD")}>
-              <option value="PERSONAL_WORKER" disabled={render.execution_backend === "RUNPOD_POD"}>Local</option>
-              <option value="RUNPOD_POD" disabled={query.data.cloud_media?.available !== true}>Cloud</option>
-            </select>
-            <small id="render-retry-help">Reuse accepted media. Local uses your computer; Cloud adds compute cost.</small>
-            {stageRetryButton(renderDiskRetry.isPending, () => renderDiskRetry.mutate(render.id))}
-          </div>,
+          render: stageRetryButton(renderDiskRetry.isPending, () => renderDiskRetry.mutate(render.id)),
         }
       : {}),
   };
