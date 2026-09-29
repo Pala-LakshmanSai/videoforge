@@ -61,8 +61,9 @@
     "complete_inventory": true,
     "owned_pods": 0,
     "unrelated_pods_mutated": 0,
-    "independent_final_readback_utc": "2026-09-29T16:19:33Z",
-    "paid_posts_during_closeout": 0
+    "independent_final_readback_utc": "2026-09-29T17:07:07.802Z",
+    "paid_posts_during_closeout": 0,
+    "provider_mutations_during_closeout": 0
   },
   "boundaries": [
     "40m39s observed total includes operator diagnosis, two releases and unpaid capacity wait; no normal production timing claim",
@@ -133,5 +134,18 @@
     "query_redaction": true,
     "canonical_continuation": "running on recorded published definition",
     "new_instances": 0
+  },
+  "retained_long_native_tail": {
+    "player": "QuickTime Player",
+    "downloaded_file_sha256": "6ad9f3da9ff5213d793874eb2b4a2a356068ad3319d4da91bd91f14d94619455",
+    "played_seconds": [
+      2655,
+      2700
+    ],
+    "duration_seconds": 2700,
+    "reached_end": true,
+    "final_frame_review": "intact saved visual; no visible overlay",
+    "private_evidence": "long-quicktime-tail-private.json and long-quicktime-end-private.png",
+    "chrome_final_40_seconds_proven": false
   }
 }

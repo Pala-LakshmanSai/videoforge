@@ -99,7 +99,7 @@ coverage of the final40.415s and an uninterrupted single-session45-minute run ar
 not claimed. Browser automation also rejected local-file navigation. The Computer
 Use skill requires user handoff for browser security barriers: manually open the
 checksum-verified native download in regular Chrome, play44:15→45:00 at1x and leave
-the end visible. No policy override or application change. Production authenticated
+the end visible. A separate normal-speed QuickTime test of the checksum-verified downloaded file played44:15→45:00, ended with its timeline at2700s and showed an intact final frame. Private AX/screenshot proof is retained. This confirms the native file tail, not Chrome's last40.415s or an uninterrupted45-minute browser run. No policy override or application change. Production authenticated
 range playback and the fully played44.6s production sample are unchanged.
 
 ## Measured speed, cost and limits
@@ -135,7 +135,7 @@ USD0.041855, contextUSD0.000067; UI image/avatar published-rate estimateUSD0.08 
 separate and unverified against provider invoices. No claim of whole-cost savings.
 Final sampled scratch peak53,280,768B on100GB is a filesystem lower bound for this
 short input, not a long-video disk sizing guarantee. Complete paginated provider
-inventory14:55:25UTC and independent final readback16:19:33UTC prove zero owned media Pods;
+inventory14:55:25UTC and independent final readbacks16:19:33 and17:07:07UTC prove zero owned media Pods;
 all sample reservations CLEAN and unrelated resources untouched.
 
 Controller126/coordinator13 checks, selected UI3 checks, two PostgreSQL recovery
