@@ -1098,6 +1098,12 @@
       "name": "hosted_cloud_reservation_authority",
       "filename": "0220_hosted_cloud_reservation_authority.sql",
       "sha256": "sha256:50aefe8271e4d66e10c1a2a2959dc17b7f063d78e124a0c9bf2825c3c5586e75"
+    },
+    {
+      "version": 221,
+      "name": "hosted_cloud_span_terminal",
+      "filename": "0221_hosted_cloud_span_terminal.sql",
+      "sha256": "sha256:e0276625775aaa26b0ece693f443428839f53513d816fc93bb8f3d444c5ec675"
     }
   ]
 }
