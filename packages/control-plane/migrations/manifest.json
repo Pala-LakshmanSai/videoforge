@@ -1080,6 +1080,12 @@
       "name": "hosted_span_audio_current_asr_receipt",
       "filename": "0217_hosted_span_audio_current_asr_receipt.sql",
       "sha256": "sha256:accdd0f376448180904810a73d336bddda8fc2526db62a7df97c043a25105ded"
+    },
+    {
+      "version": 218,
+      "name": "hosted_cloud_preprovider_media",
+      "filename": "0218_hosted_cloud_preprovider_media.sql",
+      "sha256": "sha256:7a568b7f4b34453c5b96199eeb7d114422ae7024ccbed1f52f136ec537a2bf1f"
     }
   ]
 }

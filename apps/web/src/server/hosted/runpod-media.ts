@@ -233,9 +233,15 @@ export async function cleanupCloudReservation(client: RunPodMediaClient, config:
     [r.id,r.leased_attempt_id,r.fence_id])).rows[0]);
 }
 
+async function hasOrdinaryRenderRuntime(sql:SqlExecutor,a:Row):Promise<boolean> {
+  return a.kind==="RENDER" && !!(await query(sql,`SELECT v.generation_request_id FROM video_runtime_states v
+      JOIN generation_requests g ON g.id=v.generation_request_id AND g.account_id=v.account_id AND g.workspace_id=v.workspace_id
+      WHERE g.account_id=$1 AND g.workspace_id=$2 AND g.project_id=$3 AND g.project_revision_id=$4 LIMIT 1`,
+      [a.account_id,a.workspace_id,a.project_id,a.project_revision_id])).rows[0];
+}
 async function settleFailedCpu(config:HostedRuntimeConfiguration,a:Row):Promise<boolean> {
   return tenant(config,String(a.account_id),async sql=>{
-    if(a.kind!=="RENDER") return (await query(sql,
+    if(!await hasOrdinaryRenderRuntime(sql,a)) return (await query(sql,
       "SELECT videoforge_settle_cloud_media_cpu_failure($1) AS settled",[a.id])).rows[0]?.settled===true;
     await query(sql, `SELECT videoforge_settle_stranded_hosted_v209_requests($1,$2,p.owner_user_id)
       FROM projects p WHERE p.id=$3 AND p.account_id=$1 AND p.workspace_id=$2`,[a.account_id,a.workspace_id,a.project_id]);
@@ -357,7 +363,9 @@ export async function runCloudMediaObservation(environment: HostedRuntimeEnviron
         if(!await settleFailedCpu(config,a)) return {state:"FINALIZATION_PENDING",delaySeconds:30};
         return {state:"FAILED"};
       }
-      if (a.kind !== "RENDER") {
+      // Ordinary rendering already crossed the accepted-provider barrier and released its
+      // VIDEO lease. Retained-input rendering still needs the normal fair admission slot.
+      if(!await tenant(config,scope.accountId,sql=>hasOrdinaryRenderRuntime(sql,a))) {
         phase="ADMISSION";
         const pool = createNeonPool(config.neon.databaseUrl);
         try {
