@@ -1,4 +1,5 @@
 optional_cloud_media_2026_09_28:
+  snapshot_scope: Historical original release; current published source and sample evidence are cloud_sample_observation_2026_09_29 below.
   checkpoint: V2-09
   selected_task: VF-10-09
   status: "PUBLISHED_SCOPED_CLOUD_TECHNICAL_ACCEPTANCE_BROWSER_DOWNLOAD_POLICY_GATE"
@@ -32,17 +33,23 @@ optional_cloud_media_2026_09_28:
 cloud_sample_observation_2026_09_29:
   checkpoint: V2-09
   selected_task: VF-10-09
-  status: PLANNING_FIX_PUBLISHED_ACCEPTED_ASSETS_RETRY_PROJECTION_PREPARED
+  status: PUBLISHED_FRESH_SAMPLE_PASS_CLEAN_NATIVE_DOWNLOAD_POLICY_GATE
   baseline_source: 30b0485513f188263e229e7bc787774a8bae94b8
-  root_cause: Cloud ASR template rejected by personal-template-only planning guard after successful ASR/context; no image/avatar jobs had started.
-  planning_release: Source41f74259/Cloudflareee91ee4c at100percent; same continuation instance adopted current definition. Exact50bindings includes25secrets/19vars/6resources, unchanged runtime/client assets; previous41 count shorthand was stale.
-  fix: Backend-aware exact template validation against saved verified reservation identity/tool hashes, preserving original Local checks and immutable transcript.
-  retry_projection: First render placement exhausted cleanly without Pod launch; Local-only status lookup hid supported Cloud recovery. Additive224 backend-aware read projection installed once with exact206 preserved,207rows/max224. Local/Cloud PostgreSQL, actual-source ROLLBACK and configured-runtime eligible status pass. Correct bundle selection prepared for publication; existing guarded recovery remains authoritative.
-  validation: Coordinator13 pass; controller126 and selected UI3 pass; web/Worker typecheck and changed lint pass; native production builds and bundle/dispatch firewalls pass. Exact saved-byte probe old FAIL/new11segments9images3avatars1338frames. Connection reuse/active-span phase fixes locally prepared; before inactive-control median471.456ms, after pending. No measured render speed gain yet.
-  authority: New sample Kie/Fal/prompt capUSD0.25; unchanged CloudUSD1.60/max5rentals/USD0.80hour/100GBminimum/no retained volume/expires2026_09_30T12_30UTC. Conservative first ASR debitUSD0.20; invoice unobserved.
-  paid_compute_shutdown: ASR and one three-span batch independently CLEAN; no paid Pod held while accepted Kie/Fal results awaited. Render is bounded capacity waiting, no confirmed Pod yet; unrelated compute untouched.
-  remaining_gates: Complete sample/editorial/private playback and measured phase/cost report; qualify/publish connection reuse and phase fixes. No fresh full-provider video success or overall speed improvement claimed yet.
-  evidence: project-context/cloud-media/SAMPLE_OBSERVATION.md
+  production_source: 2cea7e581c79107fc0cd43d14f3837849a76882e
+  cloudflare_version: 63a210c4-37e1-4c1c-8160-22c4f97a00a2
+  root_cause: Cloud ASR succeeded but Local-only planner rejected its template; Cloud capacity recovery was hidden by native-only status projection.
+  fixes: Exact qualified Cloud template/runtime validation; one capability DB pool; active-span phase priority; backend-aware retry projection and bundle selection. Local checks and accepted media remain.
+  release: Published100percent; exact50bindings/25secrets/19vars/6resources/three existing Workflows/Local0.1.44/KieFal/privacy preserved. Same canonical continuation adopted new definition. Main unrelated edits excluded; runtime/image unchanged.
+  migration: Additive224 installed once;207 ledger rows/max224 with all206 old rows and omitted148 preserved. Actual-source ROLLBACK and configured runtime eligibility pass.
+  sample: Fresh44.6s normal KieFal Cloud sample accepted9 images/3 avatars/9 prompts once; explicit asset-only retry reuses immutable manifest003d2fcc. Final1080p30/1338frames/6475224B/full decode/0ms reported AV drift PASS. Private whole checksum and narration comparison PASS; full/split composition/tail reviewed.
+  browser: Computer Use and regular signed-in Chrome; natural44.6s complete playthrough after compute off, delegated approval saved. Native download Failed-Blocked; exact private R2 download/hash independently pass, no bypass.
+  timing: Final startup18.422s/inputs10.482s/render42.853s/check phase4.009s/save-to-accept19.122s/accepted-to-clean30.134s; fresh attempt99.840s. Overall40m39s includes diagnosis/publication/capacity, not normal speed.
+  benchmark: Inactive exact control GET median471.456 to411.945ms over8 post-warmup samples each;12.62percent observed reduction. No causal/end-to-end render or quantified visual-quality gain claimed.
+  validation: Coordinator13/controller126/selectedUI3/PostgreSQL recovery2 pass; webWorker typechecks/changed lint/native builds/bundle and dispatch firewalls pass. Existing broad baseline failures remain; no unnecessary broad rerun.
+  authority: Sample provider capUSD0.25; CloudUSD1.60/max5/USD0.80hour/100GBminimum/no retained volume/expires2026_09_30T12_30UTC.4 reservations/debitUSD0.80;3 launched Pod lifetime estimateUSD0.083083, not invoice. Prompt reportedUSD0.041855/contextUSD0.000067/imageavatar published-rate UI estimateUSD0.08.
+  paid_compute_shutdown: All4 sample reservations CLEAN; complete paginated inventory zero owned media Pods, unrelated untouched. Three spans shared one Pod; no GPU idle during API waits.
+  remaining_gates: Chrome native download policy; matched full-render performance and quantified editorial-quality gains unmeasured. Prior retained45minute fixture is not fresh provider acceptance/full45minute browser proof.
+  evidence: project-context/cloud-media/SAMPLE_OBSERVATION.md and SAMPLE_OBSERVATION_PROOF.json
 prompt_instruction_compaction_2026_09_27:
   implementation_commit: df08f439
   checkpoint: V2-09

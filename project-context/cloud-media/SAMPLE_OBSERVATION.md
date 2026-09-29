@@ -47,29 +47,96 @@ All9 Kie images and3 Fal avatar clips were accepted once; the span Pod is indepe
 CLEAN while the APIs run. Final assembly is searching bounded qualifying capacity;
 no render Pod had launched at14:38UTC.
 
+## Production fixes and fresh final acceptance
+
 The first render capacity search exhausted and failed cleanly with no Pod launch.
-This exposed a Local-only retry status projection: Cloud recovery was supported by
-the guarded preparation function but never advertised without a native failed lease.
-Additive migration224 makes that read projection backend-aware, preserves Local
-recovery, rejects unknown failures/uncertain cleanup/cross-tenant scope and retains
-the five-attempt bound. The caller uses the selected backend's qualified source hash.
-The existing preparation function remains authoritative; accepted media and manifest
-are never regenerated. Local/Cloud projection PostgreSQL checks pass; real-source
-function replacement and eligible Cloud status were verified inside ROLLBACK against
-the exact206-row ledger before installation. No retained resource or budget mutation.
-Migration224 was then installed once:207 rows, all206 old rows preserved. The actual
-configured runtime role independently reads `eligible:true` without authorizing
-provider calls. New source publication and one explicit render retry remain pending.
+Local-only retry status hid the already supported Cloud recovery. Additive224 fixes
+only that read projection and selects the backend's qualified source hash. Local
+failed-lease checks, tenant boundaries, accepted-media/manifest proof, uncertain
+cleanup rejection and five-attempt bound remain. It was installed once after exact
+source ROLLBACK proof:207 ledger rows, all206 old rows preserved, omitted148 untouched.
+The configured runtime independently read eligible status. No authority expansion.
 
-Two further narrow fixes are locally verified: capability lookup reuses the same
-database pool for the tenant transaction, and progress prefers the actively executing
-span over queued siblings. Controller126 tests and3 selected UI checks pass, plus
-both typechecks, changed lint, production build and firewalls. Eight post-warmup
-read-only requests to the exact cleaned ASR spec have a baseline median471.456ms.
-The after measurement remains pending; this control-path benchmark is not a render
-or end-to-end speed benchmark. No model, encoding or image publication changes.
+Source2cea7e581c79107fc0cd43d14f3837849a76882e is published at100 percent as Cloudflare
+63a210c4-37e1-4c1c-8160-22c4f97a00a2. Frozen single-module bundle5795505c is7,549,045B;
+config6ace447d,23 assets/manifest3cc81450. All25 secrets/50 total bindings/three existing
+Workflow resources remain, as do Local0.1.44/Kie/Fal/auth/private R2/query redaction and
+historical disabled GPU lanes. The same canonical continuation adopted the new
+version; no new continuation instance or runtime/image publication.
 
-Fresh sample completion, editorial review, matched speed/cost comparison and final
-production readback remain pending. The source voiceover itself repeats its opening;
-ASR also joined "scrape knee" into one token. Neither is a proven rendering defect.
-Private scoped evidence: `.videoforge/cloud-media/sample-observation-20260929/`.
+An explicit Computer Use Retry created a fresh render attempt from the same accepted
+9 images,3 avatar clips,9 prompts and immutable manifest003d2fcc. No regeneration.
+RTXPRO4500BlackwellServer placement verified atUSD0.733888889/hour including100GB disk.
+Final44.6s/1338frames/1920x1080p30 H264/AAC passed mandatory full decode and technical
+gates,0ms reported A/V drift,6,475,224B; whole SHA149157b872ffdbfc414f3d7994acdc71e6e892ad816ef93c2686e7854f1d6dc8.
+Private R2 bytes independently match. The original narration is pinned; decoded
+8kHz audio has356,800 samples on both sides and zero-lag correlation0.9785 after
+accepted loudness normalization/AAC. This supports narration preservation, not
+bit-exact PCM or a numerical lip-sync quality score. Output loudness-16.44LUFS,
+true peak-1.96dBTP. Full/split avatar and final44.3s frame reviewed without a visible
+composition seam or lost tail. Source shirt branding is retained source content;
+no overlay/caption/title/graphics is added. Imagery is coherent but fairly generic;
+no quantified editorial-quality improvement is claimed.
+
+Regular signed-in Chrome played naturally0→44.6s with ended=true/error=null after
+complete inventory confirmed compute off; saved approval succeeds and survives reload.
+Native Download was tried once and Chrome returned Failed–Blocked. No policy bypass.
+Exact private object download is verified separately; native download remains a gate.
+
+## Measured speed, cost and limits
+
+| Final phase | Seconds |
+| --- | ---: |
+| Claim to input download |18.422|
+| Input download |10.482|
+| Render/composition |42.853|
+| Checking phase |4.009|
+| Saving to durable acceptance |19.122|
+| Acceptance to independent cleanup verification |30.134|
+| Fresh attempt to accepted output |99.840|
+
+Checking includes control/phase overhead; recorded technical verification is549ms.
+The first failed placement search lasted132.274s and rented nothing. Sample wall
+elapsed40m39s includes diagnosis/release/capacity recovery; it is not ordinary run
+speed. Prompt55.901s, spans2m51s, images36s, avatars2m11s; provider phases overlap.
+No GPU was retained during API wait. One Pod served all three ready spans.
+
+Capability lookup now uses one pool rather than two. Eight post-warmup read-only
+requests per side: median471.456→411.945ms,59.511ms/12.62 percent lower observed.
+This measures exact inactive control-path latency across different observation times;
+network/provider variance remains and no end-to-end render gain is inferred. Active
+span progress now prefers the running job over queued siblings. These changes are
+live. Model, encoding, immutable media, quality gates and resource/price floors stay.
+
+Three launched Pods' creation-to-verified-cleanup lifetime estimateUSD0.083083,
+including disk rates; invoice unobserved. Conservative approval debitUSD0.80 across
+four reservations includes the failed capacity search and is not billed compute.
+Authority remainsUSD1.60/max5 reservations/expires2026-09-30T12:30UTC. Prompt reported
+USD0.041855, contextUSD0.000067; UI image/avatar published-rate estimateUSD0.08 is
+separate and unverified against provider invoices. No claim of whole-cost savings.
+Final sampled scratch peak53,280,768B on100GB is a filesystem lower bound for this
+short input, not a long-video disk sizing guarantee. Complete paginated provider
+inventory15:55-style local observation (14:55:25UTC) proves zero owned media Pods;
+all sample reservations CLEAN and unrelated resources untouched.
+
+Controller126/coordinator13 checks, selected UI3 checks, two PostgreSQL recovery
+checks, web/Worker typechecks, changed lint, builds and bundle/dispatch firewalls pass.
+The broad repository baseline remains as CURRENT_STATE records. No broad rerun added.
+Successful container command logs were not available; RunPod system logs, durable
+phase/disk telemetry and application heartbeat/upload/complete/cleanup responses were
+observed. Do not claim detailed FFmpeg CPU profiling or exactly-once provider effects.
+
+Prior retained45-minute technical/storage proof remains valid for its fixture only;
+fresh45-minute provider/editorial acceptance and full45-minute Chrome playthrough are
+not established by this44.6s sample. No matched full-render before/after exists: old
+planning blocked and initial render had no capacity. Correctness and measured control
+latency improved; quantified video-quality or total production speed gain is unproven.
+
+Rollback: disable allocations, fence/drain exact owned attempts and independently
+verify absence before restoring the verified source. Preserve accepted media and all
+additive ledger entries. No rollback was required. Main unrelated edits stay excluded.
+Public proof: SAMPLE_OBSERVATION_PROOF.json. Private scoped evidence:
+`.videoforge/cloud-media/sample-observation-20260929/` including application logs,
+phase history, system logs, runtime/migration readbacks, whole-object, audio and Chrome
+proof. Source voiceover repeats its opening and ASR joins scrape knee into scrapenie;
+neither was silently edited.

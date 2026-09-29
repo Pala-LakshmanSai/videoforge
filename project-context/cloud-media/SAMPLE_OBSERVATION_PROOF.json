@@ -1,0 +1,68 @@
+{
+  "schema": "videoforge-sample-observation/v1",
+  "checkpoint": "V2-09",
+  "task": "VF-10-09",
+  "observed_utc": "2026-09-29T15:00:00Z",
+  "production_source": "2cea7e581c79107fc0cd43d14f3837849a76882e",
+  "cloudflare_version": "63a210c4-37e1-4c1c-8160-22c4f97a00a2",
+  "migration": {
+    "version": 224,
+    "sha256": "ec477ca287aa7bae8368e51b5d743f84e37eaff091bcb09f00cf444a0105c581",
+    "ledger_rows": 207,
+    "prior_rows_preserved": 206
+  },
+  "video": {
+    "duration_ms": 44600,
+    "width": 1920,
+    "height": 1080,
+    "frames": 1338,
+    "fps": 30,
+    "bytes": 6475224,
+    "sha256": "149157b872ffdbfc414f3d7994acdc71e6e892ad816ef93c2686e7854f1d6dc8",
+    "full_decode_pass": true,
+    "av_drift_ms": 0,
+    "chrome_natural_playthrough_after_compute_off": true,
+    "native_chrome_download": "BLOCKED",
+    "private_r2_whole_checksum": "PASS",
+    "approval": "delegated review saved"
+  },
+  "control_benchmark": {
+    "samples_each_after_warmup": 8,
+    "before_median_ms": 471.456,
+    "after_median_ms": 411.945,
+    "observed_reduction_percent": 12.62,
+    "scope": "inactive exact scoped control GET; not a causal or end-to-end render benchmark"
+  },
+  "render_phases_seconds": {
+    "startup": 18.422,
+    "inputs": 10.482,
+    "render": 42.853,
+    "checking": 4.009,
+    "saving_to_acceptance": 19.122,
+    "accepted_to_cleanup_verified": 30.134,
+    "fresh_attempt_to_accepted": 99.84
+  },
+  "cost": {
+    "compute_lifetime_estimate_usd": 0.083083,
+    "compute_invoice": "UNOBSERVED",
+    "conservative_debit_usd": 0.8,
+    "reservation_count": 4,
+    "actual_launched_pods": 3,
+    "prompt_reported_usd": 0.041855,
+    "context_reported_usd": 6.7e-05,
+    "image_avatar_published_rate_ui_estimate_usd": 0.08,
+    "duplicate_generation_calls": 0
+  },
+  "cleanup": {
+    "all_sample_reservations": "CLEAN",
+    "complete_inventory": true,
+    "owned_pods": 0,
+    "unrelated_pods_mutated": 0
+  },
+  "boundaries": [
+    "40m39s observed total includes operator diagnosis, two releases and unpaid capacity wait; no normal production timing claim",
+    "No matched before/after completed video or quantified visual quality gain",
+    "Successful container command logs unavailable; system logs, durable phase telemetry and application requests observed",
+    "Prior retained 45-minute proof does not establish fresh provider editorial quality or full 45-minute Chrome playback"
+  ]
+}
