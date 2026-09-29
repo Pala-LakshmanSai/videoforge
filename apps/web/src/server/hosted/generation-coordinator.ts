@@ -19,6 +19,7 @@ import {
 import { schedulerConfigForVersion } from "@videoforge/pipeline/scheduler-config";
 
 import { sha256Bytes } from "./crypto";
+import { canonicalJson } from "./submission";
 import { hostedGpuReadiness, type HostedGpuReadiness } from "./gpu-readiness";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -33,6 +34,16 @@ export interface HostedGenerationSnapshot {
   readonly projectRevisionId: string;
   readonly asrAttemptId: string;
   readonly asrState: "SUCCEEDED";
+  readonly asrExecutionBackend?: "PERSONAL_WORKER" | "RUNPOD_POD";
+  readonly asrCloudRuntime?: {
+    readonly identity: {
+      readonly image: string;
+      readonly registry_id: string | null;
+      readonly source_sha256: string;
+      readonly runtime_sha256: string;
+    };
+    readonly tooling: Readonly<Record<string, string>>;
+  };
   readonly asrFinishedAt: string;
   readonly asrInputObjectKey: string;
   readonly asrInputContentLength: number;
@@ -157,6 +168,33 @@ function exactHostedAsrJobTemplate(
     reject("HOSTED_GENERATION_ASR_JOB_TEMPLATE_INVALID");
   }
   const row = value as Record<string, unknown>;
+  const cloud = snapshot.asrExecutionBackend === "RUNPOD_POD";
+  const runtime = snapshot.asrCloudRuntime;
+  if (cloud) {
+    if (
+      !runtime ||
+      !row.runtime_identity ||
+      !row.tooling ||
+      !/^[a-z0-9./:_-]+@sha256:[0-9a-f]{64}$/u.test(runtime.identity.image) ||
+      !SHA256.test(runtime.identity.source_sha256) ||
+      !SHA256.test(runtime.identity.runtime_sha256) ||
+      (runtime.identity.registry_id !== null &&
+        !/^[A-Za-z0-9_-]{1,80}$/u.test(runtime.identity.registry_id)) ||
+      canonicalJson(row.runtime_identity) !== canonicalJson(runtime.identity) ||
+      canonicalJson(row.tooling) !== canonicalJson(runtime.tooling) ||
+      !["ffmpeg_sha256", "ffprobe_sha256", "whisper_sha256"].every((key) =>
+        SHA256.test(runtime.tooling[key] ?? ""),
+      )
+    ) {
+      reject("HOSTED_GENERATION_ASR_JOB_TEMPLATE_INVALID");
+    }
+  } else if (
+    (snapshot.asrExecutionBackend !== undefined &&
+      snapshot.asrExecutionBackend !== "PERSONAL_WORKER") ||
+    runtime
+  ) {
+    reject("HOSTED_GENERATION_ASR_JOB_TEMPLATE_INVALID");
+  }
   const result = row.result as Record<string, unknown> | undefined;
   const tooling = row.tooling as Record<string, unknown> | undefined;
   const outputs = row.outputs;
@@ -168,8 +206,13 @@ function exactHostedAsrJobTemplate(
   const inputOutput = inputRecord?.output as Record<string, unknown> | undefined;
   if (
     Object.keys(row).sort().join(",") !==
-      "attempt_id,input_document,kind,outputs,result,schema_version,tooling" ||
-    row.schema_version !== "videoforge-personal-worker-job-template/v1" ||
+      (cloud
+        ? "attempt_id,input_document,kind,outputs,result,runtime_identity,schema_version,tooling"
+        : "attempt_id,input_document,kind,outputs,result,schema_version,tooling") ||
+    row.schema_version !==
+      (cloud
+        ? "videoforge-cloud-media-job-template/v1"
+        : "videoforge-personal-worker-job-template/v1") ||
     row.attempt_id !== snapshot.asrAttemptId ||
     row.kind !== "ASR" ||
     typeof inputDocument !== "object" ||
@@ -209,7 +252,9 @@ function exactHostedAsrJobTemplate(
     tooling === null ||
     Array.isArray(tooling) ||
     Object.keys(tooling).sort().join(",") !==
-      "ffmpeg_version,ffprobe_version,whisper_model_sha256,whisper_version" ||
+      (cloud
+        ? "ffmpeg_sha256,ffmpeg_version,ffprobe_sha256,ffprobe_version,whisper_model_sha256,whisper_sha256,whisper_version"
+        : "ffmpeg_version,ffprobe_version,whisper_model_sha256,whisper_version") ||
     tooling.whisper_model_sha256 !== snapshot.expectedWhisperModelSha256 ||
     tooling.whisper_version !== "1.8.4" ||
     tooling.ffmpeg_version !== "8.1.2" ||

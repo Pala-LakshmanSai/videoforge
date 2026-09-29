@@ -1,8 +1,9 @@
 # VideoForge: start here
 
-Optional Local/Cloud media execution is being implemented under the2026-09-28 user decision.
+Optional Local/Cloud media execution is published under the2026-09-28 user decision.
 Local stays default; Kie/Fal generation and existing personal-worker releases remain unchanged.
-Cloud is disabled pending runtime/spend/live/45-minute qualification and release approval. Read
+Cloud is enabled only within the recorded finite account authority. Retained-media technical
+qualification does not establish fresh provider/editorial acceptance. Read
 `optional_cloud_media_2026_09_28` in CURRENT_STATE.yaml and `cloud-media/RELEASE_RUNBOOK.md`.
 
 Prompt instructions are locally compacted in request v24: same quality/grounding/output rules,

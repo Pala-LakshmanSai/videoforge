@@ -6364,6 +6364,8 @@ export async function renderHandoff(
         revision_config_hash: string;
         asr_attempt_id: string | null;
         asr_terminal_at: string | null;
+        asr_execution_backend: "PERSONAL_WORKER" | "RUNPOD_POD" | null;
+        asr_cloud_runtime: import("./generation-coordinator").HostedGenerationSnapshot["asrCloudRuntime"] | null;
         asr_input_object_key: string | null;
         asr_input_content_length: number | string | null;
         asr_input_sha256: string | null;
@@ -6377,6 +6379,11 @@ export async function renderHandoff(
                 revision.revision_config_payload::text AS revision_config_payload,
                 revision.revision_config_hash,
                 asr.id AS asr_attempt_id, asr.terminal_at::text AS asr_terminal_at,
+                asr.execution_backend AS asr_execution_backend,
+                CASE WHEN cloud.id IS NOT NULL THEN jsonb_build_object(
+                  'identity',jsonb_build_object('image',cloud.image,'registry_id',cloud.registry_id,
+                    'source_sha256',cloud.source_sha256,'runtime_sha256',cloud.runtime_sha256),
+                  'tooling',cloud.tooling) END AS asr_cloud_runtime,
                 asr.job_spec_object_key AS asr_input_object_key,
                 asr.job_spec_content_length AS asr_input_content_length,
                 asr.job_spec_checksum_sha256 AS asr_input_sha256,
@@ -6399,6 +6406,12 @@ export async function renderHandoff(
             AND asr.id = $4
             AND asr.kind = 'ASR'
             AND asr.state = 'SUCCEEDED'
+           LEFT JOIN cloud_media_reservations AS cloud
+             ON cloud.account_id = asr.account_id AND cloud.workspace_id = asr.workspace_id
+            AND cloud.project_id = asr.project_id AND cloud.project_revision_id = asr.project_revision_id
+            AND cloud.attempt_id = asr.id AND cloud.leased_attempt_id = asr.id
+            AND asr.execution_backend = 'RUNPOD_POD' AND cloud.verified_at IS NOT NULL
+            AND cloud.source_sha256 = asr.execution_bundle_sha256
            LEFT JOIN hosted_cpu_upload_authorities AS authority
              ON authority.account_id = asr.account_id
             AND authority.workspace_id = asr.workspace_id
@@ -6468,6 +6481,8 @@ export async function renderHandoff(
         projectRevisionId: state.revision_id,
         asrAttemptId,
         asrState: "SUCCEEDED",
+        asrExecutionBackend: state.asr_execution_backend ?? "PERSONAL_WORKER",
+        asrCloudRuntime: state.asr_cloud_runtime ?? undefined,
         asrFinishedAt: state.asr_terminal_at,
         asrInputObjectKey: state.asr_input_object_key,
         asrInputContentLength: Number(state.asr_input_content_length),

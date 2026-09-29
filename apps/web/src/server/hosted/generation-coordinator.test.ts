@@ -214,6 +214,69 @@ describe("hosted generation coordinator", () => {
     );
   });
 
+  it("accepts a Cloud ASR template only against its persisted runtime and backend", async () => {
+    const fixture = await setup();
+    const identity = {
+      image: `ghcr.io/example/media@sha256:${"c".repeat(64)}`,
+      registry_id: "private-registry",
+      source_sha256: `sha256:${"d".repeat(64)}`,
+      runtime_sha256: `sha256:${"e".repeat(64)}`,
+    };
+    const template = JSON.parse(new TextDecoder().decode(fixture.inputBytes));
+    template.schema_version = "videoforge-cloud-media-job-template/v1";
+    template.runtime_identity = identity;
+    Object.assign(template.tooling, {
+      ffmpeg_sha256: `sha256:${"f".repeat(64)}`,
+      ffprobe_sha256: `sha256:${"a".repeat(64)}`,
+      whisper_sha256: `sha256:${"c".repeat(64)}`,
+    });
+    const bytes = new TextEncoder().encode(JSON.stringify(template)).buffer as ArrayBuffer;
+    const snapshot = {
+      ...fixture.snapshot,
+      asrExecutionBackend: "RUNPOD_POD" as const,
+      asrCloudRuntime: { identity, tooling: structuredClone(template.tooling) },
+      asrInputContentLength: bytes.byteLength,
+      asrInputSha256: await sha256Bytes(bytes),
+    };
+    await expect(
+      coordinateHostedGeneration({
+        snapshot,
+        asrInputBytes: bytes,
+        asrOutputBytes: fixture.bytes,
+        persistence: fixture.persistence,
+      }),
+    ).resolves.toMatchObject({ provider_call_count: 0, spend_usd: 0 });
+    fixture.persist.mockClear();
+    for (const invalid of [
+      { ...snapshot, asrExecutionBackend: "PERSONAL_WORKER" as const },
+      { ...snapshot, asrCloudRuntime: undefined },
+      {
+        ...snapshot,
+        asrCloudRuntime: {
+          ...snapshot.asrCloudRuntime,
+          identity: { ...identity, source_sha256: `sha256:${"0".repeat(64)}` },
+        },
+      },
+      {
+        ...snapshot,
+        asrCloudRuntime: {
+          ...snapshot.asrCloudRuntime,
+          tooling: { ...template.tooling, whisper_sha256: `sha256:${"0".repeat(64)}` },
+        },
+      },
+    ]) {
+      await expect(
+        coordinateHostedGeneration({
+          snapshot: invalid,
+          asrInputBytes: bytes,
+          asrOutputBytes: fixture.bytes,
+          persistence: fixture.persistence,
+        }),
+      ).rejects.toMatchObject({ code: "HOSTED_GENERATION_ASR_JOB_TEMPLATE_INVALID" });
+    }
+    expect(fixture.persist).not.toHaveBeenCalled();
+  });
+
   it("replays only through the same provider-inert persistence boundary", async () => {
     const fixture = await setup();
     fixture.persist.mockResolvedValue({ replayed: true });
