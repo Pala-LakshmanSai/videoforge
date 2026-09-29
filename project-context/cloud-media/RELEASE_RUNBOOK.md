@@ -1,3 +1,13 @@
+# Current production release — 2026-09-29
+
+Published source30b04855 / Cloudflare601d8ff3 at100 percent after accepted-source Cloud result and independent cleanup. Additive222/223 installed once; ledger206. Local default and NewProject-only Cloud selector,25 secrets/41 bindings/KieFal/privateR2 remain. Finite new account scope:USD1.60/max5 rentals/expiry2026-09-30T12:30UTC; no unlimited ongoing authority. All10 prior reservations CLEAN, conservativeUSD2.87 not invoice. Current Chrome native download is blocked by organization policy; no bypass. See [FINAL_RELEASE.md](FINAL_RELEASE.md) for identities, tests, measurements, browser and45-minute boundaries.
+
+Rollback: disable new allocations, fence/drain exact owned attempts, independently verify Pod absence, then restore baseline366d/62524 and definitions. Keep accepted media and additive migrations.
+
+## Historical preparation snapshots
+
+The following snapshots retain chronology. Their disabled/pending status is historical; the current release above and FINAL_RELEASE.md supersede them.
+
 ## Current creation-only correction and cleared workstation gates — 2026-09-29
 
 Source78e467b4 confines Local/Cloud selection to New Project. Existing projects derive retry execution from their saved attempt backend; Settings keeps worker controls. Six focused UI checks, typecheck, changed-file lint, both builds and bundle firewall pass. The control-plane bundle is byte-identical to qualified85a/885872; current client assets are frozen separately with manifesta5f1f3aa. Private Cloud-disabled candidate configuration7689db18 preserves all baseline bindings and has no allocation authority. It is prepared, not published.

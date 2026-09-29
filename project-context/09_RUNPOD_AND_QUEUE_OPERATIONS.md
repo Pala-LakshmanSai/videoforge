@@ -26,7 +26,7 @@ requests, paid workers, or volume changes require the exact external-checkpoint 
 
 ## Optional on-demand media Pods — 2026-09-28
 
-User clarification2026-09-29: choose Local or Cloud only on New Project. Existing projects retain their saved execution backend for readiness, execution and retry; Project and Settings have no backend selector. The explicit scoped Cloud render-only recovery API remains compatible for authorized retained-media recovery. Additive0222 introduces a distinct run for an explicitly requested rerender of a successful accepted source: exact provider/media proof, immutable resolved manifest, fresh VIDEO admission and RENDER attempt, separate FINAL receipt, and separate human review. It never creates a replacement source runtime or new provider jobs. New-project Cloud scope additionally requires explicit account opt-in, finite budget/count and expiry; historical authorities default to no new-project opt-in. Migration0222 is source-reviewed and pending real-source rollback/apply, not installed by documentation.
+User clarification2026-09-29: choose Local or Cloud only on New Project. Existing projects retain their saved execution backend for readiness, execution and retry; Project and Settings have no backend selector. The explicit scoped Cloud render-only recovery API remains compatible for authorized retained-media recovery. Additive0222 introduces a distinct run for an explicitly requested rerender of a successful accepted source: exact provider/media proof, immutable resolved manifest, fresh VIDEO admission and RENDER attempt, separate FINAL receipt, and separate human review. It never creates a replacement source runtime or new provider jobs. New-project Cloud scope additionally requires explicit account opt-in, finite budget/count and expiry; historical authorities default to no new-project opt-in. Additive0222 and0223 are installed once at ledger206.223 defers provider runtime initialization for the exact fresh PREPARING render-only admission even when its immutable source has complete prompts and a canonical bridge. Real accepted-source Cloud final/result/independent review and cleanup pass. Production source30b04855 enables only the approved finite account scope. See cloud-media/FINAL_RELEASE.md.
 
 Cloud media is separate from historical Mage/SoulX Serverless lanes and uses current RunPod Pod
 REST v2 (`https://api.runpod.io/v2`). Postgres retains fair video admission (one account/two global);
@@ -52,7 +52,7 @@ Job-scoped runtime processes exact committed inputs only. Upload verified artifa
 acceptance, then terminate the owned Pod and verify absence independently. Cancellation fences
 publication, kills the exact process group and cleans scratch. Both Pod watchdog/finally and
 external workflow reconciler enforce finite deadlines; unconfirmed cleanup retains capacity.
-Current configuration remains disabled pending authority and runtime/live proof. Operator rates,
+Production Cloud is enabled for the explicitly approved finite account authority, expiring2026-09-30T12:30UTC; other accounts require their own authority. Operator rates,
 release ledger guards, gates and rollback are in `cloud-media/RELEASE_RUNBOOK.md`.
 
 ## Historical RunPod topology
