@@ -1,0 +1,23 @@
+{
+  "schema_version": "videoforge-local-final-restoration-blocker/v1",
+  "source_commit": "85a73919eb857c7d5917ba4b501c7dc85b91f721",
+  "worker_release": "0.1.44",
+  "existing_native_execution_and_hosted_asr_proof_retained": true,
+  "final_restoration_verified": false,
+  "startup_extraction_required_bytes": 892154056,
+  "available_disk_approximately_mib": 606,
+  "existing_media_disk_guard_bytes": 2147483648,
+  "installed_executable_and_bundle_unchanged": true,
+  "credentials_unchanged": true,
+  "active_native_leases": 0,
+  "bootstrap_acknowledged": true,
+  "bootstrap_last_exit": 255,
+  "failed_service_booted_out": true,
+  "three_new_failed_extractions_removed_after_identity_and_no_live_handle_verification": true,
+  "older_extractions_preserved": true,
+  "accepted_media_deleted": false,
+  "historical_generated_dry_runs_and_package_download_cache_only_removed": true,
+  "chrome_final_connection_available": false,
+  "requires_disk_headroom_and_chrome_reconnection": true,
+  "no_installer_model_or_release_changes": true
+}

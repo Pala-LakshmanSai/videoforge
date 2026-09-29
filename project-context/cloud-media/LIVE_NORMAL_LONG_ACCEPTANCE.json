@@ -1,0 +1,101 @@
+{
+  "schema_version": "videoforge-normal-retained-cloud-long-acceptance/v1",
+  "observed_at": "2026-09-29T07:25:46.228Z",
+  "source_commit": "85a73919eb857c7d5917ba4b501c7dc85b91f721",
+  "worker_version": "189f3e97-4172-4d84-b669-a77948fcf356",
+  "config_sha256": "sha256:958ce8c5b4454f6cd6b4cbbe49e215f6f947e88da807e444e8b1f38506fe4ec8",
+  "runtime_image": "ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:a2ff1f16e4d8990e611f0eb9380c96bcd936ddffdc49be3332ef140888566811",
+  "attempt_succeeded": true,
+  "workflow_succeeded": true,
+  "normal_server_attempt_and_callback": true,
+  "new_immutable_revision_and_normal_video_admission": true,
+  "immutable_manifest_whole_verified": true,
+  "input_receipt_bindings_verified": true,
+  "template_whole_verified": true,
+  "output_whole_sha256": "sha256:6ad9f3da9ff5213d793874eb2b4a2a356068ad3319d4da91bd91f14d94619455",
+  "output_bytes": 426380093,
+  "duration_ms": 2700000,
+  "frames": 81000,
+  "video": {
+    "codec": "h264",
+    "fps_den": 1,
+    "fps_num": 30,
+    "height": 1080,
+    "pixel_format": "yuv420p",
+    "start_ms": 0,
+    "width": 1920
+  },
+  "audio": {
+    "channels": 2,
+    "codec": "aac",
+    "sample_rate_hz": 48000,
+    "start_ms": 0
+  },
+  "av_drift_ms": 0,
+  "mandatory_full_decode_passed": true,
+  "loudness": {
+    "input_integrated_lufs": -21.58,
+    "input_true_peak_dbtp": -4.71,
+    "normalized": true,
+    "output_integrated_lufs": -16.06,
+    "output_true_peak_dbtp": -2.15,
+    "profile": "voiceover-minus16lufs-v1"
+  },
+  "timings_ms": {
+    "reservationToVerifiedPlacementMs": 3380,
+    "verifiedPlacementToClaimMs": null,
+    "inputDownloadMs": 23757,
+    "renderingBeforeTechnicalGateMs": 2121010,
+    "technicalVerificationMs": 25392,
+    "artifactVerificationMs": 225,
+    "savingToAcceptedReceiptMs": 51413,
+    "acceptedReceiptToIndependentCleanupMs": 11173,
+    "totalReservationToCleanupMs": 2257654,
+    "imagePullSeparateMeasurementAvailable": false,
+    "combinedStartupIncludesPullRuntimeChecksAndPolling": true
+  },
+  "checking_phase_ms": 30786,
+  "runtime_readiness_startup_ms": 16135,
+  "disk_metrics": {
+    "sample_count": 2218,
+    "min_free_bytes": 106188021760,
+    "peak_used_bytes": 1186160640,
+    "initial_used_bytes": 16490496,
+    "filesystem_total_bytes": 107374182400
+  },
+  "disk_measurement_boundary": "Periodic filesystem samples; peak is a sampled lower bound, not exact job-exclusive scratch usage.",
+  "gpu": "NVIDIA RTX PRO 4500 Blackwell Server Edition",
+  "disk_gb": 100,
+  "observed_all_in_hourly_usd": 0.7338888888888888,
+  "accepted_at": "2026-09-29T07:22:55.013143+00:00",
+  "cleanup_verified_at": "2026-09-29T07:23:06.186888+00:00",
+  "eight_reservations_clean": true,
+  "owned_pods_independently_absent": true,
+  "conservative_compute_debit_usd": 2.6,
+  "invoice_observed": false,
+  "regular_chrome": {
+    "incognito": false,
+    "tab_closed_while_rendering": true,
+    "tab_reloaded_recovery_verified": true,
+    "saved_playback_after_compute_shutdown": true,
+    "observed_playback_seconds": 350,
+    "displayed_duration_seconds": 2700,
+    "played_to_visible_end": false,
+    "private_long_download_verified": false,
+    "normal_authenticated_owner_cancel_status": 200,
+    "same_video_lease_released": true,
+    "accepted_media_preserved": true
+  },
+  "qualification_boundary": {
+    "retained_media": true,
+    "synthetic_repeated_retained_inputs": true,
+    "fresh_provider_editorial_acceptance": false,
+    "ordinary_library_final_promotion": false,
+    "production_release": false
+  },
+  "remaining_gates": [
+    "ACTIVE_CANCELLATION",
+    "ORDINARY_FINAL_PROMOTION",
+    "CONDITIONAL_PRODUCTION_RELEASE"
+  ]
+}

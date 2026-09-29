@@ -1,0 +1,77 @@
+{
+  "schema_version": "videoforge-normal-cloud-active-cancel-acceptance/v1",
+  "observed_at": "2026-09-29T08:11:36.776Z",
+  "source_commit": "85a73919eb857c7d5917ba4b501c7dc85b91f721",
+  "worker_version": "271ec606-a50c-457d-ba9e-6cbe0299d9b1",
+  "config_sha256": "sha256:a7629ed00dcc710ccda9bc029c2d2098e4ab99cd551d3ec031b825e6cca91527",
+  "runtime_image": "ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:a2ff1f16e4d8990e611f0eb9380c96bcd936ddffdc49be3332ef140888566811",
+  "normal_server_attempt_and_callback": true,
+  "immutable_manifest_whole_verified": true,
+  "template_whole_verified": true,
+  "input_receipt_bindings_verified": true,
+  "cpu_state": "CANCELLED",
+  "reservation_state": "CLEAN",
+  "terminal_at": "2026-09-29T08:03:41.327793+00:00",
+  "cleanup_verified_at": "2026-09-29T08:03:43.032208+00:00",
+  "accepted_receipt": false,
+  "issued_output_authorities": 0,
+  "stale_publication_absent": true,
+  "nine_reservations_clean": true,
+  "owned_pods_independently_absent": true,
+  "conservative_compute_debit_usd": 2.67,
+  "invoice_observed": false,
+  "workflow_inventory_count": 12,
+  "proof_cpu_count": 11,
+  "root_acceptance_registry_sha256": "sha256:4520feca706b02c1de3b1f8c57751e985eee2c784fd94fb1562b67ed7569acca",
+  "gpu": "NVIDIA RTX PRO 4500 Blackwell Server Edition",
+  "temporary_disk_gb": 100,
+  "observed_all_in_hourly_usd": 0.7338888888888888,
+  "timings_ms": {
+    "reservation_to_verified_placement": 3725,
+    "input_download": 23120,
+    "cancelled_terminal_to_independent_cleanup": 1705,
+    "total_reservation_to_cleanup": 125722
+  },
+  "disk_metrics": {
+    "sample_count": 23,
+    "min_free_bytes": 107310960640,
+    "peak_used_bytes": 63221760,
+    "initial_used_bytes": 16486400,
+    "filesystem_total_bytes": 107374182400
+  },
+  "regular_chrome": {
+    "incognito": false,
+    "submission_post_acknowledgment_observed": false,
+    "submission_ack_timeout_seconds": 3,
+    "same_idempotency_submission_reconciled_by_get": true,
+    "cpu_get_status": 200,
+    "submission_replayed": false,
+    "normal_cpu_cancel_status": 202,
+    "cancel_response_state": "CANCEL_REQUESTED",
+    "cancel_requested_during": "RENDERING",
+    "independent_cleanup_verified": true,
+    "connection_later_disconnected": true,
+    "post_terminal_project_owner_cancel_completed": false,
+    "post_terminal_project_owner_cancel_intent_only": true,
+    "post_terminal_project_owner_cancel_required": false
+  },
+  "qualification_boundary": {
+    "retained_inputs": true,
+    "fresh_provider_editorial_acceptance": false,
+    "ordinary_final_promotion": false,
+    "production_release": false
+  },
+  "remaining_gates": [
+    "RESTORE_LOCAL_WORKER_DISK_HEADROOM",
+    "RECONNECT_REGULAR_CHROME",
+    "ORDINARY_FINAL_PROMOTION",
+    "CONDITIONAL_PRODUCTION_RELEASE"
+  ],
+  "normal_cpu_cancel_settlement": {
+    "current_request_state": "CANCELLED",
+    "same_video_lease_state": "RELEASED",
+    "historical_admissions_released": 7,
+    "active_admissions": 0,
+    "additional_project_owner_cancel_required": false
+  }
+}
