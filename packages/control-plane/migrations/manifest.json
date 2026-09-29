@@ -1116,6 +1116,12 @@
       "name": "hosted_cloud_render_only_admission",
       "filename": "0223_hosted_cloud_render_only_admission.sql",
       "sha256": "sha256:c5fcbb1b2c69277b898933369f9173aad44030b584a0e861d2855a5e849419f7"
+    },
+    {
+      "version": 224,
+      "name": "hosted_cloud_render_retry_status",
+      "filename": "0224_hosted_cloud_render_retry_status.sql",
+      "sha256": "sha256:ec477ca287aa7bae8368e51b5d743f84e37eaff091bcb09f00cf444a0105c581"
     }
   ]
 }

@@ -47,6 +47,20 @@ All9 Kie images and3 Fal avatar clips were accepted once; the span Pod is indepe
 CLEAN while the APIs run. Final assembly is searching bounded qualifying capacity;
 no render Pod had launched at14:38UTC.
 
+The first render capacity search exhausted and failed cleanly with no Pod launch.
+This exposed a Local-only retry status projection: Cloud recovery was supported by
+the guarded preparation function but never advertised without a native failed lease.
+Additive migration224 makes that read projection backend-aware, preserves Local
+recovery, rejects unknown failures/uncertain cleanup/cross-tenant scope and retains
+the five-attempt bound. The caller uses the selected backend's qualified source hash.
+The existing preparation function remains authoritative; accepted media and manifest
+are never regenerated. Local/Cloud projection PostgreSQL checks pass; real-source
+function replacement and eligible Cloud status were verified inside ROLLBACK against
+the exact206-row ledger before installation. No retained resource or budget mutation.
+Migration224 was then installed once:207 rows, all206 old rows preserved. The actual
+configured runtime role independently reads `eligible:true` without authorizing
+provider calls. New source publication and one explicit render retry remain pending.
+
 Two further narrow fixes are locally verified: capability lookup reuses the same
 database pool for the tenant transaction, and progress prefers the actively executing
 span over queued siblings. Controller126 tests and3 selected UI checks pass, plus

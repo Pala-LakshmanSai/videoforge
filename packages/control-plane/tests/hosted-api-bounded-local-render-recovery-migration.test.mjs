@@ -191,6 +191,25 @@ END; $$;`);
       [account,workspace,project,failed]);
     assert.deepEqual((await call(newBundle)).rows[0].value,{legacy:true});
 
+    // The additive Cloud projection also supports projects with no native worker lease.
+    await db.exec(`ALTER TABLE hosted_cpu_job_attempts ADD COLUMN execution_backend text DEFAULT 'PERSONAL_WORKER';
+      ALTER TABLE hosted_cpu_job_attempts ADD COLUMN failure_code text;
+      CREATE TABLE cloud_media_reservations(account_id uuid,state text,cleanup_verified_at timestamptz);`);
+    await db.exec(readFileSync(new URL("../migrations/0224_hosted_cloud_render_retry_status.sql",import.meta.url),"utf8"));
+    const readStatus=async(owner=account)=>(await db.query(
+      `SELECT videoforge_read_hosted_api_render_recovery_status($1,$2,$3,$4,$5) AS value`,
+      [owner,workspace,user,project,newBundle])).rows[0].value;
+    assert.equal((await readStatus()).reason,"RETRY_LIMIT_REACHED");
+    await db.exec(`DELETE FROM media_worker_leases; DELETE FROM hosted_cpu_job_attempts WHERE id='${id(21)}';
+      UPDATE hosted_cpu_job_attempts SET execution_backend='RUNPOD_POD',failure_code='CLOUD_MEDIA_CAPACITY_EXHAUSTED' WHERE id='${id(23)}';`);
+    assert.equal((await readStatus()).eligible,true);
+    assert.equal((await readStatus(id(99))).eligible,false);
+    await db.exec(`INSERT INTO cloud_media_reservations VALUES('${account}','STOPPING',NULL);`);
+    assert.equal((await readStatus()).reason,"CLEANUP_PENDING");
+    await db.exec(`UPDATE cloud_media_reservations SET state='CLEAN',cleanup_verified_at=now();`);
+    assert.equal((await readStatus()).eligible,true);
+    await db.exec(`UPDATE hosted_cpu_job_attempts SET failure_code='UNKNOWN_FAILURE';`);
+    assert.equal((await readStatus()).reason,"FAILURE_NOT_RECOVERABLE");
   } finally {
     await db.close();
   }
@@ -202,4 +221,6 @@ test("0211 retains its exact manifest entry", () => {
   assert.deepEqual([entry.version, entry.name, entry.filename],
     [211, "hosted_api_bounded_local_render_recovery", "0211_hosted_api_bounded_local_render_recovery.sql"]);
   assert.equal(entry.sha256, `sha256:${createHash("sha256").update(bytes).digest("hex")}`);
+  const cloud=manifest.migrations.find(item=>item.version===224);
+  assert.equal(cloud.sha256,`sha256:${createHash("sha256").update(readFileSync(new URL("../migrations/"+cloud.filename,import.meta.url))).digest("hex")}`);
 });

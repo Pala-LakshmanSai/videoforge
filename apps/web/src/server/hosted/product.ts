@@ -7461,7 +7461,10 @@ async function projectDetail(
         : { rows: [] as Record<string, unknown>[] };
       const renderRetryStatus = await transaction.query<{ value: unknown }>(
         "SELECT public.videoforge_read_hosted_api_render_recovery_status($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::text) AS value",
-        [scope.account_id,scope.workspace_id,scope.user_id,projectId,config.mediaWorkerRelease.executionBundleSha256],
+        [scope.account_id,scope.workspace_id,scope.user_id,projectId,
+          (project.rows[0] as Record<string, unknown>).media_execution_backend === "RUNPOD_POD"
+            ? config.cloudMedia?.sourceSha256 ?? config.mediaWorkerRelease.executionBundleSha256
+            : config.mediaWorkerRelease.executionBundleSha256],
       );
       const cost = await transaction.query(
         `SELECT revision.maximum_cost_micro_usd,

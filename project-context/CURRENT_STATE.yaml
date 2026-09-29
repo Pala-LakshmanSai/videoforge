@@ -32,11 +32,12 @@ optional_cloud_media_2026_09_28:
 cloud_sample_observation_2026_09_29:
   checkpoint: V2-09
   selected_task: VF-10-09
-  status: PLANNING_FIX_PUBLISHED_ACCEPTED_ASSETS_RENDER_CAPACITY_WAIT
+  status: PLANNING_FIX_PUBLISHED_ACCEPTED_ASSETS_RETRY_PROJECTION_PREPARED
   baseline_source: 30b0485513f188263e229e7bc787774a8bae94b8
   root_cause: Cloud ASR template rejected by personal-template-only planning guard after successful ASR/context; no image/avatar jobs had started.
   planning_release: Source41f74259/Cloudflareee91ee4c at100percent; same continuation instance adopted current definition. Exact50bindings includes25secrets/19vars/6resources, unchanged runtime/client assets; previous41 count shorthand was stale.
   fix: Backend-aware exact template validation against saved verified reservation identity/tool hashes, preserving original Local checks and immutable transcript.
+  retry_projection: First render placement exhausted cleanly without Pod launch; Local-only status lookup hid supported Cloud recovery. Additive224 backend-aware read projection installed once with exact206 preserved,207rows/max224. Local/Cloud PostgreSQL, actual-source ROLLBACK and configured-runtime eligible status pass. Correct bundle selection prepared for publication; existing guarded recovery remains authoritative.
   validation: Coordinator13 pass; controller126 and selected UI3 pass; web/Worker typecheck and changed lint pass; native production builds and bundle/dispatch firewalls pass. Exact saved-byte probe old FAIL/new11segments9images3avatars1338frames. Connection reuse/active-span phase fixes locally prepared; before inactive-control median471.456ms, after pending. No measured render speed gain yet.
   authority: New sample Kie/Fal/prompt capUSD0.25; unchanged CloudUSD1.60/max5rentals/USD0.80hour/100GBminimum/no retained volume/expires2026_09_30T12_30UTC. Conservative first ASR debitUSD0.20; invoice unobserved.
   paid_compute_shutdown: ASR and one three-span batch independently CLEAN; no paid Pod held while accepted Kie/Fal results awaited. Render is bounded capacity waiting, no confirmed Pod yet; unrelated compute untouched.
