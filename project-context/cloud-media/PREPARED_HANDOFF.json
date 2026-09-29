@@ -51,14 +51,14 @@
     "observed_controller_all_in_usd_hour": 0.7338888888888888,
     "invoice_observed": false
   },
-  "local_worker_restored": false,
+  "local_worker_restored": true,
   "local_worker_release": "0.1.44",
   "regular_chrome_only": true,
   "native_local_proof": "NATIVE_RETAINED_PROOF.json",
   "genuine_hosted_local_proof": "LOCAL_HOSTED_ASR_PROOF.json",
-  "provider_inventory_at": "2026-09-29T08:11:36.776Z",
+  "provider_inventory_at": "2026-09-29T09:59:43.843Z",
   "complete_inventory": true,
-  "pod_count": 0,
+  "pod_count": 1,
   "reservation_count": 9,
   "reservation_cleanup": "ALL_NINE_CLEAN",
   "actual_owned_pods_rented": 7,
@@ -68,7 +68,7 @@
   "same_usd5_max10_deadline23_migration217_amendment_approved": true,
   "staging880_preparation": "HELD_EXPIRED_AUTHORITY_OLD_V6_REGISTRY",
   "remaining_live_gates": [
-    "local_restore_requires_disk_headroom",
+    "local_media_disk_headroom",
     "regular_chrome_reconnection",
     "ordinary_final_promotion",
     "conditional_production_rollout"
@@ -381,5 +381,10 @@
   "regular_chrome_connection": "DISCONNECTED_AFTER_ACCEPTED_CANCEL",
   "production_final_readonly_preparation": "PASS_2026-09-29T08:13:10.827Z_CLOUD_DISABLED_NO_PUBLICATION",
   "active_admission_count": 0,
-  "active_cloud_compute_count": 0
+  "active_cloud_compute_count": 0,
+  "local_worker_restored_at": "2026-09-29T10:04:55.001873+00:00",
+  "local_worker_media_disk_ready": false,
+  "local_worker_reconnection_proof": "FINAL_LOCAL_RESTORE_BLOCKER.json",
+  "owned_media_pod_count": 0,
+  "unrelated_pods_untouched": true
 }
