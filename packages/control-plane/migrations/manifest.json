@@ -1086,6 +1086,12 @@
       "name": "hosted_cloud_preprovider_media",
       "filename": "0218_hosted_cloud_preprovider_media.sql",
       "sha256": "sha256:62d3a031f18d9a309f68b866553bade42cd081c4d312ce79491022071d7fd3bd"
+    },
+    {
+      "version": 219,
+      "name": "hosted_cloud_span_qualification_scope",
+      "filename": "0219_hosted_cloud_span_qualification_scope.sql",
+      "sha256": "sha256:6ff2abb19dd59d8e502de5f1e01814bb0e506740f1bc187d0a56977c01ab4f89"
     }
   ]
 }

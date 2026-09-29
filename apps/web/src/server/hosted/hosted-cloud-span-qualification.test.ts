@@ -19,7 +19,7 @@ const request = () => new Request(`${config.publicOrigin}/api/v2/hosted/projects
   { method: "POST", headers: { origin: config.publicOrigin, "content-length": "0" } });
 
 function dependencies(allowed: boolean | null = true) {
-  const query = vi.fn(async (sql: string, _parameters?: unknown[]) => ({ rows: sql.includes("qualification_scope") ?
+  const query = vi.fn(async (sql: string, _parameters?: unknown[]) => ({ rows: sql.includes("qualification_allowed") ?
     (allowed === null ? [] : [{ allowed }]) : [], affectedRows: 0 }));
   const db = { query, transaction: async (run: (sql: { query: typeof query }) => unknown) => run({ query }) };
   const pool = { end: vi.fn(async () => {}) };
@@ -36,6 +36,10 @@ describe("staging qualification uses normal span scheduling without provider dis
     try {
       await db.exec(`CREATE FUNCTION videoforge_cloud_media_qualification_scope(uuid,uuid) RETURNS boolean
         LANGUAGE sql AS 'SELECT true';
+        CREATE FUNCTION videoforge_current_account_id() RETURNS uuid LANGUAGE sql
+          AS 'SELECT current_setting(''videoforge.account_id'')::uuid';
+        CREATE ROLE videoforge_v209_runtime_dc9612d6;
+        CREATE TABLE memberships(account_id uuid,workspace_id uuid,user_id uuid,status text);
         CREATE TABLE projects(id uuid,account_id uuid,workspace_id uuid,owner_user_id uuid,status text);
         CREATE TABLE project_revisions(id uuid,account_id uuid,workspace_id uuid,project_id uuid,status text,
           revision_number integer,media_execution_backend text);
@@ -47,6 +51,10 @@ describe("staging qualification uses normal span scheduling without provider dis
         CREATE TABLE cloud_media_jobs(attempt_id uuid,reservation_id uuid);
         CREATE TABLE cloud_media_reservations(id uuid,account_id uuid,state text,cleanup_verified_at timestamptz);
         CREATE TABLE hosted_api_generation_jobs(account_id uuid,workspace_id uuid,project_id uuid,state text);`);
+      const { readFile } = await import("node:fs/promises");
+      await db.exec(await readFile(new URL("../../../../../packages/control-plane/migrations/0219_hosted_cloud_span_qualification_scope.sql", import.meta.url), "utf8"));
+      await db.query("INSERT INTO memberships VALUES($1,$2,$3,'ACTIVE')", [identity.accountId, identity.workspaceId, identity.userId]);
+      await db.query("SELECT set_config('videoforge.account_id',$1,false)", [identity.accountId]);
       const revision = id("6"), generation = id("7"), asr = id("8"), reservation = id("9");
       await db.query("INSERT INTO projects VALUES($1,$2,$3,$4,'ACTIVE')", [identity.projectId, identity.accountId, identity.workspaceId, identity.userId]);
       await db.query("INSERT INTO project_revisions VALUES($1,$2,$3,$4,'LOCKED',1,'RUNPOD_POD')", [revision, identity.accountId, identity.workspaceId, identity.projectId]);
@@ -91,11 +99,10 @@ describe("staging qualification uses normal span scheduling without provider dis
     expect(await result?.json()).toMatchObject({ state: "PREPARING_INPUTS" });
     expect(d.methods.scope).toHaveBeenCalledOnce();
     expect(prepare).toHaveBeenCalledWith(identity);
-    const check = d.query.mock.calls.find(([sql]) => sql.includes("qualification_scope"));
-    expect(check?.[0]).toContain("p.owner_user_id=$5::uuid");
-    expect(check?.[0]).toContain("a.state='SUCCEEDED'");
-    expect(check?.[0]).toContain("r.state='CLEAN'");
-    expect(check?.[0]).toContain("revision.media_execution_backend='RUNPOD_POD'");
+    const check = d.query.mock.calls.find(([sql]) => sql.includes("qualification_allowed"));
+    expect(check?.[0]).toContain("videoforge_cloud_span_qualification_allowed");
+    expect(check?.[0]).not.toContain("provider_workload_leases");
+    expect(check?.[1]).toEqual([environment.VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID, identity.projectId, identity.accountId, identity.workspaceId, identity.userId, true]);
     for (const name of ["ensureAdmission", "findExistingGeneration", "inspectExistingGeneration", "materialize", "observe", "commitAndSchedule", "ensureWorkflow"] as const)
       expect(d.methods[name]).not.toHaveBeenCalled();
     expect(d.pool.end).toHaveBeenCalledOnce();
