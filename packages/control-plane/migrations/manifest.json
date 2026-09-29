@@ -1092,6 +1092,12 @@
       "name": "hosted_cloud_span_qualification_scope",
       "filename": "0219_hosted_cloud_span_qualification_scope.sql",
       "sha256": "sha256:6ff2abb19dd59d8e502de5f1e01814bb0e506740f1bc187d0a56977c01ab4f89"
+    },
+    {
+      "version": 220,
+      "name": "hosted_cloud_reservation_authority",
+      "filename": "0220_hosted_cloud_reservation_authority.sql",
+      "sha256": "sha256:50aefe8271e4d66e10c1a2a2959dc17b7f063d78e124a0c9bf2825c3c5586e75"
     }
   ]
 }

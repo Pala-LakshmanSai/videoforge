@@ -58,7 +58,7 @@ function query(sql: SqlExecutor, statement: string, values: readonly unknown[] =
   return sql.query(statement, parameters);
 }
 type Scope = {attemptId: string; accountId: string; workspaceId: string};
-type ObservationPhase = "TEMPLATE" | "ADMISSION" | "RESERVATION" | "ADMISSION_RENEWAL" |
+type ObservationPhase = "CONTROLLER_ACCESS" | "TEMPLATE" | "ADMISSION" | "RESERVATION" | "ADMISSION_RENEWAL" |
   "RECEIPT_RECONCILIATION" | "ATTEMPT_TERMINATION" | "CLEANUP" | "FAILURE_SETTLEMENT" | "RESULT_FINALIZATION" |
   "INVENTORY" | "PLACEMENT_ADOPTION" | "CATALOGUE" | "CAPACITY_CHECK" |
   "BUDGET_RESERVATION" | "CREATE_FENCE" | "LEASE_TOKEN" | "POD_CREATE";
@@ -259,7 +259,7 @@ async function settleFailedCpu(config:HostedRuntimeConfiguration,a:Row):Promise<
 
 export const CLOUD_CREATE_RENTAL_SQL = `UPDATE cloud_media_reservations SET state='CREATING',gpu=$2,expected_hourly_usd=$3,
   deadline_at=LEAST(now()+make_interval(secs=>rental_seconds),a.deadline_at,b.expires_at),
-  launch_outcome='UNKNOWN',updated_at=now() FROM hosted_cpu_job_attempts a,cloud_media_budget_authorities b
+  launch_outcome='UNKNOWN',updated_at=now() FROM hosted_cpu_job_attempts a,public.videoforge_cloud_media_reservation_authority($1,$4,$5) b
   WHERE cloud_media_reservations.id=$1 AND cloud_media_reservations.state='WAITING_CAPACITY'
     AND cloud_media_reservations.placement_deadline_at>now()
     AND cloud_media_reservations.leased_attempt_id=$4 AND cloud_media_reservations.fence_id=$5
@@ -268,12 +268,12 @@ export const CLOUD_CREATE_RENTAL_SQL = `UPDATE cloud_media_reservations SET stat
   RETURNING cloud_media_reservations.*`;
 export const CLOUD_PRE_CREATE_ALLOWED_SQL = `SELECT r.id AS allowed_create_reservation FROM cloud_media_reservations r
   JOIN hosted_cpu_job_attempts a ON a.id=r.leased_attempt_id AND a.account_id=r.account_id AND a.workspace_id=r.workspace_id
-  JOIN cloud_media_budget_authorities b ON b.id=r.budget_authority_id
+  JOIN LATERAL public.videoforge_cloud_media_reservation_authority(r.id,r.leased_attempt_id,r.fence_id) b ON true
   WHERE r.id=$1 AND r.leased_attempt_id=$2 AND r.fence_id=$3 AND r.state='CREATING' AND r.launch_outcome='UNKNOWN'
     AND a.state='RUNNING' AND a.deadline_at>now() AND r.deadline_at>now() AND b.enabled AND b.expires_at>now()`;
 export const CLOUD_PLACEMENT_READY_SQL = `UPDATE cloud_media_reservations SET state='STARTING',verified_at=now(),
   deadline_at=LEAST(cloud_media_reservations.deadline_at,b.expires_at),last_heartbeat_at=now(),updated_at=now()
-  FROM cloud_media_budget_authorities b WHERE cloud_media_reservations.id=$1
+  FROM public.videoforge_cloud_media_reservation_authority($1,$2,$3) b WHERE cloud_media_reservations.id=$1
     AND cloud_media_reservations.leased_attempt_id=$2 AND cloud_media_reservations.fence_id=$3
     AND cloud_media_reservations.state IN ('CREATING','AMBIGUOUS') AND cloud_media_reservations.deadline_at>now()
     AND b.id=cloud_media_reservations.budget_authority_id AND b.enabled AND b.expires_at>now()
@@ -284,13 +284,13 @@ export const CLOUD_QUALIFICATION_RENDER_ARTIFACT_SQL = `SELECT a.id AS qualifica
        JOIN cloud_media_reservations r ON r.id=j.reservation_id AND r.leased_attempt_id=a.id
          AND r.account_id=a.account_id AND r.workspace_id=a.workspace_id
          AND r.project_id=a.project_id AND r.project_revision_id=a.project_revision_id
-       JOIN cloud_media_budget_authorities b ON b.id=r.budget_authority_id
+       JOIN LATERAL public.videoforge_cloud_media_reservation_authority(r.id,r.leased_attempt_id,r.fence_id) b ON true
        WHERE a.id=$1 AND a.account_id=$2 AND a.workspace_id=$3 AND a.kind='RENDER'
          AND a.execution_backend='RUNPOD_POD' AND a.state='SUCCEEDED'
          AND a.result_receipt_sha256 IS NOT NULL AND a.result_object_key IS NOT NULL
          AND a.result_content_length>0 AND a.result_checksum_sha256 IS NOT NULL
          AND r.state='CLEAN' AND r.cleanup_verified_at IS NOT NULL
-         AND b.id=$4 AND a.account_id=ANY(b.allowed_account_ids) AND a.project_id=ANY(b.allowed_project_ids)`;
+         AND b.id=$4`;
 
 async function finalizeMedia(environment: HostedRuntimeEnvironment, config: HostedRuntimeConfiguration, a: Row): Promise<boolean | "QUALIFICATION_ARTIFACT"> {
   const scope = {accountId:String(a.account_id),workspaceId:String(a.workspace_id),attemptId:String(a.id)};
@@ -316,13 +316,23 @@ async function finalizeMedia(environment: HostedRuntimeEnvironment, config: Host
 /** One observation; Workflow step retry is disabled. A restart always reads persisted state. */
 export async function runCloudMediaObservation(environment: HostedRuntimeEnvironment, config: HostedRuntimeConfiguration,
   scope: Scope): Promise<ObservationOutcome> {
+  try { return await observeCloudMedia(environment, config, scope); }
+  catch (error) {
+    // Initial lineage/access reads and already-terminal finalization precede the paid lifecycle
+    // catch below. Preserve their durable Workflow observation without replaying provider actions.
+    return {state:"RECONCILING",delaySeconds:30,observationError:observationDiagnostic(error,"CONTROLLER_ACCESS")};
+  }
+}
+
+async function observeCloudMedia(environment: HostedRuntimeEnvironment, config: HostedRuntimeConfiguration,
+  scope: Scope): Promise<ObservationOutcome> {
   const loaded = await tenant(config,scope.accountId, async sql => {
     const a = (await query(sql, `SELECT a.*,p.owner_user_id,r.revision_config_payload AS payload,v.duration_ms AS voiceover_duration_ms FROM hosted_cpu_job_attempts a
       JOIN projects p ON p.id=a.project_id JOIN project_revisions r ON r.id=a.project_revision_id
       LEFT JOIN assets v ON v.id=r.voiceover_asset_id AND v.account_id=a.account_id AND v.workspace_id=a.workspace_id
       WHERE a.id=$1 AND a.account_id=$2 AND a.workspace_id=$3 AND a.execution_backend='RUNPOD_POD'`,
     [scope.attemptId,scope.accountId,scope.workspaceId])).rows[0];
-    const r = (await query(sql, "SELECT r.*,b.expires_at AS authority_expires_at,b.enabled AS authority_enabled FROM cloud_media_reservations r JOIN cloud_media_jobs j ON j.reservation_id=r.id JOIN cloud_media_budget_authorities b ON b.id=r.budget_authority_id WHERE j.attempt_id=$1 ORDER BY r.created_at DESC LIMIT 1",[scope.attemptId])).rows[0];
+    const r = (await query(sql, "SELECT r.*,b.expires_at AS authority_expires_at,b.enabled AS authority_enabled FROM cloud_media_reservations r JOIN cloud_media_jobs j ON j.reservation_id=r.id JOIN LATERAL public.videoforge_cloud_media_reservation_authority(r.id,r.leased_attempt_id,r.fence_id) b ON true WHERE j.attempt_id=$1 ORDER BY r.created_at DESC LIMIT 1",[scope.attemptId])).rows[0];
     const current = r && r.leased_attempt_id !== a?.id
       ? (await query(sql, "SELECT * FROM hosted_cpu_job_attempts WHERE id=$1", [r.leased_attempt_id])).rows[0] : a;
     return {a:current,r};
@@ -518,7 +528,7 @@ export async function runCloudMediaObservation(environment: HostedRuntimeEnviron
       const selected=await query(sql,CLOUD_CREATE_RENTAL_SQL,
       [r!.id,candidate.id,candidate.price.secure+Number(r!.disk_gb)*.10/720,r!.leased_attempt_id,r!.fence_id]);
       if(!selected.rows[0] && (await query(sql,`SELECT r.id AS expired_authority_reservation FROM cloud_media_reservations r
-        JOIN cloud_media_budget_authorities b ON b.id=r.budget_authority_id
+        JOIN LATERAL public.videoforge_cloud_media_reservation_authority(r.id,r.leased_attempt_id,r.fence_id) b ON true
         WHERE r.id=$1 AND r.leased_attempt_id=$2 AND r.fence_id=$3 AND r.state='WAITING_CAPACITY'
           AND (NOT b.enabled OR b.expires_at<=now())`,[r!.id,r!.leased_attempt_id,r!.fence_id])).rows[0])
         throw new Error("CLOUD_MEDIA_BUDGET_UNAVAILABLE");
@@ -627,7 +637,7 @@ async function adopt(client:RunPodMediaClient,config:HostedRuntimeConfiguration,
   if(!ready) {
     const expired=await tenant(config,String(r.account_id),async sql=>(await query(sql,
       `SELECT r.id AS expired_placement_reservation FROM cloud_media_reservations r
-        JOIN cloud_media_budget_authorities b ON b.id=r.budget_authority_id
+        JOIN LATERAL public.videoforge_cloud_media_reservation_authority(r.id,r.leased_attempt_id,r.fence_id) b ON true
         WHERE r.id=$1 AND r.leased_attempt_id=$2 AND r.fence_id=$3 AND r.state IN ('CREATING','AMBIGUOUS')
           AND (r.deadline_at<=now() OR NOT b.enabled OR b.expires_at<=now())`,[r.id,r.leased_attempt_id,r.fence_id])).rows[0]);
     if(!expired) return {state:"RECONCILING",delaySeconds:30};

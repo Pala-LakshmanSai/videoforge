@@ -16,6 +16,15 @@ vi.mock("./app",()=>({createHostedV209RenderTerminalLiveCoordinator:()=>({accept
 vi.mock("./hosted-v209-queue-admission",()=>({ensureHostedV209GenerationAdmission:fixture.admission}));
 import { CLOUD_COMPUTE_ABSENCE_EVENT_SQL, CLOUD_CREATE_RENTAL_SQL, CLOUD_PRE_CREATE_ALLOWED_SQL, CLOUD_PLACEMENT_READY_SQL, CLOUD_DISK_METRICS_SQL, CLOUD_QUALIFICATION_RENDER_ARTIFACT_SQL, CLOUD_TERMINAL_EVENT_SQL, cleanupCloudReservation, cloudRenderDuration, handleCloudMediaRequest, RunPodMediaClient, runCloudMediaObservation, validCloudDiskMetrics, verifyCloudPlacement } from "./runpod-media";
 
+async function installReservationAuthority(db:{exec(sql:string):Promise<unknown>}) {
+  const {readFile}=await import("node:fs/promises");
+  const source=await readFile(new URL("../../../../../packages/control-plane/migrations/0220_hosted_cloud_reservation_authority.sql",import.meta.url),"utf8");
+  await db.exec(`CREATE FUNCTION public.videoforge_current_account_id() RETURNS uuid LANGUAGE sql AS $$
+    SELECT current_setting('videoforge.account_id',true)::uuid $$;`);
+  await db.exec(source.slice(source.indexOf("CREATE FUNCTION"),source.indexOf("REVOKE ALL ON FUNCTION")));
+  await db.exec(`SELECT set_config('videoforge.account_id','11111111-1111-4111-8111-111111111111',false)`);
+}
+
 type Row = Record<string, unknown>;
 const accountId = "11111111-1111-4111-8111-111111111111", workspaceId = "22222222-2222-4222-8222-222222222222";
 const attemptId = "33333333-3333-4333-8333-333333333333", reservationId = "44444444-4444-4444-8444-444444444444";
@@ -27,6 +36,23 @@ const config = { publicOrigin: "https://videoforge.example", neon: { databaseUrl
 let attempt: Row, reservation: Row, upload: Row, measuredJob:Row, tokenHash: string, raceCancel = false, rotateBeforeStop = false, generationActive = false, cpuSettled = true, noReservation = false, qualificationAllowed=true, expiresBeforePost=false, placementExpired=false;
 let resultBytes:Uint8Array, templateBytes:Uint8Array, ordinaryRuntime=true;
 const future = () => new Date(Date.now() + 3_600_000).toISOString();
+
+it("keeps private budget facts behind the exact reservation authority projection",async()=>{
+  const {readFile}=await import("node:fs/promises");
+  const controller=await readFile(new URL("./runpod-media.ts",import.meta.url),"utf8");
+  expect(controller).not.toMatch(/\b(?:FROM|JOIN|UPDATE|INSERT INTO)\s+(?:public\.)?cloud_media_budget_(?:authorities|debits)\b/iu);
+  expect(CLOUD_CREATE_RENTAL_SQL).toContain("videoforge_cloud_media_reservation_authority($1,$4,$5)");
+  expect(CLOUD_PRE_CREATE_ALLOWED_SQL).toContain("videoforge_cloud_media_reservation_authority(r.id,r.leased_attempt_id,r.fence_id)");
+  expect(CLOUD_PLACEMENT_READY_SQL).toContain("videoforge_cloud_media_reservation_authority($1,$2,$3)");
+});
+
+it("keeps an initial controller permission failure provider-inert and observable",async()=>{
+  fixture.query.mockRejectedValueOnce(Object.assign(new Error("private connection detail"),{code:"42501"}));
+  expect(await runCloudMediaObservation(environment,config,scope)).toEqual({state:"RECONCILING",delaySeconds:30,
+    observationError:{phase:"CONTROLLER_ACCESS",code:"SQLSTATE_42501"}});
+  expect(fixture.transport).not.toHaveBeenCalled();
+  expect(fixture.query.mock.calls.some(([sql])=>/INSERT|UPDATE|DELETE/u.test(String(sql)))).toBe(false);
+});
 
 it.each(["valid","missing-commit","corrupt","wrong-revision"])("sizes render scratch only from an exact committed manifest: %s",async mode=>{
   const doc=structuredClone(renderManifestFixture),bytes=new TextEncoder().encode(JSON.stringify(doc)),checksum=await sha256(JSON.stringify(doc));
@@ -965,6 +991,9 @@ it("executes the exact qualification artifact query with PostgreSQL scope, linea
         budget_authority_id uuid,state text,cleanup_verified_at timestamptz,CHECK((state='CLEAN')=(cleanup_verified_at IS NOT NULL)));
       CREATE TABLE cloud_media_budget_authorities(id uuid PRIMARY KEY,allowed_account_ids uuid[],allowed_project_ids uuid[]);
       CREATE TABLE video_runtime_events(kind text); CREATE TABLE artifact_approvals(state text);`);
+    await db.exec(`ALTER TABLE cloud_media_reservations ADD fence_id uuid DEFAULT '77777777-7777-4777-8777-777777777777';
+      ALTER TABLE cloud_media_budget_authorities ADD enabled boolean DEFAULT true,ADD expires_at timestamptz DEFAULT now()+interval '1 hour';`);
+    await installReservationAuthority(db);
     const substitutions:ReadonlyArray<readonly[string,string]>=[
       ["accepted","SELECT 1"],
       ["reservation-project",`UPDATE cloud_media_reservations SET project_id='${other}'`],
@@ -1047,12 +1076,21 @@ it("bounds real PostgreSQL create and placement deadlines by the exact authority
       CREATE TABLE cloud_media_budget_authorities(id uuid PRIMARY KEY,enabled boolean,expires_at timestamptz);
       CREATE TABLE cloud_media_reservations(id uuid PRIMARY KEY,leased_attempt_id uuid,fence_id uuid,budget_authority_id uuid,account_id uuid,workspace_id uuid,state text,gpu text,
         expected_hourly_usd numeric,rental_seconds integer,deadline_at timestamptz,placement_deadline_at timestamptz,launch_outcome text,updated_at timestamptz,verified_at timestamptz,last_heartbeat_at timestamptz);`);
+    await db.exec(`ALTER TABLE hosted_cpu_job_attempts ADD project_id uuid DEFAULT '55555555-5555-4555-8555-555555555555',
+      ADD project_revision_id uuid DEFAULT '66666666-6666-4666-8666-666666666666',ADD execution_backend text DEFAULT 'RUNPOD_POD';
+      ALTER TABLE cloud_media_reservations ADD project_id uuid DEFAULT '55555555-5555-4555-8555-555555555555',
+        ADD project_revision_id uuid DEFAULT '66666666-6666-4666-8666-666666666666';
+      ALTER TABLE cloud_media_budget_authorities ADD allowed_account_ids uuid[] DEFAULT ARRAY['11111111-1111-4111-8111-111111111111'::uuid],
+        ADD allowed_project_ids uuid[] DEFAULT ARRAY['55555555-5555-4555-8555-555555555555'::uuid];
+      CREATE TABLE cloud_media_jobs(attempt_id uuid,account_id uuid,workspace_id uuid,reservation_id uuid);`);
+    await installReservationAuthority(db);
     for(const mode of ["authority-first","cpu-first","rental-first","authority-expired","authority-disabled"]){
-      await db.exec("TRUNCATE hosted_cpu_job_attempts,cloud_media_budget_authorities,cloud_media_reservations");
+      await db.exec("TRUNCATE hosted_cpu_job_attempts,cloud_media_budget_authorities,cloud_media_reservations,cloud_media_jobs");
       const now=Date.now(),expiry=new Date(now+(mode==="authority-expired"?-1000:mode==="authority-first"?60_000:3600_000)).toISOString(),cpuDeadline=new Date(now+(mode==="cpu-first"?30_000:3600_000)).toISOString();
       await db.query("INSERT INTO hosted_cpu_job_attempts VALUES($1,$2,'RUNNING',$3,$4)",[attemptId,cpuDeadline,accountId,workspaceId]);
       await db.query("INSERT INTO cloud_media_budget_authorities VALUES($1,$2,$3)",[authority,mode!=="authority-disabled",expiry]);
       await db.query("INSERT INTO cloud_media_reservations(id,leased_attempt_id,fence_id,budget_authority_id,state,rental_seconds,placement_deadline_at,account_id,workspace_id) VALUES($1,$2,$3,$4,'WAITING_CAPACITY',$5,now()+interval '3 minutes',$6,$7)",[reservationId,attemptId,reservation.fence_id,authority,mode==="rental-first"?10:900,accountId,workspaceId]);
+      await db.query("INSERT INTO cloud_media_jobs VALUES($1,$2,$3,$4)",[attemptId,accountId,workspaceId,reservationId]);
       for(const stale of [[reservationId,"NVIDIA A40",.6,reservationId,reservation.fence_id],[reservationId,"NVIDIA A40",.6,attemptId,reservationId]])
         expect((await db.query(CLOUD_CREATE_RENTAL_SQL,stale)).rows,mode).toHaveLength(0);
       const created=await db.query<{deadline_at:Date;state:string}>(CLOUD_CREATE_RENTAL_SQL,[reservationId,"NVIDIA A40",.6,attemptId,reservation.fence_id]);
