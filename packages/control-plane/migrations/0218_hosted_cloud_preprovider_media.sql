@@ -8,7 +8,7 @@
 -- CLEAN, preserving accepted ASR/media without fabricating ordinary runtime/provider acceptance.
 -- Additive exact-preimage patch. Existing Local and runtime-present settlement remain unchanged.
 DO $migration$
-DECLARE definition text; failure_definition text; old_guard text; new_guard text; old_failure text; new_failure text; old_prompt_proof text; old_runtime_proof text; ready_render text; render_definition text; old_render_failure text; new_render_failure text;
+DECLARE definition text; failure_definition text; old_guard text; new_guard text; old_failure text; new_failure text; old_prompt_proof text; old_runtime_proof text; ready_render text; render_definition text; old_render_failure text; new_render_failure text; cancel_definition text; old_cancel_guard text; new_cancel_guard text; old_cancel_postcondition text; new_cancel_postcondition text; cancel_project_lock_preimage text;
 BEGIN
  render_definition:=$function$CREATE FUNCTION public.videoforge_cloud_render_inputs_valid(target_attempt uuid)
 RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public,pg_catalog AS $$
@@ -85,6 +85,7 @@ BEGIN
 END; $$;$function$;
  SELECT pg_get_functiondef('public.videoforge_admit_hosted_v209_generation_after_reclaim(uuid,uuid,uuid,uuid)'::regprocedure) INTO definition;
  SELECT pg_get_functiondef('public.videoforge_settle_cloud_media_cpu_failure(uuid)'::regprocedure) INTO failure_definition;
+ SELECT pg_get_functiondef('public.videoforge_cancel_hosted_project_predispatch(uuid,uuid,uuid)'::regprocedure) INTO cancel_definition;
  old_guard:=$old$    AND NOT EXISTS(SELECT 1 FROM public.hosted_canonical_timing_bridges bridge
       WHERE bridge.account_id=supplied_account_id AND bridge.workspace_id=supplied_workspace_id
         AND bridge.project_id=supplied_project_id AND bridge.project_revision_id=request.project_revision_id)
@@ -221,11 +222,90 @@ $old$;
       RAISE EXCEPTION 'cloud pre-provider span failure lineage invalid' USING ERRCODE='23514'; END IF;
     END IF;
 $new$;
+ cancel_project_lock_preimage:=$old$  SELECT count(*) INTO request_count
+$old$;
+ old_cancel_guard:=$old$  IF target_runtime.id IS NULL OR target_runtime.stage IN ('COMPLETE','FAILED','CANCELED') THEN
+    RAISE EXCEPTION 'hosted project runtime cancellation unavailable' USING ERRCODE='55000';
+  END IF;
+$old$;
+ new_cancel_guard:=$new$  IF target_runtime.id IS NULL THEN
+    -- No-runtime Cloud media may have completed before ordinary provider work starts.
+    -- Lock exact media ownership before releasing its VIDEO lease; preserve all accepted CPU outputs.
+    PERFORM 1 FROM public.hosted_cpu_job_attempts cpu WHERE cpu.account_id=supplied_account_id
+      AND cpu.workspace_id=supplied_workspace_id AND cpu.project_id=supplied_project_id ORDER BY cpu.id FOR UPDATE;
+    PERFORM 1 FROM public.cloud_media_reservations reservation WHERE reservation.account_id=supplied_account_id
+      AND reservation.workspace_id=supplied_workspace_id AND reservation.project_id=supplied_project_id ORDER BY reservation.id FOR UPDATE;
+    IF NOT EXISTS(SELECT 1 FROM public.project_revisions revision JOIN public.projects project
+       ON project.account_id=revision.account_id AND project.workspace_id=revision.workspace_id AND project.id=revision.project_id
+       WHERE revision.account_id=supplied_account_id AND revision.workspace_id=supplied_workspace_id
+        AND revision.project_id=supplied_project_id AND revision.id=target_request.project_revision_id
+        AND revision.status='LOCKED' AND revision.media_execution_backend='RUNPOD_POD'
+        AND project.status='ACTIVE' AND project.generation_provider='KIE_FAL'
+        AND project.owner_user_id=target_request.created_by_user_id AND revision.id=(
+          SELECT latest.id FROM public.project_revisions latest WHERE latest.account_id=supplied_account_id
+           AND latest.workspace_id=supplied_workspace_id AND latest.project_id=supplied_project_id
+           ORDER BY latest.revision_number DESC,latest.id DESC LIMIT 1))
+      OR attempt_count<>0 OR materialization_count<>0
+      OR NOT EXISTS(SELECT 1 FROM public.hosted_cpu_job_attempts cpu WHERE cpu.account_id=supplied_account_id
+       AND cpu.workspace_id=supplied_workspace_id AND cpu.project_id=supplied_project_id
+       AND cpu.project_revision_id=target_request.project_revision_id AND cpu.execution_backend='RUNPOD_POD'
+       AND cpu.state IN ('SUCCEEDED','FAILED','CANCELLED','EXPIRED') AND cpu.terminal_at IS NOT NULL)
+      OR EXISTS(SELECT 1 FROM public.hosted_cpu_job_attempts cpu WHERE cpu.account_id=supplied_account_id
+       AND cpu.workspace_id=supplied_workspace_id AND cpu.project_id=supplied_project_id
+       AND cpu.project_revision_id=target_request.project_revision_id
+       AND (cpu.execution_backend<>'RUNPOD_POD' OR cpu.state NOT IN ('SUCCEEDED','FAILED','CANCELLED','EXPIRED') OR cpu.terminal_at IS NULL))
+      OR EXISTS(SELECT 1 FROM public.cloud_media_reservations reservation WHERE reservation.account_id=supplied_account_id
+       AND reservation.workspace_id=supplied_workspace_id AND reservation.project_id=supplied_project_id
+       AND (reservation.state<>'CLEAN' OR reservation.cleanup_verified_at IS NULL))
+      OR EXISTS(SELECT 1 FROM public.cloud_media_jobs job JOIN public.hosted_cpu_job_attempts cpu ON cpu.id=job.attempt_id
+       WHERE cpu.account_id=supplied_account_id AND cpu.workspace_id=supplied_workspace_id AND cpu.project_id=supplied_project_id
+        AND cpu.project_revision_id=target_request.project_revision_id AND NOT EXISTS(
+         SELECT 1 FROM public.cloud_media_reservations reservation JOIN public.hosted_cpu_job_attempts leased
+          ON leased.id=reservation.leased_attempt_id AND leased.account_id=reservation.account_id AND leased.workspace_id=reservation.workspace_id
+          AND leased.project_id=reservation.project_id AND leased.project_revision_id=reservation.project_revision_id
+         WHERE reservation.id=job.reservation_id AND job.account_id=supplied_account_id AND job.workspace_id=supplied_workspace_id
+          AND reservation.account_id=supplied_account_id AND reservation.workspace_id=supplied_workspace_id
+          AND reservation.project_id=supplied_project_id AND reservation.project_revision_id=target_request.project_revision_id
+          AND leased.execution_backend='RUNPOD_POD' AND leased.state IN ('SUCCEEDED','FAILED','CANCELLED','EXPIRED')
+          AND leased.terminal_at IS NOT NULL AND reservation.state='CLEAN' AND reservation.cleanup_verified_at IS NOT NULL))
+      OR EXISTS(SELECT 1 FROM public.cloud_media_reservations reservation WHERE reservation.account_id=supplied_account_id
+       AND reservation.workspace_id=supplied_workspace_id AND reservation.project_id=supplied_project_id
+       AND reservation.project_revision_id=target_request.project_revision_id AND NOT EXISTS(
+        SELECT 1 FROM public.cloud_media_jobs job WHERE job.reservation_id=reservation.id
+         AND job.attempt_id=reservation.leased_attempt_id AND job.account_id=supplied_account_id AND job.workspace_id=supplied_workspace_id))
+      OR EXISTS(SELECT 1 FROM public.hosted_api_generation_jobs job WHERE job.account_id=supplied_account_id
+       AND job.workspace_id=supplied_workspace_id AND job.project_revision_id=target_request.project_revision_id)
+      OR EXISTS(SELECT 1 FROM public.video_runtime_states runtime WHERE runtime.account_id=supplied_account_id
+       AND runtime.workspace_id=supplied_workspace_id AND runtime.project_revision_id=target_request.project_revision_id)
+      OR EXISTS(SELECT 1 FROM public.video_runtime_accepted_units unit WHERE unit.account_id=supplied_account_id
+       AND unit.workspace_id=supplied_workspace_id AND unit.project_revision_id=target_request.project_revision_id)
+      OR EXISTS(SELECT 1 FROM public.media_worker_leases lease JOIN public.hosted_cpu_job_attempts cpu ON cpu.id=lease.attempt_id
+       WHERE cpu.account_id=supplied_account_id AND cpu.workspace_id=supplied_workspace_id AND cpu.project_id=supplied_project_id
+        AND lease.state IN ('CLAIMED','RUNNING','COMPLETING')) THEN
+      RAISE EXCEPTION 'hosted Cloud pre-provider cancellation lineage unavailable' USING ERRCODE='55000';
+    END IF;
+  ELSIF target_runtime.stage IN ('COMPLETE','FAILED','CANCELED') THEN
+    RAISE EXCEPTION 'hosted project runtime cancellation unavailable' USING ERRCODE='55000';
+  END IF;
+$new$;
+ old_cancel_postcondition:=$old$     OR NOT EXISTS (SELECT 1 FROM public.video_runtime_states runtime
+      WHERE runtime.id=target_runtime.id AND runtime.stage='CANCELED'
+        AND runtime.terminal_reason=CASE WHEN target_runtime.admitted_at IS NULL
+          THEN 'SYSTEM_CANCELLED' ELSE 'OWNER_CANCELLED' END) THEN
+$old$;
+ new_cancel_postcondition:=$new$     OR (target_runtime.id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.video_runtime_states runtime
+      WHERE runtime.id=target_runtime.id AND runtime.stage='CANCELED'
+        AND runtime.terminal_reason=CASE WHEN target_runtime.admitted_at IS NULL
+          THEN 'SYSTEM_CANCELLED' ELSE 'OWNER_CANCELLED' END)) THEN
+$new$;
  IF (length(definition)-length(replace(definition,old_guard,'')))/length(old_guard)<>3
    OR (length(definition)-length(replace(definition,'PERFORM public.videoforge_prepare_hosted_v209_runtime(','')))
     /length('PERFORM public.videoforge_prepare_hosted_v209_runtime(')<>3
    OR (length(definition)-length(replace(definition,old_prompt_proof,'')))/length(old_prompt_proof)<>1
    OR (length(definition)-length(replace(definition,old_runtime_proof,'')))/length(old_runtime_proof)<>3
+   OR (length(cancel_definition)-length(replace(cancel_definition,cancel_project_lock_preimage,'')))/length(cancel_project_lock_preimage)<>1
+   OR (length(cancel_definition)-length(replace(cancel_definition,old_cancel_guard,'')))/length(old_cancel_guard)<>1
+   OR (length(cancel_definition)-length(replace(cancel_definition,old_cancel_postcondition,'')))/length(old_cancel_postcondition)<>1
    OR (length(failure_definition)-length(replace(failure_definition,old_failure,'')))/length(old_failure)<>1
    OR (length(failure_definition)-length(replace(failure_definition,old_render_failure,'')))/length(old_render_failure)<>1
    OR (length(failure_definition)-length(replace(failure_definition,$kind$a.kind NOT IN ('ASR','SPAN_AUDIO')$kind$,'')))/length($kind$a.kind NOT IN ('ASR','SPAN_AUDIO')$kind$)<>1
@@ -244,9 +324,17 @@ $new$;
   'finished_at=now_at,version=task.version+1,updated_at=now_at',
   'finished_at=now_at,cancel_requested_at=CASE WHEN canceled THEN COALESCE(task.cancel_requested_at,now_at)
         ELSE task.cancel_requested_at END,version=task.version+1,updated_at=now_at');
+ cancel_definition:=replace(cancel_definition,cancel_project_lock_preimage,$lock$  -- Share the normal CPU submission lock before any request/CPU/cleanup predicates.
+  PERFORM 1 FROM public.projects project WHERE project.account_id=supplied_account_id
+    AND project.workspace_id=supplied_workspace_id AND project.id=supplied_project_id
+    AND project.status='ACTIVE' FOR UPDATE;
+$lock$||cancel_project_lock_preimage);
+ cancel_definition:=replace(cancel_definition,old_cancel_guard,new_cancel_guard);
+ cancel_definition:=replace(cancel_definition,old_cancel_postcondition,new_cancel_postcondition);
  EXECUTE render_definition;
  REVOKE ALL ON FUNCTION public.videoforge_cloud_render_inputs_valid(uuid) FROM PUBLIC;
  EXECUTE definition;
  EXECUTE failure_definition;
+ EXECUTE cancel_definition;
 END;
 $migration$;

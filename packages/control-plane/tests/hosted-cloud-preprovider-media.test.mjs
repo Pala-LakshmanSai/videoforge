@@ -13,14 +13,14 @@ const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const hash = 'sha256:' + 'a'.repeat(64);
 const project = id(218300), revision = id(218301), asr = id(218302), timeline = id(218303), transcript = id(218304);
 const sqlFn = (source, start, end) => source.slice(source.indexOf(start), source.indexOf(end));
-const settlePatch = migration.slice(migration.indexOf(' old_render_failure:='), migration.indexOf(' definition:=replace('));
+const settlePatch = migration.slice(migration.indexOf(' old_render_failure:='), migration.indexOf(' cancel_project_lock_preimage:='));
 const failureMigration = `DO $migration$ DECLARE failure_definition text;old_failure text;new_failure text;old_render_failure text;new_render_failure text; BEGIN
  SELECT pg_get_functiondef('public.videoforge_settle_cloud_media_cpu_failure(uuid)'::regprocedure) INTO failure_definition;
- ${settlePatch.slice(0, settlePatch.indexOf(' IF (length(definition)'))}
+ ${settlePatch}
  IF (length(failure_definition)-length(replace(failure_definition,old_failure,'')))/length(old_failure)<>1 THEN
  RAISE EXCEPTION 'cloud pre-provider media reviewed preimage mismatch'; END IF;
  failure_definition:=replace(failure_definition,old_failure,new_failure);
- ${migration.slice(migration.indexOf(' failure_definition:=replace(failure_definition,old_render_failure'),migration.indexOf(' EXECUTE render_definition;'))}
+ ${migration.slice(migration.indexOf(' failure_definition:=replace(failure_definition,old_render_failure'),migration.indexOf(' cancel_definition:=replace('))}
  EXECUTE failure_definition; END; $migration$;`;
 
 async function fullFixture() {
@@ -106,6 +106,34 @@ async function renderFixture(db) {
  for(let n=0;n<3;n++)await db.query(`INSERT INTO media_worker_input_objects(id,account_id,workspace_id,attempt_id,uri,object_key,content_type,content_length,checksum_sha256)
  SELECT $1,$2,$3,$4,$5,object_key,content_type,content_length,checksum_sha256 FROM artifact_receipts WHERE id=$6`,[id(218430+n),IDS.accountA,IDS.workspaceA,renderAttempt,refs[n].artifact_uri,id(218420+n)]);
 }
+async function cleanReservations(db,attempts){
+ await db.query(`INSERT INTO cloud_media_budget_authorities(id,allowed_account_ids,allowed_project_ids,total_cap_usd,max_reservation_usd,
+  max_hourly_usd,max_rental_seconds,image,source_sha256,runtime_sha256,expires_at)
+  VALUES($1,ARRAY[$2]::uuid[],ARRAY[$3]::uuid[],3,.2,.8,900,'fixture-image@'||$4,$4,$4,now()+interval '1 hour')`,[id(218460),IDS.accountA,project,hash]);
+ for(const [n,attempt] of attempts.entries()){
+  await db.query(`INSERT INTO cloud_media_reservations(id,account_id,workspace_id,project_id,project_revision_id,attempt_id,leased_attempt_id,
+   fence_id,capability_sha256,pod_name,image,source_sha256,runtime_sha256,tooling,disk_gb,max_hourly_usd,budget_usd,rental_seconds,state,
+   placement_deadline_at,cleanup_verified_at,budget_authority_id)
+   VALUES($1,$2,$3,$4,$5,$6,$6,$7,$8,$9,'fixture-image@'||$8,$8,$8,'{}',100,.8,.2,900,'CLEAN',now()+interval '1 hour',now(),$10)`,
+   [id(218470+n),IDS.accountA,IDS.workspaceA,project,revision,attempt,id(218480+n),hash,'videoforge-media-'+id(218470+n),id(218460)]);
+  await db.query('INSERT INTO cloud_media_jobs(attempt_id,account_id,workspace_id,reservation_id) VALUES($1,$2,$3,$4)',[attempt,IDS.accountA,IDS.workspaceA,id(218470+n)]);
+ }
+}
+const cancelProject=async (db,account=IDS.accountA,workspace=IDS.workspaceA,target=project)=>(await db.query('SELECT * FROM videoforge_cancel_hosted_project_predispatch($1,$2,$3)',[account,workspace,target])).rows[0];
+async function successfulMediaFixture(db){
+ await renderFixture(db);await db.query("UPDATE hosted_cpu_job_attempts SET state='SUCCEEDED' WHERE id=$1",[asr]);
+ const active=await admit(db);
+ await db.query(`UPDATE hosted_cpu_job_attempts SET state='SUCCEEDED',submitted_at=now(),terminal_at=now(),result_receipt_sha256=$2 WHERE id=$1`,[renderAttempt,hash]);
+ const span=id(218461),prefix=`tenant/${IDS.accountA}/workspace/${IDS.workspaceA}/project/${project}/revision/${revision}/lane/input/job/${span}/artifact`;
+ await db.query(`INSERT INTO hosted_cpu_job_attempts SELECT (jsonb_populate_record(NULL::hosted_cpu_job_attempts,to_jsonb(cpu)||
+  jsonb_build_object('id',$1::text,'kind','SPAN_AUDIO','job_spec_object_key',$2::text,'result_object_key',$3::text))).*
+  FROM hosted_cpu_job_attempts cpu WHERE cpu.id=$4`,[span,prefix+'/job-spec',prefix+'/result-document',asr]);
+ await cleanReservations(db,[asr,span,renderAttempt]);
+ await db.query(`INSERT INTO generation_tasks(id,account_id,workspace_id,owner_type,owner_id,project_revision_id,task_key,lane,state,finished_at)
+  VALUES($1,$2,$3,'PROJECT_REVISION',$4,$4,'image:accepted-fixture','IMAGE','COMPLETE',now()),
+        ($5,$2,$3,'PROJECT_REVISION',$4,$4,'avatar:provider-pending','AVATAR','BLOCKED',NULL)`,[id(218490),IDS.accountA,IDS.workspaceA,revision,id(218491)]);
+ return active;
+}
 const renderProof=async db=>(await db.query('SELECT videoforge_cloud_render_inputs_valid($1) valid',[renderAttempt])).rows[0].valid;
 async function mutate(db,table,sql){await db.exec(`ALTER TABLE ${table} DISABLE TRIGGER ALL`);await db.exec(sql);await db.exec(`ALTER TABLE ${table} ENABLE TRIGGER ALL`);}
 
@@ -120,6 +148,9 @@ test('218 real prior-schema admission defers only pre-provider Cloud media and p
   assert.equal((after.match(/PERFORM public.videoforge_prepare_hosted_v209_runtime/g)||[]).length,3);
   assert.equal((after.match(/OR \(NOT EXISTS \(/g)||[]).length,3);
   assert.equal(before.includes('AND NOT EXISTS(SELECT 1 FROM public.hosted_canonical_timing_bridges bridge'),true);
+  const cancelDefinition=(await db.query("SELECT pg_get_functiondef('videoforge_cancel_hosted_project_predispatch(uuid,uuid,uuid)'::regprocedure) definition")).rows[0].definition;
+  assert.equal(cancelDefinition.indexOf("AND project.status='ACTIVE' FOR UPDATE;")<cancelDefinition.indexOf('SELECT count(*) INTO active_cpu_count'),true);
+
   assert.equal((await db.query("SELECT has_function_privilege('public','videoforge_admit_hosted_v209_generation(uuid,uuid,uuid,uuid)','EXECUTE') allowed")).rows[0].allowed,false);
   assert.equal((await db.query("SELECT has_function_privilege('public','videoforge_settle_cloud_media_cpu_failure(uuid)','EXECUTE') allowed")).rows[0].allowed,false);
   assert.equal((await db.query("SELECT has_function_privilege('videoforge_v209_runtime_dc9612d6','videoforge_settle_cloud_media_cpu_failure(uuid)','EXECUTE') allowed")).rows[0].allowed,true);
@@ -153,6 +184,8 @@ test('218 real prior-schema admission defers only pre-provider Cloud media and p
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'fixture narration','{}',$10,$11,$12,0,3000,0,1)`,[task.timeline_segment_id,IDS.accountA,IDS.workspaceA,revision,i,i*90,(i+1)*90,task.lane==='IMAGE'?'IMAGE_FULL':'AVATAR_FULL',task.lane==='IMAGE'?'ENVIRONMENTAL_WIDE':null,hash,timeline,'segment:'+i]);
    }
    await db.exec('ALTER TABLE timeline_segments ENABLE TRIGGER ALL');assert.equal((await admit(db)).state,'ACTIVE');assert.equal(await count(db,'video_runtime_states'),1);assert.equal(await count(db,'video_runtime_lane_states'),2);assert.equal(await count(db,'hosted_api_generation_jobs'),0);
+   assert.equal((await cancelProject(db)).state,'CANCELLED');assert.equal((await db.query('SELECT stage FROM video_runtime_states')).rows[0].stage,'CANCELED');assert.equal(await count(db,'provider_workload_leases',"WHERE state='ACTIVE'"),0);
+
   }));
   for(const [label,change] of [
    ['stale ASR deadline',`UPDATE hosted_cpu_job_attempts SET created_at=now()-interval '2 hours',deadline_at=now()-interval '1 hour' WHERE id='${asr}'`],
@@ -224,6 +257,37 @@ test('218 real prior-schema admission defers only pre-provider Cloud media and p
    assert.equal((await db.query('SELECT videoforge_settle_cloud_media_cpu_failure($1) settled',[renderAttempt])).rows[0].settled,true);
    assert.equal((await db.query('SELECT state FROM generation_requests WHERE id=$1',[active.generationRequestId])).rows[0].state,state);
    assert.equal(await count(db,'provider_workload_leases',"WHERE state='ACTIVE'"),0);assert.equal(await count(db,'artifact_receipts','WHERE deleted_at IS NULL'),3);assert.equal(await count(db,'video_runtime_states'),0);
+  }));
+  await t.test('normal owner Cancel releases no-runtime successful ASR/SPAN/SHORT and retains accepted CPU artifacts',()=>isolated(db,async()=>{
+   const active=await successfulMediaFixture(db),receipts=(await db.query('SELECT id,checksum_sha256,deleted_at FROM artifact_receipts ORDER BY id')).rows;
+   const beforeCpu=(await db.query('SELECT id,state,result_receipt_sha256 FROM hosted_cpu_job_attempts ORDER BY id')).rows;
+   const result=await cancelProject(db);assert.equal(result.state,'CANCELLED');assert.equal(result.generation_request_id,active.generationRequestId);
+   assert.equal(await count(db,'provider_workload_leases',"WHERE state='ACTIVE'"),0);assert.equal(await count(db,'video_runtime_states'),0);assert.equal(await count(db,'hosted_api_generation_jobs'),0);
+   assert.deepEqual((await db.query('SELECT id,state,result_receipt_sha256 FROM hosted_cpu_job_attempts ORDER BY id')).rows,beforeCpu);
+   assert.deepEqual((await db.query('SELECT id,checksum_sha256,deleted_at FROM artifact_receipts ORDER BY id')).rows,receipts);
+   assert.equal((await db.query('SELECT state FROM generation_tasks WHERE id=$1',[id(218490)])).rows[0].state,'COMPLETE');
+   assert.equal((await db.query('SELECT state,cancel_requested_at IS NOT NULL cancelled,finished_at IS NOT NULL finished FROM generation_tasks WHERE id=$1',[id(218491)])).rows[0].state,'CANCELLED');
+   assert.equal(await count(db,'generation_queue_audits',"WHERE operation='TERMINAL_RELEASE'"),1);
+   await db.exec('SAVEPOINT repeated_cancel');await assert.rejects(()=>cancelProject(db),/active generation unavailable/);await db.exec('ROLLBACK TO SAVEPOINT repeated_cancel');assert.equal(await count(db,'generation_queue_audits',"WHERE operation='TERMINAL_RELEASE'"),1);
+  }));
+  for(const [label,table,change,error] of [
+   ['active Cloud CPU','hosted_cpu_job_attempts',`UPDATE hosted_cpu_job_attempts SET state='RUNNING',terminal_at=NULL WHERE id='${renderAttempt}'`,/CPU cancellation required/],
+   ['ambiguous cleanup','cloud_media_reservations',`UPDATE cloud_media_reservations SET state='STOPPING',cleanup_verified_at=NULL WHERE id='${id(218470)}'`,/pre-provider cancellation lineage unavailable/],
+   ['replaced reservation lease','cloud_media_reservations',`UPDATE cloud_media_reservations SET leased_attempt_id='${id(218499)}' WHERE id='${id(218470)}'`,/pre-provider cancellation lineage unavailable/],
+   ['missing reservation membership','cloud_media_jobs',`DELETE FROM cloud_media_jobs WHERE attempt_id='${asr}'`,/pre-provider cancellation lineage unavailable/],
+   ['foreign membership','cloud_media_jobs',`UPDATE cloud_media_jobs SET account_id='${IDS.accountB}' WHERE attempt_id='${asr}'`,/pre-provider cancellation lineage unavailable/],
+   ['Local revision','project_revisions',`UPDATE project_revisions SET media_execution_backend='PERSONAL_WORKER' WHERE id='${revision}'`,/pre-provider cancellation lineage unavailable/],
+   ['missing VIDEO lease','provider_workload_leases',"UPDATE provider_workload_leases SET state='RELEASED',released_at=now(),release_reason='fixture'",/active lease unavailable/],
+   ['native claimed lease','media_worker_leases',`INSERT INTO media_worker_leases(id,account_id,workspace_id,attempt_id,device_id,lease_token_sha256,state,claimed_at,last_heartbeat_at,lease_expires_at)
+    VALUES('${id(218499)}','${IDS.accountA}','${IDS.workspaceA}','${asr}','${id(218498)}','${hash}','CLAIMED',now(),now(),now()+interval '1 hour')`,/pre-provider cancellation lineage unavailable/],
+  ])await t.test('no-runtime project Cancel rejects '+label+' without releasing admission',()=>isolated(db,async()=>{
+   const active=await successfulMediaFixture(db);await mutate(db,table,change);await rejectedWithoutAdmission(db,()=>cancelProject(db),error);
+   assert.equal((await db.query('SELECT state FROM generation_requests WHERE id=$1',[active.generationRequestId])).rows[0].state,'ACTIVE');assert.equal(await count(db,'generation_queue_audits',"WHERE operation='TERMINAL_RELEASE'"),0);
+  }));
+  await t.test('no-runtime project Cancel rejects stale replaced revision and foreign tenant',()=>isolated(db,async()=>{
+   await successfulMediaFixture(db);await rejectedWithoutAdmission(db,()=>cancelProject(db,IDS.accountB,IDS.workspaceB),/tenant mismatch/);
+   await db.exec('ALTER TABLE project_revisions DISABLE TRIGGER ALL');await db.query(`INSERT INTO project_revisions SELECT (jsonb_populate_record(NULL::project_revisions,to_jsonb(r)||jsonb_build_object('id',$1::text,'revision_number',2))).* FROM project_revisions r WHERE id=$2`,[id(218499),revision]);await db.exec('ALTER TABLE project_revisions ENABLE TRIGGER ALL');
+   await rejectedWithoutAdmission(db,()=>cancelProject(db),/pre-provider cancellation lineage unavailable/);
   }));
   await t.test('failure preimage mismatch cannot partially change admission',()=>isolated(db,async()=>{
    await db.exec(before);await db.exec('SAVEPOINT preimage');await assert.rejects(db.exec(migration),/reviewed preimage mismatch/);await db.exec('ROLLBACK TO SAVEPOINT preimage');assert.equal((await db.query("SELECT pg_get_functiondef('videoforge_admit_hosted_v209_generation_after_reclaim(uuid,uuid,uuid,uuid)'::regprocedure) definition")).rows[0].definition,before);
