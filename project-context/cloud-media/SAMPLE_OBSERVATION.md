@@ -43,9 +43,9 @@ stale. All existing values/resources and23 client assets were preserved.
 
 Nine prompts were accepted in55.901s with reported costUSD0.041855. All three Cloud
 spans reused one RTXPRO4500BlackwellServer Pod atUSD0.733888889/hour including100GB.
-All9 Kie images and3 Fal avatar clips were accepted once; the span Pod is independently
-CLEAN while the APIs run. Final assembly is searching bounded qualifying capacity;
-no render Pod had launched at14:38UTC.
+All9 Kie images and3 Fal avatar clips were accepted once; the span Pod was independently
+CLEAN while the APIs ran. At14:38UTC final assembly was searching bounded qualifying
+capacity and no render Pod had launched. Subsequent final acceptance is recorded below.
 
 ## Production fixes and fresh final acceptance
 
@@ -64,6 +64,8 @@ Workflow resources remain, as do Local0.1.44/Kie/Fal/auth/private R2/query redac
 historical disabled GPU lanes. The same canonical continuation adopted the new
 version; no new continuation instance or runtime/image publication.
 
+Qualified Linux image remains `ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:a2ff1f16e4d8990e611f0eb9380c96bcd936ddffdc49be3332ef140888566811`. Execution bundle2d5f4f16 and Linux runtimed313eee2 are pinned; see `QUALIFIED_RUNTIME.json` for exact tool/model hashes and offline CI proof.
+
 An explicit Computer Use Retry created a fresh render attempt from the same accepted
 9 images,3 avatar clips,9 prompts and immutable manifest003d2fcc. No regeneration.
 RTXPRO4500BlackwellServer placement verified atUSD0.733888889/hour including100GB disk.
@@ -80,8 +82,25 @@ no quantified editorial-quality improvement is claimed.
 
 Regular signed-in Chrome played naturally0→44.6s with ended=true/error=null after
 complete inventory confirmed compute off; saved approval succeeds and survives reload.
-Native Download was tried once and Chrome returned Failed–Blocked. No policy bypass.
-Exact private object download is verified separately; native download remains a gate.
+Earlier native attempts showed Failed–Blocked/Blocked by your organization. Follow-up
+through Computer Use completed the normal application download and provenance download.
+The MP4 is6,475,224B and matches the accepted whole SHA; its downloaded copy naturally
+played0→44.6s in regular Chrome. No application change, browser security override or
+managed-policy change was made. The policy page has no Chrome download policies; the
+earlier UI label alone did not establish a managed policy or its precise cause.
+The retained45-minute artifact also downloaded through native Save Video,426,380,093B
+with accepted whole SHA6ad9f3da. Network playback covered0→1584.381s before an observed
+pause. The short fixture capability expired during resume; a new exact-object HTTPS
+GET uses the existing3600s read-port allowance. Native timeline resume at1582.809s
+overlaps1.572s and skips no unseen content. The second session reached2659.585s
+(44:19.585) at1x before Chrome showed Network error/ERR_BLOCKED_BY_CLIENT. The
+3600s capability was still valid; the precise client rule remains unproven. Full
+coverage of the final40.415s and an uninterrupted single-session45-minute run are
+not claimed. Browser automation also rejected local-file navigation. The Computer
+Use skill requires user handoff for browser security barriers: manually open the
+checksum-verified native download in regular Chrome, play44:15→45:00 at1x and leave
+the end visible. No policy override or application change. Production authenticated
+range playback and the fully played44.6s production sample are unchanged.
 
 ## Measured speed, cost and limits
 
@@ -116,7 +135,7 @@ USD0.041855, contextUSD0.000067; UI image/avatar published-rate estimateUSD0.08 
 separate and unverified against provider invoices. No claim of whole-cost savings.
 Final sampled scratch peak53,280,768B on100GB is a filesystem lower bound for this
 short input, not a long-video disk sizing guarantee. Complete paginated provider
-inventory15:55-style local observation (14:55:25UTC) proves zero owned media Pods;
+inventory14:55:25UTC and independent final readback16:19:33UTC prove zero owned media Pods;
 all sample reservations CLEAN and unrelated resources untouched.
 
 Controller126/coordinator13 checks, selected UI3 checks, two PostgreSQL recovery
@@ -127,10 +146,17 @@ phase/disk telemetry and application heartbeat/upload/complete/cleanup responses
 observed. Do not claim detailed FFmpeg CPU profiling or exactly-once provider effects.
 
 Prior retained45-minute technical/storage proof remains valid for its fixture only;
-fresh45-minute provider/editorial acceptance and full45-minute Chrome playthrough are
-not established by this44.6s sample. No matched full-render before/after exists: old
+fresh45-minute provider/editorial acceptance remains unproven. Follow-up native LONG
+download/hash passes and Chrome covers0→44:19.585 across two sessions with overlap;
+its final40.415s/full playthrough remain a client-blocked handoff gate. No matched full-render before/after exists: old
 planning blocked and initial render had no capacity. Correctness and measured control
 latency improved; quantified video-quality or total production speed gain is unproven.
+
+Local follow-up: production Settings shows Mac0.1.44 Online and Windows0.1.44 Offline.
+Installed workers and prior genuine Local proof remain unchanged. This Mac currently
+has less than1GiB free, below the existing2GiB runtime headroom floor; no new native
+media job was started and the guard remains. Standard package-cache pruning found
+zero removable files. Accepted media and worker backups were preserved.
 
 Rollback: disable allocations, fence/drain exact owned attempts and independently
 verify absence before restoring the verified source. Preserve accepted media and all

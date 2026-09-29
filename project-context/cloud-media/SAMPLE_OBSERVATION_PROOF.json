@@ -22,9 +22,12 @@
     "full_decode_pass": true,
     "av_drift_ms": 0,
     "chrome_natural_playthrough_after_compute_off": true,
-    "native_chrome_download": "BLOCKED",
+    "native_chrome_download": "PASS",
     "private_r2_whole_checksum": "PASS",
-    "approval": "delegated review saved"
+    "approval": "delegated review saved",
+    "native_download_whole_sha256": "PASS",
+    "downloaded_copy_natural_chrome_playthrough": true,
+    "browser_security_override": false
   },
   "control_benchmark": {
     "samples_each_after_warmup": 8,
@@ -57,12 +60,78 @@
     "all_sample_reservations": "CLEAN",
     "complete_inventory": true,
     "owned_pods": 0,
-    "unrelated_pods_mutated": 0
+    "unrelated_pods_mutated": 0,
+    "independent_final_readback_utc": "2026-09-29T16:19:33Z",
+    "paid_posts_during_closeout": 0
   },
   "boundaries": [
     "40m39s observed total includes operator diagnosis, two releases and unpaid capacity wait; no normal production timing claim",
     "No matched before/after completed video or quantified visual quality gain",
     "Successful container command logs unavailable; system logs, durable phase telemetry and application requests observed",
-    "Prior retained 45-minute proof does not establish fresh provider editorial quality or full 45-minute Chrome playback"
-  ]
+    "Retained 45-minute technical/storage and native download/whole hash pass; Chrome covers 0 through 44:19.585 across two overlapping sessions. Final 40.415 seconds and uninterrupted single-session playback remain unproven; no fresh full-provider editorial claim."
+  ],
+  "browser_followup_observed_utc": "2026-09-29T16:28:00Z",
+  "retained_long_browser": {
+    "duration_ms": 2700000,
+    "frames": 81000,
+    "bytes": 426380093,
+    "sha256": "6ad9f3da9ff5213d793874eb2b4a2a356068ad3319d4da91bd91f14d94619455",
+    "native_chrome_download": "PASS",
+    "download_whole_sha256": "PASS",
+    "natural_playthrough": "CLIENT_BLOCKED_AWAITING_USER_HANDOFF",
+    "retained_fixture_only": true,
+    "fresh_provider_editorial_acceptance": false,
+    "single_session_uninterrupted": false,
+    "first_played_interval_seconds": [
+      0,
+      1584.380835
+    ],
+    "resumed_from_seconds": 1582.80911,
+    "overlap_seconds": 1.571725,
+    "skipped_unobserved_content": false,
+    "private_get_lifetime_seconds": 3600,
+    "production_range_route_changed": false,
+    "local_file_navigation_automation": "BLOCKED_BY_BROWSER_URL_POLICY",
+    "browser_security_override": false,
+    "second_observed_interval_seconds": [
+      1582.80911,
+      2659.58517
+    ],
+    "covered_seconds": 2659.58517,
+    "remaining_unproven_seconds": 40.41483,
+    "client_error": "ERR_BLOCKED_BY_CLIENT",
+    "client_rule_cause": "UNPROVEN",
+    "capability_still_valid_at_block": true,
+    "user_handoff": "Manually open verified native download; play 44:15 through 45:00 at 1x and leave end visible"
+  },
+  "runtime": {
+    "image": "ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:a2ff1f16e4d8990e611f0eb9380c96bcd936ddffdc49be3332ef140888566811",
+    "source_sha256": "sha256:2d5f4f16be8c7f0be96b0608dce905cc22f38426d9e242c0ebc4aa91c8cdcc41",
+    "runtime_sha256": "sha256:d313eee20b0874f9729c259417e78d02a6c56b11e58ed21350c4c6e503ef73f4",
+    "source_commit": "7434fc0cf652ae696c1f1e3a0799b38cb34e842c",
+    "qualification_ci_run": 36458994531
+  },
+  "local_followup": {
+    "observed_utc": "2026-09-29T15:42:00Z",
+    "mac": "Online 0.1.44",
+    "windows": "Offline 0.1.44",
+    "new_native_media_job": "NOT_RUN",
+    "disk_free_bytes": 974856192,
+    "runtime_headroom_floor_bytes": 2147483648,
+    "disk_headroom_sufficient": false,
+    "qualified_previous_local_execution_preserved": true,
+    "installed_worker_changed": false,
+    "accepted_media_deleted": false,
+    "unused_package_cache_prune_files_removed": 0
+  },
+  "production_readback_utc": "2026-09-29T16:12:01.543Z",
+  "production_readback": {
+    "percentage": 100,
+    "bindings": 50,
+    "secrets": 25,
+    "all_bindings_unchanged": true,
+    "query_redaction": true,
+    "canonical_continuation": "running on recorded published definition",
+    "new_instances": 0
+  }
 }

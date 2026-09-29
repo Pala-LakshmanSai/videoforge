@@ -33,7 +33,7 @@ optional_cloud_media_2026_09_28:
 cloud_sample_observation_2026_09_29:
   checkpoint: V2-09
   selected_task: VF-10-09
-  status: PUBLISHED_FRESH_SAMPLE_PASS_CLEAN_NATIVE_DOWNLOAD_POLICY_GATE
+  status: PUBLISHED_FRESH_SAMPLE_PASS_CLEAN_LONG_BROWSER_HANDOFF
   baseline_source: 30b0485513f188263e229e7bc787774a8bae94b8
   production_source: 2cea7e581c79107fc0cd43d14f3837849a76882e
   cloudflare_version: 63a210c4-37e1-4c1c-8160-22c4f97a00a2
@@ -42,13 +42,14 @@ cloud_sample_observation_2026_09_29:
   release: Published100percent; exact50bindings/25secrets/19vars/6resources/three existing Workflows/Local0.1.44/KieFal/privacy preserved. Same canonical continuation adopted new definition. Main unrelated edits excluded; runtime/image unchanged.
   migration: Additive224 installed once;207 ledger rows/max224 with all206 old rows and omitted148 preserved. Actual-source ROLLBACK and configured runtime eligibility pass.
   sample: Fresh44.6s normal KieFal Cloud sample accepted9 images/3 avatars/9 prompts once; explicit asset-only retry reuses immutable manifest003d2fcc. Final1080p30/1338frames/6475224B/full decode/0ms reported AV drift PASS. Private whole checksum and narration comparison PASS; full/split composition/tail reviewed.
-  browser: Computer Use and regular signed-in Chrome; natural44.6s complete playthrough after compute off, delegated approval saved. Native download Failed-Blocked; exact private R2 download/hash independently pass, no bypass.
+  browser: Computer Use and regular signed-in Chrome; natural44.6s complete playthrough after compute off, delegated approval saved. Native application download/whole checksum and downloaded44.6s playthrough now PASS; provenance and exact retained45minute native download/whole SHA pass. No application/security-policy change or bypass; earlier Blocked UI did not establish managed policy. Long native download passes; Chrome playback covers0 to44_19_585 across two overlapping1x sessions, then ERR_BLOCKED_BY_CLIENT; final40_415s pending user handoff, no bypass.
   timing: Final startup18.422s/inputs10.482s/render42.853s/check phase4.009s/save-to-accept19.122s/accepted-to-clean30.134s; fresh attempt99.840s. Overall40m39s includes diagnosis/publication/capacity, not normal speed.
   benchmark: Inactive exact control GET median471.456 to411.945ms over8 post-warmup samples each;12.62percent observed reduction. No causal/end-to-end render or quantified visual-quality gain claimed.
   validation: Coordinator13/controller126/selectedUI3/PostgreSQL recovery2 pass; webWorker typechecks/changed lint/native builds/bundle and dispatch firewalls pass. Existing broad baseline failures remain; no unnecessary broad rerun.
   authority: Sample provider capUSD0.25; CloudUSD1.60/max5/USD0.80hour/100GBminimum/no retained volume/expires2026_09_30T12_30UTC.4 reservations/debitUSD0.80;3 launched Pod lifetime estimateUSD0.083083, not invoice. Prompt reportedUSD0.041855/contextUSD0.000067/imageavatar published-rate UI estimateUSD0.08.
-  paid_compute_shutdown: All4 sample reservations CLEAN; complete paginated inventory zero owned media Pods, unrelated untouched. Three spans shared one Pod; no GPU idle during API waits.
-  remaining_gates: Chrome native download policy; matched full-render performance and quantified editorial-quality gains unmeasured. Prior retained45minute fixture is not fresh provider acceptance/full45minute browser proof.
+  paid_compute_shutdown: All4 sample reservations CLEAN; complete paginated inventory including independent16_19_33UTC readback proves zero owned media Pods, unrelated untouched. Three spans shared one Pod; no GPU idle during API waits; no new paid POST during closeout.
+  local_current_readiness: Mac0.1.44 Online/Windows0.1.44 Offline; less than1GiB free on Mac is below preserved2GiB runtime headroom floor. No new Local job; accepted media and worker backups preserved.
+  remaining_gates: Final40_415s of retained45minute browser coverage pending user handoff after ERR_BLOCKED_BY_CLIENT; matched full-render performance and quantified editorial-quality gains unmeasured. Retained fixture is not fresh45minute provider/editorial acceptance.
   evidence: project-context/cloud-media/SAMPLE_OBSERVATION.md and SAMPLE_OBSERVATION_PROOF.json
 prompt_instruction_compaction_2026_09_27:
   implementation_commit: df08f439

@@ -4,8 +4,10 @@ Optional Local/Cloud media execution is published under the2026-09-28 user decis
 Local stays default; Kie/Fal generation and existing personal-worker releases remain unchanged.
 Current source2cea7e58 has a fresh44.6s normal-provider Cloud sample with full technical checks,
 saved Chrome playthrough/approval and independent zero owned Pods. Cloud is enabled only within
-the recorded finite account authority. Native Chrome download remains policy-blocked; matched
-whole-render speed/visual-quality gains and fresh45-minute editorial acceptance are unproven.
+the recorded finite account authority. Native Chrome download/whole checksum and downloaded
+sample playthrough now pass; final40.415s of retained45-minute browser coverage needs user
+handoff after ERR_BLOCKED_BY_CLIENT. Matched whole-render
+speed/visual-quality gains and fresh45-minute editorial acceptance remain unproven.
 Read `cloud_sample_observation_2026_09_29` in CURRENT_STATE.yaml and
 `cloud-media/SAMPLE_OBSERVATION.md`. `optional_cloud_media_2026_09_28` preserves the prior release;
 `cloud-media/RELEASE_RUNBOOK.md` preserves rollback/cleanup rules.
