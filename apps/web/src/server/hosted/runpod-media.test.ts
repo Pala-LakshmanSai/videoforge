@@ -14,7 +14,7 @@ vi.mock("./r2-checksum", () => ({ verifyHostedObjectChecksum: fixture.checksum }
 vi.mock("./r2", () => ({ HostedR2Signer: class { multipartRequest = fixture.multipart; signMultipartPart = fixture.part; sign = fixture.sign; listMultipartUploadsExact=fixture.listMultipart; } }));
 vi.mock("./app",()=>({createHostedV209RenderTerminalLiveCoordinator:()=>({acceptCompleted:fixture.finalize})}));
 vi.mock("./hosted-v209-queue-admission",()=>({ensureHostedV209GenerationAdmission:fixture.admission}));
-import { CLOUD_COMPUTE_ABSENCE_EVENT_SQL, CLOUD_CREATE_RENTAL_SQL, CLOUD_PRE_CREATE_ALLOWED_SQL, CLOUD_PLACEMENT_READY_SQL, CLOUD_DISK_METRICS_SQL, CLOUD_QUALIFICATION_RENDER_ARTIFACT_SQL, CLOUD_TERMINAL_EVENT_SQL, cleanupCloudReservation, cloudRenderDuration, handleCloudMediaRequest, RunPodMediaClient, runCloudMediaObservation, validCloudDiskMetrics, verifyCloudPlacement } from "./runpod-media";
+import { CLOUD_COMPUTE_ABSENCE_EVENT_SQL, CLOUD_CREATE_RENTAL_SQL, CLOUD_PRE_CREATE_ALLOWED_SQL, CLOUD_PLACEMENT_READY_SQL, CLOUD_DISK_METRICS_SQL, CLOUD_QUALIFICATION_RENDER_ARTIFACT_SQL, CLOUD_TERMINAL_EVENT_SQL, cleanupCloudReservation, cloudJobAllowance, cloudRenderDuration, handleCloudMediaRequest, RunPodMediaClient, runCloudMediaObservation, validCloudDiskMetrics, verifyCloudPlacement } from "./runpod-media";
 
 async function installReservationAuthority(db:{exec(sql:string):Promise<unknown>}) {
   const {readFile}=await import("node:fs/promises");
@@ -34,8 +34,21 @@ const environment = { RUNPOD_API_KEY: "fixture-key", PRIVATE_ARTIFACTS: { head: 
 const config = { publicOrigin: "https://videoforge.example", neon: { databaseUrl: "fixture" }, workflowCallbackSecret: "fixture-secret",
   cloudMedia: { apiKey: "fixture-key", image: `ghcr.io/example/media@${hash}`, sourceSha256: hash,runtimeSha256:hash,tooling:{ffmpeg_version:"8.1.2"} } } as unknown as HostedRuntimeConfiguration;
 let attempt: Row, reservation: Row, upload: Row, measuredJob:Row, tokenHash: string, raceCancel = false, rotateBeforeStop = false, generationActive = false, cpuSettled = true, noReservation = false, qualificationAllowed=true, expiresBeforePost=false, placementExpired=false;
-let resultBytes:Uint8Array, templateBytes:Uint8Array, ordinaryRuntime=true;
+let resultBytes:Uint8Array, templateBytes:Uint8Array, ordinaryRuntime=true, renderOnlyRun:Row | null=null;
 const future = () => new Date(Date.now() + 3_600_000).toISOString();
+const exactRenderOnlyRun = ():Row => ({attemptId,accountId,workspaceId,projectId:attempt.project_id,projectRevisionId:attempt.project_revision_id,
+  generationRequestId:reservationId,sourceAttemptId:workspaceId,state:"PREPARING"});
+
+it("sizes job allowances by kind and duration within every explicit operator cap",()=>{
+  for(const kind of ["ASR","SPAN_AUDIO","RENDER"]) expect(cloudJobAllowance(kind,159200,.8,1.6,7200)).toEqual({rentalSeconds:900,budgetUsd:.2});
+  for(const kind of ["ASR","SPAN_AUDIO"]) expect(cloudJobAllowance(kind,2700000,.8,1.6,7200)).toEqual({rentalSeconds:900,budgetUsd:.2});
+  expect(cloudJobAllowance("RENDER",2700000,.8,1.6,7200)).toEqual({rentalSeconds:7200,budgetUsd:1.6});
+  expect(cloudJobAllowance("RENDER",2700000,.8,.07,300)).toEqual({rentalSeconds:300,budgetUsd:.07});
+  expect(cloudJobAllowance("RENDER",2700000,.8,.05,7200)).toEqual({rentalSeconds:7200,budgetUsd:.05});
+  expect(cloudJobAllowance("RENDER",3600000,.8,3,14400)).toEqual({rentalSeconds:9600,budgetUsd:2.14});
+  expect(cloudJobAllowance("ASR",90000,.8,.01,60)).toEqual({rentalSeconds:60,budgetUsd:.01});
+  expect(()=>cloudJobAllowance("RENDER",NaN,.8,1.6,7200)).toThrow("CLOUD_MEDIA_ALLOWANCE_INVALID");
+});
 
 it("keeps private budget facts behind the exact reservation authority projection",async()=>{
   const {readFile}=await import("node:fs/promises");
@@ -45,6 +58,33 @@ it("keeps private budget facts behind the exact reservation authority projection
   expect(CLOUD_PRE_CREATE_ALLOWED_SQL).toContain("videoforge_cloud_media_reservation_authority(r.id,r.leased_attempt_id,r.fence_id)");
   expect(CLOUD_PLACEMENT_READY_SQL).toContain("videoforge_cloud_media_reservation_authority($1,$2,$3)");
 });
+
+it("authorizes only the exact server-prepared render-only backend capability in PostgreSQL",async()=>{
+  const {PGlite}=await import("@electric-sql/pglite"),{readFile}=await import("node:fs/promises");
+  const source=await readFile(new URL("./app.ts",import.meta.url),"utf8");
+  const statement=source.match(/`SELECT EXISTS\(SELECT 1 FROM cloud_media_render_recoveries recovery[\s\S]*?AS authorized`/u)?.[0].slice(1,-1);
+  expect(statement).toBeDefined();
+  const db=new PGlite();
+  try {
+    await db.exec(`CREATE TABLE cloud_media_render_recoveries(account_id uuid,workspace_id uuid,project_id uuid,
+      project_revision_id uuid,retry_attempt_id uuid,replacement_bundle_sha256 text,state text);
+      CREATE TABLE hosted_render_only_runs(account_id uuid,workspace_id uuid,project_id uuid,
+      project_revision_id uuid,id uuid,execution_bundle_sha256 text,state text);`);
+    const values=[accountId,workspaceId,"55555555-5555-4555-8555-555555555555",
+      "66666666-6666-4666-8666-666666666666",attemptId,hash,`render-only:${attemptId}`];
+    await db.query("INSERT INTO hosted_render_only_runs VALUES($1,$2,$3,$4,$5,$6,'PREPARING')",values.slice(0,6));
+    const authorized=async(input:unknown[]) => (await db.query<{authorized:boolean}>(statement!,input)).rows[0]?.authorized;
+    expect(await authorized(values)).toBe(true);
+    for(let index=0;index<values.length;index++) {
+      const wrong=[...values];wrong[index]=index<5?reservationId:index===5?`sha256:${"b".repeat(64)}`:`render-cloud-recovery:${attemptId}`;
+      expect(await authorized(wrong)).toBe(false);
+    }
+    await db.exec("UPDATE hosted_render_only_runs SET state='FAILED'");
+    expect(await authorized(values)).toBe(false);
+    await db.query("INSERT INTO cloud_media_render_recoveries VALUES($1,$2,$3,$4,$5,$6,'CONSUMED')",values.slice(0,6));
+    expect(await authorized([...values.slice(0,6),`render-cloud-recovery:${attemptId}`])).toBe(true);
+  } finally {await db.close();}
+},30000);
 
 it("keeps an initial controller permission failure provider-inert and observable",async()=>{
   fixture.query.mockRejectedValueOnce(Object.assign(new Error("private connection detail"),{code:"42501"}));
@@ -173,7 +213,7 @@ async function setResultDocument(value:unknown):Promise<void> {
 
 beforeEach(async () => {
   for(const key of ["VIDEOFORGE_CLOUD_MEDIA_QUALIFICATION_ONLY","VIDEOFORGE_ENVIRONMENT","VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID"]) Reflect.deleteProperty(environment,key);
-  qualificationAllowed=true;expiresBeforePost=false;placementExpired=false;
+  qualificationAllowed=true;expiresBeforePost=false;placementExpired=false;renderOnlyRun=null;
   fixture.finalize.mockReset();fixture.finalize.mockResolvedValue(undefined);
   fixture.admission.mockReset();fixture.admission.mockResolvedValue({state:"ACTIVE"});ordinaryRuntime=true;
   vi.clearAllMocks(); raceCancel = false; rotateBeforeStop = false; generationActive = false; cpuSettled = true; noReservation = false; tokenHash = await sha256(capability);
@@ -207,6 +247,8 @@ beforeEach(async () => {
     httpMetadata: { contentType: key === "result" ? "application/json" : primary.content_type } }));
   fixture.query.mockImplementation(async (sql: string, values: unknown[] = []) => {
     if (sql.includes("SELECT set_config")) return { rows: [] };
+    if(sql.includes("videoforge_read_cloud_render_only_run")) return {rows:[{run:values[0]===attemptId?renderOnlyRun:null}]};
+    if(sql.includes("videoforge_settle_cloud_render_only_run")) return {rows:[{settled:cpuSettled}]};
     if(sql.includes("allowed_create_reservation")) return {rows:attempt.state==="RUNNING" && Date.parse(String(reservation.deadline_at))>Date.now() && reservation.authority_enabled===true && Date.parse(String(reservation.authority_expires_at))>Date.now() && values[1]===reservation.leased_attempt_id && values[2]===reservation.fence_id ? [{id:reservationId}]:[]};
     if(sql.includes("qualification_artifact_attempt_id")) return {rows:qualificationAllowed && attempt.state==="SUCCEEDED" && attempt.kind==="RENDER" && attempt.result_receipt_sha256 && attempt.result_object_key && Number(attempt.result_content_length)>0 && attempt.result_checksum_sha256 && reservation.state==="CLEAN" && reservation.cleanup_verified_at && values[3]===reservation.budget_authority_id ? [{qualification_artifact_attempt_id:attemptId}]:[]};
     if (sql.includes("videoforge_cloud_media_qualification_scope")) return {rows:[{allowed:qualificationAllowed}]};
@@ -559,6 +601,33 @@ describe("fenced publication and multipart recovery", () => {
 });
 
 describe("cloud terminal admission settlement", () => {
+  it.each(["attemptId","accountId","workspaceId","projectId","projectRevisionId","generationRequestId","sourceAttemptId","state"])("rejects a substituted render-only %s before settlement or promotion",async field=>{
+    renderOnlyRun=exactRenderOnlyRun();renderOnlyRun[field]="invalid";attempt.state="FAILED";reservation.state="CLEAN";
+    const outcome=await runCloudMediaObservation(environment,config,scope);
+    expect(outcome.state).toBe("RECONCILING");
+    expect(fixture.finalize).not.toHaveBeenCalled();expect(fixture.transport).not.toHaveBeenCalled();
+    expect(fixture.query.mock.calls.some(([sql])=>String(sql).includes("videoforge_settle_cloud_render_only_run"))).toBe(false);
+  });
+  it("requires fresh video admission for a render-only run even when its accepted source has an ordinary runtime",async()=>{
+    renderOnlyRun=exactRenderOnlyRun();noReservation=true;
+    await setTemplate("RENDER",{});
+    Object.assign(attempt,{job_spec_object_key:reservation.job_spec_object_key,
+      job_spec_content_length:reservation.job_spec_content_length,job_spec_checksum_sha256:reservation.job_spec_checksum_sha256});
+    fixture.admission.mockResolvedValue({state:"WAITING"});
+    expect((await runCloudMediaObservation(environment,config,scope)).state).toBe("WAITING_CAPACITY");
+    expect(fixture.admission).toHaveBeenCalledOnce();
+    expect(fixture.query.mock.calls.some(([sql])=>String(sql).includes("INSERT INTO cloud_media_reservations"))).toBe(false);
+    expect(fixture.transport).not.toHaveBeenCalled();
+  });
+  it.each(["FAILED","CANCELLED","EXPIRED"])("settles render-only %s through its exact run while preserving its successful source runtime",async state=>{
+    renderOnlyRun=exactRenderOnlyRun();attempt.state=state;reservation.state="CLEAN";cpuSettled=false;
+    expect((await runCloudMediaObservation(environment,config,scope)).state).toBe("FINALIZATION_PENDING");
+    expect(fixture.query.mock.calls.some(([sql,values])=>String(sql).includes("videoforge_settle_cloud_render_only_run") && values[0]===attemptId)).toBe(true);
+    expect(fixture.query.mock.calls.some(([sql])=>/videoforge_settle_stranded_hosted_v209_requests|videoforge_settle_cloud_media_cpu_failure/u.test(String(sql)))).toBe(false);
+    cpuSettled=true;
+    expect((await runCloudMediaObservation(environment,config,scope)).state).toBe(state);
+    expect(fixture.transport).not.toHaveBeenCalled();
+  });
   it.each(["ASR","SPAN_AUDIO","RENDER"])("keeps unadmitted %s provider-inert before reserving compute",async kind=>{
     noReservation=true;ordinaryRuntime=false;attempt.kind=kind;await setTemplate(kind,{});
     Object.assign(attempt,{job_spec_object_key:reservation.job_spec_object_key,
@@ -955,6 +1024,16 @@ describe("staging retained-render artifact terminal",()=>{
   const authority="99999999-9999-4999-8999-999999999999";
   function qualify(){Object.assign(environment,{VIDEOFORGE_ENVIRONMENT:"staging",VIDEOFORGE_CLOUD_MEDIA_QUALIFICATION_ONLY:"true",VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID:authority});reservation.budget_authority_id=authority;}
   async function acceptArtifact(){reservation.state="SAVING";reservation.launch_outcome="CONFIRMED";expect((await runRoute("complete",completion))?.status).toBe(200);expect(attempt.state).toBe("SUCCEEDED");}
+  it("uses normal render-only final promotion after verified completion and cleanup even in the staging qualification lane",async()=>{
+    qualify();renderOnlyRun=exactRenderOnlyRun();await acceptArtifact();
+    fixture.finalize.mockImplementation(async()=>{
+      expect(reservation.state).toBe("CLEAN");expect(attempt.result_receipt_sha256).toBeDefined();
+    });
+    const outcome=await runCloudMediaObservation(environment,config,scope);
+    expect(outcome.state).toBe("SUCCEEDED");expect(outcome.qualificationArtifactOnly).toBeUndefined();
+    expect(fixture.finalize).toHaveBeenCalledWith(scope);
+    expect(fixture.query.mock.calls.some(([sql])=>String(sql).includes("qualification_artifact_attempt_id"))).toBe(false);
+  });
   it("finishes only the verified CPU artifact after independent cleanup, without ordinary promotion",async()=>{
     qualify();await acceptArtifact();const outcome=await runCloudMediaObservation(environment,config,scope);
     expect(outcome).toMatchObject({state:"SUCCEEDED",qualificationArtifactOnly:true,ordinaryFinalPromotion:false});

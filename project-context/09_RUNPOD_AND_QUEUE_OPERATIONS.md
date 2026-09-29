@@ -26,7 +26,7 @@ requests, paid workers, or volume changes require the exact external-checkpoint 
 
 ## Optional on-demand media Pods — 2026-09-28
 
-User clarification2026-09-29: choose Local or Cloud only on New Project. Existing projects retain their saved execution backend for readiness, execution and retry; Project and Settings have no backend selector. The explicit scoped Cloud render-only recovery API remains compatible for authorized retained-media recovery.
+User clarification2026-09-29: choose Local or Cloud only on New Project. Existing projects retain their saved execution backend for readiness, execution and retry; Project and Settings have no backend selector. The explicit scoped Cloud render-only recovery API remains compatible for authorized retained-media recovery. Additive0222 introduces a distinct run for an explicitly requested rerender of a successful accepted source: exact provider/media proof, immutable resolved manifest, fresh VIDEO admission and RENDER attempt, separate FINAL receipt, and separate human review. It never creates a replacement source runtime or new provider jobs. New-project Cloud scope additionally requires explicit account opt-in, finite budget/count and expiry; historical authorities default to no new-project opt-in. Migration0222 is source-reviewed and pending real-source rollback/apply, not installed by documentation.
 
 Cloud media is separate from historical Mage/SoulX Serverless lanes and uses current RunPod Pod
 REST v2 (`https://api.runpod.io/v2`). Postgres retains fair video admission (one account/two global);

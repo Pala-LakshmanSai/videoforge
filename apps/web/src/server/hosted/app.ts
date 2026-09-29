@@ -313,7 +313,12 @@ async function handleCpuSubmission(
              WHERE recovery.account_id=$1 AND recovery.workspace_id=$2 AND recovery.project_id=$3
                AND recovery.project_revision_id=$4 AND recovery.retry_attempt_id=$5
                AND recovery.replacement_bundle_sha256=$6 AND recovery.state='CONSUMED'
-               AND $7::text='render-cloud-recovery:'||recovery.retry_attempt_id::text) AS authorized`,
+               AND $7::text='render-cloud-recovery:'||recovery.retry_attempt_id::text)
+           OR EXISTS(SELECT 1 FROM hosted_render_only_runs run
+             WHERE run.account_id=$1 AND run.workspace_id=$2 AND run.project_id=$3
+               AND run.project_revision_id=$4 AND run.id=$5
+               AND run.execution_bundle_sha256=$6 AND run.state='PREPARING'
+               AND $7::text='render-only:'||run.id::text) AS authorized`,
           [scope.account_id, scope.workspace_id, submission.projectId, submission.projectRevisionId,
             trusted.expectedAttemptId ?? null, imageDigest, trusted.renderRecoveryKey ?? null],
         );

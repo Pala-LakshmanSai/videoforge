@@ -275,3 +275,33 @@ describe("render-only disk recovery route", () => {
     expect(mocks.query).not.toHaveBeenCalled();
   });
 });
+
+
+describe("accepted-source explicit Cloud render-only run", () => {
+  const cloudConfig = { ...config as object, cloudMedia: {sourceSha256:bundleSha256} } as never;
+  const cloudRequest = () => new Request("https://example.test", {method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({
+    schema_version:"videoforge-hosted-render-retry/v3", execution_backend:"RUNPOD_POD", source_attempt_id:ids.failed,idempotency_key:ids.retry})});
+  beforeEach(() => {
+    vi.clearAllMocks(); mocks.sameOrigin.mockReturnValue(true);
+    mocks.scope.mockResolvedValue({account_id:ids.account,workspace_id:ids.workspace,user_id:ids.user});
+    mocks.exactPlan.mockReturnValue({kind:"RENDER",projectId:ids.project,projectRevisionId:ids.revision});
+    mocks.query.mockImplementation(async (sql:string) => {
+      if(sql.includes("videoforge_prepare_cloud_render_only_run"))return {rows:[{recovery:{schema_version:"videoforge-hosted-render-disk-recovery/v1",revision_id:ids.revision,retry_attempt_id:ids.retry,recovery_kind:"CLOUD_RENDER_ONLY",recovery_key:`render-only:${ids.retry}`}}]};
+      if(sql.includes("FROM public.hosted_render_plans"))return {rows:[{payload:{kind:"RENDER"}}]};
+      if(sql.includes("FROM public.hosted_render_only_runs"))return {rows:[{state:"PREPARING"}]};
+      return {rows:[]};
+    });
+  });
+  it("uses exact saved plan with server-pinned backend and fresh run key without provider dispatch",async()=>{
+    const schedule=vi.fn().mockResolvedValue({state:"OUTBOXED"});
+    const result=await retryHostedApiRender(cloudRequest(),ids.project,cloudConfig,{waitUntil(){}} as never,{schedule});
+    expect(result.status).toBe(202);expect(schedule).toHaveBeenCalledWith(expect.objectContaining({executionBackend:"RUNPOD_POD",expectedAttemptId:ids.retry,renderRecoveryKey:`render-only:${ids.retry}`}));
+    const args=mocks.query.mock.calls.find(([sql])=>String(sql).includes("videoforge_prepare_cloud_render_only_run"))?.[1];
+    expect(args).toContain(ids.failed);expect(args).toContain(ids.retry);expect(args).toContain(bundleSha256);
+  });
+  it.each(["SUCCEEDED","FAILED","CANCELLED"])("replays terminal %s lineage without scheduling compute",async state=>{
+    const prior=mocks.query.getMockImplementation()!;mocks.query.mockImplementation(async(sql:string,...args:unknown[])=>sql.includes("FROM public.hosted_render_only_runs")?{rows:[{state}]}:prior(sql,...args));
+    const schedule=vi.fn();const result=await retryHostedApiRender(cloudRequest(),ids.project,cloudConfig,{waitUntil(){}} as never,{schedule});
+    expect(result.status).toBe(state==="SUCCEEDED"?202:409);expect(schedule).not.toHaveBeenCalled();expect(await result.json()).toMatchObject({attempt_id:ids.retry,state});
+  });
+});

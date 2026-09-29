@@ -89,6 +89,7 @@ async function harness(requestState: "ACTIVE" | "SUCCEEDED") {
     },
   };
   const query = vi.fn(async (sql: string, parameters: readonly unknown[]) => {
+    if (sql.includes("set_config")) return { rows: [] };
     if (sql.includes("read_v209_render_terminal_candidate")) return { rows: [{ candidate }] };
     const request = JSON.parse(String(parameters[0]));
     return {
@@ -209,8 +210,8 @@ describe("hosted V2-09 reconciler terminal handoff", () => {
           attemptId: IDS.attempt,
         }),
       ).resolves.toMatchObject({ state: "SUCCEEDED", replayed: true });
-      expect(target.query).toHaveBeenCalledTimes(2);
-      const request = JSON.parse(String(target.query.mock.calls[1]?.[1]?.[0]));
+      expect(target.query).toHaveBeenCalledTimes(4);
+      const request = JSON.parse(String(target.query.mock.calls[3]?.[1]?.[0]));
       expect(request).toMatchObject({
         schemaVersion: "videoforge.v2-09-render-terminal-finalize/v1",
         accountId: IDS.account,
@@ -233,7 +234,7 @@ describe("hosted V2-09 reconciler terminal handoff", () => {
         attemptId: IDS.attempt,
       }),
     ).rejects.toThrow("HOSTED_V209_RENDER_TERMINAL_INVALID");
-    expect(target.query).toHaveBeenCalledTimes(1);
+    expect(target.query).toHaveBeenCalledTimes(2);
   });
 
   it("accepts an API terminal candidate only with exact provider and accepted-output proof", async () => {
@@ -256,5 +257,18 @@ describe("hosted V2-09 reconciler terminal handoff", () => {
         attemptId: IDS.attempt,
       }),
     ).rejects.toThrow("HOSTED_V209_RENDER_TERMINAL_INVALID");
+  });
+});
+
+
+describe("explicit render-only terminal acceptance", () => {
+  it("replays the new run's own FINAL receipt while source runtime remains COMPLETE",async()=>{
+    const target=await harness("SUCCEEDED");Object.assign(target.candidate,{renderOnlyRun:true,renderOnlyState:"SUCCEEDED",generationProvider:"KIE_FAL",apiOutputsAccepted:true,leaseReleaseReason:"HOSTED_API_OUTPUTS_ACCEPTED"});
+    await expect(target.terminal.acceptCompleted({accountId:IDS.account,workspaceId:IDS.workspace,attemptId:IDS.attempt})).resolves.toMatchObject({state:"SUCCEEDED"});
+    expect(target.bucket.get).not.toHaveBeenCalled();expect(target.candidate.runtimeStage).toBe("COMPLETE");
+  });
+  it("cannot bypass the source accepted-provider barrier",async()=>{
+    const target=await harness("SUCCEEDED");Object.assign(target.candidate,{renderOnlyRun:true,renderOnlyState:"SUCCEEDED",generationProvider:"KIE_FAL",apiOutputsAccepted:false});
+    await expect(target.terminal.acceptCompleted({accountId:IDS.account,workspaceId:IDS.workspace,attemptId:IDS.attempt})).rejects.toThrow("HOSTED_V209_RENDER_TERMINAL_INVALID");expect(target.query).toHaveBeenCalledTimes(2);
   });
 });

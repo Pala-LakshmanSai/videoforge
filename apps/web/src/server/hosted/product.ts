@@ -4098,7 +4098,9 @@ async function catalog(
       const workers = await (await import("./personal-worker-readiness")).qualifiedPersonalWorkers(
         transaction, config.mediaWorkerRelease, scope.account_id, scope.workspace_id,
       );
+      const cloudReady = config.cloudMedia?.enabled ? await transaction.query<{allowed:boolean}>("SELECT public.videoforge_cloud_media_new_project_ready($1::uuid) AS allowed", [config.cloudMedia.budgetAuthorityId]) : null;
       return {
+        cloudAvailable: cloudReady?.rows[0]?.allowed === true,
         avatars: avatars.rows,
         styles: styles.rows,
         avatar_drafts: avatarDrafts.rows,
@@ -4197,7 +4199,7 @@ async function catalog(
       avatar_drafts: avatarDraftRows,
       style_drafts: styleDraftRows,
       media_worker_state: data.workers > 0 ? "ONLINE" : "WAITING_FOR_YOUR_COMPUTER",
-      cloud_media: { available: Boolean(config.cloudMedia?.enabled) },
+      cloud_media: { available: data.cloudAvailable },
       generation_provider: config.apiGeneration ? "KIE_FAL" : "RUNPOD",
       gpu_transport: gpuReadiness.gpu_transport,
       gpu_readiness: gpuReadiness,
@@ -6916,6 +6918,7 @@ async function projectDetail(
             AND authority.workspace_id = attempt.workspace_id
             AND authority.attempt_id = attempt.id
             AND authority.source = 'PRIMARY_RESULT_OUTPUT' AND authority.issued_at IS NOT NULL
+            AND (NOT EXISTS(SELECT 1 FROM hosted_render_only_runs run WHERE run.id=attempt.id) OR EXISTS(SELECT 1 FROM hosted_render_only_runs run WHERE run.id=attempt.id AND run.account_id=attempt.account_id AND run.workspace_id=attempt.workspace_id AND run.state='SUCCEEDED' AND run.output_receipt_id IS NOT NULL AND run.final_output->>'checksumSha256'=authority.issued_checksum_sha256))
            LEFT JOIN hosted_project_reviews AS review
              ON review.account_id = attempt.account_id
             AND review.workspace_id = attempt.workspace_id
@@ -7821,6 +7824,7 @@ async function projectDetail(
         .find((value) => value.kind === kind);
     const asr = latestAttempt("ASR");
     const render = latestAttempt("RENDER");
+    const currentRenderApproved = Boolean(detail.review && render && (detail.review as Record<string, unknown>).render_attempt_id === render.id);
     const cloudMedia = (detail.project as Record<string, unknown>).media_execution_backend === "RUNPOD_POD";
     const renderReferenceMs = recentFullRenderDurationMs(
       detail.attempts as Record<string, unknown>[],
@@ -8046,15 +8050,15 @@ async function projectDetail(
         // Awaiting the owner's approval is a normal, non-terminal state: this stage can never read
         // COMPLETE before that approval exists. Reporting it as BLOCKED made the client treat a
         // finished render as a terminal block, which stopped live polling and hid "Ready for review".
-        status: detail.review
+        status: currentRenderApproved
           ? "COMPLETE"
           : render?.state === "SUCCEEDED"
             ? "READY_FOR_REVIEW"
             : "WAITING",
-        progress_percent: detail.review ? 100 : 0,
+        progress_percent: currentRenderApproved ? 100 : 0,
         started_at: render?.state === "SUCCEEDED" ? timestampOrNull(render?.terminal_at) : null,
         completed_at: timestampOrNull(
-          (detail.review as Record<string, unknown> | null)?.approved_at,
+          currentRenderApproved ? (detail.review as Record<string, unknown> | null)?.approved_at : null,
         ),
         detail:
           render?.state === "SUCCEEDED"
@@ -8356,6 +8360,10 @@ async function downloadApprovedRender(
             AND authority.workspace_id = attempt.workspace_id
             AND authority.attempt_id = attempt.id
             AND authority.source = 'PRIMARY_RESULT_OUTPUT'
+            AND (NOT EXISTS(SELECT 1 FROM hosted_render_only_runs run WHERE run.id=attempt.id)
+              OR EXISTS(SELECT 1 FROM hosted_render_only_runs run WHERE run.id=attempt.id AND run.account_id=attempt.account_id
+                AND run.workspace_id=attempt.workspace_id AND run.state='SUCCEEDED' AND run.output_receipt_id IS NOT NULL
+                AND run.final_output->>'checksumSha256'=authority.issued_checksum_sha256))
            LEFT JOIN hosted_cpu_upload_authorities AS result_document
              ON result_document.account_id = attempt.account_id
             AND result_document.workspace_id = attempt.workspace_id
@@ -8374,6 +8382,10 @@ async function downloadApprovedRender(
             )
             AND attempt.kind = 'RENDER' AND attempt.state = 'SUCCEEDED'
             AND attempt.retention_deleted_at IS NULL
+            AND (NOT EXISTS(SELECT 1 FROM hosted_render_only_runs run WHERE run.id=attempt.id)
+              OR EXISTS(SELECT 1 FROM hosted_render_only_runs run WHERE run.id=attempt.id AND run.account_id=attempt.account_id
+                AND run.workspace_id=attempt.workspace_id AND run.state='SUCCEEDED' AND run.output_receipt_id IS NOT NULL
+                AND run.final_output->>'checksumSha256'=authority.issued_checksum_sha256))
             AND authority.issued_at IS NOT NULL
             AND authority.content_type = 'video/mp4'
             AND (($4::uuid IS NOT NULL AND attempt.id = $4)
@@ -8472,7 +8484,11 @@ async function approveReview(
           WHERE attempt.account_id = $1 AND attempt.workspace_id = $2
             AND attempt.project_id = $3 AND attempt.id = $4
             AND attempt.kind = 'RENDER' AND attempt.state = 'SUCCEEDED'
-            AND attempt.retention_deleted_at IS NULL`,
+            AND attempt.retention_deleted_at IS NULL
+            AND (NOT EXISTS(SELECT 1 FROM hosted_render_only_runs run WHERE run.id=attempt.id)
+              OR EXISTS(SELECT 1 FROM hosted_render_only_runs run WHERE run.id=attempt.id AND run.account_id=attempt.account_id
+                AND run.workspace_id=attempt.workspace_id AND run.state='SUCCEEDED' AND run.output_receipt_id IS NOT NULL
+                AND run.final_output->>'checksumSha256'=authority.issued_checksum_sha256))`,
         [scope.account_id, scope.workspace_id, projectId, attemptId],
       );
       const target = result.rows[0];

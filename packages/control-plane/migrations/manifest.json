@@ -1104,6 +1104,12 @@
       "name": "hosted_cloud_span_terminal",
       "filename": "0221_hosted_cloud_span_terminal.sql",
       "sha256": "sha256:e0276625775aaa26b0ece693f443428839f53513d816fc93bb8f3d444c5ec675"
+    },
+    {
+      "version": 222,
+      "name": "hosted_cloud_render_only_runs",
+      "filename": "0222_hosted_cloud_render_only_runs.sql",
+      "sha256": "sha256:c1c74764842fbc51adc98262aa5abd2494ca94f8f390266b63cd9dd4cffbcd7c"
     }
   ]
 }

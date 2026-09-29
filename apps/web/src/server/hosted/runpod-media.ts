@@ -48,6 +48,18 @@ export function validCloudDiskMetrics(value: unknown): boolean {
     Number(facts.min_free_bytes)<=Number(facts.filesystem_total_bytes);
 }
 
+/** Bounded allowances, not a promise of processing speed. The measured 45-minute
+ * retained render fits the two-hour ceiling; small jobs need only the short-job cap. */
+export function cloudJobAllowance(kind:string,durationMs:number,maxHourlyUsd:number,budgetUsd:number,maxRentalSeconds:number):{rentalSeconds:number;budgetUsd:number} {
+  if(!["ASR","SPAN_AUDIO","RENDER"].includes(kind) || !Number.isSafeInteger(durationMs) || durationMs<1 || durationMs>3_600_000 ||
+    ![maxHourlyUsd,budgetUsd].every(n=>Number.isFinite(n) && n>0) ||
+    !Number.isSafeInteger(maxRentalSeconds) || maxRentalSeconds<60 || maxRentalSeconds>14_400)
+    throw new Error("CLOUD_MEDIA_ALLOWANCE_INVALID");
+  const desired=kind==="RENDER" ? Math.max(900,Math.ceil(durationMs/1000*8/3)) : 900;
+  const rentalSeconds=Math.min(desired,maxRentalSeconds);
+  return {rentalSeconds,budgetUsd:Math.min(budgetUsd,Math.ceil(maxHourlyUsd*rentalSeconds/36)/100)};
+}
+
 type Row = Record<string, unknown>;
 function query(sql: SqlExecutor, statement: string, values: readonly unknown[] = []) {
   const parameters: SqlPrimitive[] = values.map(value => {
@@ -240,8 +252,23 @@ async function hasOrdinaryRenderRuntime(sql:SqlExecutor,a:Row):Promise<boolean> 
       WHERE g.account_id=$1 AND g.workspace_id=$2 AND g.project_id=$3 AND g.project_revision_id=$4 LIMIT 1`,
       [a.account_id,a.workspace_id,a.project_id,a.project_revision_id])).rows[0];
 }
+async function readRenderOnlyRun(sql:SqlExecutor,a:Row):Promise<Row | null> {
+  if(a.kind!=="RENDER") return null;
+  const run=(await query(sql,"SELECT public.videoforge_read_cloud_render_only_run($1) AS run",[a.id])).rows[0]?.run;
+  if(run==null) return null;
+  if(typeof run!=="object" || Array.isArray(run)) throw new Error("CLOUD_MEDIA_RENDER_ONLY_RUN_INVALID");
+  const row=run as Row;
+  if(row.attemptId!==a.id || row.accountId!==a.account_id || row.workspaceId!==a.workspace_id ||
+    row.projectId!==a.project_id || row.projectRevisionId!==a.project_revision_id ||
+    !UUID.test(String(row.generationRequestId)) || !UUID.test(String(row.sourceAttemptId)) ||
+    !["PREPARING","SUCCEEDED","FAILED","CANCELLED"].includes(String(row.state)))
+    throw new Error("CLOUD_MEDIA_RENDER_ONLY_RUN_INVALID");
+  return row;
+}
 async function settleFailedCpu(config:HostedRuntimeConfiguration,a:Row):Promise<boolean> {
   return tenant(config,String(a.account_id),async sql=>{
+    if(await readRenderOnlyRun(sql,a)) return (await query(sql,
+      "SELECT public.videoforge_settle_cloud_render_only_run($1) AS settled",[a.id])).rows[0]?.settled===true;
     if(!await hasOrdinaryRenderRuntime(sql,a)) return (await query(sql,
       "SELECT videoforge_settle_cloud_media_cpu_failure($1) AS settled",[a.id])).rows[0]?.settled===true;
     await query(sql, `SELECT videoforge_settle_stranded_hosted_v209_requests($1,$2,p.owner_user_id)
@@ -305,7 +332,8 @@ async function finalizeMedia(environment: HostedRuntimeEnvironment, config: Host
     if (result.state === "FINALIZATION_PENDING" && result.diagnostic) reportSpanDiagnostic?.(result.diagnostic);
     return result.state !== "FINALIZATION_PENDING";
   }
-  if (cloudMediaQualificationOnly(environment)) {
+  const renderOnlyRun=await tenant(config,scope.accountId,sql=>readRenderOnlyRun(sql,a));
+  if (cloudMediaQualificationOnly(environment) && !renderOnlyRun) {
     // Retained-media qualification accepts a verified CPU artifact, without manufacturing
     // an ordinary provider barrier, project final output, or human approval.
     const accepted = await tenant(config,scope.accountId,async sql => (await query(sql,
@@ -380,7 +408,8 @@ async function observeCloudMedia(environment: HostedRuntimeEnvironment, config: 
       }
       // Ordinary rendering already crossed the accepted-provider barrier and released its
       // VIDEO lease. Retained-input rendering still needs the normal fair admission slot.
-      if(!await tenant(config,scope.accountId,sql=>hasOrdinaryRenderRuntime(sql,a))) {
+      if(await tenant(config,scope.accountId,sql=>readRenderOnlyRun(sql,a)) ||
+        !await tenant(config,scope.accountId,sql=>hasOrdinaryRenderRuntime(sql,a))) {
         phase="ADMISSION";
         const pool = createNeonPool(config.neon.databaseUrl);
         try {
@@ -406,7 +435,9 @@ async function observeCloudMedia(environment: HostedRuntimeEnvironment, config: 
         const voiceover = revision.voiceover as Row | undefined;
         const duration = a.kind==="RENDER" ? await cloudRenderDuration(environment,sql,a,committed)
           : Number(a.voiceover_duration_ms ?? voiceover?.duration_ms ?? revision.voiceover_duration_ms);
-        const cloud = config.cloudMedia!; const id=crypto.randomUUID();
+        const cloud = config.cloudMedia!;
+        const allowance=cloudJobAllowance(String(a.kind),duration,cloud.maxHourlyUsd,cloud.budgetUsd,cloud.maxRentalSeconds);
+        const id=crypto.randomUUID();
         const token=await deriveScopedToken(config.workflowCallbackSecret,"cloud-reservation",id);
         const inserted = await query(sql, `INSERT INTO cloud_media_reservations(id,account_id,workspace_id,project_id,project_revision_id,
           attempt_id,leased_attempt_id,fence_id,capability_sha256,pod_name,image,source_sha256,runtime_sha256,tooling,disk_gb,
@@ -415,7 +446,7 @@ async function observeCloudMedia(environment: HostedRuntimeEnvironment, config: 
           ON CONFLICT(attempt_id) DO UPDATE SET attempt_id=EXCLUDED.attempt_id RETURNING *`,
         [id,scope.accountId,scope.workspaceId,a.project_id,a.project_revision_id,a.id,crypto.randomUUID(),await sha256(token),
           `videoforge-media-${id}`,cloud.image,cloud.sourceSha256,cloud.runtimeSha256,JSON.stringify(cloud.tooling),
-          cloudDiskGb(Number(inputs?.bytes),duration),cloud.maxHourlyUsd,cloud.budgetUsd,cloud.maxRentalSeconds,cloud.budgetAuthorityId,cloud.registryId ?? null]);
+          cloudDiskGb(Number(inputs?.bytes),duration),cloud.maxHourlyUsd,allowance.budgetUsd,allowance.rentalSeconds,cloud.budgetAuthorityId,cloud.registryId ?? null]);
         await query(sql, `INSERT INTO cloud_media_jobs(account_id,workspace_id,reservation_id,attempt_id)
           VALUES($1,$2,$3,$4) ON CONFLICT(attempt_id) DO NOTHING`,[scope.accountId,scope.workspaceId,inserted.rows[0]!.id,a.id]);
         return inserted.rows[0]!;
