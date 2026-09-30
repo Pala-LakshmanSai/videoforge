@@ -210,7 +210,7 @@
   },
   "blockers": [
     "Historical V2-07 activation image/config lineage and immutable Mage/SoulX source-overlay identities remain unreconciled; their guards were not weakened.",
-    "Real PostgreSQL qualification is skipped without the configured PostgreSQL environment/Docker daemon. The full local PGlite suite is green; live schema/ledger/grants were not changed.",
+    "Local PGlite suite and subsequent live recovery schema/RPC/runtime-role rollback proofs are verified. Complete clean installation and production restore qualification remain separate gates.",
     "Fresh full provider/editorial production acceptance and the final retained long-video Chrome tail remain open."
   ],
   "disk": {
