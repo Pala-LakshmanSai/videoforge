@@ -63,6 +63,7 @@ import {
   audioDurationMs,
   cloudMediaPhaseLabel,
   currentHostedAttempt,
+  hostedMachineLabel,
   hostedFileSha256,
   hostedVoiceoverFilename,
   hostedProjectPollInterval,
@@ -87,6 +88,17 @@ it("labels cloud phases from durable state without invented progress", () => {
   expect(cloudMediaPhaseLabel("STOPPING", "FAILED")).toBe("Stopping compute");
   expect(cloudMediaPhaseLabel("STOPPING", "SUCCEEDED")).toBe("Stopping compute");
   expect(cloudMediaPhaseLabel(null, "RUNNING")).toBe("Waiting for cloud status");
+});
+
+it("shows the actual assigned machine and distinguishes released GPU and API work", () => {
+  const cloud={kind:"RENDER" as const,state:"RUNNING",execution_backend:"RUNPOD_POD" as const,cloud_gpu:"NVIDIA RTX PRO 4500",cloud_machine_active:true};
+  const local={kind:"RENDER" as const,state:"RUNNING",execution_backend:"PERSONAL_WORKER" as const,local_machine_name:"Editing Mac",local_machine_active:true};
+  expect(hostedMachineLabel("RUNPOD_POD",[cloud])).toBe("Cloud · RunPod · NVIDIA RTX PRO 4500");
+  expect(hostedMachineLabel("PERSONAL_WORKER",[local])).toBe("Local · Editing Mac");
+  expect(hostedMachineLabel("RUNPOD_POD",[{...cloud,state:"SUCCEEDED",cloud_machine_active:false}])).toBe("Cloud · NVIDIA RTX PRO 4500 · GPU released");
+  expect(hostedMachineLabel("RUNPOD_POD",[{...cloud,kind:"SPAN_AUDIO",state:"SUCCEEDED",cloud_machine_active:false}],true)).toBe("Cloud · Kie / Fal APIs · No active RunPod GPU");
+  expect(hostedMachineLabel("RUNPOD_POD",[])).toBe("Cloud · Waiting for RunPod GPU");
+  expect(hostedMachineLabel("PERSONAL_WORKER",[])).toBe("Local · Waiting for computer");
 });
 
 it("shows the active span ahead of queued and completed Cloud attempts", () => {

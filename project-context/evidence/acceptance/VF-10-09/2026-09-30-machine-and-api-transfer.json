@@ -1,0 +1,47 @@
+{
+  "checkpoint": "V2-09",
+  "task": "VF-10-09",
+  "status": "LOCAL_VERIFIED_PUBLICATION_PENDING",
+  "machine": {
+    "source": "exact tenant lease or verified Cloud reservation",
+    "activeIdleDistinction": true,
+    "apiPhase": "Kie / Fal APIs; no active RunPod GPU",
+    "runtimeSqlReadback": true,
+    "tests": 256
+  },
+  "apiTransfer": {
+    "observedWorkflowTimeoutSeconds": 600,
+    "nativeGetMaxMs": 959,
+    "nativeWholeMediaMs": [
+      2175,
+      1996,
+      1680,
+      1682,
+      831,
+      786
+    ],
+    "oneImageTimeoutMs": 20006,
+    "readOnlyProviderPosts": 0,
+    "httpDeadlineMs": 30000,
+    "sameTaskRetryRegression": true,
+    "serialObservationRetained": true,
+    "providerTests": 25
+  },
+  "completedCloudAudio": {
+    "spans": 105,
+    "cleanReservations": 31,
+    "completeInventoryOwnedPods": 0,
+    "inventoryAt": "2026-09-30T09:50:09Z"
+  },
+  "remaining": [
+    "publish",
+    "same existing APIWorkflow adoption",
+    "real Chrome machine line",
+    "long final render/storage/download/playback",
+    "independent zero compute after final"
+  ],
+  "operatorStopUsd": 14,
+  "newCloudAllowanceUsd": 8,
+  "humanNumericCap": "not specified",
+  "invoice": "unobserved"
+}

@@ -116,6 +116,7 @@ describe("Fal avatar job", () => {
     expect(fetchPort).toHaveBeenCalledTimes(1);
     expect(fetchPort).toHaveBeenCalledWith("https://v3b.fal.media/files/b/clip.mp4", {
       redirect: "manual",
+      signal: expect.any(AbortSignal),
     });
   });
 });

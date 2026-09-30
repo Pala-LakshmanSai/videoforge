@@ -76,6 +76,7 @@ export class FalFlashheadClient {
       response = await this.fetcher(MODEL_URL, {
         method: "POST",
         headers: this.headers(),
+        signal: AbortSignal.timeout(30_000),
         body: JSON.stringify({ image_url: imageUrl, audio_url: audioUrl }),
       });
     } catch {
@@ -113,6 +114,7 @@ export class FalFlashheadClient {
     try {
       response = await this.fetcher(`${JOB_URL}/${requestId(id)}/status`, {
         headers: this.headers(),
+        signal: AbortSignal.timeout(30_000),
       });
       if (!response.ok) throw new Error("status read failed");
       const body = await json(response);
@@ -137,6 +139,7 @@ export class FalFlashheadClient {
     try {
       response = await this.fetcher(`${JOB_URL}/${requestId(id)}`, {
         headers: this.headers(),
+        signal: AbortSignal.timeout(30_000),
       });
     } catch (error) {
       if (error instanceof FalFlashheadError) throw error;
@@ -162,6 +165,8 @@ export class FalFlashheadClient {
       };
     } catch (error) {
       if (error instanceof FalFlashheadError && error.code === "INPUT_INVALID") throw error;
+      if (error instanceof DOMException && ["AbortError", "TimeoutError"].includes(error.name))
+        throw new FalFlashheadError("RESULT_UNKNOWN");
       throw new FalFlashheadError("RESULT_INVALID");
     }
   }
@@ -171,6 +176,7 @@ export class FalFlashheadClient {
       const response = await this.fetcher(`${JOB_URL}/${requestId(id)}/cancel`, {
         method: "PUT",
         headers: this.headers(),
+        signal: AbortSignal.timeout(30_000),
       });
       if (!response.ok) throw new Error("cancel failed");
       const body = await json(response);

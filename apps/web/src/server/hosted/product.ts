@@ -6897,7 +6897,11 @@ async function projectDetail(
           : null;
       const attempts = await transaction.query(
         `SELECT attempt.id, attempt.kind, attempt.state, attempt.version, attempt.created_at,
-                attempt.execution_backend,
+                attempt.execution_backend, cloud.gpu AS cloud_gpu,
+                cloud.verified_at IS NOT NULL AND cloud.pod_id IS NOT NULL
+                  AND cloud.leased_attempt_id=attempt.id
+                  AND cloud.state IN ('STARTING','DOWNLOADING','RENDERING','CHECKING','SAVING','STOPPING') AS cloud_machine_active,
+                lease.local_machine_name, lease.local_machine_active,
                 EXISTS(SELECT 1 FROM hosted_render_only_runs run WHERE run.id=attempt.id
                   AND run.account_id=attempt.account_id AND run.workspace_id=attempt.workspace_id) AS render_only_run,
                 attempt.updated_at, attempt.submitted_at, attempt.terminal_at,
@@ -6925,8 +6929,13 @@ async function projectDetail(
              ON cloud.account_id=cloud_job.account_id AND cloud.workspace_id=cloud_job.workspace_id
             AND cloud.id=cloud_job.reservation_id
            LEFT JOIN LATERAL (
-             SELECT worker_lease.failure_code
+             SELECT worker_lease.failure_code, device.display_name AS local_machine_name,
+                    worker_lease.state IN ('CLAIMED','RUNNING','COMPLETING')
+                      AND worker_lease.lease_expires_at>now() AND device.status<>'REVOKED' AS local_machine_active
                FROM media_worker_leases AS worker_lease
+               JOIN media_worker_devices AS device
+                 ON device.id=worker_lease.device_id AND device.account_id=worker_lease.account_id
+                AND device.workspace_id=worker_lease.workspace_id
               WHERE worker_lease.account_id = attempt.account_id
                 AND worker_lease.workspace_id = attempt.workspace_id
                 AND worker_lease.attempt_id = attempt.id

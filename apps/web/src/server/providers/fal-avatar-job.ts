@@ -141,7 +141,7 @@ async function readStored(
 async function downloadMp4(url: string, fetchPort: FetchPort): Promise<Uint8Array> {
   let response: Response;
   try {
-    response = await fetchPort(url, { redirect: "manual" });
+    response = await fetchPort(url, { redirect: "manual", signal: AbortSignal.timeout(30_000) });
   } catch {
     throw new FalAvatarJobError("RESULT_DOWNLOAD_FAILED");
   }

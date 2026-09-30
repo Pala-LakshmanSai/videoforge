@@ -541,6 +541,10 @@ interface HostedAttempt {
   readonly execution_backend?: "PERSONAL_WORKER" | "CLOUD_RUN" | "RUNPOD_POD";
   readonly render_only_run?: boolean;
   readonly cloud_phase?: string | null;
+  readonly cloud_gpu?: string | null;
+  readonly cloud_machine_active?: boolean;
+  readonly local_machine_name?: string | null;
+  readonly local_machine_active?: boolean;
   readonly version: number;
   readonly created_at: string;
   readonly updated_at: string;
@@ -570,6 +574,25 @@ export function currentHostedAttempt<T extends Pick<HostedAttempt, "state" | "cl
     ?? newest.find(attempt => attempt.cloud_phase === "STOPPING")
     ?? newest.find(attempt => ["PLANNED", "OUTBOXED", "SUBMITTED"].includes(attempt.state))
     ?? newest[0];
+}
+
+export function hostedMachineLabel(
+  backend: "PERSONAL_WORKER" | "RUNPOD_POD" | undefined,
+  attempts: readonly Pick<HostedAttempt, "kind" | "state" | "execution_backend" | "cloud_gpu" | "cloud_machine_active" | "local_machine_name" | "local_machine_active">[],
+  apiActive = false,
+): string {
+  const active = [...attempts].reverse().find(attempt => attempt.cloud_machine_active || attempt.local_machine_active);
+  if (active?.cloud_machine_active && active.cloud_gpu) return `Cloud · RunPod · ${active.cloud_gpu}`;
+  if (active?.local_machine_active && active.local_machine_name) return `Local · ${active.local_machine_name}`;
+  const render = [...attempts].reverse().find(attempt => attempt.kind === "RENDER");
+  const cloud = (render?.execution_backend ?? backend) === "RUNPOD_POD";
+  if (render?.state === "SUCCEEDED") return cloud
+    ? `Cloud · ${render.cloud_gpu ?? "GPU not recorded"} · GPU released`
+    : `Local · ${render.local_machine_name ?? "Computer not recorded"} · Finished`;
+  if (apiActive) return cloud
+    ? "Cloud · Kie / Fal APIs · No active RunPod GPU"
+    : "Local render · Kie / Fal APIs · Computer not assigned yet";
+  return cloud ? "Cloud · Waiting for RunPod GPU" : "Local · Waiting for computer";
 }
 
 export function cloudMediaPhaseLabel(phase: string | null | undefined, state: string): string {
@@ -5682,6 +5705,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               detail={render?.render_only_run ? "includes waits" : "numbered stages"}
             />
           </div>
+          <p className="muted" aria-label="Rendering machine">
+            <strong>Machine: </strong>{hostedMachineLabel(query.data.project.media_execution_backend, query.data.attempts,
+              uiStages.some(stage => ["image-generation", "avatar-generation"].includes(stage.id) && stage.status === "RUNNING"))}
+          </p>
           {cloudFinalPhasePending ? null : <ProgressBar value={overallProgress} label="Overall video progress" />}
         </div>
       </section>

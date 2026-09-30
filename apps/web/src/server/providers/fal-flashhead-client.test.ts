@@ -48,6 +48,7 @@ describe("FalFlashheadClient", () => {
     ).toBe(requestId);
     expect(fetcher).toHaveBeenCalledWith(endpoint, {
       method: "POST",
+      signal: expect.any(AbortSignal),
       headers: { Authorization: "Key private-test-key", "Content-Type": "application/json" },
       body: JSON.stringify({
         image_url: "https://private.example/avatar.jpg?signature=hidden",
@@ -57,6 +58,7 @@ describe("FalFlashheadClient", () => {
     expect(await client.status(requestId)).toBe("COMPLETED");
     expect(fetcher).toHaveBeenCalledWith(`${job}/status`, {
       headers: { Authorization: "Key private-test-key", "Content-Type": "application/json" },
+      signal: expect.any(AbortSignal),
     });
     expect(await client.result(requestId)).toEqual({
       videoUrl: "https://v3b.fal.media/files/b/clip.mp4",
@@ -64,6 +66,7 @@ describe("FalFlashheadClient", () => {
     });
     expect(fetcher).toHaveBeenCalledWith(job, {
       headers: { Authorization: "Key private-test-key", "Content-Type": "application/json" },
+      signal: expect.any(AbortSignal),
     });
   });
 
@@ -80,6 +83,17 @@ describe("FalFlashheadClient", () => {
     expect(await client.cancel(requestId).catch((error: FalFlashheadError) => error.code)).toBe(
       "CANCEL_UNKNOWN",
     );
+  });
+
+  it("keeps a timed out result response recoverable without another submission", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue({
+      ok: true,
+      json: async () => { throw new DOMException("Timed out", "AbortError"); },
+    } as unknown as Response);
+    await expect(new FalFlashheadClient("key", fetcher).result(requestId)).rejects.toMatchObject({ code: "RESULT_UNKNOWN" });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher.mock.calls[0]![0]).toBe(job);
+    expect(fetcher.mock.calls[0]![1]?.method).toBeUndefined();
   });
 
   it("rejects untrusted result URLs", async () => {

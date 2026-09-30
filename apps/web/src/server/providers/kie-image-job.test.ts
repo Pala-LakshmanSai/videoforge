@@ -59,6 +59,58 @@ function bucket(): HostedR2BucketBinding & { readonly put: ReturnType<typeof vi.
 }
 
 describe("Kie image job", () => {
+  it("bounds a stalled result body and retries only the persisted task", async () => {
+    const controller = new AbortController();
+    const deadline = vi.spyOn(AbortSignal, "timeout").mockReturnValue(controller.signal);
+    const stored = bucket();
+    const client = {
+      get: vi.fn(async () => ({
+        state: "success" as const,
+        taskId: TASK_ID,
+        imageUrl: "https://media.example/image",
+      })),
+    };
+    const stalledFetch = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      expect(init?.signal).toBe(controller.signal);
+      return new Response(
+        new ReadableStream({
+          start(stream) {
+            init!.signal!.addEventListener("abort", () => stream.error(controller.signal.reason), {
+              once: true,
+            });
+            queueMicrotask(() => controller.abort(new DOMException("Timed out", "TimeoutError")));
+          },
+        }),
+      );
+    });
+    try {
+      await expect(
+        observeKieImageJob({
+          taskId: TASK_ID,
+          objectKey: OUTPUT_KEY,
+          client,
+          bucket: stored,
+          fetchPort: stalledFetch,
+        }),
+      ).rejects.toMatchObject({ code: "RESULT_DOWNLOAD_FAILED" });
+      expect(deadline).toHaveBeenCalledWith(30_000);
+      expect(stored.put).not.toHaveBeenCalled();
+      deadline.mockRestore();
+      await expect(
+        observeKieImageJob({
+          taskId: TASK_ID,
+          objectKey: OUTPUT_KEY,
+          client,
+          bucket: stored,
+          fetchPort: async () => new Response(PNG),
+        }),
+      ).resolves.toMatchObject({ state: "SUCCEEDED" });
+      expect(client.get.mock.calls).toEqual([[TASK_ID], [TASK_ID]]);
+      expect(stored.put).toHaveBeenCalledTimes(1);
+    } finally {
+      deadline.mockRestore();
+    }
+  });
   it("retains essential face and hand framing in both layouts within the provider limit", () => {
     for (const [subject, action] of [
       [
@@ -281,6 +333,7 @@ describe("Kie image job", () => {
     expect(imageFetch).toHaveBeenCalledOnce();
     expect(imageFetch).toHaveBeenCalledWith("https://cdn.example.com/image.png", {
       redirect: "manual",
+      signal: expect.any(AbortSignal),
     });
   });
 

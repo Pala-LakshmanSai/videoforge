@@ -31,7 +31,10 @@ const PROVIDER_EXCLUSION_TERM =
 
 function compactContinuity(value: string): string {
   return value
-    .replace(/keep one consistent subject, setting and physical state across the video,?\s*/gi, "Same subject, setting, state; ")
+    .replace(
+      /keep one consistent subject, setting and physical state across the video,?\s*/gi,
+      "Same subject, setting, state; ",
+    )
     .replace(/required viewpoint:/gi, "viewpoint:")
     .replace(/\s+/g, " ")
     .trim();
@@ -289,7 +292,7 @@ async function readStored(
 async function downloadImage(url: string, fetchPort: FetchPort): Promise<Uint8Array> {
   let response: Response;
   try {
-    response = await fetchPort(url, { redirect: "manual" });
+    response = await fetchPort(url, { redirect: "manual", signal: AbortSignal.timeout(30_000) });
   } catch {
     throw new KieImageJobError("RESULT_DOWNLOAD_FAILED");
   }

@@ -75,6 +75,7 @@ export class KieZImageClient {
     try {
       response = await this.fetchPort(`${KIE_BASE_URL}/api/v1/jobs/createTask`, {
         method: "POST",
+        signal: AbortSignal.timeout(30_000),
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
           "Content-Type": "application/json",
@@ -112,7 +113,10 @@ export class KieZImageClient {
     try {
       response = await this.fetchPort(
         `${KIE_BASE_URL}/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(taskId)}`,
-        { headers: { Authorization: `Bearer ${this.apiKey}` } },
+        {
+          headers: { Authorization: `Bearer ${this.apiKey}` },
+          signal: AbortSignal.timeout(30_000),
+        },
       );
     } catch {
       throw new KieZImageError("STATUS_UNKNOWN");
