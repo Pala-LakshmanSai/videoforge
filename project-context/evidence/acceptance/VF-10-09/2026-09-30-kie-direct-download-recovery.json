@@ -1,7 +1,7 @@
 {
   "checkpoint": "V2-09",
   "task": "VF-10-09",
-  "status": "LOCAL_VERIFIED_PUBLICATION_PENDING",
+  "status": "PUBLISHED_NATIVE_PROGRESS_VERIFIED_LONG_RENDER_PENDING",
   "rootCause": "Completed Kie task original CDN URL can stall image transfer and serial job refilling.",
   "officialContract": "https://docs.kie.ai/common-api/download-url",
   "nativeProbe": {
@@ -31,13 +31,31 @@
     "noCreateTaskOnRetrieval": true
   },
   "remaining": [
-    "publish same source",
-    "adopt same existing API instance",
     "native completion of347images and105avatars",
     "normal long final render/download/playback",
     "zero owned compute"
   ],
   "operatorTotalStopUsd": 14,
   "newCloudAllowanceUsd": 8,
-  "invoice": "unobserved"
+  "invoice": "unobserved",
+  "source": "661b6ddf7a17666568d5758479da37fc8e50c68f",
+  "productionVersion": "12758d33-2625-4b78-ac54-c00fa155389f",
+  "publication": {
+    "percent": 100,
+    "secretsPreserved": 25,
+    "bindingsPreserved": 50,
+    "existingWorkflowIdentities": 3,
+    "unchanged23ClientAssets": true,
+    "ledgerRows": 212,
+    "ledgerMax": 229,
+    "sameExistingApiInstanceRestartedOnce": true,
+    "newInstances": 0,
+    "paidGenerationPosts": 0,
+    "acceptedStatesAndProviderTaskIdsPreserved": true
+  },
+  "nativeProgress": {
+    "images": 155,
+    "avatars": 55,
+    "at": "2026-09-30T10:53:36Z"
+  }
 }

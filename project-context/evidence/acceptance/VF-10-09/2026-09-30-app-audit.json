@@ -2,7 +2,7 @@
   "checkpoint": "V2-09",
   "task": "VF-10-09",
   "date": "2026-09-30",
-  "status": "LOCAL_FUNCTIONALITY_VERIFIED_REVIEWABLE_RELEASE_READY",
+  "status": "LOCAL_FUNCTIONALITY_AND_PUBLISHED_REPAIRS_VERIFIED_LONG_CLOUD_PENDING",
   "checkout_commit": "f9b9283ca662e73c0ba276741db22521c3b65357",
   "changes_committed": false,
   "scope": "Existing dirty checkout preserved; no deployment or production mutation.",
@@ -246,12 +246,16 @@
     }
   },
   "current_publication": {
-    "source": "23c518425b7a7c03c26bb12611f9f4e86581e243",
-    "version_id": "548987db-6e24-4761-8979-bff8b9ba1a42",
+    "source": "661b6ddf7a17666568d5758479da37fc8e50c68f",
+    "version_id": "12758d33-2625-4b78-ac54-c00fa155389f",
     "traffic_percent": 100,
     "secrets_preserved": 25,
     "bindings_preserved": 50,
     "subsequent_authorized_long_cloud_acceptance": "RUNNING",
     "final_long_video_verified": false
-  }
+  },
+  "long_followup_evidence": [
+    "2026-09-30-machine-and-api-transfer.json",
+    "2026-09-30-kie-direct-download-recovery.json"
+  ]
 }
