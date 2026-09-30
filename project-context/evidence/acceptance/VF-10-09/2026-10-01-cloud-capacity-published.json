@@ -1,0 +1,64 @@
+{
+  "at": "2026-09-30T19:01:08.327Z",
+  "checkpoint": "V2-09",
+  "task": "VF-10-09",
+  "source": "f5bdf1f92af0caa22617a65ade17b6f9c5967495",
+  "versionId": "2980e364-9576-4375-b947-66b468a4d083",
+  "traffic": 100,
+  "migration": 231,
+  "ledgerRows": 214,
+  "original213LedgerRowsPreserved": true,
+  "migrationPreservedCpuAttemptsReservationsAuthorities": true,
+  "postDriverCpuAttemptsAuthoritiesUnchanged": true,
+  "activeCpuAttempts": 0,
+  "projectCancelled": true,
+  "projectNotDeleted": true,
+  "chrome": {
+    "route": "normal private project",
+    "state": "Cancelled",
+    "machine": "Cloud \u00b7 No active RunPod compute",
+    "stopButtonAbsent": true
+  },
+  "canonicalDriver": {
+    "running": true,
+    "error": null,
+    "versionId": "5bfb7d23-e22a-491a-b509-75fa81ca542f",
+    "restarts": 1,
+    "newInstances": 0
+  },
+  "productionBindings": 50,
+  "productionSecrets": 25,
+  "workflowIdentitiesPreserved": 3,
+  "cpuFallbackEnabled": false,
+  "protocol": 1,
+  "runtimeUnchanged": true,
+  "inventoryComplete": true,
+  "ownedPods": 0,
+  "foreignPodsUntouched": 0,
+  "unknownReservationPreserved": true,
+  "unknownReconciliationSchedulingContinues": true,
+  "newPaidCreates": 0,
+  "newComputeSpendUsd": 0,
+  "noRetainedVolume": true,
+  "validation": {
+    "focusedUnique": 313,
+    "uiRerun": 159,
+    "typecheck": true,
+    "lint": true,
+    "nativeProductionBuild": true,
+    "staticClosureCeilingUnchanged": true,
+    "contextAndSchema": true,
+    "baselineWarnings": [
+      "optional missing private assets",
+      "preexisting profile word budgets"
+    ]
+  },
+  "remaining": [
+    "positive old-launch reconciliation",
+    "CPU ASR/final live qualification before enabling CPU fallback",
+    "measured production startup speedup",
+    "historical external/editorial gates"
+  ],
+  "gitBranch": "codex/cloud-capacity-startup",
+  "gitBranchPublished": true
+}

@@ -48,7 +48,7 @@ capacity refusals or an explicitly empty eligible GPU catalogue, qualified CPU f
 Secure16/32vCPU hosts with at least64GB RAM, exact-size stock and the same pinned CPU Whisper/FFmpeg
 image. Persist CPU flavor, cores, memory and allowed regions before POST; verify returned placement,
 temporary disk and all-in rate. Additive0231 and `VIDEOFORGE_CLOUD_MEDIA_CPU_FALLBACK_ENABLED=true`
-are required; this fallback remains disabled pending live qualification. Unknown launches never fall
+are required; additive231 and the controller are published as f5bdf1f9, but this fallback remains disabled pending live qualification. Unknown launches never fall
 through to another host. Each observation sweeps at most four positively refused candidates,
 rechecking admission/cancellation/authority/fences between them. Refresh catalog
 at allocation, use at most three rounds/180s placement and delayed durable checks. Unknown capacity

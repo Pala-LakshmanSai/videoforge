@@ -1,15 +1,31 @@
-# Cloud capacity startup candidate — 2026-09-30
+# Cloud capacity startup release — 2026-09-30 / published 2026-10-01
 
 Checkpoint V2-09 / task VF-10-09 / profile `v2_09_short_live_e2e`.
-Implementation `431f22f96eb532b60fc493457abbda54d3941dd0`, branch
-`codex/cloud-capacity-startup`, isolated from unrelated Main edits. Production remains
-`c61eafa4635ee7ff53b502318b6f15aaf3c96b8b` / Cloudflare
-`ee1911d4-2d7d-4873-afcc-c576689c05b1`, 100% traffic. Fresh settings/deployment read at
-17:32:50 UTC preserves 50 bindings, 25 secrets, three existing Workflow resources and the
-qualified protocol1 image. No publication, migration application, model download or paid run
-occurred during this task.
+Capacity implementation `431f22f96eb532b60fc493457abbda54d3941dd0`, final published source
+`f5bdf1f92af0caa22617a65ade17b6f9c5967495`, branch `codex/cloud-capacity-startup`.
+Production Cloudflare `2980e364-9576-4375-b947-66b468a4d083` is verified at100% traffic;
+50 bindings,25 secrets, three existing Workflow identities and qualified protocol1 image remain.
+Additive231 is installed once;214 ledger rows preserve all original213 rows byte-for-byte.
+Migration preserved CPU attempts, reservations and authorities; restricted runtime column access
+and immutable-placement trigger pass. No new spend authority or paid run was created.
 
-## Actual wait and disk boundary
+User requested stopping the current project, then explicitly approved publication. Normal signed-in
+Chrome and database confirm its ASR CANCELLED, project retained, no project reservation and no Stop
+button. The final shared machine-label guard says “Cloud · No active RunPod compute” when all media
+attempts are terminal, instead of an inactive queue wait.159 UI checks, typecheck/lint/native build
+and bundle firewall pass again. Same canonical continuation driver restarted once; independent
+readback confirms running/error null on version `5bfb7d23-e22a-491a-b509-75fa81ca542f`, with unchanged
+params and no new instances. Fresh19:01:08UTC complete inventory shows zero Pods; all CPU attempts
+remain terminal and authority hashes unchanged. Ordinary reconciliation advances the old UNKNOWN
+reservation's next-check timestamps while retaining its exact fence/STOPPING/UNKNOWN state.
+
+CPU fallback remains disabled. The exact old Workflow readback is terminated with only RECONCILING
+results and no positive refusal/creation resolution. Therefore the approved proposal's stop condition
+holds: no private paid CPU trial, no flag enablement and no restart of the cancelled project.
+No measured startup speedup or physical PC-off acceptance is claimed. Machine-readable release proof:
+`2026-10-01-cloud-capacity-published.json`. Main's unrelated edits are excluded.
+
+## Initial wait and disk boundary
 
 Signed-in Chrome and tenant-bound database projection show the screenshot project's ASR OUTBOXED
 at queue position2, with no Cloud reservation. It is waiting behind a prior failed retained-span
@@ -71,7 +87,7 @@ flavor, vCPU count and allocated memory; CPU and GPU requests are mutually exclu
 - Context and schema validation run at handoff. Optional absent private assets/profile-length
   warnings are baseline limitations. Main's unrelated edits and held protocol2 are excluded.
 
-## Concrete combined external proposal — approval pending
+## Concrete combined external proposal — approved with conditional paid stop
 
 1. Recheck production preimage, publish this exact source while preserving all existing bindings,
    secrets, three Workflow identities, image/runtime pins and protocol1. Install only additive0231
@@ -104,9 +120,10 @@ flavor, vCPU count and allocated memory; CPU and GPU requests are mutually exclu
    acceptance, changed scope/rate, cap risk, cancellation or deadline. Do not start later image,
    avatar, span or long final-render paid actions outside this finite startup scope.
 
-Approval is required by repository `AGENTS.md`'s paid-checkpoint rule: the initial implementation
-request “does not authorize remote mutation ... paid compute, or spend.” This proposal is not an
-executable authority until the human approves it. Remaining gates: exact launch reconciliation,
-publication/migration, CPU live qualification, Chrome candidate acceptance and measured Cloud
-startup. Broader historical provider/PostgreSQL/editorial gates remain unchanged. USD0 new compute
-in this task; complete owned-Pod absence is verified but the uncertain reservation is not CLEAN.
+The user approved this exact combined proposal at2026-09-30T18:46:27UTC with “I approved,
+publish the fix”; the finite CPU scope expires20:46:27UTC. Publication/migration/driver adoption and
+normal Chrome cancellation acceptance are complete. Positive launch resolution remains unavailable,
+so paid actions stopped before creating any authority or rental. Remaining gates: exact launch
+reconciliation, CPU live qualification and measured Cloud startup. Broader historical
+provider/PostgreSQL/editorial gates remain unchanged. USD0 new compute; independently zero Pods;
+the uncertain reservation is not CLEAN. The stopped project will not be replayed.
