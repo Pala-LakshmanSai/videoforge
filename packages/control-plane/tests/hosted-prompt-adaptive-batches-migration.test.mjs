@@ -29,9 +29,9 @@ test("0071 selects the newest project revision and its authoritative timing head
   assert.match(loader, /FROM latest_revision revision/u);
 });
 
-async function seedAdaptivePromptRun(
+export async function seedAdaptivePromptRun(
   executor,
-  { sceneCount = 60, plannedBatchCount = 2, materializeRun = true } = {},
+  { sceneCount = 60, plannedBatchCount = 2, materializeRun = true, reservedMicroUsd = 40000 } = {},
 ) {
   await seedLockedProjects(executor);
   await executor.query(`SELECT set_config($1, $2, false)`, [
@@ -316,9 +316,18 @@ async function seedAdaptivePromptRun(
     `INSERT INTO cost_events (
        id, account_id, workspace_id, owner_type, owner_id, task_id, attempt_id, sequence,
        event_type, amount_micro_usd, idempotency_key, details, occurred_at, created_at
-     ) VALUES ($1,$2,$3,'PROJECT_REVISION',$4,$5,$6,1,'RESERVED',40000,
+     ) VALUES ($1,$2,$3,'PROJECT_REVISION',$4,$5,$6,1,'RESERVED',$8,
        'adaptive-reserved','{}'::jsonb,$7,$7)`,
-    [reservationId, IDS.accountA, IDS.workspaceA, IDS.revisionA, taskId, attemptId, FIXED_TIME],
+    [
+      reservationId,
+      IDS.accountA,
+      IDS.workspaceA,
+      IDS.revisionA,
+      taskId,
+      attemptId,
+      FIXED_TIME,
+      reservedMicroUsd,
+    ],
   );
   await executor.query(
     `INSERT INTO hosted_prompt_runs (
@@ -326,7 +335,7 @@ async function seedAdaptivePromptRun(
        task_id, attempt_id, outbox_id, execution_profile_id, state, input_hash,
        claim_token_hash, reserved_cost_micro_usd, reservation_cost_sequence,
        planned_batch_count, planned_scene_count, batch_plan_hash, started_at, created_at
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'DISPATCHING',$11,$12,40000,1,$13,$14,$15,$16,$16)`,
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'DISPATCHING',$11,$12,$17,1,$13,$14,$15,$16,$16)`,
     [
       runId,
       IDS.accountA,
@@ -344,6 +353,7 @@ async function seedAdaptivePromptRun(
       sceneCount,
       sha256(`adaptive-batch-plan-${sceneCount}-${plannedBatchCount}`),
       FIXED_TIME,
+      reservedMicroUsd,
     ],
   );
   return {
@@ -430,7 +440,7 @@ async function seedSucceededVoiceoverContext(executor, base) {
   ]);
 }
 
-function scenePayload(startOrdinal, count, { corruptAt = -1 } = {}) {
+export function scenePayload(startOrdinal, count, { corruptAt = -1 } = {}) {
   return Array.from({ length: count }, (_, offset) => {
     const ordinal = startOrdinal + offset;
     const sceneId = `scene-${String(ordinal).padStart(3, "0")}`;

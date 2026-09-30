@@ -2018,8 +2018,16 @@ export class RunwarePromptWriter implements PromptWriterPort {
     });
   }
 
-  async write(batch: PromptBatch): Promise<PromptWriterBatchOutput> {
-    const first = await this.#attempt(batch, batch.scenes, 1, null);
+  async write(
+    batch: PromptBatch,
+    retryOfRequestSha256: Sha256Digest | null = null,
+  ): Promise<PromptWriterBatchOutput> {
+    const first = await this.#attempt(
+      batch,
+      batch.scenes,
+      retryOfRequestSha256 === null ? 1 : 2,
+      retryOfRequestSha256,
+    );
     return validatePromptWriterOutput(batch, {
       batch_id: batch.batchId,
       scenes: batch.scenes.map((scene) => first.accepted.get(scene.sceneId)),

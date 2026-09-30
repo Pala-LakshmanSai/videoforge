@@ -156,6 +156,8 @@ GRANT EXECUTE ON FUNCTION public.videoforge_recover_hosted_prompt_batch(uuid,tex
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_adjudicate_invalid_hosted_prompt_batch(uuid,text,text,bigint)
 TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_replace_invalid_hosted_prompt_batch(uuid,integer,text,text,bigint,text,text)
+TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_claim_hosted_prompt_batch(uuid,integer,text,text,text)
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_fail_hosted_prompt_run(uuid,text,text,boolean,bigint)
@@ -384,6 +386,7 @@ GRANT SELECT ON
   hosted_prompt_scene_progress,
   hosted_prompt_batch_progress,
   hosted_prompt_batch_claims,
+  hosted_prompt_batch_replacements,
   memberships,
   hosted_pair_runtime_states,
   prompt_executions,

@@ -1122,6 +1122,12 @@
       "name": "hosted_cloud_render_retry_status",
       "filename": "0224_hosted_cloud_render_retry_status.sql",
       "sha256": "sha256:ec477ca287aa7bae8368e51b5d743f84e37eaff091bcb09f00cf444a0105c581"
+    },
+    {
+      "version": 225,
+      "name": "hosted_prompt_terminal_batch_replacement",
+      "filename": "0225_hosted_prompt_terminal_batch_replacement.sql",
+      "sha256": "sha256:1c6adade5ff5d272791baa74169534c5b0f81e3cd5b4e2dcaaa758d70be252a9"
     }
   ]
 }

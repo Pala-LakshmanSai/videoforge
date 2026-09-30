@@ -277,7 +277,9 @@ describe("hosted prompt authority", () => {
       outboxId: authority.outboxId,
       presentedClaimTokenHash: authority.claimTokenHash,
     };
-    const batches: Parameters<NonNullable<Parameters<typeof runHostedPromptExecution>[0]["persistBatch"]>>[0][] = [];
+    const batches: Parameters<
+      NonNullable<Parameters<typeof runHostedPromptExecution>[0]["persistBatch"]>
+    >[0][] = [];
     const fetcher = successfulPromptFetcher();
     const first = await runHostedPromptExecution({
       scope: { workspaceId: authority.workspaceId, actorUserId: ids.workspace },
@@ -287,7 +289,9 @@ describe("hosted prompt authority", () => {
       command,
       apiKey: "configured-test-key-value",
       persist: async () => undefined,
-      persistBatch: async (batch) => { batches.push(batch); },
+      persistBatch: async (batch) => {
+        batches.push(batch);
+      },
       fetcher,
     });
     expect(batchPlan.batchCount).toBeGreaterThan(30);
@@ -310,9 +314,14 @@ describe("hosted prompt authority", () => {
             writerOutput,
           })),
         })),
-        beforeBatchSubmit: async () => { noPost(); throw new Error("unexpected submit"); },
+        beforeBatchSubmit: async () => {
+          noPost();
+          throw new Error("unexpected submit");
+        },
       },
-      acceptedCompiledPrompts: new Map(first.compiledPrompts.map((prompt) => [prompt.sceneId, prompt])),
+      acceptedCompiledPrompts: new Map(
+        first.compiledPrompts.map((prompt) => [prompt.sceneId, prompt]),
+      ),
       command,
       apiKey: "configured-test-key-value",
       persist,
@@ -1112,37 +1121,50 @@ describe("hosted Runware prompt writer", () => {
     expect(retrieval).toHaveBeenCalledTimes(1);
     const invalidRetrieval = vi.fn(async () =>
       Response.json({
-        data: [{
-          taskType: "getTaskDetails",
-          taskUUID: originalTask.taskUUID,
-          request: JSON.parse(first.requestBytes),
-          response: { data: [{
-            taskType: "textInference",
+        data: [
+          {
+            taskType: "getTaskDetails",
             taskUUID: originalTask.taskUUID,
-            text: '{"batch_id":"incomplete","scenes":[{"prompt":}',
-            cost: 0.073,
-            finishReason: "stop",
-            model: "google:gemini@3.5-flash",
-            usage: { promptTokens: 100, completionTokens: 8873, totalTokens: 8973, cachedInputTokens: 0 },
-          }] },
-        }],
+            request: JSON.parse(first.requestBytes),
+            response: {
+              data: [
+                {
+                  taskType: "textInference",
+                  taskUUID: originalTask.taskUUID,
+                  text: '{"batch_id":"incomplete","scenes":[{"prompt":}',
+                  cost: 0.073,
+                  finishReason: "stop",
+                  model: "google:gemini@3.5-flash",
+                  usage: {
+                    promptTokens: 100,
+                    completionTokens: 8873,
+                    totalTokens: 8973,
+                    cachedInputTokens: 0,
+                  },
+                },
+              ],
+            },
+          },
+        ],
       }),
     );
-    await expect(recoverClaimedHostedPromptBatch({
-      apiKey: "runware-test-key-at-least-twenty-characters",
-      plan: planned,
-      persistedBinding: {
-        plannedBatchCount: planned.batchCount,
-        plannedSceneCount: planned.totalScenes,
-        batchPlanHash: await hostedPromptBatchPlanHash(planned),
-      },
-      batchOrdinal: 0,
-      taskUUID: originalTask.taskUUID,
-      requestBytes: first.requestBytes,
-      requestHash: first.requestHash,
-      reservationMicroUsd: 2_000_000,
-      fetcher: invalidRetrieval,
-    })).rejects.toMatchObject({
+    await expect(
+      recoverClaimedHostedPromptBatch({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        plan: planned,
+        persistedBinding: {
+          plannedBatchCount: planned.batchCount,
+          plannedSceneCount: planned.totalScenes,
+          batchPlanHash: await hostedPromptBatchPlanHash(planned),
+        },
+        batchOrdinal: 0,
+        taskUUID: originalTask.taskUUID,
+        requestBytes: first.requestBytes,
+        requestHash: first.requestHash,
+        reservationMicroUsd: 2_000_000,
+        fetcher: invalidRetrieval,
+      }),
+    ).rejects.toMatchObject({
       name: "HostedPromptArchivedOutputInvalidError",
       knownCostMicroUsd: 73_000,
       validationDiagnostic: { category: "malformed_json", reason: "json_parse" },
@@ -1185,6 +1207,65 @@ describe("hosted Runware prompt writer", () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(submitted).toMatchObject({ batchOrdinal: 0, reportedCostMicroUsd: 10 });
     fetcher.mockClear();
+    const replacement = await dispatchOneHostedPromptBatch({
+      apiKey: "runware-test-key-at-least-twenty-characters",
+      plan: planned,
+      persistedBinding: {
+        plannedBatchCount: planned.batchCount,
+        plannedSceneCount: planned.totalScenes,
+        batchPlanHash: await hostedPromptBatchPlanHash(planned),
+      },
+      batchOrdinal: 0,
+      remainingReservationMicroUsd: 2_000_000,
+      retryOfRequestHash: first.requestHash,
+      claim: async () => true,
+      fetcher,
+    });
+    expect(replacement).not.toBeNull();
+    expect(JSON.parse(replacement!.requestBytes)[0].taskUUID).not.toBe(originalTask.taskUUID);
+    expect(
+      JSON.parse(JSON.parse(replacement!.requestBytes)[0].messages[0].content).attempt_index,
+    ).toBe(2);
+    expect(replacement!.requestHash).not.toBe(first.requestHash);
+    fetcher.mockClear();
+    const replacementPrefix = {
+      ...replacement!,
+      retryOfRequestHash: first.requestHash,
+      scenes: replacement!.scenes.map(({ sceneOrdinal, scene, writerOutput }) => ({
+        sceneOrdinal,
+        sceneId: scene.sceneId,
+        writerOutput,
+      })),
+    };
+    await new HostedRunwarePromptWriter(
+      "configured-test-key-value",
+      planned,
+      fetcher,
+      undefined,
+      undefined,
+      {
+        reservationMicroUsd: 2_000_000,
+        acceptedBatches: [replacementPrefix],
+        beforeBatchSubmit: async () => {},
+      },
+    ).write(batch);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    fetcher.mockClear();
+    await expect(
+      new HostedRunwarePromptWriter(
+        "configured-test-key-value",
+        planned,
+        fetcher,
+        undefined,
+        undefined,
+        {
+          reservationMicroUsd: 2_000_000,
+          acceptedBatches: [{ ...replacementPrefix, retryOfRequestHash: null }],
+          beforeBatchSubmit: async () => {},
+        },
+      ).write(batch),
+    ).rejects.toMatchObject({ problemCode: "HOSTED_PROMPT_INPUT_INVALID" });
+    expect(fetcher).not.toHaveBeenCalled();
     expect(restored).toMatchObject({
       batchOrdinal: 0,
       responseHash: first.responseHash,

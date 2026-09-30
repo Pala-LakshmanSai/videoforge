@@ -88,6 +88,9 @@ const CONTEXT_REDISPATCHABLE_PROBLEM_CODES_SQL = `ARRAY[${CONTEXT_REDISPATCHABLE
   (code) => `'${code.replaceAll("'", "''")}'`,
 ).join(", ")}]::text[]`;
 
+// UNKNOWN next claims use retrieval-only recovery for active work. Fully saved runs need
+// exact matching claim/progress ordinals before finalization. Admission may precede API/span
+// materialization; its continuation reuses the existing ACTIVE generation request.
 export const DUE_QUERY = `
 WITH revision AS (
   SELECT project.id AS project_id, project.account_id, project.workspace_id, locked.id AS revision_id,
@@ -193,18 +196,16 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
                THEN 'prompts'
              WHEN prompt_state = 'UNKNOWN' AND prompt_accepted_set IS NULL
                AND prompt_problem_code IN ('HOSTED_PROMPT_EXECUTION_UNKNOWN','HOSTED_PROMPT_DISPATCH_TIMEOUT')
-               AND prompt_run_id IS NOT NULL AND prompt_planned_batches > 0
-               AND (SELECT count(*) FROM public.hosted_prompt_batch_progress progress
-                    WHERE progress.run_id = prompt_run_id) = prompt_planned_batches
-               AND (SELECT count(*) FROM public.hosted_prompt_batch_claims claim_row
-                    WHERE claim_row.run_id = prompt_run_id) = prompt_planned_batches
-               AND NOT EXISTS (
-                 SELECT 1 FROM public.hosted_prompt_batch_claims claim_row
-                  WHERE claim_row.run_id = prompt_run_id
-                    AND NOT EXISTS (
-                      SELECT 1 FROM public.hosted_prompt_batch_progress progress
-                       WHERE progress.run_id = prompt_run_id
-                         AND progress.batch_ordinal = claim_row.batch_ordinal))
+               AND (
+                 (active_generation_requests=1 AND EXISTS (
+                   SELECT 1 FROM public.hosted_prompt_batch_claims claim_row
+                    WHERE claim_row.run_id=prompt_run_id AND claim_row.batch_ordinal=(
+                      SELECT count(*) FROM public.hosted_prompt_batch_progress WHERE run_id=prompt_run_id)))
+                 OR ((SELECT count(*) FROM public.hosted_prompt_batch_progress WHERE run_id=prompt_run_id)=prompt_planned_batches
+                   AND (SELECT count(*)=prompt_planned_batches AND bool_and(EXISTS (
+                     SELECT 1 FROM public.hosted_prompt_batch_progress progress
+                      WHERE progress.run_id=prompt_run_id AND progress.batch_ordinal=claim_row.batch_ordinal))
+                     FROM public.hosted_prompt_batch_claims claim_row WHERE claim_row.run_id=prompt_run_id)))
                THEN 'prompts'
              WHEN prompt_state IN ('FAILED', 'UNKNOWN') AND prompt_accepted_set IS NULL
                AND prompt_problem_code = ANY(${PROMPT_REDISPATCHABLE_PROBLEM_CODES_SQL})
@@ -214,8 +215,6 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
                THEN 'prompts'
              WHEN prompt_accepted_set IS NOT NULL AND generation_requests = 0 AND span_jobs = 0
                THEN 'dispatch'
-             -- Admission can commit before span/API materialization. Re-enter only the existing
-             -- API generation while it has no jobs; the dispatch route reuses its exact ACTIVE id.
              WHEN prompt_accepted_set IS NOT NULL AND generation_provider = 'KIE_FAL'
                AND generation_requests = 1 AND active_generation_requests = 1
                AND span_jobs = 0 AND api_jobs = 0 THEN 'dispatch'
@@ -314,8 +313,12 @@ export async function runHostedContinuation(
   target?: HostedContinuationTarget,
   onPromptResponse?: (response: Response) => Promise<void>,
 ): Promise<string[]> {
-  if((await import("./cloud-media-qualification")).cloudMediaQualificationOnly(environment)) return [];
-  console.info("hosted_continuation_phase", { phase: "configuration", target: target?.step ?? null });
+  if ((await import("./cloud-media-qualification")).cloudMediaQualificationOnly(environment))
+    return [];
+  console.info("hosted_continuation_phase", {
+    phase: "configuration",
+    target: target?.step ?? null,
+  });
   const config: HostedRuntimeConfiguration = await resolveContinuationConfiguration(environment);
   console.info("hosted_continuation_phase", { phase: "configuration_ready" });
   const pool = createNeonPool(config.neon.databaseUrl);
@@ -372,14 +375,17 @@ export async function runHostedContinuation(
         } else if (row.next_step === "dispatch") {
           // Stages 6-8 hang off GPU dispatch, which was the fourth and last browser-only handoff:
           // without it a finished prompt set sat with stages 6-8 pending forever.
-          response = await (await import("./hosted-prompt-next-stage")).dispatchHostedProject(
-            row.project_id, scope, environment, config, executionContext,
-          );
+          response = await (
+            await import("./hosted-prompt-next-stage")
+          ).dispatchHostedProject(row.project_id, scope, environment, config, executionContext);
         } else {
           const { writeProjectPrompts } = await import("./hosted-prompt-route");
           const acceptedHandoff = config.apiGeneration
             ? (await import("./hosted-prompt-next-stage")).dispatchAcceptedHostedPrompts.bind(
-                null, environment, config, executionContext,
+                null,
+                environment,
+                config,
+                executionContext,
               )
             : undefined;
           response = await writeProjectPrompts(
@@ -421,7 +427,9 @@ export async function runHostedContinuation(
       }
     }
   } catch (error) {
-    failures.push(`sweep:${String((error as { message?: unknown })?.message ?? error).slice(0, 180)}`);
+    failures.push(
+      `sweep:${String((error as { message?: unknown })?.message ?? error).slice(0, 180)}`,
+    );
   } finally {
     console.info("hosted_continuation_phase", { phase: "heartbeat_start", due_count: dueCount });
     // `wrangler tail` does not show scheduled invocations, so without this row a sweep that never

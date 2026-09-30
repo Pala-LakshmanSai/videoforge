@@ -127,12 +127,20 @@ async function loadAcceptedPromptBatches(
       input_tokens: number;
       output_tokens: number;
       reported_cost_micro_usd: number;
+      retry_of_request_hash: string | null;
     }>(
-      `SELECT id,batch_ordinal,first_scene_ordinal,request_bytes,request_hash,response_bytes,
-              response_hash,input_tokens,output_tokens,
-              reported_cost_micro_usd::integer AS reported_cost_micro_usd
-         FROM public.hosted_prompt_batch_progress
-        WHERE account_id=$1 AND workspace_id=$2 AND run_id=$3 ORDER BY batch_ordinal`,
+      `SELECT progress.id,progress.batch_ordinal,progress.first_scene_ordinal,
+              progress.request_bytes,progress.request_hash,progress.response_bytes,
+              progress.response_hash,progress.input_tokens,progress.output_tokens,
+              progress.reported_cost_micro_usd::integer AS reported_cost_micro_usd,
+              CASE WHEN replacement.request_hash=progress.request_hash THEN claim.request_hash
+                ELSE NULL END AS retry_of_request_hash
+         FROM public.hosted_prompt_batch_progress progress
+         LEFT JOIN public.hosted_prompt_batch_claims claim ON claim.id=progress.claim_id
+           AND claim.account_id=progress.account_id AND claim.workspace_id=progress.workspace_id
+         LEFT JOIN public.hosted_prompt_batch_replacements replacement ON replacement.claim_id=claim.id
+        WHERE progress.account_id=$1 AND progress.workspace_id=$2 AND progress.run_id=$3
+        ORDER BY progress.batch_ordinal`,
       [accountId, workspaceId, runId],
     );
     const scenes = await transaction.query<{
@@ -162,6 +170,9 @@ async function loadAcceptedPromptBatches(
           sceneId: scene.scene_id,
           writerOutput: scene.writer_output,
         })),
+      retryOfRequestHash: batch.retry_of_request_hash as
+        | HostedRecoveredPromptBatch["requestHash"]
+        | null,
       requestBytes: batch.request_bytes,
       requestHash: batch.request_hash as HostedRecoveredPromptBatch["requestHash"],
       responseBytes: batch.response_bytes,
@@ -170,7 +181,9 @@ async function loadAcceptedPromptBatches(
       outputTokens: batch.output_tokens,
       reportedCostMicroUsd: batch.reported_cost_micro_usd,
     }));
-    if (acceptedBatches.reduce((sum, batch) => sum + batch.scenes.length, 0) !== compiledPrompts.size)
+    if (
+      acceptedBatches.reduce((sum, batch) => sum + batch.scenes.length, 0) !== compiledPrompts.size
+    )
       throw new Error("HOSTED_PROMPT_ACCEPTED_SCENE_COUNT_DRIFT");
     return { batches: acceptedBatches, compiledPrompts };
   });
@@ -349,10 +362,12 @@ export async function writeProjectPrompts(
           accepted_batch_count: number;
           accepted_scene_count: number;
           accepted_cost_micro_usd: number;
+          discarded_cost_micro_usd: number;
         }>(
           `SELECT run.id,run.task_id,run.attempt_id,run.outbox_id,run.execution_profile_id,
                   run.claim_token_hash,run.input_hash,run.reserved_cost_micro_usd::integer AS reserved_cost_micro_usd,
                   run.planned_batch_count,run.planned_scene_count,run.batch_plan_hash,
+                  run.discarded_cost_micro_usd::integer AS discarded_cost_micro_usd,
                   (SELECT count(*)::integer FROM public.hosted_prompt_batch_progress progress
                     WHERE progress.account_id=run.account_id AND progress.workspace_id=run.workspace_id
                       AND progress.run_id=run.id) AS accepted_batch_count,
@@ -383,9 +398,17 @@ export async function writeProjectPrompts(
           provider_task_uuid: string;
           request_bytes: string;
           request_hash: string;
+          retry_of_request_hash: string | null;
         }>(
-          `SELECT claim.batch_ordinal,claim.provider_task_uuid,claim.request_bytes,claim.request_hash
+          `SELECT claim.batch_ordinal,
+                  coalesce(replacement.provider_task_uuid,claim.provider_task_uuid) AS provider_task_uuid,
+                  coalesce(replacement.request_bytes,claim.request_bytes) AS request_bytes,
+                  coalesce(replacement.request_hash,claim.request_hash) AS request_hash,
+                  CASE WHEN replacement.claim_id IS NOT NULL THEN claim.request_hash ELSE NULL END
+                    AS retry_of_request_hash
              FROM public.hosted_prompt_batch_claims claim
+             LEFT JOIN public.hosted_prompt_batch_replacements replacement
+               ON replacement.claim_id=claim.id
             WHERE claim.account_id=$1 AND claim.workspace_id=$2 AND claim.run_id=$3
               AND claim.task_id=$4 AND claim.attempt_id=$5 AND claim.outbox_id=$6
               AND claim.batch_ordinal=$7`,
@@ -404,6 +427,7 @@ export async function writeProjectPrompts(
       trace("original");
       if (original) {
         const saved = original.run;
+        runId = saved.id;
         const identity: HostedPromptIdentity = {
           runId: saved.id,
           taskId: saved.task_id,
@@ -437,6 +461,7 @@ export async function writeProjectPrompts(
             false,
             null,
           );
+        let replacementDispatched = false;
         const completeAcceptedRun = async (): Promise<Response> => {
           trace("accepted_load_start");
           const storedProgress = await loadAcceptedPromptBatches(
@@ -453,7 +478,7 @@ export async function writeProjectPrompts(
             batchPlan,
             persistedBatchPlanBinding: binding,
             continuation: {
-              reservationMicroUsd: saved.reserved_cost_micro_usd,
+              reservationMicroUsd: saved.reserved_cost_micro_usd - saved.discarded_cost_micro_usd,
               acceptedBatches: storedProgress.batches,
               beforeBatchSubmit: async () => {
                 throw new Error("HOSTED_PROMPT_COMPLETION_MUST_NOT_SUBMIT");
@@ -477,7 +502,7 @@ export async function writeProjectPrompts(
                   "videoforge.account_id",
                   scope.account_id,
                 ]);
-                if (existingState === "UNKNOWN") {
+                if (existingState === "UNKNOWN" && !original.claim) {
                   const reopened = await transaction.query<{ reopened: boolean }>(
                     "SELECT public.videoforge_reopen_complete_hosted_prompt_run($1::uuid) AS reopened",
                     [saved.id],
@@ -534,44 +559,105 @@ export async function writeProjectPrompts(
         let acceptedBatch: Awaited<ReturnType<typeof recoverClaimedHostedPromptBatch>> | null;
         try {
           acceptedBatch = original.claim
-          ? await recoverClaimedHostedPromptBatch({
-              apiKey: promptApiKey,
-              plan: batchPlan,
-              persistedBinding: binding,
-              batchOrdinal: original.claim.batch_ordinal,
-              taskUUID: original.claim.provider_task_uuid,
-              requestBytes: original.claim.request_bytes,
-              requestHash: original.claim
-                .request_hash as HostedPromptBatchPlanBinding["batchPlanHash"],
-              reservationMicroUsd: saved.reserved_cost_micro_usd,
-            })
-          : existingState === "DISPATCHING" &&
-              saved.accepted_batch_count < saved.planned_batch_count
-            ? await dispatchOneHostedPromptBatch({
+            ? await recoverClaimedHostedPromptBatch({
                 apiKey: promptApiKey,
                 plan: batchPlan,
                 persistedBinding: binding,
-                batchOrdinal: saved.accepted_batch_count,
-                remainingReservationMicroUsd:
-                  saved.reserved_cost_micro_usd - saved.accepted_cost_micro_usd,
-                claim: (claim) => claimHostedPromptBatch(pool, scope.account_id, saved.id, claim),
+                batchOrdinal: original.claim.batch_ordinal,
+                taskUUID: original.claim.provider_task_uuid,
+                requestBytes: original.claim.request_bytes,
+                requestHash: original.claim
+                  .request_hash as HostedPromptBatchPlanBinding["batchPlanHash"],
+                reservationMicroUsd: saved.reserved_cost_micro_usd - saved.discarded_cost_micro_usd,
+                retryOfRequestHash: original.claim.retry_of_request_hash as
+                  | HostedRecoveredPromptBatch["requestHash"]
+                  | null,
               })
-            : null;
+            : existingState === "DISPATCHING" &&
+                saved.accepted_batch_count < saved.planned_batch_count
+              ? await dispatchOneHostedPromptBatch({
+                  apiKey: promptApiKey,
+                  plan: batchPlan,
+                  persistedBinding: binding,
+                  batchOrdinal: saved.accepted_batch_count,
+                  remainingReservationMicroUsd:
+                    saved.reserved_cost_micro_usd -
+                    saved.accepted_cost_micro_usd -
+                    saved.discarded_cost_micro_usd,
+                  claim: (claim) => claimHostedPromptBatch(pool, scope.account_id, saved.id, claim),
+                })
+              : null;
         } catch (error) {
           if (!original.claim || !(error instanceof HostedPromptArchivedOutputInvalidError))
             throw error;
           const invalidClaim = original.claim;
-          await createNeonExecutor(pool).transaction(async (transaction) => {
-            await transaction.query("SELECT set_config($1, $2, true)", [
-              "videoforge.account_id",
-              scope.account_id,
-            ]);
-            await transaction.query(
-              "SELECT public.videoforge_adjudicate_invalid_hosted_prompt_batch($1,$2,$3,$4)",
-              [saved.id, invalidClaim.provider_task_uuid, error.responseHash, error.knownCostMicroUsd],
-            );
-          });
-          return response({ error: { code: "HOSTED_PROMPT_OUTPUT_INVALID" } }, 409);
+          if (
+            !invalidClaim.retry_of_request_hash &&
+            saved.reserved_cost_micro_usd -
+              saved.accepted_cost_micro_usd -
+              saved.discarded_cost_micro_usd -
+              error.knownCostMicroUsd >=
+              250_000
+          ) {
+            // The archived task identity, terminal response, and known charge were verified above.
+            // Claim at most one distinct replacement; keep every accepted batch and original claim.
+            acceptedBatch = await dispatchOneHostedPromptBatch({
+              apiKey: promptApiKey,
+              plan: batchPlan,
+              persistedBinding: binding,
+              batchOrdinal: invalidClaim.batch_ordinal,
+              remainingReservationMicroUsd:
+                saved.reserved_cost_micro_usd -
+                saved.accepted_cost_micro_usd -
+                saved.discarded_cost_micro_usd -
+                error.knownCostMicroUsd,
+              retryOfRequestHash:
+                invalidClaim.request_hash as HostedRecoveredPromptBatch["requestHash"],
+              claim: (replacement) =>
+                createNeonExecutor(pool).transaction(async (transaction) => {
+                  await transaction.query("SELECT set_config($1,$2,true)", [
+                    "videoforge.account_id",
+                    scope.account_id,
+                  ]);
+                  const result = await transaction.query<{ claimed: boolean }>(
+                    "SELECT public.videoforge_replace_invalid_hosted_prompt_batch($1,$2,$3,$4,$5,$6,$7) AS claimed",
+                    [
+                      saved.id,
+                      invalidClaim.batch_ordinal,
+                      invalidClaim.provider_task_uuid,
+                      error.responseHash,
+                      error.knownCostMicroUsd,
+                      replacement.requestBytes,
+                      replacement.requestHash,
+                    ],
+                  );
+                  return result.rows[0]?.claimed === true;
+                }),
+            });
+            replacementDispatched = true;
+          } else {
+            await createNeonExecutor(pool).transaction(async (transaction) => {
+              await transaction.query("SELECT set_config($1, $2, true)", [
+                "videoforge.account_id",
+                scope.account_id,
+              ]);
+              if (existingState === "DISPATCHING")
+                await transaction.query(
+                  "SELECT public.videoforge_fail_hosted_prompt_run($1,$2,$3,$4,$5)",
+                  [saved.id, "UNKNOWN", "HOSTED_PROMPT_EXECUTION_UNKNOWN", true, 0],
+                );
+              await transaction.query(
+                "SELECT public.videoforge_adjudicate_invalid_hosted_prompt_batch($1,$2,$3,$4)",
+                [
+                  saved.id,
+                  invalidClaim.provider_task_uuid,
+                  error.responseHash,
+                  error.knownCostMicroUsd,
+                ],
+              );
+            });
+            return response({ error: { code: "HOSTED_PROMPT_OUTPUT_INVALID" } }, 409);
+          }
         }
         if (acceptedBatch)
           await compileAndPersistHostedPromptBatch(authority, acceptedBatch, (batch) =>
@@ -580,7 +666,9 @@ export async function writeProjectPrompts(
               scope.account_id,
               saved.id,
               batch,
-              existingState === "UNKNOWN" ? original.claim?.provider_task_uuid : undefined,
+              existingState === "UNKNOWN" && !replacementDispatched
+                ? original.claim?.provider_task_uuid
+                : undefined,
             ),
           );
         if (acceptedBatch && saved.accepted_batch_count + 1 === saved.planned_batch_count)

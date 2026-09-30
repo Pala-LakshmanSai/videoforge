@@ -4,8 +4,13 @@ import { handoffAcceptedHostedPrompts, hostedPromptRedispatchable } from "./host
 
 it("finalizes the last durable batch with a bounded numeric reservation", () => {
   const source = readFileSync("src/server/hosted/hosted-prompt-route.ts", "utf8");
-  const recorded = source.indexOf("await compileAndPersistHostedPromptBatch(authority, acceptedBatch");
-  const finalBatch = source.indexOf("saved.accepted_batch_count + 1 === saved.planned_batch_count", recorded);
+  const recorded = source.indexOf(
+    "await compileAndPersistHostedPromptBatch(authority, acceptedBatch",
+  );
+  const finalBatch = source.indexOf(
+    "saved.accepted_batch_count + 1 === saved.planned_batch_count",
+    recorded,
+  );
   const completion = source.indexOf("return await completeAcceptedRun()", finalBatch);
   const runningResponse = source.indexOf('state: "RUNNING"', completion);
   expect(recorded).toBeGreaterThan(-1);
@@ -33,7 +38,9 @@ it("hands accepted API prompts to the next stage without changing acceptance on 
   });
   const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
   try {
-    await expect(handoffAcceptedHostedPrompts(true, handoff, scope, "project")).resolves.toBeUndefined();
+    await expect(
+      handoffAcceptedHostedPrompts(true, handoff, scope, "project"),
+    ).resolves.toBeUndefined();
     expect(handoff).toHaveBeenCalledExactlyOnceWith(scope, "project");
     expect(warning).toHaveBeenCalledWith(
       "hosted_prompt_next_stage_failed project=project message=dispatch unavailable",
@@ -157,4 +164,19 @@ describe("hostedPromptRedispatchable", () => {
       hostedPromptRedispatchable({ ...failedProviderRun, existing_run_redispatch_count: "x" }),
     ).toBe(false);
   });
+});
+
+// Resumed failures must settle the same durable run; otherwise cron loops in DISPATCHING forever.
+it("binds resumed failure settlement and transitions terminal invalid output before adjudication", () => {
+  const source = readFileSync("src/server/hosted/hosted-prompt-route.ts", "utf8");
+  const resumed = source.indexOf("const saved = original.run;");
+  expect(source.indexOf("runId = saved.id;", resumed)).toBeLessThan(
+    source.indexOf("const identity:", resumed),
+  );
+  const invalid = source.indexOf("const invalidClaim = original.claim;");
+  expect(source.indexOf("videoforge_fail_hosted_prompt_run", invalid)).toBeLessThan(
+    source.indexOf("videoforge_adjudicate_invalid_hosted_prompt_batch", invalid),
+  );
+  expect(source).toContain("!invalidClaim.retry_of_request_hash");
+  expect(source).toContain('existingState === "UNKNOWN" && !original.claim');
 });

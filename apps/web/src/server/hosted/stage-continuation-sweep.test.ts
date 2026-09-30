@@ -17,7 +17,10 @@ import {
   HOSTED_CONTEXT_REDISPATCH_BUDGET,
   HOSTED_CONTEXT_RETRYABLE_PROBLEM_CODES,
 } from "./voiceover-context";
-import { HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES, HOSTED_PROMPT_STALE_RUN_MS } from "./hosted-prompt-route";
+import {
+  HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES,
+  HOSTED_PROMPT_STALE_RUN_MS,
+} from "./hosted-prompt-route";
 
 const accountId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const workspaceId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
@@ -112,36 +115,75 @@ async function seededDatabase(context: {
 }
 
 async function nextSteps(database: PGlite): Promise<readonly string[]> {
-  const result = await database.query<{ next_step: string }>(DUE_QUERY, [accountId, null, null, null]);
+  const result = await database.query<{ next_step: string }>(DUE_QUERY, [
+    accountId,
+    null,
+    null,
+    null,
+  ]);
   return result.rows.map((row) => row.next_step);
 }
 
 it("selects only the requested project's due stage for an immediate handoff", async () => {
-  const database = await seededDatabase({ state: null, hash: null, problemCode: null, redispatchCount: 0 });
+  const database = await seededDatabase({
+    state: null,
+    hash: null,
+    problemCode: null,
+    redispatchCount: 0,
+  });
   try {
     const projectId = "11111111-1111-4111-8111-111111111111";
-    expect((await database.query(DUE_QUERY, [accountId, projectId, "context", revisionId])).rows).toHaveLength(1);
-    expect((await database.query(DUE_QUERY, [accountId, projectId, "prompts", revisionId])).rows).toHaveLength(0);
-    expect((await database.query(DUE_QUERY, [accountId, projectId, "context", "99999999-9999-4999-8999-999999999999"])).rows).toHaveLength(0);
+    expect(
+      (await database.query(DUE_QUERY, [accountId, projectId, "context", revisionId])).rows,
+    ).toHaveLength(1);
+    expect(
+      (await database.query(DUE_QUERY, [accountId, projectId, "prompts", revisionId])).rows,
+    ).toHaveLength(0);
+    expect(
+      (
+        await database.query(DUE_QUERY, [
+          accountId,
+          projectId,
+          "context",
+          "99999999-9999-4999-8999-999999999999",
+        ])
+      ).rows,
+    ).toHaveLength(0);
   } finally {
     await database.close();
   }
 });
 
 it("offers a saved plan only to the targeted prompt handoff", async () => {
-  const database = await seededDatabase({ state: "SUCCEEDED", hash: "accepted", problemCode: null, redispatchCount: 0 });
+  const database = await seededDatabase({
+    state: "SUCCEEDED",
+    hash: "accepted",
+    problemCode: null,
+    redispatchCount: 0,
+  });
   try {
-    await database.exec(`INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}')`);
+    await database.exec(
+      `INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}')`,
+    );
     const projectId = "11111111-1111-4111-8111-111111111111";
-    expect((await database.query(DUE_QUERY, [accountId, projectId, "prompts", revisionId])).rows).toHaveLength(1);
-    expect((await database.query(DUE_QUERY, [accountId, projectId, "context", revisionId])).rows).toHaveLength(0);
+    expect(
+      (await database.query(DUE_QUERY, [accountId, projectId, "prompts", revisionId])).rows,
+    ).toHaveLength(1);
+    expect(
+      (await database.query(DUE_QUERY, [accountId, projectId, "context", revisionId])).rows,
+    ).toHaveLength(0);
   } finally {
     await database.close();
   }
 });
 
 it("resumes one admitted API generation only before any span or provider job exists", async () => {
-  const database = await seededDatabase({ state: "SUCCEEDED", hash: "accepted", problemCode: null, redispatchCount: 0 });
+  const database = await seededDatabase({
+    state: "SUCCEEDED",
+    hash: "accepted",
+    problemCode: null,
+    redispatchCount: 0,
+  });
   try {
     await database.exec(`
       INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}');
@@ -188,15 +230,21 @@ describe("hosted continuation sweep stage-3 recovery", () => {
     // this suite and strands the run: the sweep kept selecting the revision (its gate said six) while
     // the function answered 'hosted voiceover context redispatch budget is spent' from the third
     // failure on, and the run stopped at stage 3 with attempts the product believed it still had.
-    const migrations = new URL("../../../../../packages/control-plane/migrations/", import.meta.url);
+    const migrations = new URL(
+      "../../../../../packages/control-plane/migrations/",
+      import.meta.url,
+    );
     const declaring = [...readdirSync(fileURLToPath(migrations))]
       .filter((name) => /^01\d\d_.*\.sql$/u.test(name))
       .sort()
       .reverse()
       .filter((name) => {
         const source = readFileSync(fileURLToPath(new URL(name, migrations)), "utf8");
-        return source.includes("CREATE OR REPLACE FUNCTION public.videoforge_redispatch_hosted_voiceover_context")
-          && source.includes("redispatch budget is spent");
+        return (
+          source.includes(
+            "CREATE OR REPLACE FUNCTION public.videoforge_redispatch_hosted_voiceover_context",
+          ) && source.includes("redispatch budget is spent")
+        );
       });
     expect(declaring.length).toBeGreaterThan(0);
     const source = readFileSync(fileURLToPath(new URL(declaring[0]!, migrations)), "utf8");
@@ -212,7 +260,10 @@ describe("hosted continuation sweep stage-3 recovery", () => {
     // budget, the sweep re-offered the step on every tick, and the revision sat at stage 3 forever.
     // The newest definition therefore has to either drop the predicate or carry it only to repair
     // it in place the way 0184 does through pg_get_functiondef.
-    const migrations = new URL("../../../../../packages/control-plane/migrations/", import.meta.url);
+    const migrations = new URL(
+      "../../../../../packages/control-plane/migrations/",
+      import.meta.url,
+    );
     const recreatesFunction =
       /CREATE OR REPLACE FUNCTION\s+public\.videoforge_prepare_hosted_voiceover_context/u;
     const declaring = [...readdirSync(fileURLToPath(migrations))]
@@ -223,16 +274,19 @@ describe("hosted continuation sweep stage-3 recovery", () => {
         const source = readFileSync(fileURLToPath(new URL(name, migrations)), "utf8");
         // A migration owns the capability when it re-creates the function or repairs the live
         // definition in place (0184's shape); the other mentions are call sites.
-        return source.includes("videoforge_prepare_hosted_voiceover_context")
-          && (recreatesFunction.test(source) || source.includes("pg_get_functiondef"));
+        return (
+          source.includes("videoforge_prepare_hosted_voiceover_context") &&
+          (recreatesFunction.test(source) || source.includes("pg_get_functiondef"))
+        );
       });
     expect(declaring.length).toBeGreaterThan(0);
     const source = readFileSync(fileURLToPath(new URL(declaring[0]!, migrations)), "utf8");
-    const carriesStaleCostPredicate = recreatesFunction.test(source)
-      && /revision\.maximum_cost_micro_usd\s*>=\s*\d+/u.test(source);
-    const repairsStaleCostPredicate = source.includes("pg_get_functiondef")
-      && source.includes("revision.maximum_cost_micro_usd>=10000")
-      && source.includes("TRUE");
+    const carriesStaleCostPredicate =
+      recreatesFunction.test(source) && /revision\.maximum_cost_micro_usd\s*>=\s*\d+/u.test(source);
+    const repairsStaleCostPredicate =
+      source.includes("pg_get_functiondef") &&
+      source.includes("revision.maximum_cost_micro_usd>=10000") &&
+      source.includes("TRUE");
     expect(!carriesStaleCostPredicate || repairsStaleCostPredicate).toBe(true);
   });
 
@@ -334,12 +388,19 @@ describe("hosted continuation sweep stage-3 recovery", () => {
     const { readFileSync } = await import("node:fs");
     const schema = JSON.parse(
       readFileSync(
-        new URL("../../../../../packages/contracts/generated/schemas/project_revision_config.schema.json", import.meta.url),
+        new URL(
+          "../../../../../packages/contracts/generated/schemas/project_revision_config.schema.json",
+          import.meta.url,
+        ),
         "utf8",
       ),
     ) as { properties?: { schema_version?: { const?: string } } };
-    expect(schema.properties?.schema_version?.const).toBe(PLAN_STAGE_REVISION_CONFIG_SCHEMA_VERSION);
-    expect(DUE_QUERY).toContain(`revision_config_schema = '${PLAN_STAGE_REVISION_CONFIG_SCHEMA_VERSION}'`);
+    expect(schema.properties?.schema_version?.const).toBe(
+      PLAN_STAGE_REVISION_CONFIG_SCHEMA_VERSION,
+    );
+    expect(DUE_QUERY).toContain(
+      `revision_config_schema = '${PLAN_STAGE_REVISION_CONFIG_SCHEMA_VERSION}'`,
+    );
   });
 
   it("nudges a stale in-flight prompt run and mirrors the route's stale window", () => {
@@ -360,7 +421,10 @@ describe("hosted continuation sweep stage-3 recovery", () => {
 
   it("offers only the next unclaimed prompt batch to the broad driver", async () => {
     const database = await seededDatabase({
-      state: "SUCCEEDED", hash: "accepted", problemCode: null, redispatchCount: 0,
+      state: "SUCCEEDED",
+      hash: "accepted",
+      problemCode: null,
+      redispatchCount: 0,
     });
     try {
       await database.exec(`
@@ -379,17 +443,27 @@ describe("hosted continuation sweep stage-3 recovery", () => {
         ('88888888-8888-4888-8888-888888888888','55555555-5555-4555-8555-555555555555')`);
       expect(await nextSteps(database)).toEqual([]);
       // The targeted Workflow may inspect this exact claim through retrieval-only recovery.
-      expect((await database.query(DUE_QUERY, [
-        accountId, "11111111-1111-4111-8111-111111111111", "prompts", revisionId,
-      ])).rows).toHaveLength(1);
+      expect(
+        (
+          await database.query(DUE_QUERY, [
+            accountId,
+            "11111111-1111-4111-8111-111111111111",
+            "prompts",
+            revisionId,
+          ])
+        ).rows,
+      ).toHaveLength(1);
     } finally {
       await database.close();
     }
   });
 
-  it("offers a fully saved UNKNOWN prompt run only when every claim has matching progress", async () => {
+  it("retrieves an uncertain next claim only for active work and finalizes fully saved runs", async () => {
     const database = await seededDatabase({
-      state: "SUCCEEDED", hash: "accepted", problemCode: null, redispatchCount: 0,
+      state: "SUCCEEDED",
+      hash: "accepted",
+      problemCode: null,
+      redispatchCount: 0,
     });
     try {
       await database.exec(`
@@ -404,6 +478,12 @@ describe("hosted continuation sweep stage-3 recovery", () => {
           ('77777777-7777-4777-8777-777777777777','55555555-5555-4555-8555-555555555555',0);
       `);
       expect(await nextSteps(database)).toEqual([]);
+      await database.exec(`INSERT INTO public.generation_requests VALUES
+        ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','${revisionId}','ACTIVE')`);
+      expect(await nextSteps(database)).toEqual(["prompts"]);
+      await database.exec(`UPDATE public.generation_requests SET state='FAILED'`);
+      expect(await nextSteps(database)).toEqual([]);
+      await database.exec(`UPDATE public.generation_requests SET state='ACTIVE'`);
       await database.exec(`INSERT INTO public.hosted_prompt_batch_progress VALUES
         ('99999999-9999-4999-8999-999999999999','55555555-5555-4555-8555-555555555555',2)`);
       expect(await nextSteps(database)).toEqual([]);

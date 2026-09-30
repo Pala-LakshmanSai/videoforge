@@ -28,6 +28,7 @@ test("the hosted runtime can append through the exact function but has no direct
     "hosted_prompt_scene_progress",
     "hosted_prompt_batch_progress",
     "hosted_prompt_batch_claims",
+    "hosted_prompt_batch_replacements",
     "memberships",
     "hosted_pair_runtime_states",
     "prompt_executions",
@@ -144,6 +145,7 @@ test("the hosted runtime can append through the exact function but has no direct
     "videoforge_reconcile_stale_hosted_prompt_dispatches(uuid)",
     "videoforge_reconcile_unknown_hosted_voiceover_context(jsonb)",
     "videoforge_adjudicate_invalid_hosted_prompt_batch(uuid,text,text,bigint)",
+    "videoforge_replace_invalid_hosted_prompt_batch(uuid,integer,text,text,bigint,text,text)",
     ...v209RuntimeSignatures,
   ]) {
     assert.ok(EXPECTED_RUNTIME_FUNCTIONS.includes(signature));
@@ -242,7 +244,7 @@ test("the hosted runtime can append through the exact function but has no direct
   assert.doesNotMatch(source, /GRANT\s+[^;\n]*(?:UPDATE|DELETE)[^;\n]*\bON\s+projects\b/iu);
   assert.doesNotMatch(
     source,
-    /GRANT\s+[^;\n]*(?:INSERT|UPDATE|DELETE)[^;\n]*\bON\s+(?:hosted_voiceover_contexts|hosted_prompt_runs|hosted_prompt_scene_progress|hosted_prompt_batch_progress|hosted_prompt_batch_claims|prompt_executions|prompt_writer_attempts|prompt_scene_results|generation_tasks|attempts|outbox|cost_events)\b/iu,
+    /GRANT\s+[^;\n]*(?:INSERT|UPDATE|DELETE)[^;\n]*\bON\s+(?:hosted_voiceover_contexts|hosted_prompt_runs|hosted_prompt_scene_progress|hosted_prompt_batch_progress|hosted_prompt_batch_claims|hosted_prompt_batch_replacements|prompt_executions|prompt_writer_attempts|prompt_scene_results|generation_tasks|attempts|outbox|cost_events)\b/iu,
   );
   assert.match(source, /REVOKE ALL ON ALL TABLES IN SCHEMA public FROM :"runtime_role";/u);
   assert.match(

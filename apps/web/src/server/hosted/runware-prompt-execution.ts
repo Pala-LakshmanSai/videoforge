@@ -39,7 +39,8 @@ export function hostedPromptReservationMicroUsd(
   batchCount: number,
   existingReservationMicroUsd: number | null,
 ): number {
-  if (!Number.isSafeInteger(batchCount) || batchCount < 1) throw new RangeError("Invalid batch count.");
+  if (!Number.isSafeInteger(batchCount) || batchCount < 1)
+    throw new RangeError("Invalid batch count.");
   const reservation =
     existingReservationMicroUsd ??
     Math.min(HOSTED_PROMPT_RESERVATION_MICRO_USD, batchCount * 250_000);
@@ -89,6 +90,7 @@ export async function recoverClaimedHostedPromptBatch(input: {
   readonly requestBytes: string;
   readonly requestHash: Sha256Digest;
   readonly reservationMicroUsd: number;
+  readonly retryOfRequestHash?: Sha256Digest | null;
   readonly fetcher?: typeof fetch;
 }): Promise<HostedAcceptedPromptBatch> {
   const entry = input.plan.batches[input.batchOrdinal];
@@ -98,7 +100,12 @@ export async function recoverClaimedHostedPromptBatch(input: {
     input.plan,
     input.persistedBinding,
   );
-  const expected = buildRunwarePromptRequest(entry.batch, entry.batch.scenes, 1, null);
+  const expected = buildRunwarePromptRequest(
+    entry.batch,
+    entry.batch.scenes,
+    input.retryOfRequestHash ? 2 : 1,
+    input.retryOfRequestHash ?? null,
+  );
   if (
     expected.request.taskUUID !== input.taskUUID ||
     expected.requestBytes !== input.requestBytes ||
@@ -163,7 +170,10 @@ export async function recoverClaimedHostedPromptBatch(input: {
   });
   let output: ReturnType<typeof validatePromptWriterOutput>;
   try {
-    output = validatePromptWriterOutput(entry.batch, await writer.write(entry.batch));
+    output = validatePromptWriterOutput(
+      entry.batch,
+      await writer.write(entry.batch, input.retryOfRequestHash ?? null),
+    );
   } catch (error) {
     const diagnostic = runwarePromptValidationDiagnostic(error);
     if (!diagnostic) throw error;
@@ -213,6 +223,7 @@ export async function dispatchOneHostedPromptBatch(input: {
   readonly persistedBinding: HostedPromptBatchPlanBinding;
   readonly batchOrdinal: number;
   readonly remainingReservationMicroUsd: number;
+  readonly retryOfRequestHash?: Sha256Digest | null;
   readonly claim: (request: {
     batchOrdinal: number;
     taskUUID: string;
@@ -233,7 +244,12 @@ export async function dispatchOneHostedPromptBatch(input: {
     input.plan,
     input.persistedBinding,
   );
-  const expected = buildRunwarePromptRequest(entry.batch, entry.batch.scenes, 1, null);
+  const expected = buildRunwarePromptRequest(
+    entry.batch,
+    entry.batch.scenes,
+    input.retryOfRequestHash ? 2 : 1,
+    input.retryOfRequestHash ?? null,
+  );
   const claimed = await input.claim({
     batchOrdinal: input.batchOrdinal,
     taskUUID: expected.request.taskUUID,
@@ -272,7 +288,10 @@ export async function dispatchOneHostedPromptBatch(input: {
     allowPartialRetry: false,
     minimumBatchScenes: 1,
   });
-  const output = validatePromptWriterOutput(entry.batch, await writer.write(entry.batch));
+  const output = validatePromptWriterOutput(
+    entry.batch,
+    await writer.write(entry.batch, input.retryOfRequestHash ?? null),
+  );
   const acceptedResult = result as RunwarePromptTransportResult | null;
   const acceptedEvidence = evidence as RunwarePromptAttemptEvidence | null;
   if (
@@ -345,6 +364,7 @@ export interface HostedRecoveredPromptBatch {
     readonly sceneId: string;
     readonly writerOutput: PromptWriterSceneOutput;
   }[];
+  readonly retryOfRequestHash?: Sha256Digest | null;
   readonly requestBytes: string;
   readonly requestHash: Sha256Digest;
   readonly responseBytes: string;
@@ -593,7 +613,12 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
           saved.responseHash !== (await sha256Utf8(saved.responseBytes))
         )
           throw invalidPlanBinding();
-        const request = buildRunwarePromptRequest(entry.batch, entry.batch.scenes, 1, null);
+        const request = buildRunwarePromptRequest(
+          entry.batch,
+          entry.batch.scenes,
+          saved.retryOfRequestHash ? 2 : 1,
+          saved.retryOfRequestHash ?? null,
+        );
         if (
           saved.requestHash !== request.requestSha256 ||
           saved.requestBytes !== request.requestBytes

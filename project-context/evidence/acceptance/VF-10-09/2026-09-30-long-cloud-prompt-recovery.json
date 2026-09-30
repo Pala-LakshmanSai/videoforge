@@ -1,0 +1,65 @@
+{
+  "schema_version": "videoforge.long-cloud-prompt-recovery/v1",
+  "checkpoint": "V2-09",
+  "selected_task": "VF-10-09",
+  "status": "SCHEMA_INSTALLED_PENDING_PUBLICATION",
+  "project_id": "386e147f-8b40-4a0f-bafd-cf026d991954",
+  "voiceover_duration_ms": 1806942,
+  "accepted_prompt_prefix": 148,
+  "accepted_batch_prefix": 15,
+  "planned_prompts": 347,
+  "planned_batches": 35,
+  "failure": {
+    "provider_finished": true,
+    "archived_output_redacted": true,
+    "usable_output": false,
+    "provider_reported_cost_micro_usd": 77804,
+    "archive_text_chars": 47,
+    "resumed_run_id_omitted": true,
+    "adjudication_sqlstate": "23514"
+  },
+  "repair": {
+    "original_claims_immutable": true,
+    "accepted_prompts_preserved": true,
+    "new_inference_requires_exact_terminal_invalid_evidence": true,
+    "replacement_per_batch_maximum": 1,
+    "request_attempt_protocol": 2,
+    "discarded_and_accepted_costs_bounded_and_settled": true,
+    "migration": 225,
+    "unknown_outcome_replay_allowed": false,
+    "automatic_unknown_retrieval_requires_active_generation_request": true
+  },
+  "validations": {
+    "focused_web_tests": 164,
+    "full_chain_db_tests": 10,
+    "runtime_grant_tests": 3,
+    "web_and_worker_typecheck": "PASS",
+    "changed_lint": "PASS",
+    "production_build_and_firewall": "PASS",
+    "live_postgres_owner_rollback_and_runtime_acl": "PASS",
+    "migration_snapshot_restore_and_schema_tests": 14,
+    "deployment_safety_tests": 20,
+    "deployment_safety_rerun_reason": "One build wrapper test conflicted with concurrent explicit build; exclusive rerun passes. Final explicit production build passes without changing bundle limits.",
+    "actual_restricted_runtime_postgres_rollback": "PASS"
+  },
+  "gates": [
+    "Exact source publication and canonical continuation",
+    "Complete long render and private artifact checksums",
+    "Natural full Chrome playback and browser download",
+    "Independent compute cleanup and final spend reconciliation"
+  ],
+  "paid_compute": {
+    "active_owned_media_pods": 0,
+    "asr_reservation": "CLEAN",
+    "additional_prompt_inference_posts_for_repair": 0,
+    "additional_cloud_rental_for_repair": 0
+  },
+  "live_migration": {
+    "version": 225,
+    "ledger_rows": 208,
+    "original_claims_and_148_prompt_prefix": "UNCHANGED",
+    "public_execute": false,
+    "runtime_direct_write": false,
+    "provider_posts": 0
+  }
+}
