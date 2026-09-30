@@ -1,8 +1,8 @@
 long_cloud_acceptance_2026_09_30:
   checkpoint: V2-09
   selected_task: VF-10-09
-  status: NORMAL_LONG_CLOUD_PREFIX_PRESERVED_RESPONSE_RECOVERY_PREPARED
-  production_source: 9ac18c8b6074d3c8aa0ba97b6f317f821f6f2760
+  status: NORMAL_LONG_CLOUD_SAVED_PREFIX_RECOVERY_VALIDATED_PUBLICATION_PENDING
+  production_source: 025b204d27b97c660abad17349dc9934a9dc4ac7
   project_id: 386e147f-8b40-4a0f-bafd-cf026d991954
   user_authority: User requests20_or30minute Downloads voiceover test viaCloud;proceed without questions. Necessary scoped repair/publication/recovery and cleanup included;no unrestricted spend.
   voiceover: Exact owned1806942ms MP3;whole SHA dc6b95a915b304bda71a169c75a8d7d059c609ade88f19d6733b31cd3d4e3ca3.
@@ -20,8 +20,11 @@ long_cloud_acceptance_2026_09_30:
   prompt_validation: Web164focused tests, full-chain database10including success/failure charges and duplicate/tenant/budget/recovery guards, runtimegrant3tests, web/Worker typecheck, lint, productionbuild/firewall pass. LivePostgres owner rollback and restricted-runtime ACL proof pass;actual restricted-runtime login ROLLBACK proves exact replacement claim and unchanged148promptprefix;additive225installed with208ledgerrows/max225 and original148promptprefix/claims unchanged;publication and finalrender unverified.
 
   prompt_publication: Source9ac18c8b/versiona296796d deployed100percent with exact25secrets/50bindings and existingthreeWorkflowidentities preserved. One distinct replacement started;its original response was not retained before validation. Exact archived responseHTTP200/stop/provider_reportedUSD0.077543 redacts8196bytes;wholeactualvalidationcause unestablished. RunFAILED with148acceptedprompts preserved,knownpromptcostUSD1.138978 settled and unused reservationreleased;noimage/avatar/render jobs yet.
-  response_recovery_prepared: Additive226 stores exact private normalized response in existing immutable tenant receipts before validation/compilation, and recovers it without another provider call. Additive227 offers one owner-only resume of an exactly reconciled terminal replacement, preserving accepted prefix and priorcharges and funding only the remaining original cumulativecap;runtime has no operator-resume authority. No live226/227 or newinference yet.
-  paid_compute_shutdown: ASR reservation independentlyCLEAN;no active CPU attempts or uncleanCloudreservations at07_05UTC. No longrender acceptance claimed.
+  response_recovery_publication: Source025b204d/versionb702ec90 deployed100percent;25secrets/50bindings/three existingWorkflowidentities preserved;samecanonicaldriverrestartonce/no newinstances. Additive226/227installed210ledgerrows/max227;prior148prompts/claims/charges unchanged before explicitresume. Runtimecapture/load grantedexactly;operatorresumePublic/runtime denied. Actualnative8379char response/provider_reportedUSD0.073844 storedwhole viarestrictedruntime and accepted throughnormal hostedrecovery;nextbatchaccepted. At07_45UTC17of35batches/168of347prompts;knowncumulativepromptcostUSD1.275954. Finalrender remainsunverified.
+  saved_prefix_failure: At18of35batches/178of347prompts, duplicate recovery of an already accepted batch raised23514 and poisoned runUNKNOWN;all18claims are accepted and no unresolved task exists. UI stopped polling because failed stage projection won over recoverable prompt state.
+  saved_prefix_repair: Additive228 makes exact accepted batch callbacks idempotent with native UUID and whole request/response/scene/token/cost equality;drift and cross-tenant access remain rejected. Narrow tenant prefix reopen requires contiguous wholly accepted claims, exact current reservation and prior settlement, no unresolved claim;creates no provider task or charge. Due sweep handles this prefix;UI keeps polling UNKNOWN/DISPATCHING. Migration228installed;actual restricted-runtime duplicate/recovery/prefix reopen ROLLBACK passes and178prefix/claims/costs unchanged. Publication pending.
+  saved_prefix_validation: Database22pass including prior settlement conservation and full resumed finalization;Web187pass;web/Worker typecheck and changed lint pass. Native production build/quarantine/no-growth gate pass after combining repeated count conditions;provider/validator quarantine unchanged. Evidence project-context/evidence/acceptance/VF-10-09/2026-09-30-long-cloud-saved-prefix-recovery.json.
+  paid_compute_shutdown: ASR reservation independentlyCLEAN;no active CPU attempts or uncleanCloudreservations during saved-prefix migration/recovery probe. No longrender acceptance claimed.
 
 app_audit_2026_09_30:
   checkpoint: V2-09

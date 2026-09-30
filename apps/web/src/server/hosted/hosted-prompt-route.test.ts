@@ -24,7 +24,7 @@ it("finalizes the last durable batch with a bounded numeric reservation", () => 
   expect(source).toContain("saved.accepted_scene_count === saved.planned_scene_count");
   expect(source.match(/return await completeAcceptedRun\(\)/gu)).toHaveLength(2);
   const noSubmit = source.indexOf("HOSTED_PROMPT_COMPLETION_MUST_NOT_SUBMIT");
-  const reopen = source.indexOf("videoforge_reopen_complete_hosted_prompt_run", noSubmit);
+  const reopen = source.indexOf("videoforge_reopen_saved_hosted_prompt_prefix", noSubmit);
   const complete = source.indexOf("videoforge_complete_hosted_prompt_run", reopen);
   expect(noSubmit).toBeGreaterThan(-1);
   expect(reopen).toBeGreaterThan(noSubmit);

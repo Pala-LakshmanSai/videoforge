@@ -201,8 +201,8 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
                    SELECT 1 FROM public.hosted_prompt_batch_claims claim_row
                     WHERE claim_row.run_id=prompt_run_id AND claim_row.batch_ordinal=(
                       SELECT count(*) FROM public.hosted_prompt_batch_progress WHERE run_id=prompt_run_id)))
-                 OR ((SELECT count(*) FROM public.hosted_prompt_batch_progress WHERE run_id=prompt_run_id)=prompt_planned_batches
-                   AND (SELECT count(*)=prompt_planned_batches AND bool_and(EXISTS (
+                 OR ((active_generation_requests=1 OR (SELECT count(*) FROM public.hosted_prompt_batch_progress WHERE run_id=prompt_run_id)=prompt_planned_batches)
+                   AND (SELECT count(*) BETWEEN 1 AND prompt_planned_batches AND count(*)=(SELECT count(*) FROM public.hosted_prompt_batch_progress WHERE run_id=prompt_run_id) AND bool_and(EXISTS (
                      SELECT 1 FROM public.hosted_prompt_batch_progress progress
                       WHERE progress.run_id=prompt_run_id AND progress.batch_ordinal=claim_row.batch_ordinal))
                      FROM public.hosted_prompt_batch_claims claim_row WHERE claim_row.run_id=prompt_run_id)))

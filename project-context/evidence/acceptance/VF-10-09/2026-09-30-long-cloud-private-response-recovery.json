@@ -1,7 +1,7 @@
 {
   "checkpoint": "V2-09",
   "selectedTask": "VF-10-09",
-  "status": "PRIVATE_RESPONSE_RECOVERY_AND_OWNER_RESUME_LOCALLY_VERIFIED_NOT_PUBLISHED",
+  "status": "PUBLISHED_PRIVATE_RESPONSE_RECOVERY_ACCEPTED_PREFIX_CONTINUING",
   "productionSource": "9ac18c8b6074d3c8aa0ba97b6f317f821f6f2760",
   "projectId": "386e147f-8b40-4a0f-bafd-cf026d991954",
   "preservedAcceptedScenes": 148,
@@ -46,9 +46,50 @@
   },
   "paidComputeShutdown": "Target ASR reservation CLEAN; latest scoped live read has zero active CPU/unclean reservations. Full final inventory required after acceptance.",
   "remainingGates": [
-    "Live schema installation, exact restricted-runtime readback and publication",
-    "One exact identity-bound new attempt; preserve all accepted prefix",
-    "Complete images/avatar/render and actual Chrome playback/download verification"
+    "Complete remaining prompts/images/avatar/render",
+    "Actual Chrome full playback and browser download checksum",
+    "Independent final Cloud cleanup inventory"
   ],
-  "privateEvidence": "Ignored .videoforge/long-cloud-20260930/prefix-resume-live-rollback files; no credentials in this report"
+  "privateEvidence": "Ignored .videoforge/long-cloud-20260930/prefix-resume-live-rollback files; no credentials in this report",
+  "publication": {
+    "source": "025b204d27b97c660abad17349dc9934a9dc4ac7",
+    "version": "b702ec90-2ff8-4ed3-86fd-e3d4538c2435",
+    "trafficPercent": 100,
+    "bundleSha256": "sha256:d68dad731199d596eed0eec352f33762c1a945a715c22fb1d5d99508bc183fd4",
+    "bundleBytes": 7567980,
+    "secretsPreserved": 25,
+    "bindingsPreserved": 50,
+    "workflowIdentitiesPreserved": 3,
+    "newWorkflowInstances": 0
+  },
+  "liveSchema": {
+    "installed": [
+      226,
+      227
+    ],
+    "ledgerRows": 210,
+    "original148ScenesClaimsChargesPreserved": true,
+    "actualRuntimeLoadPassed": true,
+    "operatorResumeRuntimeDenied": true,
+    "operatorResumePublicDenied": true
+  },
+  "operatorResume": {
+    "newProviderPosts": 1,
+    "distinctRequestUuidAndHash": true,
+    "wholeNativeResultStoredByActualRuntime": true,
+    "outputChars": 8379,
+    "costUsd": 0.073844,
+    "strictValidationPassed": true,
+    "normalHostedRecoveryAccepted": true,
+    "originalPromptCeilingMicroUsd": 8000000,
+    "remainingFundingMicroUsd": 6861022,
+    "previousSettlementUnchanged": true
+  },
+  "progressAt0745UTC": {
+    "state": "DISPATCHING",
+    "acceptedBatches": 17,
+    "acceptedScenes": 168,
+    "plannedScenes": 347,
+    "cumulativeKnownPromptCostMicroUsd": 1275954
+  }
 }

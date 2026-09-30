@@ -175,6 +175,20 @@ for (const outcome of ["complete", "failed"])
           JSON.parse(third)[0].taskUUID,
           JSON.stringify(payload(1, third, 456)),
         ]);
+        // A delayed duplicate callback may mark a fully accepted resumed run uncertain.
+        await executor.query(
+          "SELECT videoforge_fail_hosted_prompt_run($1,'UNKNOWN','HOSTED_PROMPT_EXECUTION_UNKNOWN',true,0)",
+          [run.runId],
+        );
+        assert.equal(
+          (
+            await executor.query(
+              "SELECT videoforge_reopen_saved_hosted_prompt_prefix($1) AS reopened",
+              [run.runId],
+            )
+          ).rows[0].reopened,
+          true,
+        );
         const scenes = scenePayload(0, 2);
         const accepted = {
           workspaceId: IDS.workspaceA,

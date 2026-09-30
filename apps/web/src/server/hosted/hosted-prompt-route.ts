@@ -528,12 +528,10 @@ export async function writeProjectPrompts(
                   scope.account_id,
                 ]);
                 if (existingState === "UNKNOWN" && !original.claim) {
-                  const reopened = await transaction.query<{ reopened: boolean }>(
-                    "SELECT public.videoforge_reopen_complete_hosted_prompt_run($1::uuid) AS reopened",
+                  await transaction.query(
+                    "SELECT public.videoforge_reopen_saved_hosted_prompt_prefix($1::uuid) AS reopened",
                     [saved.id],
                   );
-                  if (reopened.rows[0]?.reopened !== true)
-                    throw new Error("HOSTED_PROMPT_ACCEPTED_REOPEN_REJECTED");
                 }
                 const result = await transaction.query<{ completed: boolean }>(
                   "SELECT public.videoforge_complete_hosted_prompt_run($1::jsonb) AS completed",
@@ -579,8 +577,19 @@ export async function writeProjectPrompts(
           saved.accepted_scene_count === saved.planned_scene_count
         )
           return await completeAcceptedRun();
-        if (existingState === "UNKNOWN" && !original.claim)
-          return response({ error: { code: "HOSTED_PROMPT_EXECUTION_ALREADY_CLAIMED" } }, 409);
+        if (existingState === "UNKNOWN" && !original.claim) {
+          await createNeonExecutor(pool).transaction(async (transaction) => {
+            await transaction.query("SELECT set_config($1, $2, true)", [
+              "videoforge.account_id",
+              scope.account_id,
+            ]);
+            await transaction.query(
+              "SELECT public.videoforge_reopen_saved_hosted_prompt_prefix($1::uuid)",
+              [saved.id],
+            );
+          });
+          return response({ state: "RUNNING", replayed: false }, 202);
+        }
         let acceptedBatch: Awaited<ReturnType<typeof recoverClaimedHostedPromptBatch>> | null;
         try {
           acceptedBatch = original.claim

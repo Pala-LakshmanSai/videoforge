@@ -1,0 +1,43 @@
+{
+  "schema_version": "videoforge.long-cloud-saved-prefix-recovery/v1",
+  "checkpoint": "V2-09",
+  "task": "VF-10-09",
+  "status": "VALIDATED_SCHEMA_INSTALLED_PUBLICATION_PENDING",
+  "baseline_source": "025b204d27b97c660abad17349dc9934a9dc4ac7",
+  "baseline_version": "b702ec90-2ff8-4ed3-86fd-e3d4538c2435",
+  "project_id": "386e147f-8b40-4a0f-bafd-cf026d991954",
+  "run_id": "148e9be7-bac0-4617-a96b-6d359db8b862",
+  "saved_scenes": 178,
+  "planned_scenes": 347,
+  "saved_batches": 18,
+  "unresolved_claims": 0,
+  "root_cause": "Concurrent exact duplicate acceptance raised23514; outer handler marked run UNKNOWN after accepted batch; continuation offered only wholly complete recovery and UI stopped polling failed projection.",
+  "repair": [
+    "Exact accepted callback request/response/scene/token/cost idempotence with effective UUID binding on recovery",
+    "Narrow contiguous fully accepted prefix recovery; exact current reservation and historical settlement; no new claim/charge",
+    "Continuation due selection includes fully accepted prefix",
+    "Prompt recovery state keeps UI background polling"
+  ],
+  "validation": {
+    "database_pass": 22,
+    "web_pass": 187,
+    "typechecks": "PASS",
+    "changed_lint": "PASS",
+    "live_schema": 228,
+    "live_ledger_rows": 211,
+    "actual_restricted_runtime_rollback": "PASS",
+    "original_progress_claims_costs_preserved": true,
+    "provider_posts": 0,
+    "production_build_and_no_growth_firewall": "PASS",
+    "final_route_and_sweep_tests": 30
+  },
+  "provider_state": {
+    "cloud_asr": "CLEAN",
+    "active_cpu": 0,
+    "unclean_reservations": 0,
+    "prompt_known_micro_usd": 1338739,
+    "prompt_reserved_cumulative_ceiling_micro_usd": 8000000,
+    "long_render_verified": false
+  },
+  "private_evidence": ".videoforge/long-cloud-20260930/saved-prefix-schema-actual-runtime-rollback-private.json"
+}

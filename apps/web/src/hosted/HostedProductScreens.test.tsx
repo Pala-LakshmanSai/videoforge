@@ -245,6 +245,18 @@ describe("hosted project polling", () => {
     await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(1), { timeout: 3_500 });
   });
 
+  it("keeps refreshing a saved prompt run awaiting recovery despite a failed stage projection", () => {
+    const value = detail({
+      stages: [{ id: "prompt-writing", name: "Write image prompts", status: "FAILED" }],
+    });
+    for (const state of ["UNKNOWN", "DISPATCHING"] as const) {
+      expect(hostedProjectPollInterval({
+        ...value,
+        prompt_progress: { state } as NonNullable<ProjectDetailResponseForPolling["prompt_progress"]>,
+      })).toBe(2_000);
+    }
+  });
+
   it("stops background reads after a terminal Stage 3 provider failure", () => {
     expect(
       hostedProjectPollInterval(

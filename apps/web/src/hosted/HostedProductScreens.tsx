@@ -1662,6 +1662,7 @@ function isHostedV209PreSendIntegrityError(error: unknown): boolean {
 
 export function hostedProjectPollInterval(data: ProjectDetailResponse | undefined) {
   if (!data) return 2_000;
+  if (["DISPATCHING", "UNKNOWN"].includes(data.prompt_progress?.state ?? "")) return 2_000;
   const activeWork = hostedHasActiveWork(data.stages, data.attempts, data.gpu_lanes);
   const terminalStage =
     hostedTerminalStageStatus(data.stages, data.attempts, data.gpu_lanes) !== null;

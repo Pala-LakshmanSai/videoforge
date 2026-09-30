@@ -1140,6 +1140,12 @@
       "name": "hosted_prompt_operator_prefix_resume",
       "filename": "0227_hosted_prompt_operator_prefix_resume.sql",
       "sha256": "sha256:219bbfb0af8ab7ab25f67ac92d97d45b053b3b2e611558111f66219d6f5af130"
+    },
+    {
+      "version": 228,
+      "name": "hosted_prompt_saved_prefix_concurrency",
+      "filename": "0228_hosted_prompt_saved_prefix_concurrency.sql",
+      "sha256": "sha256:9a9f5032453593a35e625db33a9b5c5b8898c41a9a3ff7d9bf4ecefda8d97019"
     }
   ]
 }
