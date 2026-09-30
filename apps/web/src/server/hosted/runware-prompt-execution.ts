@@ -91,6 +91,8 @@ export async function recoverClaimedHostedPromptBatch(input: {
   readonly requestHash: Sha256Digest;
   readonly reservationMicroUsd: number;
   readonly retryOfRequestHash?: Sha256Digest | null;
+  /** Exact private response recorded before local validation or compilation. */
+  readonly recordedResult?: Extract<RunwarePromptTransportResult, { status: "succeeded" }> | null;
   readonly fetcher?: typeof fetch;
 }): Promise<HostedAcceptedPromptBatch> {
   const entry = input.plan.batches[input.batchOrdinal];
@@ -113,13 +115,15 @@ export async function recoverClaimedHostedPromptBatch(input: {
     input.requestHash !== (await sha256Utf8(input.requestBytes))
   )
     throw invalidPlanBinding();
-  const recovered = await retrieveRunwareTextTaskDetails({
-    apiKey: input.apiKey,
-    originalTaskUUID: input.taskUUID,
-    originalRequestBytes: input.requestBytes,
-    originalRequestSha256: input.requestHash,
-    fetch: input.fetcher,
-  });
+  const recovered =
+    input.recordedResult ??
+    (await retrieveRunwareTextTaskDetails({
+      apiKey: input.apiKey,
+      originalTaskUUID: input.taskUUID,
+      originalRequestBytes: input.requestBytes,
+      originalRequestSha256: input.requestHash,
+      fetch: input.fetcher,
+    }));
   const recoveredText = recovered.outputText.trim();
   let nativeJsonValid = false;
   try {
@@ -230,6 +234,11 @@ export async function dispatchOneHostedPromptBatch(input: {
     requestBytes: string;
     requestHash: Sha256Digest;
   }) => Promise<boolean>;
+  readonly recordResult?: (result: {
+    taskUUID: string;
+    requestHash: Sha256Digest;
+    result: Extract<RunwarePromptTransportResult, { status: "succeeded" }>;
+  }) => Promise<void>;
   readonly fetcher?: typeof fetch;
 }): Promise<HostedAcceptedPromptBatch | null> {
   const entry = input.plan.batches[input.batchOrdinal];
@@ -275,6 +284,12 @@ export async function dispatchOneHostedPromptBatch(input: {
         )
           throw invalidPlanBinding();
         result = await transport.dispatch(request);
+        if (result.status === "succeeded")
+          await input.recordResult?.({
+            taskUUID: request.request.taskUUID,
+            requestHash: request.requestSha256,
+            result,
+          });
         return result;
       },
     },

@@ -2,7 +2,7 @@
   "schema_version": "videoforge.long-cloud-prompt-recovery/v1",
   "checkpoint": "V2-09",
   "selected_task": "VF-10-09",
-  "status": "SCHEMA_INSTALLED_PENDING_PUBLICATION",
+  "status": "PUBLISHED_REPLACEMENT_FAILED_PREFIX_PRESERVED",
   "project_id": "386e147f-8b40-4a0f-bafd-cf026d991954",
   "voiceover_duration_ms": 1806942,
   "accepted_prompt_prefix": 148,
@@ -61,5 +61,26 @@
     "public_execute": false,
     "runtime_direct_write": false,
     "provider_posts": 0
+  },
+  "publication": {
+    "source": "9ac18c8b6074d3c8aa0ba97b6f317f821f6f2760",
+    "version": "a296796d-4310-46d5-915c-bad54847b8da",
+    "trafficPercent": 100,
+    "secretsPreserved": 25,
+    "bindingsPreserved": 50,
+    "workflowIdentitiesPreserved": 3
+  },
+  "latestPromptResult": {
+    "state": "FAILED",
+    "code": "HOSTED_PROMPT_OUTPUT_INVALID",
+    "acceptedBatches": 15,
+    "acceptedScenes": 148,
+    "plannedScenes": 347,
+    "promptReportedCostMicroUsd": 1138978,
+    "replacementCostMicroUsd": 77543,
+    "archivedTextChars": 47,
+    "archivedRedactedBytes": 8196,
+    "actualDirectValidationCause": "UNESTABLISHED",
+    "imagesAvatarRenderStarted": false
   }
 }

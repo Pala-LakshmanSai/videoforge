@@ -1128,6 +1128,18 @@
       "name": "hosted_prompt_terminal_batch_replacement",
       "filename": "0225_hosted_prompt_terminal_batch_replacement.sql",
       "sha256": "sha256:1c6adade5ff5d272791baa74169534c5b0f81e3cd5b4e2dcaaa758d70be252a9"
+    },
+    {
+      "version": 226,
+      "name": "hosted_prompt_private_response_receipts",
+      "filename": "0226_hosted_prompt_private_response_receipts.sql",
+      "sha256": "sha256:9a7650b52742d828ed72dcd68bf3d44095ce010f4f07edaba125c6035bf18daa"
+    },
+    {
+      "version": 227,
+      "name": "hosted_prompt_operator_prefix_resume",
+      "filename": "0227_hosted_prompt_operator_prefix_resume.sql",
+      "sha256": "sha256:219bbfb0af8ab7ab25f67ac92d97d45b053b3b2e611558111f66219d6f5af130"
     }
   ]
 }

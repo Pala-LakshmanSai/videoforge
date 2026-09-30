@@ -199,6 +199,8 @@ INSERT INTO v209_runtime_function_allowlist(signature) VALUES
   ('videoforge_reconcile_unknown_hosted_voiceover_context(jsonb)'),
   ('videoforge_record_hosted_prompt_batch(uuid,jsonb)'),
   ('videoforge_replace_invalid_hosted_prompt_batch(uuid,integer,text,text,bigint,text,text)'),
+  ('videoforge_record_hosted_prompt_response(uuid,text,text,jsonb)'),
+  ('videoforge_load_hosted_prompt_response(uuid,text,text)'),
   ('videoforge_record_hosted_prompt_scene(uuid,jsonb)'),
   ('videoforge_recover_hosted_atomic_pair_tokens(uuid,uuid,uuid)'),
   ('videoforge_redeem_hosted_invite(text,text)'),

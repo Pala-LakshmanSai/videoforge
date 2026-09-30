@@ -146,10 +146,17 @@ test("the hosted runtime can append through the exact function but has no direct
     "videoforge_reconcile_unknown_hosted_voiceover_context(jsonb)",
     "videoforge_adjudicate_invalid_hosted_prompt_batch(uuid,text,text,bigint)",
     "videoforge_replace_invalid_hosted_prompt_batch(uuid,integer,text,text,bigint,text,text)",
+    "videoforge_record_hosted_prompt_response(uuid,text,text,jsonb)",
+    "videoforge_load_hosted_prompt_response(uuid,text,text)",
     ...v209RuntimeSignatures,
   ]) {
     assert.ok(EXPECTED_RUNTIME_FUNCTIONS.includes(signature));
   }
+  assert.ok(
+    !EXPECTED_RUNTIME_FUNCTIONS.includes(
+      "videoforge_resume_failed_hosted_prompt_batch(uuid,text,text,bigint,text,text)",
+    ),
+  );
   const compactGrantSource = source.replace(/\s+/gu, "");
   const internalSystemReference =
     "videoforge_materialize_hosted_v209_system_avatar_reference_v2(uuid,uuid,uuid,uuid)";

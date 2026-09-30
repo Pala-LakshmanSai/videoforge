@@ -111,6 +111,8 @@ const EXPECTED_RUNTIME_FUNCTIONS = [
   "videoforge_recover_hosted_prompt_batch(uuid,text,jsonb)",
   "videoforge_adjudicate_invalid_hosted_prompt_batch(uuid,text,text,bigint)",
   "videoforge_replace_invalid_hosted_prompt_batch(uuid,integer,text,text,bigint,text,text)",
+  "videoforge_record_hosted_prompt_response(uuid,text,text,jsonb)",
+  "videoforge_load_hosted_prompt_response(uuid,text,text)",
   "videoforge_claim_hosted_prompt_batch(uuid,integer,text,text,text)",
   "videoforge_fail_hosted_prompt_run(uuid,text,text,boolean,bigint)",
   "videoforge_reconcile_stale_hosted_prompt_dispatches(uuid)",

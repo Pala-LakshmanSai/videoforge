@@ -1,5 +1,8 @@
 import type { HostedExecutionContext } from "./auth";
-import type { CompiledImagePrompt } from "@videoforge/pipeline/prompts";
+import {
+  runwarePromptValidationDiagnostic,
+  type CompiledImagePrompt,
+} from "@videoforge/pipeline/prompts";
 import type { HostedRuntimeConfiguration } from "./configuration";
 import { sha256 } from "./crypto";
 import {
@@ -39,6 +42,23 @@ const PROMPTS_PATH = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/prompts$/u;
 type PromptBatchReceipt = Parameters<
   NonNullable<Parameters<typeof runHostedPromptExecution>[0]["persistBatch"]>
 >[0];
+
+async function recordPromptResponse(
+  pool: ReturnType<typeof createNeonPool>,
+  accountId: string,
+  runId: string,
+  value: Parameters<
+    NonNullable<Parameters<typeof dispatchOneHostedPromptBatch>[0]["recordResult"]>
+  >[0],
+): Promise<void> {
+  await createNeonExecutor(pool).transaction(async (transaction) => {
+    await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", accountId]);
+    await transaction.query(
+      "SELECT public.videoforge_record_hosted_prompt_response($1,$2,$3,$4::jsonb)",
+      [runId, value.taskUUID, value.requestHash, JSON.stringify(value.result)],
+    );
+  });
+}
 
 async function claimHostedPromptBatch(
   pool: ReturnType<typeof createNeonPool>,
@@ -133,12 +153,13 @@ async function loadAcceptedPromptBatches(
               progress.request_bytes,progress.request_hash,progress.response_bytes,
               progress.response_hash,progress.input_tokens,progress.output_tokens,
               progress.reported_cost_micro_usd::integer AS reported_cost_micro_usd,
-              CASE WHEN replacement.request_hash=progress.request_hash THEN claim.request_hash
+              CASE WHEN replacement.request_hash=progress.request_hash THEN coalesce(replacement.retry_of_request_hash,claim.request_hash)
                 ELSE NULL END AS retry_of_request_hash
          FROM public.hosted_prompt_batch_progress progress
          LEFT JOIN public.hosted_prompt_batch_claims claim ON claim.id=progress.claim_id
            AND claim.account_id=progress.account_id AND claim.workspace_id=progress.workspace_id
          LEFT JOIN public.hosted_prompt_batch_replacements replacement ON replacement.claim_id=claim.id
+           AND replacement.request_hash=progress.request_hash
         WHERE progress.account_id=$1 AND progress.workspace_id=$2 AND progress.run_id=$3
         ORDER BY progress.batch_ordinal`,
       [accountId, workspaceId, runId],
@@ -399,16 +420,20 @@ export async function writeProjectPrompts(
           request_bytes: string;
           request_hash: string;
           retry_of_request_hash: string | null;
+          recorded_result: Parameters<typeof recoverClaimedHostedPromptBatch>[0]["recordedResult"];
         }>(
           `SELECT claim.batch_ordinal,
                   coalesce(replacement.provider_task_uuid,claim.provider_task_uuid) AS provider_task_uuid,
                   coalesce(replacement.request_bytes,claim.request_bytes) AS request_bytes,
                   coalesce(replacement.request_hash,claim.request_hash) AS request_hash,
-                  CASE WHEN replacement.claim_id IS NOT NULL THEN claim.request_hash ELSE NULL END
-                    AS retry_of_request_hash
+                  CASE WHEN replacement.claim_id IS NOT NULL THEN coalesce(replacement.retry_of_request_hash,claim.request_hash) ELSE NULL END
+                    AS retry_of_request_hash,
+                  public.videoforge_load_hosted_prompt_response(claim.run_id,
+                    coalesce(replacement.provider_task_uuid,claim.provider_task_uuid),
+                    coalesce(replacement.request_hash,claim.request_hash)) AS recorded_result
              FROM public.hosted_prompt_batch_claims claim
-             LEFT JOIN public.hosted_prompt_batch_replacements replacement
-               ON replacement.claim_id=claim.id
+             LEFT JOIN LATERAL (SELECT * FROM public.hosted_prompt_batch_replacements candidate
+               WHERE candidate.claim_id=claim.id ORDER BY candidate.replacement_index DESC LIMIT 1) replacement ON true
             WHERE claim.account_id=$1 AND claim.workspace_id=$2 AND claim.run_id=$3
               AND claim.task_id=$4 AND claim.attempt_id=$5 AND claim.outbox_id=$6
               AND claim.batch_ordinal=$7`,
@@ -572,6 +597,7 @@ export async function writeProjectPrompts(
                 retryOfRequestHash: original.claim.retry_of_request_hash as
                   | HostedRecoveredPromptBatch["requestHash"]
                   | null,
+                recordedResult: original.claim.recorded_result,
               })
             : existingState === "DISPATCHING" &&
                 saved.accepted_batch_count < saved.planned_batch_count
@@ -585,6 +611,8 @@ export async function writeProjectPrompts(
                     saved.accepted_cost_micro_usd -
                     saved.discarded_cost_micro_usd,
                   claim: (claim) => claimHostedPromptBatch(pool, scope.account_id, saved.id, claim),
+                  recordResult: (value) =>
+                    recordPromptResponse(pool, scope.account_id, saved.id, value),
                 })
               : null;
         } catch (error) {
@@ -613,6 +641,8 @@ export async function writeProjectPrompts(
                 error.knownCostMicroUsd,
               retryOfRequestHash:
                 invalidClaim.request_hash as HostedRecoveredPromptBatch["requestHash"],
+              recordResult: (value) =>
+                recordPromptResponse(pool, scope.account_id, saved.id, value),
               claim: (replacement) =>
                 createNeonExecutor(pool).transaction(async (transaction) => {
                   await transaction.query("SELECT set_config($1,$2,true)", [
@@ -815,6 +845,7 @@ export async function writeProjectPrompts(
       batchOrdinal: 0,
       remainingReservationMicroUsd: reservedCostMicroUsd,
       claim: (claim) => claimHostedPromptBatch(pool, scope.account_id, persistedRunId, claim),
+      recordResult: (value) => recordPromptResponse(pool, scope.account_id, persistedRunId, value),
     });
     if (firstBatch)
       await compileAndPersistHostedPromptBatch(authority, firstBatch, (batch) =>
@@ -840,11 +871,12 @@ export async function writeProjectPrompts(
     // is collapsed into HOSTED_PROMPT_EXECUTION_UNKNOWN for the caller, which hides the cause in
     // production. Record it once so the blocker is identifiable without reproducing locally.
     if (!(error instanceof HostedPromptExecutionError)) {
-      const detail = error as { code?: unknown; message?: unknown };
+      const detail = error as { code?: unknown; name?: unknown };
+      const validation = runwarePromptValidationDiagnostic(error);
       console.warn(
         `hosted_prompt_unexpected_failure project=${projectId} sqlstate=${
           typeof detail?.code === "string" ? detail.code : "-"
-        } message=${String(detail?.message ?? error).slice(0, 200)}`,
+        } name=${String(detail?.name ?? "Error").slice(0, 80)} category=${validation?.category ?? "-"} reason=${validation?.reason ?? "-"}`,
       );
     }
     if (runId) {

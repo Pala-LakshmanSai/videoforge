@@ -1,0 +1,54 @@
+{
+  "checkpoint": "V2-09",
+  "selectedTask": "VF-10-09",
+  "status": "PRIVATE_RESPONSE_RECOVERY_AND_OWNER_RESUME_LOCALLY_VERIFIED_NOT_PUBLISHED",
+  "productionSource": "9ac18c8b6074d3c8aa0ba97b6f317f821f6f2760",
+  "projectId": "386e147f-8b40-4a0f-bafd-cf026d991954",
+  "preservedAcceptedScenes": 148,
+  "plannedScenes": 347,
+  "fixes": [
+    "Retain exact normalized provider output before validation/compilation in immutable tenant receipts",
+    "Recover exact persisted output without a provider call",
+    "Use latest effective immutable replacement lineage",
+    "One owner-only terminal resume; runtime cannot invoke it",
+    "Reserve only the unspent original cumulative ceiling; retain previous settled ledger and charge only the new delta",
+    "Bound validation diagnostics without leaking scene text"
+  ],
+  "validations": {
+    "webFocused": 146,
+    "webFinalPromptFiles": 36,
+    "databaseOriginalReplacementAndPrivateReceipt": 19,
+    "databaseOperatorResumeSuccessFailure": 10,
+    "completeRecovery": 2,
+    "runtimeGrants": 3,
+    "webWorkerTypecheck": true,
+    "changedEslint": true,
+    "productionBuildAndFirewall": true,
+    "contextValidate": true,
+    "trackedSecretScan": true,
+    "livePostgresRollback": {
+      "passed": true,
+      "originalRowsPreserved": true,
+      "operatorResumePublicDenied": true,
+      "operatorResumeRuntimeDenied": true,
+      "acceptedScenes": 148,
+      "originalCumulativePromptCapMicroUsd": 8000000,
+      "remainingReservationMicroUsd": 6861022,
+      "newProviderInferencePosts": 0
+    }
+  },
+  "providerSpend": {
+    "knownPromptReportedMicroUsd": 1138978,
+    "knownContextReportedMicroUsd": 1173,
+    "newPaidActions": 0,
+    "cloudNewComputeDebitUsd": 0.2,
+    "invoiceObserved": false
+  },
+  "paidComputeShutdown": "Target ASR reservation CLEAN; latest scoped live read has zero active CPU/unclean reservations. Full final inventory required after acceptance.",
+  "remainingGates": [
+    "Live schema installation, exact restricted-runtime readback and publication",
+    "One exact identity-bound new attempt; preserve all accepted prefix",
+    "Complete images/avatar/render and actual Chrome playback/download verification"
+  ],
+  "privateEvidence": "Ignored .videoforge/long-cloud-20260930/prefix-resume-live-rollback files; no credentials in this report"
+}

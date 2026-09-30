@@ -1190,6 +1190,9 @@ describe("hosted Runware prompt writer", () => {
     expect(claimRejected).toHaveBeenCalledTimes(1);
     expect(fetcher).not.toHaveBeenCalled();
     const claimAccepted = vi.fn(async () => true);
+    const privateResults: Parameters<
+      NonNullable<Parameters<typeof dispatchOneHostedPromptBatch>[0]["recordResult"]>
+    >[0][] = [];
     const submitted = await dispatchOneHostedPromptBatch({
       apiKey: "runware-test-key-at-least-twenty-characters",
       plan: planned,
@@ -1201,11 +1204,70 @@ describe("hosted Runware prompt writer", () => {
       batchOrdinal: 0,
       remainingReservationMicroUsd: 2_000_000,
       claim: claimAccepted,
+      recordResult: async (result) => {
+        privateResults.push(result);
+      },
       fetcher,
     });
     expect(claimAccepted).toHaveBeenCalledTimes(1);
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(submitted).toMatchObject({ batchOrdinal: 0, reportedCostMicroUsd: 10 });
+    expect(privateResults).toHaveLength(1);
+    fetcher.mockClear();
+    const fromPrivateResponse = await recoverClaimedHostedPromptBatch({
+      apiKey: "runware-test-key-at-least-twenty-characters",
+      plan: planned,
+      persistedBinding: {
+        plannedBatchCount: planned.batchCount,
+        plannedSceneCount: planned.totalScenes,
+        batchPlanHash: await hostedPromptBatchPlanHash(planned),
+      },
+      batchOrdinal: 0,
+      taskUUID: privateResults[0]!.taskUUID,
+      requestBytes: submitted!.requestBytes,
+      requestHash: submitted!.requestHash,
+      reservationMicroUsd: 2_000_000,
+      recordedResult: privateResults[0]!.result,
+      fetcher,
+    });
+    expect(fromPrivateResponse).toEqual(submitted);
+    expect(fetcher).not.toHaveBeenCalled();
+    const invalidNativeResult = vi.fn(async () =>
+      Response.json({
+        data: [
+          {
+            taskUUID: originalTask.taskUUID,
+            text: "invalid JSON retained privately",
+            cost: 0.00001,
+            finishReason: "stop",
+            model: "google:gemini@3.5-flash",
+            usage: { promptTokens: 1, completionTokens: 2, totalTokens: 3, cachedInputTokens: 0 },
+          },
+        ],
+      }),
+    );
+    const invalidRecords: typeof privateResults = [];
+    await expect(
+      dispatchOneHostedPromptBatch({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        plan: planned,
+        persistedBinding: {
+          plannedBatchCount: planned.batchCount,
+          plannedSceneCount: planned.totalScenes,
+          batchPlanHash: await hostedPromptBatchPlanHash(planned),
+        },
+        batchOrdinal: 0,
+        remainingReservationMicroUsd: 2_000_000,
+        claim: async () => true,
+        recordResult: async (value) => {
+          invalidRecords.push(value);
+        },
+        fetcher: invalidNativeResult,
+      }),
+    ).rejects.toThrow();
+    expect(invalidRecords).toHaveLength(1);
+    expect(invalidRecords[0]!.result.outputText).toBe("invalid JSON retained privately");
+    expect(invalidNativeResult).toHaveBeenCalledTimes(1);
     fetcher.mockClear();
     const replacement = await dispatchOneHostedPromptBatch({
       apiKey: "runware-test-key-at-least-twenty-characters",

@@ -1,8 +1,8 @@
 long_cloud_acceptance_2026_09_30:
   checkpoint: V2-09
   selected_task: VF-10-09
-  status: NORMAL_LONG_CLOUD_PROMPT_RECOVERY_SCHEMA_INSTALLED_PENDING_PUBLICATION
-  production_source: 06dbfed34dbde41194a5843ff9fb0209966a8383
+  status: NORMAL_LONG_CLOUD_PREFIX_PRESERVED_RESPONSE_RECOVERY_PREPARED
+  production_source: 9ac18c8b6074d3c8aa0ba97b6f317f821f6f2760
   project_id: 386e147f-8b40-4a0f-bafd-cf026d991954
   user_authority: User requests20_or30minute Downloads voiceover test viaCloud;proceed without questions. Necessary scoped repair/publication/recovery and cleanup included;no unrestricted spend.
   voiceover: Exact owned1806942ms MP3;whole SHA dc6b95a915b304bda71a169c75a8d7d059c609ade88f19d6733b31cd3d4e3ca3.
@@ -18,6 +18,10 @@ long_cloud_acceptance_2026_09_30:
   prompt_failure: Preserved148of347prompts in15of35batches;finished originalbatch16 archive redacted47chars/provider_reportedUSD0.077804. Resumed handler omitted durable run ID; invalid-output adjudication requiredUNKNOWN but run remainedDISPATCHING, looping23514.
   prompt_repair: Bind resumed settlement to original run;immutable originalclaim and acceptedprefix preserved. One identity-bound replacement per terminal-invalidbatch uses existing attempt2 request protocol and exact originalhash. Additive225 records discarded charge, caps combined budget, and conserves settlement/release; ambiguous outcomes remain retrieval-only.
   prompt_validation: Web164focused tests, full-chain database10including success/failure charges and duplicate/tenant/budget/recovery guards, runtimegrant3tests, web/Worker typecheck, lint, productionbuild/firewall pass. LivePostgres owner rollback and restricted-runtime ACL proof pass;actual restricted-runtime login ROLLBACK proves exact replacement claim and unchanged148promptprefix;additive225installed with208ledgerrows/max225 and original148promptprefix/claims unchanged;publication and finalrender unverified.
+
+  prompt_publication: Source9ac18c8b/versiona296796d deployed100percent with exact25secrets/50bindings and existingthreeWorkflowidentities preserved. One distinct replacement started;its original response was not retained before validation. Exact archived responseHTTP200/stop/provider_reportedUSD0.077543 redacts8196bytes;wholeactualvalidationcause unestablished. RunFAILED with148acceptedprompts preserved,knownpromptcostUSD1.138978 settled and unused reservationreleased;noimage/avatar/render jobs yet.
+  response_recovery_prepared: Additive226 stores exact private normalized response in existing immutable tenant receipts before validation/compilation, and recovers it without another provider call. Additive227 offers one owner-only resume of an exactly reconciled terminal replacement, preserving accepted prefix and priorcharges and funding only the remaining original cumulativecap;runtime has no operator-resume authority. No live226/227 or newinference yet.
+  paid_compute_shutdown: ASR reservation independentlyCLEAN;no active CPU attempts or uncleanCloudreservations at07_05UTC. No longrender acceptance claimed.
 
 app_audit_2026_09_30:
   checkpoint: V2-09
