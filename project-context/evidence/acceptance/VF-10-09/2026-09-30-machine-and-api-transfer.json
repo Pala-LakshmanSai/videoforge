@@ -1,13 +1,20 @@
 {
   "checkpoint": "V2-09",
   "task": "VF-10-09",
-  "status": "LOCAL_VERIFIED_PUBLICATION_PENDING",
+  "status": "PUBLISHED_CHROME_API_MACHINE_VERIFIED_LONG_RENDER_PENDING",
   "machine": {
     "source": "exact tenant lease or verified Cloud reservation",
     "activeIdleDistinction": true,
     "apiPhase": "Kie / Fal APIs; no active RunPod GPU",
     "runtimeSqlReadback": true,
-    "tests": 256
+    "tests": 256,
+    "chrome": {
+      "text": "Machine: Cloud \u00b7 Kie / Fal APIs \u00b7 No active RunPod GPU",
+      "horizontalOverflow": false,
+      "lineHeightPx": 22.5,
+      "localCompleted": "Machine: Local \u00b7 MI_Notebook \u00b7 Finished",
+      "cloudCompleted": "Machine: Cloud \u00b7 NVIDIA RTX PRO 4500 Blackwell Server Edition \u00b7 GPU released"
+    }
   },
   "apiTransfer": {
     "observedWorkflowTimeoutSeconds": 600,
@@ -25,7 +32,13 @@
     "httpDeadlineMs": 30000,
     "sameTaskRetryRegression": true,
     "serialObservationRetained": true,
-    "providerTests": 25
+    "providerTests": 25,
+    "schedulerExecutionTests": 15,
+    "nativeProgressAfterAdoption": {
+      "images": 52,
+      "avatars": 16,
+      "at": "2026-09-30T10:30:43Z"
+    }
   },
   "completedCloudAudio": {
     "spans": 105,
@@ -34,14 +47,23 @@
     "inventoryAt": "2026-09-30T09:50:09Z"
   },
   "remaining": [
-    "publish",
-    "same existing APIWorkflow adoption",
-    "real Chrome machine line",
+    "active RunPod GPU line during long final render",
     "long final render/storage/download/playback",
     "independent zero compute after final"
   ],
   "operatorStopUsd": 14,
   "newCloudAllowanceUsd": 8,
   "humanNumericCap": "not specified",
-  "invoice": "unobserved"
+  "invoice": "unobserved",
+  "source": "bcba99f2c9f54ad899505f8de70bf1acd1616aa7",
+  "productionVersion": "59438a7d-1ac4-4e5a-be4d-efda21a2470c",
+  "publication": {
+    "percent": 100,
+    "secretsPreserved": 25,
+    "bindingsPreserved": 50,
+    "existingWorkflowIdentities": 3,
+    "sameApiInstanceRestartedOnce": true,
+    "newInstances": 0,
+    "acceptedStatesAndProviderIdsPreserved": true
+  }
 }
