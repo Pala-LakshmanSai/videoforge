@@ -6898,6 +6898,9 @@ async function projectDetail(
       const attempts = await transaction.query(
         `SELECT attempt.id, attempt.kind, attempt.state, attempt.version, attempt.created_at,
                 attempt.execution_backend, cloud.gpu AS cloud_gpu,
+                CASE WHEN to_jsonb(cloud)->'cpu_placement'->>'id' IS NOT NULL
+                  THEN (to_jsonb(cloud)->'cpu_placement'->>'vcpuCount') || ' vCPU / ' ||
+                    (to_jsonb(cloud)->'cpu_placement'->>'memory') || ' GB RAM' END AS cloud_cpu,
                 cloud.verified_at IS NOT NULL AND cloud.pod_id IS NOT NULL
                   AND cloud.leased_attempt_id=attempt.id
                   AND cloud.state IN ('STARTING','DOWNLOADING','RENDERING','CHECKING','SAVING','STOPPING') AS cloud_machine_active,

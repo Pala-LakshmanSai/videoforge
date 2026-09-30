@@ -88,6 +88,9 @@ it("labels cloud phases from durable state without invented progress", () => {
   expect(cloudMediaPhaseLabel("STOPPING", "FAILED")).toBe("Stopping compute");
   expect(cloudMediaPhaseLabel("STOPPING", "SUCCEEDED")).toBe("Stopping compute");
   expect(cloudMediaPhaseLabel(null, "RUNNING")).toBe("Waiting for cloud status");
+  expect(cloudMediaPhaseLabel("WAITING_CAPACITY", "OUTBOXED", 2)).toBe("Waiting for earlier project");
+  expect(cloudMediaPhaseLabel("WAITING_CAPACITY", "OUTBOXED", 1)).toBe("Waiting for capacity");
+  expect(cloudMediaPhaseLabel("STOPPING", "FAILED", 2)).toBe("Stopping compute");
 });
 
 it("shows the actual assigned machine and distinguishes released GPU and API work", () => {
@@ -97,8 +100,14 @@ it("shows the actual assigned machine and distinguishes released GPU and API wor
   expect(hostedMachineLabel("PERSONAL_WORKER",[local])).toBe("Local · Editing Mac");
   expect(hostedMachineLabel("RUNPOD_POD",[{...cloud,state:"SUCCEEDED",cloud_machine_active:false}])).toBe("Cloud · NVIDIA RTX PRO 4500 · GPU released");
   expect(hostedMachineLabel("RUNPOD_POD",[{...cloud,kind:"SPAN_AUDIO",state:"SUCCEEDED",cloud_machine_active:false}],true)).toBe("Cloud · Kie / Fal APIs · No active RunPod GPU");
-  expect(hostedMachineLabel("RUNPOD_POD",[])).toBe("Cloud · Waiting for RunPod GPU");
+  expect(hostedMachineLabel("RUNPOD_POD",[])).toBe("Cloud · Waiting for RunPod compute");
+  const cpu = {...cloud,cloud_gpu:null,cloud_cpu:"16 vCPU / 64 GB RAM"};
+  expect(hostedMachineLabel("RUNPOD_POD",[cpu])).toBe("Cloud · RunPod · 16 vCPU / 64 GB RAM");
+  expect(hostedMachineLabel("RUNPOD_POD",[{...cpu,state:"SUCCEEDED",cloud_machine_active:false}])).toBe("Cloud · 16 vCPU / 64 GB RAM · Compute released");
   expect(hostedMachineLabel("PERSONAL_WORKER",[])).toBe("Local · Waiting for computer");
+  expect(hostedMachineLabel("RUNPOD_POD",[],false,2)).toBe("Cloud · Waiting for earlier project");
+  expect(hostedMachineLabel("RUNPOD_POD",[cloud],false,2)).toBe("Cloud · RunPod · NVIDIA RTX PRO 4500");
+  expect(hostedMachineLabel("PERSONAL_WORKER",[],false,2)).toBe("Local · Waiting for computer");
 });
 
 it("shows the active span ahead of queued and completed Cloud attempts", () => {
@@ -120,6 +129,21 @@ it("times a Cloud render-only run from its fresh attempt", async () => {
   })));
   renderHosted(<HostedProjectScreen projectId={projectId}/>);
   expect(await screen.findByLabelText("Wall elapsed time")).toHaveTextContent("3m 00s");
+});
+
+it("shows account admission wait across Cloud transcription progress", async () => {
+  const projectId="11111111-1111-4111-8111-111111111111";
+  vi.stubGlobal("fetch",vi.fn(async()=>Response.json({
+    project:{id:projectId,title:"Queued Cloud transcription",revision_id:projectId,revision_state:"LOCKED",media_execution_backend:"RUNPOD_POD"},
+    generation:null,generation_provider:"KIE_FAL",gpu_transport:"DISABLED_UNQUALIFIED",gpu_readiness:gpuReadiness,
+    attempts:[{id:projectId,kind:"ASR",state:"OUTBOXED",execution_backend:"RUNPOD_POD",cloud_phase:"WAITING_CAPACITY"}],
+    queue:{status:"QUEUED",position:2},stages:stageList({transcription:"RUNNING"}),
+  })));
+  renderHosted(<HostedProjectScreen projectId={projectId}/>);
+  const stages=await screen.findByRole("list",{name:"Project stages"});
+  expect(within(stages).getByText("Waiting for earlier project")).toBeInTheDocument();
+  expect(screen.getByLabelText("Rendering machine")).toHaveTextContent("Cloud · Waiting for earlier project");
+  expect(screen.queryByText("Waiting for capacity")).not.toBeInTheDocument();
 });
 
 it.each([

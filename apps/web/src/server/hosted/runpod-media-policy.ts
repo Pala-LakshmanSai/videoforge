@@ -29,6 +29,32 @@ export function cloudGpuCandidates(rows: readonly CloudGpu[], diskGb: number, ma
     Number.isFinite(g.price?.secure) && g.price.secure > 0 && g.price.secure + diskGb * .10 / 720 <= limit)
     .sort((a,b) => rank(a.id) - rank(b.id) || a.price.secure - b.price.secure || a.id.localeCompare(b.id));
 }
+export interface CloudCpuPlacement { id: string; vcpuCount: number; memory: number; dataCenterIds: readonly string[]; }
+export interface CloudCpu { id: string; ramGbPerVcpu: number; vcpu: {min: number; max: number};
+  price: {securePerVcpu: number}; dataCenters: readonly {id: string; availability: string}[]; }
+/** Same CPU/RAM floor as GPU rentals; exact-size stock and all-in finite spend bounds. */
+export function cloudCpuCandidates(catalogues: readonly {size: number; cpus: readonly CloudCpu[]}[],
+  diskGb: number, maxHourlyUsd: number, budgetUsd: number, rentalSeconds: number):
+  readonly {placement: CloudCpuPlacement; hourly: number}[] {
+  const limit = Math.min(maxHourlyUsd, budgetUsd * 3600 / rentalSeconds);
+  const stock = ["HIGH", "MEDIUM", "LOW"];
+  const choices: {placement: CloudCpuPlacement; hourly: number}[] = [];
+  for (const {size, cpus} of catalogues) for (const row of cpus) {
+    if (typeof row.id !== "string" || !/^[A-Za-z0-9_-]{1,80}$/u.test(row.id) ||
+        ![row.ramGbPerVcpu, row.price?.securePerVcpu, row.vcpu?.min, row.vcpu?.max].every(n => Number.isFinite(n) && n > 0)) continue;
+    const vcpuCount = 2 ** Math.ceil(Math.log2(Math.max(16, row.vcpu.min, Math.ceil(64 / row.ramGbPerVcpu))));
+    const hourly = vcpuCount * row.price.securePerVcpu + diskGb * .10 / 720;
+    const memory = vcpuCount * row.ramGbPerVcpu;
+    if (vcpuCount !== size || vcpuCount > row.vcpu.max || hourly > limit || !Number.isSafeInteger(memory) || memory > 1024) continue;
+    const dataCenterIds = (Array.isArray(row.dataCenters) ? row.dataCenters : [])
+      .filter(c => typeof c.id === "string" && /^[A-Za-z0-9_-]{1,80}$/u.test(c.id) && stock.includes(c.availability))
+      .sort((a,b) => stock.indexOf(a.availability) - stock.indexOf(b.availability) || a.id.localeCompare(b.id))
+      .map(c => c.id);
+    if (dataCenterIds.length) choices.push({placement: {id: row.id, vcpuCount,
+      memory, dataCenterIds}, hourly});
+  }
+  return choices.sort((a,b) => a.hourly - b.hourly || a.placement.id.localeCompare(b.placement.id)).slice(0,12);
+}
 export class RunPodMediaError extends Error {
   constructor(readonly status: number, readonly capacityRejected = false) { super(`RUNPOD_HTTP_${status}`); }
 }

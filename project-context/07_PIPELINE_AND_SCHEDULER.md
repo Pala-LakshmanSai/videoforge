@@ -312,3 +312,10 @@ Cloud stops between expensive Kie/Fal provider-wait stages; continuation uses du
 without browser or personal-worker polling. Backend selection and retry lineage are immutable. An
 explicit render-only Cloud retry reuses accepted assets and the resolved manifest, with a fresh
 fenced attempt; it does not regenerate prompts/images/avatars. Local remains the default.
+
+User clarification2026-09-30: after committed upload Cloud must continue with the personal computer
+off and no personal-worker disk preflight. Remote control/private storage and Kie/Fal stay hosted;
+RunPod owns temporary media scratch. GPU-preferred, qualified Secure CPU fallback uses the same
+pinned media runtime and quality gates under the existing admission, launch, cost and cleanup fences.
+CPU fallback is locally implemented but remains disabled until live qualification. An OUTBOXED job
+behind an earlier admitted project is queue waiting, not evidence of RunPod placement shortage.

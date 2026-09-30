@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { HostedRuntimeEnvironment } from "./configuration";
-import { cloudDiskGb, cloudGpuCandidates, cloudMediaConfiguration, GPU_PREFERENCE, isCapacityRefusal, type CloudGpu } from "./runpod-media-policy";
+import { cloudCpuCandidates, cloudDiskGb, cloudGpuCandidates, cloudMediaConfiguration, GPU_PREFERENCE, isCapacityRefusal, type CloudCpu, type CloudGpu } from "./runpod-media-policy";
 const hash = `sha256:${"a".repeat(64)}`;
 function environment(overrides: Record<string, string | undefined> = {}): HostedRuntimeEnvironment {
   return {
@@ -28,6 +28,17 @@ describe("qualified optional cloud media policy", () => {
     expect(value?.executionBundleSha256).toBe(hash);
     expect(value?.tooling.ffprobe_version).toBe("8.1.2");
     expect(value?.imageDigest).toBe(hash);
+  });
+  it("selects only exact-size available CPU stock meeting RAM and all-in price bounds", () => {
+    const cpu = (id: string, changes: Partial<CloudCpu> = {}): CloudCpu => ({id,ramGbPerVcpu:4,
+      vcpu:{min:2,max:32},price:{securePerVcpu:.04},dataCenters:[{id:"US-CA-2",availability:"LOW"},{id:"EU-CZ-1",availability:"HIGH"}],...changes});
+    const rows=[cpu("cpu3g"),cpu("expensive",{price:{securePerVcpu:.05}}),cpu("unknown-rate",{price:{securePerVcpu:NaN}}),
+      cpu("small-ram",{ramGbPerVcpu:2}),cpu("wrong-size",{vcpu:{min:32,max:32}}),cpu("no-stock",{dataCenters:[]}),
+      cpu("unknown-stock",{dataCenters:[{id:"US-CA-2",availability:"UNKNOWN"}]}),cpu("invalid-id!"),cpu("small-max",{vcpu:{min:2,max:8}})];
+    expect(cloudCpuCandidates([{size:16,cpus:rows}],100,.8,.2,900)).toEqual([{placement:{id:"cpu3g",vcpuCount:16,
+      memory:64,dataCenterIds:["EU-CZ-1","US-CA-2"]},hourly:.64+100*.10/720}]);
+    expect(cloudCpuCandidates([{size:16,cpus:rows}],100,.8,.1,900)).toEqual([]);
+    expect(cloudCpuCandidates([{size:32,cpus:[cpu("cpu3c",{ramGbPerVcpu:2,price:{securePerVcpu:.02}})]}],100,.8,.2,900)[0]?.placement.vcpuCount).toBe(32);
   });
   it.each([{ VIDEOFORGE_CLOUD_MEDIA_IMAGE: "ghcr.io/example/media:latest" },
     { VIDEOFORGE_CLOUD_MEDIA_SOURCE_SHA256: `sha256:${"b".repeat(64)}` },

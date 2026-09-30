@@ -43,7 +43,14 @@ confirmed capacity rejection plus complete empty inventory permits bounded fallb
 auth/account/validation errors stop. Never attach historical network volumes or alter old endpoints.
 
 Start with Frontier's exact18-model preference order. Secure Cloud full NVIDIA hosts require16GB
-VRAM,16vCPU,64GB RAM, compatible runtime and known finite approved all-in pricing. Refresh catalog
+VRAM,16vCPU,64GB RAM, compatible runtime and known finite approved all-in pricing. After known GPU
+capacity refusals or an explicitly empty eligible GPU catalogue, qualified CPU fallback may use
+Secure16/32vCPU hosts with at least64GB RAM, exact-size stock and the same pinned CPU Whisper/FFmpeg
+image. Persist CPU flavor, cores, memory and allowed regions before POST; verify returned placement,
+temporary disk and all-in rate. Additive0231 and `VIDEOFORGE_CLOUD_MEDIA_CPU_FALLBACK_ENABLED=true`
+are required; this fallback remains disabled pending live qualification. Unknown launches never fall
+through to another host. Each observation sweeps at most four positively refused candidates,
+rechecking admission/cancellation/authority/fences between them. Refresh catalog
 at allocation, use at most three rounds/180s placement and delayed durable checks. Unknown capacity
 is unavailable; over-limit returned resources/prices are terminated before work. Speed remains
 unmeasured until VideoForge qualification; GPU FLOPS do not establish this CPU media workload speed.
@@ -52,7 +59,13 @@ Job-scoped runtime processes exact committed inputs only. Upload verified artifa
 acceptance, then terminate the owned Pod and verify absence independently. Cancellation fences
 publication, kills the exact process group and cleans scratch. Both Pod watchdog/finally and
 external workflow reconciler enforce finite deadlines; unconfirmed cleanup retains capacity.
-Production Cloud is enabled for the explicitly approved finite account authority, expiring2026-09-30T12:30UTC; other accounts require their own authority. Operator rates,
+Once upload is committed, Cloud processing continues with the browser and personal computer off.
+RunPod temporary disk holds runtime/input/render scratch; no PC render disk is required. Cloudflare,
+Neon/private R2 and existing Kie/Fal APIs remain the remote control/storage/generation services.
+At2026-09-30T17:28UTC the previously approved account authorities are expired. A failed benchmark's
+UNKNOWN/STOPPING launch also retains admission; complete empty owned-Pod inventory does not clear it.
+Renewal requires a new finite approved authority, and exact launch reconciliation remains required.
+Operator rates,
 release ledger guards, gates and rollback are in `cloud-media/RELEASE_RUNBOOK.md`.
 
 ## Historical RunPod topology

@@ -1158,6 +1158,12 @@
       "name": "hosted_cloud_span_stream",
       "filename": "0230_hosted_cloud_span_stream.sql",
       "sha256": "sha256:b424707aeeb6a0afbb7347e8c982510a86edafac3beb6396f9a17c88cb3bb9e3"
+    },
+    {
+      "version": 231,
+      "name": "cloud_media_cpu_placement",
+      "filename": "0231_cloud_media_cpu_placement.sql",
+      "sha256": "sha256:fbe69e086ca76f2dedcb494ca30c3fa001392bc65d56303acdd750744ccd2d5e"
     }
   ]
 }

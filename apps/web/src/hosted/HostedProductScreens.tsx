@@ -542,6 +542,7 @@ interface HostedAttempt {
   readonly render_only_run?: boolean;
   readonly cloud_phase?: string | null;
   readonly cloud_gpu?: string | null;
+  readonly cloud_cpu?: string | null;
   readonly cloud_machine_active?: boolean;
   readonly local_machine_name?: string | null;
   readonly local_machine_active?: boolean;
@@ -578,28 +579,32 @@ export function currentHostedAttempt<T extends Pick<HostedAttempt, "state" | "cl
 
 export function hostedMachineLabel(
   backend: "PERSONAL_WORKER" | "RUNPOD_POD" | undefined,
-  attempts: readonly Pick<HostedAttempt, "kind" | "state" | "execution_backend" | "cloud_gpu" | "cloud_machine_active" | "local_machine_name" | "local_machine_active">[],
+  attempts: readonly Pick<HostedAttempt, "kind" | "state" | "execution_backend" | "cloud_gpu" | "cloud_cpu" | "cloud_machine_active" | "local_machine_name" | "local_machine_active">[],
   apiActive = false,
+  queuePosition?: number | null,
 ): string {
   const active = [...attempts].reverse().find(attempt => attempt.cloud_machine_active || attempt.local_machine_active);
   if (active?.cloud_machine_active && active.cloud_gpu) return `Cloud · RunPod · ${active.cloud_gpu}`;
+  if (active?.cloud_machine_active && active.cloud_cpu) return `Cloud · RunPod · ${active.cloud_cpu}`;
   if (active?.local_machine_active && active.local_machine_name) return `Local · ${active.local_machine_name}`;
   const render = [...attempts].reverse().find(attempt => attempt.kind === "RENDER");
   const cloud = (render?.execution_backend ?? backend) === "RUNPOD_POD";
   if (render?.state === "SUCCEEDED") return cloud
-    ? `Cloud · ${render.cloud_gpu ?? "GPU not recorded"} · GPU released`
+    ? render.cloud_cpu ? `Cloud · ${render.cloud_cpu} · Compute released` : `Cloud · ${render.cloud_gpu ?? "GPU not recorded"} · GPU released`
     : `Local · ${render.local_machine_name ?? "Computer not recorded"} · Finished`;
   if (apiActive) return cloud
     ? "Cloud · Kie / Fal APIs · No active RunPod GPU"
     : "Local render · Kie / Fal APIs · Computer not assigned yet";
-  return cloud ? "Cloud · Waiting for RunPod GPU" : "Local · Waiting for computer";
+  if (cloud && queuePosition && queuePosition > 1) return "Cloud · Waiting for earlier project";
+  return cloud ? "Cloud · Waiting for RunPod compute" : "Local · Waiting for computer";
 }
 
-export function cloudMediaPhaseLabel(phase: string | null | undefined, state: string): string {
+export function cloudMediaPhaseLabel(phase: string | null | undefined, state: string, queuePosition?: number | null): string {
   if (phase === "STOPPING") return "Stopping compute";
   if (state === "SUCCEEDED") return ["CLEAN", "COMPLETE"].includes(phase ?? "") ? "Complete" : "Saving";
   if (state === "FAILED") return "Failed";
   if (state === "CANCELLED") return "Cancelled";
+  if ((!phase || phase === "WAITING_CAPACITY") && queuePosition && queuePosition > 1) return "Waiting for earlier project";
   return ({ WAITING_CAPACITY: "Waiting for capacity", CREATING: "Starting", STARTING: "Starting",
     AMBIGUOUS: "Reconciling launch", DOWNLOADING: "Downloading inputs", RENDERING: "Rendering",
     CHECKING: "Checking video", SAVING: "Saving", STOPPING: "Stopping compute",
@@ -4986,7 +4991,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     status: cloudCleanupPending && ["render", "technical-check"].includes(stage.id) ? "RUNNING" : stage.status,
     detail:
       isCloudMediaStage(stage.id)
-        ? cloudMediaPhaseLabel(cloudStageAttempts[stage.id]?.cloud_phase, cloudStageAttempts[stage.id]?.state ?? "WAITING")
+        ? cloudMediaPhaseLabel(cloudStageAttempts[stage.id]?.cloud_phase, cloudStageAttempts[stage.id]?.state ?? "WAITING", query.data.queue?.position)
         : stage.status === "COMPLETE"
         ? "Complete"
         : stage.status === "PENDING" && stage.detail === "Waiting for an authoritative update."
@@ -5711,7 +5716,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           </div>
           <p className="muted" aria-label="Rendering machine">
             <strong>Machine: </strong>{hostedMachineLabel(query.data.project.media_execution_backend, query.data.attempts,
-              uiStages.some(stage => ["image-generation", "avatar-generation"].includes(stage.id) && stage.status === "RUNNING"))}
+              uiStages.some(stage => ["image-generation", "avatar-generation"].includes(stage.id) && stage.status === "RUNNING"), queue?.position)}
           </p>
           {cloudFinalPhasePending ? null : <ProgressBar value={overallProgress} label="Overall video progress" />}
         </div>
@@ -5975,7 +5980,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               {latestCloudAttempt ? (
                 <span>
                   <small>Cloud phase</small>
-                  <strong>{cloudMediaPhaseLabel(latestCloudAttempt.cloud_phase, latestCloudAttempt.state)}</strong>
+                  <strong>{cloudMediaPhaseLabel(latestCloudAttempt.cloud_phase, latestCloudAttempt.state, queue?.position)}</strong>
                 </span>
               ) : null}
               <span>

@@ -103,6 +103,7 @@ export interface HostedRuntimeEnvironment {
   readonly FAL_API_KEY?: string;
   readonly RUNPOD_API_BASE_URL?: string;
   readonly VIDEOFORGE_CLOUD_MEDIA_ENABLED?: string;
+  readonly VIDEOFORGE_CLOUD_MEDIA_CPU_FALLBACK_ENABLED?: string;
   readonly VIDEOFORGE_CLOUD_MEDIA_IMAGE?: string;
   readonly VIDEOFORGE_CLOUD_MEDIA_REGISTRY_ID?: string;
   readonly VIDEOFORGE_CLOUD_MEDIA_SOURCE_SHA256?: string;

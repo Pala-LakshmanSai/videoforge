@@ -15,7 +15,7 @@ vi.mock("./r2-checksum", () => ({ verifyHostedObjectChecksum: fixture.checksum }
 vi.mock("./r2", () => ({ HostedR2Signer: class { multipartRequest = fixture.multipart; signMultipartPart = fixture.part; sign = fixture.sign; listMultipartUploadsExact=fixture.listMultipart; } }));
 vi.mock("./app",()=>({createHostedV209RenderTerminalLiveCoordinator:()=>({acceptCompleted:fixture.finalize})}));
 vi.mock("./hosted-v209-queue-admission",()=>({ensureHostedV209GenerationAdmission:fixture.admission}));
-import { CLOUD_COMPUTE_ABSENCE_EVENT_SQL, CLOUD_CREATE_RENTAL_SQL, CLOUD_PRE_CREATE_ALLOWED_SQL, CLOUD_PLACEMENT_READY_SQL, CLOUD_DISK_METRICS_SQL, CLOUD_QUALIFICATION_RENDER_ARTIFACT_SQL, CLOUD_TERMINAL_EVENT_SQL, cleanupCloudReservation, cloudJobAllowance, cloudRenderDuration, handleCloudMediaRequest, RunPodMediaClient, runCloudMediaObservation, validCloudDiskMetrics, verifyCloudPlacement } from "./runpod-media";
+import { CLOUD_COMPUTE_ABSENCE_EVENT_SQL, CLOUD_CREATE_CPU_RENTAL_SQL, CLOUD_CREATE_RENTAL_SQL, CLOUD_PRE_CREATE_ALLOWED_SQL, CLOUD_PLACEMENT_READY_SQL, CLOUD_DISK_METRICS_SQL, CLOUD_QUALIFICATION_RENDER_ARTIFACT_SQL, CLOUD_TERMINAL_EVENT_SQL, cleanupCloudReservation, cloudJobAllowance, cloudRenderDuration, handleCloudMediaRequest, RunPodMediaClient, runCloudMediaObservation, validCloudDiskMetrics, verifyCloudPlacement } from "./runpod-media";
 
 async function installReservationAuthority(db:{exec(sql:string):Promise<unknown>}) {
   const {readFile}=await import("node:fs/promises");
@@ -213,7 +213,7 @@ async function setResultDocument(value:unknown):Promise<void> {
 }
 
 beforeEach(async () => {
-  for(const key of ["VIDEOFORGE_CLOUD_MEDIA_QUALIFICATION_ONLY","VIDEOFORGE_ENVIRONMENT","VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID"]) Reflect.deleteProperty(environment,key);
+  for(const key of ["VIDEOFORGE_CLOUD_MEDIA_QUALIFICATION_ONLY","VIDEOFORGE_ENVIRONMENT","VIDEOFORGE_CLOUD_MEDIA_BUDGET_AUTHORITY_ID","VIDEOFORGE_CLOUD_MEDIA_CPU_FALLBACK_ENABLED"]) Reflect.deleteProperty(environment,key);
   qualificationAllowed=true;expiresBeforePost=false;placementExpired=false;renderOnlyRun=null;
   fixture.finalize.mockReset();fixture.finalize.mockResolvedValue(undefined);
   fixture.admission.mockReset();fixture.admission.mockResolvedValue({state:"ACTIVE"});ordinaryRuntime=true;
@@ -307,11 +307,16 @@ beforeEach(async () => {
     if (sql.includes("UPDATE cloud_media_reservations SET state='CREATING'")) {
       if (reservation.state !== "WAITING_CAPACITY") return { rows: [] };
       reservation.state = "CREATING"; reservation.gpu = values[1]; reservation.launch_outcome = "UNKNOWN";if(expiresBeforePost)reservation.deadline_at=new Date(0).toISOString();
+      if (sql.includes("cpu_placement=$6")) reservation.cpu_placement=values[5] ? JSON.parse(String(values[5])) : null;
       return { rows: [{ ...reservation }] };
     }
     if (sql.includes("UPDATE cloud_media_reservations SET state='WAITING_CAPACITY'")) {
       reservation.state = "WAITING_CAPACITY"; reservation.launch_outcome = "REFUSED";
       reservation.candidate_index = Number(reservation.candidate_index) + 1; return { rows: [] };
+    }
+    if (sql.includes("SET round=round+1,candidate_index=0")) {
+      reservation.round = Number(reservation.round) + 1; reservation.candidate_index = 0;
+      reservation.next_check_at = future(); return { rows: [] };
     }
     if (sql.includes("UPDATE cloud_media_reservations SET pod_id=")) {
       if(values[3]!==reservation.leased_attempt_id || values[4]!==reservation.fence_id)return{rows:[]};
@@ -390,8 +395,46 @@ describe("RunPod exact inventory and placement", () => {
     expect(verifyCloudPlacement(placement({ gpu: { id: reservation.gpu, count: 1, vcpuCount: 16, memory: 63 } }), reservation)).toBe(false);
     expect(verifyCloudPlacement(placement({ mounts: { networkVolume: "historical" } }), reservation)).toBe(false);
   });
+  it("accepts only the exact persisted CPU placement, region, memory, disk and bounded cost", () => {
+    const r={...reservation,gpu:null,cpu_placement:{id:"cpu3g",vcpuCount:16,memory:64,dataCenterIds:["EU-CZ-1"]}};
+    const pod=placement({gpu:undefined,cpu:{id:"cpu3g",vcpuCount:16,memory:64},dataCenterId:"EU-CZ-1",cost:.64});
+    expect(verifyCloudPlacement(pod,r)).toBe(true);
+    for(const change of [{gpu:placement().gpu},{cpu:{id:"cpu5g",vcpuCount:16,memory:64}},
+      {cpu:{id:"cpu3g",vcpuCount:8,memory:64}},{cpu:{id:"cpu3g",vcpuCount:16,memory:32}},
+      {dataCenterId:"unselected"},{cost:2},{disk:99},{mounts:{persistent:{size:100}}}])
+      expect(verifyCloudPlacement({...pod,...change},r)).toBe(false);
+  });
 });
 describe("durable cloud create reconciliation", () => {
+  it.each(["enabled","disabled","unknown","cpu-unknown","incomplete"])("reaches CPU fallback only after confirmed GPU refusal: %s", async mode => {
+    Object.assign(environment,{VIDEOFORGE_CLOUD_MEDIA_CPU_FALLBACK_ENABLED:mode==="disabled"?"false":"true"});
+    const posts: Row[]=[];
+    fixture.transport.mockImplementation(async (url:string,options:RequestInit) => {
+      if(url.includes("/catalog/gpus")) return response({gpus:[{id:"NVIDIA GeForce RTX 4090",memory:24,secure:true,
+        manufacturer:"NVIDIA",price:{secure:.4},availability:"HIGH"}]});
+      if(url.includes("/catalog/cpus")) return response({cpus:[{id:"cpu3g",ramGbPerVcpu:4,vcpu:{min:2,max:32},
+        price:{securePerVcpu:.04},dataCenters:[{id:"EU-CZ-1",availability:"HIGH"}]}]});
+      if(options.method!=="POST") return mode==="incomplete" ? response({pods:[]}) : emptyInventory();
+      const body=JSON.parse(String(options.body));posts.push(body);
+      if(posts.length===1) {
+        if(mode==="unknown") throw new Error("lost response");
+        return response({detail:"insufficient capacity"},503);
+      }
+      if(mode==="cpu-unknown") throw new Error("lost CPU response");
+      return response(placement({gpu:undefined,cpu:{id:"cpu3g",vcpuCount:16,memory:64},dataCenterId:"EU-CZ-1",cost:.64}));
+    });
+    const outcome=await runCloudMediaObservation(environment,config,scope);
+    expect(posts).toHaveLength(["enabled","cpu-unknown"].includes(mode)?2:1);
+    expect(outcome.state).toBe(mode==="enabled"?"STARTING":mode==="disabled"?"WAITING_CAPACITY":"RECONCILING");
+    if(mode==="enabled") {
+      expect(posts[1]).toMatchObject({cpu:{id:"cpu3g",vcpuCount:16},dataCenterIds:["EU-CZ-1"],disk:100});
+      expect(posts[1]).not.toHaveProperty("gpu");
+      expect(reservation.cpu_placement).toEqual({id:"cpu3g",vcpuCount:16,memory:64,dataCenterIds:["EU-CZ-1"]});
+    } else if(mode==="cpu-unknown") {
+      expect((await runCloudMediaObservation(environment,config,scope)).state).toBe("RECONCILING");
+      expect(posts).toHaveLength(2);
+    } else expect(fixture.transport.mock.calls.some(([url])=>url.includes("/catalog/cpus"))).toBe(false);
+  });
   it("keeps a second observer from invalidating the creator before its single POST", async () => {
     const previous = fixture.query.getMockImplementation()!;
     let observed = false;
@@ -445,10 +488,34 @@ describe("durable cloud create reconciliation", () => {
       ? response({ gpus: [{ id: reservation.gpu, memory: 24, secure: true, manufacturer: "NVIDIA", price: { secure: .4 }, availability: "HIGH" }] })
       : options.method === "POST" ? response({ detail: "insufficient capacity" }, 503) : emptyInventory());
     const value = await runCloudMediaObservation(environment, config, scope);
-    expect(value).toEqual({ state: "WAITING_CAPACITY", delaySeconds: 1 });
+    expect(value).toEqual({ state: "WAITING_CAPACITY", delaySeconds: 30 });
     expect(reservation.launch_outcome).toBe("REFUSED");
-    expect(reservation.candidate_index).toBe(1);
+    expect(reservation.candidate_index).toBe(0);
+    expect(reservation.round).toBe(1);
     expect(reservation.disk_gb).toBe(100);
+  });
+  it.each(["placed", "unknown", "refused", "cancelled"])("sweeps confirmed refusals immediately and stops at %s", async (ending) => {
+    const gpus = ["NVIDIA GeForce RTX 4090", "NVIDIA L40S", "NVIDIA RTX A6000", "NVIDIA A40", "NVIDIA L4"]
+      .map(id => ({ id, memory: 24, secure: true, manufacturer: "NVIDIA", price: { secure: .4 }, availability: "HIGH" }));
+    let posts = 0;
+    fixture.transport.mockImplementation(async (url: string, options: RequestInit) => {
+      if (url.includes("/catalog/")) return response({ gpus });
+      if (options.method !== "POST") return emptyInventory();
+      posts++;
+      if (posts === 1 && ending === "cancelled") attempt.state = "CANCELLED";
+      if (posts === 1 || ending === "refused" || ending === "cancelled") return response({ detail: "insufficient capacity" }, 503);
+      if (ending === "unknown") throw new Error("lost response");
+      return response(placement({ gpu: { id: reservation.gpu, count: 1, vcpuCount: 16, memory: 64 } }));
+    });
+    const outcome = await runCloudMediaObservation(environment, config, scope);
+    expect(posts).toBe(ending === "refused" ? 4 : ending === "cancelled" ? 1 : 2);
+    expect(outcome.state).toBe(ending === "placed" ? "STARTING" : ending === "unknown" ? "RECONCILING" : ending === "cancelled" ? "CANCELLED" : "WAITING_CAPACITY");
+    if (ending === "placed") expect(reservation.gpu).toBe("NVIDIA L40S");
+    if (ending === "unknown") {
+      expect((await runCloudMediaObservation(environment, config, scope)).state).toBe("RECONCILING");
+      expect(posts).toBe(2);
+    }
+    if (ending === "refused") expect(outcome.delaySeconds).toBe(1);
   });
 });
 it("cleans a cancelled known unlaunched reservation without querying or renting compute", async () => {
@@ -1201,16 +1268,26 @@ it("bounds real PostgreSQL create and placement deadlines by the exact authority
         ADD allowed_project_ids uuid[] DEFAULT ARRAY['55555555-5555-4555-8555-555555555555'::uuid];
       CREATE TABLE cloud_media_jobs(attempt_id uuid,account_id uuid,workspace_id uuid,reservation_id uuid);`);
     await installReservationAuthority(db);
-    for(const mode of ["authority-first","cpu-first","rental-first","authority-expired","authority-disabled"]){
+    const {readFile}=await import("node:fs/promises");
+    await db.exec(await readFile(new URL("../../../../../packages/control-plane/migrations/0231_cloud_media_cpu_placement.sql",import.meta.url),"utf8"));
+    const cpuPlacement={id:"cpu3g",vcpuCount:16,memory:64,dataCenterIds:["EU-CZ-1"]};
+    for(const cpu of [false,true]) for(const mode of ["authority-first","cpu-first","rental-first","authority-expired","authority-disabled"]){
       await db.exec("TRUNCATE hosted_cpu_job_attempts,cloud_media_budget_authorities,cloud_media_reservations,cloud_media_jobs");
       const now=Date.now(),expiry=new Date(now+(mode==="authority-expired"?-1000:mode==="authority-first"?60_000:3600_000)).toISOString(),cpuDeadline=new Date(now+(mode==="cpu-first"?30_000:3600_000)).toISOString();
       await db.query("INSERT INTO hosted_cpu_job_attempts VALUES($1,$2,'RUNNING',$3,$4)",[attemptId,cpuDeadline,accountId,workspaceId]);
       await db.query("INSERT INTO cloud_media_budget_authorities VALUES($1,$2,$3)",[authority,mode!=="authority-disabled",expiry]);
       await db.query("INSERT INTO cloud_media_reservations(id,leased_attempt_id,fence_id,budget_authority_id,state,rental_seconds,placement_deadline_at,account_id,workspace_id) VALUES($1,$2,$3,$4,'WAITING_CAPACITY',$5,now()+interval '3 minutes',$6,$7)",[reservationId,attemptId,reservation.fence_id,authority,mode==="rental-first"?10:900,accountId,workspaceId]);
       await db.query("INSERT INTO cloud_media_jobs VALUES($1,$2,$3,$4)",[attemptId,accountId,workspaceId,reservationId]);
-      for(const stale of [[reservationId,"NVIDIA A40",.6,reservationId,reservation.fence_id],[reservationId,"NVIDIA A40",.6,attemptId,reservationId]])
-        expect((await db.query(CLOUD_CREATE_RENTAL_SQL,stale)).rows,mode).toHaveLength(0);
-      const created=await db.query<{deadline_at:Date;state:string}>(CLOUD_CREATE_RENTAL_SQL,[reservationId,"NVIDIA A40",.6,attemptId,reservation.fence_id]);
+      const createSql=cpu?CLOUD_CREATE_CPU_RENTAL_SQL:CLOUD_CREATE_RENTAL_SQL;
+      const parameters=(attempt: string,fence:string)=>[reservationId,cpu?null:"NVIDIA A40",.6,attempt,fence,...(cpu?[JSON.stringify(cpuPlacement)]:[])];
+      for(const stale of [parameters(reservationId,String(reservation.fence_id)),parameters(attemptId,reservationId)])
+        expect((await db.query(createSql,stale)).rows,mode).toHaveLength(0);
+      if(cpu && mode==="authority-first") for(const invalid of [{},{...cpuPlacement,memory:32},
+        {...cpuPlacement,vcpuCount:8},{...cpuPlacement,dataCenterIds:[]},{...cpuPlacement,dataCenterIds:[null]}]) {
+        const facts=parameters(attemptId,String(reservation.fence_id));facts[5]=JSON.stringify(invalid);
+        await expect(db.query(createSql,facts)).rejects.toThrow("cloud_media_cpu_placement_valid");
+      }
+      const created=await db.query<{deadline_at:Date;state:string}>(createSql,parameters(attemptId,String(reservation.fence_id)));
       expect(created.rows,mode).toHaveLength(["authority-expired","authority-disabled"].includes(mode)?0:1);
       if(!created.rows.length)continue;
       const chosen=created.rows[0]!.deadline_at instanceof Date ? created.rows[0]!.deadline_at.getTime():Date.parse(String(created.rows[0]!.deadline_at));expect(chosen).toBeLessThanOrEqual(Date.parse(expiry));expect(chosen).toBeLessThanOrEqual(Date.parse(cpuDeadline));
@@ -1223,6 +1300,7 @@ it("bounds real PostgreSQL create and placement deadlines by the exact authority
       for(const stale of [[reservationId,reservationId,reservation.fence_id],[reservationId,attemptId,reservationId]])
         {expect((await db.query(CLOUD_PLACEMENT_READY_SQL,stale)).rows,mode).toHaveLength(0);expect((await db.query(CLOUD_PRE_CREATE_ALLOWED_SQL,stale)).rows,mode).toHaveLength(0);}
       expect((await db.query(CLOUD_PLACEMENT_READY_SQL,[reservationId,attemptId,reservation.fence_id])).rows).toHaveLength(1);
+      if(cpu) await expect(db.query("UPDATE cloud_media_reservations SET cpu_placement=NULL")).rejects.toThrow("CPU placement can change only at a fresh create fence");
       await db.exec("UPDATE cloud_media_reservations SET state='AMBIGUOUS';UPDATE cloud_media_budget_authorities SET expires_at=now()-interval '1 second'");
       expect((await db.query(CLOUD_PLACEMENT_READY_SQL,[reservationId,attemptId,reservation.fence_id])).rows).toHaveLength(0);
       expect((await db.query<{state:string}>("SELECT state FROM cloud_media_reservations")).rows[0]!.state).toBe("AMBIGUOUS");

@@ -11,8 +11,8 @@ import { verifyHostedObjectChecksum } from "./r2-checksum";
 import { ensureHostedV209GenerationAdmission } from "./hosted-v209-queue-admission";
 import { startHostedStageContinuation } from "./stage-continuation";
 import { reconcileHostedV209SpanWorkflowTerminal, type HostedV209SpanDiagnostic } from "./hosted-v209-span-workflow-reconciliation";
-import { cloudDiskGb, cloudGpuCandidates, isCapacityRefusal, MULTIPART_PART_BYTES,
-  RunPodMediaError, SHA256, SINGLE_PUT_MAX_BYTES, type CloudGpu } from "./runpod-media-policy";
+import { cloudCpuCandidates, cloudDiskGb, cloudGpuCandidates, isCapacityRefusal, MULTIPART_PART_BYTES,
+  RunPodMediaError, SHA256, SINGLE_PUT_MAX_BYTES, type CloudCpu, type CloudCpuPlacement, type CloudGpu } from "./runpod-media-policy";
 
 export const CLOUD_TERMINAL_EVENT_SQL = `INSERT INTO hosted_cpu_job_events(id,account_id,workspace_id,attempt_id,sequence,kind,facts_sha256,occurred_at)
       SELECT md5($1::text||':cloud:'||$4)::uuid,$2::uuid,$3::uuid,$1::uuid,COALESCE(max(sequence),0)+1,$4,$5,now()
@@ -136,12 +136,18 @@ export class RunPodMediaClient {
 
 export function verifyCloudPlacement(pod: Row, reservation: Row): boolean {
   const gpu = pod.gpu as Row | undefined;
+  const cpu = pod.cpu as Row | undefined;
+  const expectedCpu = reservation.cpu_placement as CloudCpuPlacement | null | undefined;
+  const computeMatches = expectedCpu
+    ? !gpu && reservation.gpu === null && cpu?.id === expectedCpu.id && cpu?.vcpuCount === expectedCpu.vcpuCount &&
+      Number(cpu?.vcpuCount) >= 16 && Number(cpu?.memory) >= 64 && Number(cpu?.memory) === expectedCpu.memory &&
+      expectedCpu.dataCenterIds.includes(String(pod.dataCenterId))
+    : !cpu && gpu?.id === reservation.gpu && gpu?.count === 1 && Number(gpu?.vcpuCount) >= 16 && Number(gpu?.memory) >= 64;
   const mounts = pod.mounts as Row | undefined;
   const hourly = Number(pod.cost) + Number(reservation.disk_gb) * .10 / 720;
   return typeof pod.id === "string" && /^[A-Za-z0-9_-]{1,80}$/u.test(pod.id) &&
     pod.name === reservation.pod_name && pod.image === reservation.image && (pod.registry ?? null)===(reservation.registry_id ?? null) && pod.cloud === "SECURE" &&
-    Number(pod.disk) === Number(reservation.disk_gb) && gpu?.id === reservation.gpu &&
-    gpu?.count === 1 && Number(gpu?.vcpuCount) >= 16 && Number(gpu?.memory) >= 64 &&
+    Number(pod.disk) === Number(reservation.disk_gb) && computeMatches &&
     (!mounts || Object.keys(mounts).length === 0) && Number.isFinite(Number(pod.cost)) && Number(pod.cost) > 0 &&
     hourly <= Number(reservation.max_hourly_usd) && hourly * Number(reservation.rental_seconds) / 3600 <= Number(reservation.budget_usd);
 }
@@ -294,6 +300,8 @@ export const CLOUD_CREATE_RENTAL_SQL = `UPDATE cloud_media_reservations SET stat
     AND a.id=cloud_media_reservations.leased_attempt_id AND a.deadline_at>now()
     AND b.id=cloud_media_reservations.budget_authority_id AND b.enabled AND b.expires_at>now()
   RETURNING cloud_media_reservations.*`;
+// Legacy GPU-only releases do not require the additive CPU placement column.
+export const CLOUD_CREATE_CPU_RENTAL_SQL = CLOUD_CREATE_RENTAL_SQL.replace("gpu=$2,", "gpu=$2,cpu_placement=$6::jsonb,");
 export const CLOUD_PRE_CREATE_ALLOWED_SQL = `SELECT r.id AS allowed_create_reservation FROM cloud_media_reservations r
   JOIN hosted_cpu_job_attempts a ON a.id=r.leased_attempt_id AND a.account_id=r.account_id AND a.workspace_id=r.workspace_id
   JOIN LATERAL public.videoforge_cloud_media_reservation_authority(r.id,r.leased_attempt_id,r.fence_id) b ON true
@@ -349,7 +357,14 @@ async function finalizeMedia(environment: HostedRuntimeEnvironment, config: Host
 /** One observation; Workflow step retry is disabled. A restart always reads persisted state. */
 export async function runCloudMediaObservation(environment: HostedRuntimeEnvironment, config: HostedRuntimeConfiguration,
   scope: Scope): Promise<ObservationOutcome> {
-  try { return await observeCloudMedia(environment, config, scope); }
+  try {
+    // Only a confirmed placement refusal requests a one-second retry. Keep a bounded
+    // fallback sweep in this step; every candidate still reloads admission and fences.
+    let outcome = await observeCloudMedia(environment, config, scope);
+    for (let candidate = 1; candidate < 4 && outcome.state === "WAITING_CAPACITY" && outcome.delaySeconds === 1; candidate++)
+      outcome = await observeCloudMedia(environment, config, scope);
+    return outcome;
+  }
   catch (error) {
     // Initial lineage/access reads and already-terminal finalization precede the paid lifecycle
     // catch below. Preserve their durable Workflow observation without replaying provider actions.
@@ -550,8 +565,19 @@ async function observeCloudMedia(environment: HostedRuntimeEnvironment, config: 
     if (!Array.isArray(catalog.gpus)) return {state:"WAITING_CAPACITY",delaySeconds:30};
     phase="CAPACITY_CHECK";
     const candidates=cloudGpuCandidates(catalog.gpus as CloudGpu[],Number(r.disk_gb),Number(r.max_hourly_usd),Number(r.budget_usd),Number(r.rental_seconds));
-    const candidate=candidates[Number(r.candidate_index)];
-    if (!candidate) {
+    const gpuCandidate=candidates[Number(r.candidate_index)];
+    let cpuCandidate: ReturnType<typeof cloudCpuCandidates>[number] | undefined;
+    if (!gpuCandidate && environment.VIDEOFORGE_CLOUD_MEDIA_CPU_FALLBACK_ENABLED === "true") {
+      phase="CATALOGUE";
+      const catalogues=await Promise.all([16,32].map(async size => {
+        const value=await client.request("GET",`/catalog/cpus?include=AVAILABILITY&product=POD&vcpuCount=${size}`);
+        if (!Array.isArray(value.cpus)) throw new Error("RUNPOD_CPU_CATALOGUE_INVALID");
+        return {size,cpus:value.cpus as CloudCpu[]};
+      }));
+      phase="CAPACITY_CHECK";
+      cpuCandidate=cloudCpuCandidates(catalogues,Number(r.disk_gb),Number(r.max_hourly_usd),Number(r.budget_usd),Number(r.rental_seconds))[Number(r.candidate_index)-candidates.length];
+    }
+    if (!gpuCandidate && !cpuCandidate) {
       await tenant(config,scope.accountId, async sql=>{await query(sql, `UPDATE cloud_media_reservations SET round=round+1,candidate_index=0,
         next_check_at=now()+interval '30 seconds',updated_at=now() WHERE id=$1 AND state='WAITING_CAPACITY'`,[r!.id]);});
       return {state:"WAITING_CAPACITY",delaySeconds:30};
@@ -569,8 +595,11 @@ async function observeCloudMedia(environment: HostedRuntimeEnvironment, config: 
       }
       // One winner claims the durable fence. A concurrent or replayed observation cannot POST.
       phase="CREATE_FENCE";
-      const selected=await query(sql,CLOUD_CREATE_RENTAL_SQL,
-      [r!.id,candidate.id,candidate.price.secure+Number(r!.disk_gb)*.10/720,r!.leased_attempt_id,r!.fence_id]);
+      const cpuAware=environment.VIDEOFORGE_CLOUD_MEDIA_CPU_FALLBACK_ENABLED === "true" || r!.cpu_placement != null;
+      const parameters=[r!.id,gpuCandidate?.id ?? null,
+        cpuCandidate?.hourly ?? gpuCandidate!.price.secure+Number(r!.disk_gb)*.10/720,r!.leased_attempt_id,r!.fence_id];
+      if (cpuAware) parameters.push(cpuCandidate ? JSON.stringify(cpuCandidate.placement) : null);
+      const selected=await query(sql,cpuAware ? CLOUD_CREATE_CPU_RENTAL_SQL : CLOUD_CREATE_RENTAL_SQL,parameters);
       if(!selected.rows[0] && (await query(sql,`SELECT r.id AS expired_authority_reservation FROM cloud_media_reservations r
         JOIN LATERAL public.videoforge_cloud_media_reservation_authority(r.id,r.leased_attempt_id,r.fence_id) b ON true
         WHERE r.id=$1 AND r.leased_attempt_id=$2 AND r.fence_id=$3 AND r.state='WAITING_CAPACITY'
@@ -600,8 +629,10 @@ async function observeCloudMedia(environment: HostedRuntimeEnvironment, config: 
       await finishAttempt(config,r,terminal);const clean=await cleanupCloudReservation(client,config,r);
       return {state:clean?(await settleFailedCpu(config,a)?terminal:"FINALIZATION_PENDING"):"RECONCILING",delaySeconds:30};
     }
+    const cpuPlacement=r.cpu_placement as CloudCpuPlacement | null | undefined;
     try { pod=await client.request("POST","/pods",{name:r.pod_name,image:r.image,registry:r.registry_id ?? null,cloud:"SECURE",disk:Number(r.disk_gb),
-      gpu:{id:r.gpu,count:1,minVcpuCountPerGpu:16,minRamPerGpu:64},ports:[],startSsh:false,startJupyter:false,
+      ...(cpuPlacement ? {cpu:{id:cpuPlacement.id,vcpuCount:cpuPlacement.vcpuCount},dataCenterIds:cpuPlacement.dataCenterIds}
+        : {gpu:{id:r.gpu,count:1,minVcpuCountPerGpu:16,minRamPerGpu:64}}),ports:[],startSsh:false,startJupyter:false,
       env:{VIDEOFORGE_CLOUD_CAPABILITY:token,VIDEOFORGE_CLOUD_SPEC_URL:`${config.publicOrigin}/api/v2/cloud-media/reservations/${r.id}/spec`}}); }
     catch(error) {
       const diagnostic=observationDiagnostic(error,"POD_CREATE");
