@@ -1,7 +1,24 @@
+cloud_capacity_startup_2026_09_30:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  status: LOCAL_GREEN_PUBLICATION_CPU_QUALIFICATION_AND_LAUNCH_RECONCILIATION_PENDING
+  implementation_commit: 431f22f96eb532b60fc493457abbda54d3941dd0
+  production_source: c61eafa4635ee7ff53b502318b6f15aaf3c96b8b
+  production_version: ee1911d4-2d7d-4873-afcc-c576689c05b1
+  production_preimage: Fresh17_32_50UTC_100percent_50bindings_25secrets_three_existingWorkflow_resources_legacy_protocol1_image_preserved.
+  diagnosis: CurrentASR_OUTBOXED_queue2_no_reservation;prior_failed_benchmark_UNKNOWN_STOPPING_holds_admission;prior_finite_account_authorities_expired;empty_inventory_never_disproves_launch.
+  implementation: Bounded_four_confirmed_refusals_per_observation;same_runtime_Secure_CPU_fallback_16or32cores_64GBminimum_price_stock_region_identity_guards;earlier_project_queue_copy;Cloud_after_upload_no_PC_dependency.
+  cpu_fallback: Disabled_until_live_qualified;additive231_local_only;legacyGPU_Backend_Local_quality_budget_noReplay_cleanup_preserved.
+  validation: Controller_policy_UI308pass_backend_no_worker_readiness4pass_schema_inventory1pass;realCPU_GPU_SQL_fences_malformed_selection_and_immutability_pass;web_Worker_typechecks_changed_lint_native_build_no_growth_quarantine_pass.
+  provider_spend: USD0_new_compute_no_remote_mutation;complete17_28_04UTC_zero_ownedPods_one_foreignFrontierPod_untouched;UNKNOWN_reservation_not_CLEAN;no_retained_volume_or_new_Kie_Fal_jobs.
+  pending_proposal: Exact_source_publication_additive231_positive_launch_reconciliation_then_max2x900second_USD0_20rentals_totalUSD0_40_for_two_privateCPU_checks_no_ordinary_generation_authority_renewal;CPU3g16_64_USD0_6538889allInHour_ceiling0_80_temporary100GB_no_retained_billing;approval_required.
+  remaining_gates: Publication_migration_exact_launch_resolution_fresh_finite_authority_CPU_live_qualification_realChrome_candidate_and_measured_startup;prior_historical_and_editorial_gates_unchanged.
+  evidence: evidence/acceptance/VF-10-09/2026-09-30-cloud-capacity-startup.md
+
 cloud_startup_ui_release_2026_09_30:
   checkpoint: V2-09
   selected_task: VF-10-09
-  status: MINIMAL_UI_AND_CREATOR_FENCE_GREEN_PRODUCTION_PUBLICATION_PENDING
+  status: MINIMAL_UI_AND_CREATOR_FENCE_PUBLISHED_LEGACY_RUNTIME_UNKNOWN_LAUNCH_OPEN
   production_baseline: 661b6ddf7a17666568d5758479da37fc8e50c68f
   implementation: Native_Local_Cloud_radio_choices_preserve_Local_default_readiness_disable_and_submit;shared_observer_keeps_live_CREATING_fence_when_complete_inventory_empty;unknown_provider_reply_still_never_replayed.
   validation: UI_and_controller286pass_web_Worker_typechecks_changed_lint_native_production_bundle_gates_pass.
@@ -6224,17 +6241,17 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/cost-readiness-fix
-  branch_upstream: origin/codex/serverless-v2-roadmap-v4
+  branch: codex/cloud-capacity-startup
+  branch_upstream: null
   branch_published: false
-  current_source_head: "956e3afb1e9d4aad16d35d13da636ebe5bdfe7ea"
-  current_source_head_semantics: stage5_v18_compact_prompt_application_source_live_qualified_at_deployment_source_29667134
+  current_source_head: "431f22f96eb532b60fc493457abbda54d3941dd0"
+  current_source_head_semantics: isolated_cloud_capacity_candidate_local_green_not_published
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Application source 956e3afb is deployed within exact source 29667134 as Worker 50cfd256-7119-4fe5-b198-3c88312bf9b6. Fresh project f7655814 completed Stages 1-5, including two persisted adaptive prompt batches and 31/31 compact durable prompts. Real Chrome and read-only database evidence verify exact keyword inclusion, four pinned style fields, removed-metadata absence, viewer scrolling, and cost conservation. Auditors resolve git rev-parse HEAD for the later evidence handoff."
+  current_source_head_note: "Candidate431f22f9 preserves productionc61eafa4; published Worker ee1911d4 remains unchanged. Resolve git HEAD for the later evidence handoff. Main unrelated edits and held protocol2 are excluded."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
-  working_tree_expected: clean_after_stage5_to_v2_07_handoff_commit
+  working_tree_expected: clean_after_cloud_capacity_handoff_commit
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
 live_development:
