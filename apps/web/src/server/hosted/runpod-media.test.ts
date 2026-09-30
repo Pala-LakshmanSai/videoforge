@@ -250,7 +250,7 @@ beforeEach(async () => {
     if (sql.includes("SELECT set_config")) return { rows: [] };
     if(sql.includes("videoforge_read_cloud_render_only_run")) return {rows:[{run:values[0]===attemptId?renderOnlyRun:null}]};
     if(sql.includes("videoforge_settle_cloud_render_only_run")) return {rows:[{settled:cpuSettled}]};
-    if(sql.includes("allowed_create_reservation")) return {rows:attempt.state==="RUNNING" && Date.parse(String(reservation.deadline_at))>Date.now() && reservation.authority_enabled===true && Date.parse(String(reservation.authority_expires_at))>Date.now() && values[1]===reservation.leased_attempt_id && values[2]===reservation.fence_id ? [{id:reservationId}]:[]};
+    if(sql.includes("allowed_create_reservation")) return {rows:reservation.state==="CREATING" && attempt.state==="RUNNING" && Date.parse(String(reservation.deadline_at))>Date.now() && reservation.authority_enabled===true && Date.parse(String(reservation.authority_expires_at))>Date.now() && values[1]===reservation.leased_attempt_id && values[2]===reservation.fence_id ? [{id:reservationId}]:[]};
     if(sql.includes("qualification_artifact_attempt_id")) return {rows:qualificationAllowed && attempt.state==="SUCCEEDED" && attempt.kind==="RENDER" && attempt.result_receipt_sha256 && attempt.result_object_key && Number(attempt.result_content_length)>0 && attempt.result_checksum_sha256 && reservation.state==="CLEAN" && reservation.cleanup_verified_at && values[3]===reservation.budget_authority_id ? [{qualification_artifact_attempt_id:attemptId}]:[]};
     if (sql.includes("videoforge_cloud_media_qualification_scope")) return {rows:[{allowed:qualificationAllowed}]};
     if (sql.includes("pg_advisory_xact_lock")) return { rows: [] };
@@ -392,6 +392,22 @@ describe("RunPod exact inventory and placement", () => {
   });
 });
 describe("durable cloud create reconciliation", () => {
+  it("keeps a second observer from invalidating the creator before its single POST", async () => {
+    const previous = fixture.query.getMockImplementation()!;
+    let observed = false;
+    fixture.query.mockImplementation(async (sql: string, values: unknown[] = []) => {
+      if (sql.includes("allowed_create_reservation") && !observed) {
+        observed = true;
+        expect((await runCloudMediaObservation(environment, config, scope)).state).toBe("RECONCILING");
+      }
+      return previous(sql, values);
+    });
+    fixture.transport.mockImplementation(async (url: string, options: RequestInit) => url.includes("/catalog/")
+      ? response({ gpus: [{ id: reservation.gpu, memory: 24, secure: true, manufacturer: "NVIDIA", price: { secure: .4 }, availability: "HIGH" }] })
+      : options.method === "POST" ? response(placement()) : emptyInventory());
+    expect((await runCloudMediaObservation(environment, config, scope)).state).toBe("STARTING");
+    expect(fixture.transport.mock.calls.filter(([, options]) => options.method === "POST")).toHaveLength(1);
+  });
   it("never repeats a create after timeout and complete empty inventory", async () => {
     expect((await runCloudMediaObservation(environment, config, scope)).state).toBe("RECONCILING");
     expect(reservation.state).toBe("AMBIGUOUS");

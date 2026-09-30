@@ -1152,6 +1152,12 @@
       "name": "hosted_prompt_atomic_next_claim",
       "filename": "0229_hosted_prompt_atomic_next_claim.sql",
       "sha256": "sha256:361f0e68172983a81fa0f19c1b0958844bfb8210da0166c946665664fd3a52a8"
+    },
+    {
+      "version": 230,
+      "name": "hosted_cloud_span_stream",
+      "filename": "0230_hosted_cloud_span_stream.sql",
+      "sha256": "sha256:b424707aeeb6a0afbb7347e8c982510a86edafac3beb6396f9a17c88cb3bb9e3"
     }
   ]
 }

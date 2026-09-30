@@ -2983,20 +2983,24 @@ export function HostedCreateProjectScreen() {
         </Panel>
 
         <Panel className="create-run-panel hosted-project-summary" heading="Cost & readiness">
-          <div className="field">
-            <label htmlFor="media-execution-backend">Media execution</label>
-            <select id="media-execution-backend" className="input" value={executionBackend}
-              aria-describedby="media-execution-help"
-              disabled={preflightMutation.isPending || submit.isPending}
-              onChange={(event) => {
-                setExecutionBackend(event.target.value as "PERSONAL_WORKER" | "RUNPOD_POD");
-                setPreflightResult(null);
-              }}>
-              <option value="PERSONAL_WORKER">Local</option>
-              <option value="RUNPOD_POD">Cloud</option>
-            </select>
+          <fieldset className="field media-execution-field" aria-describedby="media-execution-help"
+            disabled={preflightMutation.isPending || submit.isPending}>
+            <legend>Media execution</legend>
+            <div className="media-execution-options">
+              {([["PERSONAL_WORKER", "Local"], ["RUNPOD_POD", "Cloud"]] as const).map(([backend, label]) => (
+                <label key={backend}>
+                  <input type="radio" name="media-execution-backend" value={backend}
+                    checked={executionBackend === backend}
+                    onChange={() => {
+                      setExecutionBackend(backend);
+                      setPreflightResult(null);
+                    }} />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
             <small id="media-execution-help">Local uses your connected computer. Cloud adds compute cost.</small>
-          </div>
+          </fieldset>
           <div className={`run-readiness ${executionReady ? "ready" : "blocked"}`} role="status">
             {executionReady ? <Check size={18} /> : <AlertTriangle size={18} />}
             <span>

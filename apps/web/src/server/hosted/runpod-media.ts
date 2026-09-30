@@ -523,6 +523,8 @@ async function observeCloudMedia(environment: HostedRuntimeEnvironment, config: 
     if (["CREATING","AMBIGUOUS"].includes(String(r.state))) {
       phase="INVENTORY";
       const matches=(await client.inventory()).filter(p=>p.name===r!.pod_name);
+      // An observer must not invalidate the creator's pre-POST fence while it is still preparing.
+      if(r.state==="CREATING" && matches.length===0) return {state:"RECONCILING",delaySeconds:30};
       if (matches.length!==1) { await updateReservation(config,r,"AMBIGUOUS"); return {state:"RECONCILING",delaySeconds:30}; }
       phase="PLACEMENT_ADOPTION";
       return await adopt(client,config,r,matches[0]!,a);

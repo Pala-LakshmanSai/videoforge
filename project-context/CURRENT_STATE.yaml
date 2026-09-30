@@ -1,3 +1,16 @@
+cloud_startup_ui_release_2026_09_30:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  status: MINIMAL_UI_AND_CREATOR_FENCE_GREEN_PRODUCTION_PUBLICATION_PENDING
+  production_baseline: 661b6ddf7a17666568d5758479da37fc8e50c68f
+  implementation: Native_Local_Cloud_radio_choices_preserve_Local_default_readiness_disable_and_submit;shared_observer_keeps_live_CREATING_fence_when_complete_inventory_empty;unknown_provider_reply_still_never_replayed.
+  validation: UI_and_controller286pass_web_Worker_typechecks_changed_lint_native_production_bundle_gates_pass.
+  span_stream_status: Protocol2_source86edb07f_private_Linux_image_CI36734889796_qualified_and_staged_fb281457_but_not_production_qualified;actual105cut_component_test_failed_startup_no_receipts_no_measured_Cloud_speed;5to10minute_target_unmeasured.
+  database: Additive230_applied_once_213ledgerrows_original212_preserved;legacy_protocol1_compatible_no_SQL_replay_in_UI_release.
+  provider_spend_state: Test_authority_disabled_all105CPU_terminal_FAILED1_CANCELLED104;one_UNKNOWN_STOPPING_reservation_capacity_held_not_CLEAN;conservative_USD0_20debit_not_invoice;native_complete_inventory16_10_21UTC_zeroVideoForgePods_one_foreign_Frontier5Pod_preserved;no_retained_volume_or_Kie_Fal_regeneration.
+  remaining_gates: Exact_launch_reconciliation_and_Cloud105cut_acceptance_browser_downloadbytes_historical_MageSoulX_identity_complete_Postgres_install_restore_broader_editorial_qualification.
+  evidence: evidence/acceptance/VF-10-09/2026-09-30-cloud-startup-ui-release.md
+
 long_cloud_acceptance_2026_09_30:
   checkpoint: V2-09
   selected_task: VF-10-09
@@ -40,7 +53,7 @@ app_audit_2026_09_30:
   status: AUDIT_REPAIRS_PUBLISHED_LONG_CLOUD_ACCEPTANCE_IN_PROGRESS
   checkout_commit: 2cea7e581c79107fc0cd43d14f3837849a76882e
   changes_committed: true
-  isolated_release_branch: codex/app-functional-audit
+  isolated_release_branch: codex/cost-readiness-fix
   isolated_release_base: 2cea7e581c79107fc0cd43d14f3837849a76882e
   validation: Installed Chrome44/44 after dependency updates; actual owned-audio37.167s Local render and natural complete Chrome playback/download SHA pass. Full database632pass/0fail/11skip. Web2532pass/2fail/1skip; shutdown assertion subsequently fixed and its full64-test file passes. Security scan zero vulnerabilities; workspace lint/typechecks and exact production/staging bundle firewalls pass.
   release_validation: Isolated source focused app170; restore17; deployment-safety48; real Local Chrome1; build and web/Worker typecheck pass. No schema migration changes.
@@ -6211,7 +6224,7 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/app-functional-audit
+  branch: codex/cost-readiness-fix
   branch_upstream: origin/codex/serverless-v2-roadmap-v4
   branch_published: false
   current_source_head: "956e3afb1e9d4aad16d35d13da636ebe5bdfe7ea"

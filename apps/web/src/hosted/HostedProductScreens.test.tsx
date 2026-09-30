@@ -2761,13 +2761,17 @@ describe("hosted product journey", () => {
     })));
     renderHosted(<HostedCreateProjectScreen />);
     expect(await screen.findByText("Connect your computer")).toBeInTheDocument();
-    const backend = screen.getByLabelText("Media execution");
-    expect(backend).toHaveValue("PERSONAL_WORKER");
-    fireEvent.change(backend, { target: { value: "RUNPOD_POD" } });
+    const local = screen.getByRole("radio", { name: "Local" });
+    const cloud = screen.getByRole("radio", { name: "Cloud" });
+    expect(local).toBeChecked();
+    expect(cloud).not.toBeChecked();
+    fireEvent.click(cloud);
+    expect(cloud).toBeChecked();
     expect(screen.getByText("Cloud execution is enabled")).toBeInTheDocument();
     expect(screen.queryByText("Connect your computer")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Open Settings" })).not.toBeInTheDocument();
-    fireEvent.change(backend, { target: { value: "PERSONAL_WORKER" } });
+    fireEvent.click(local);
+    expect(local).toBeChecked();
     expect(screen.getByText("Connect your computer")).toBeInTheDocument();
   });
 
