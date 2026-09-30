@@ -1,0 +1,38 @@
+{
+  "checkpoint": "V2-09",
+  "task": "VF-10-09",
+  "status": "LOCAL_VERIFIED_PUBLICATION_PENDING",
+  "project_id": "386e147f-8b40-4a0f-bafd-cf026d991954",
+  "baseline_source": "0f1e8c5da4431b67130f782655ca6b424e8033d7",
+  "observations": {
+    "all_prompts_accepted": 347,
+    "batches": 35,
+    "known_prompt_cost_usd": 2.56964,
+    "completed_audio_spans_at_0906_utc": 12,
+    "planned_audio_spans": 105,
+    "canceled_cleanup_callbacks_observed": true,
+    "native_cleanup_timeout_seconds": 30,
+    "native_cleanup_attempts": 3,
+    "old_completed_span_grace_seconds": 30,
+    "old_waiting_poll_seconds": 5
+  },
+  "repair": {
+    "completed_span_grace_seconds": 120,
+    "waiting_poll_seconds": 30,
+    "deadlines_authority_receipts_fences_preserved": true,
+    "native_batch_limit": 4
+  },
+  "remaining": [
+    "Focused tests",
+    "Published Workflow adoption without replaying paid creates",
+    "Complete long Cloud video and browser download",
+    "Verified owned compute absence"
+  ],
+  "private_evidence_root": ".videoforge/long-cloud-20260930",
+  "validation": {
+    "controller_and_workflow_tests": 145,
+    "web_and_worker_typecheck": "PASS",
+    "changed_lint": "PASS",
+    "production_build_and_no_growth_firewall": "PASS"
+  }
+}

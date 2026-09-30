@@ -2,7 +2,7 @@
   "schema_version": "videoforge.long-cloud-saved-prefix-recovery/v1",
   "checkpoint": "V2-09",
   "task": "VF-10-09",
-  "status": "ATOMIC_PREFIX_PUBLISHED_NEXT_CLAIM_LOCK_VALIDATED",
+  "status": "FINAL_SHARED_CLAIM_REPAIR_PUBLISHED_NORMAL_PROMPT_CONTINUATION",
   "baseline_source": "025b204d27b97c660abad17349dc9934a9dc4ac7",
   "baseline_version": "b702ec90-2ff8-4ed3-86fd-e3d4538c2435",
   "project_id": "386e147f-8b40-4a0f-bafd-cf026d991954",
@@ -72,6 +72,49 @@
     "route_pass": 13,
     "typecheck_lint_build_quarantine": "PASS",
     "provider_posts": 0,
-    "status": "VALIDATED_SCHEMA_INSTALLED_PUBLICATION_PENDING"
+    "status": "PUBLISHED",
+    "source": "0f1e8c5da4431b67130f782655ca6b424e8033d7",
+    "version": "3de29f89-23a3-406f-8dd0-75e77ffc90ca",
+    "traffic_percent": 100,
+    "secrets_preserved": 25,
+    "bindings_preserved": 50,
+    "existing_workflow_definitions_updated": 3,
+    "same_canonical_restart_once": true,
+    "new_instances": 0
+  },
+  "normal_progress": {
+    "at": "2026-09-30T08:47:06Z",
+    "accepted_batches": 34,
+    "accepted_scenes": 337,
+    "known_prompt_micro_usd": 2501763,
+    "final_render_started": false
+  },
+  "whole_canonical_proof": {
+    "private_r2_bytes": 192837,
+    "binary_hash_verified": true,
+    "independent_canonical_hash_verified": true,
+    "segments": 400,
+    "frames": 54208,
+    "words": 5500,
+    "duration_ms": 1806942,
+    "gaps": 0,
+    "overlaps": 0
+  },
+  "finite_allowance": {
+    "total_cap_usd": 13,
+    "generation_operator_stop_usd": 6,
+    "new_cloud_cap_usd": 7,
+    "prior_cloud_debit_usd": 0.8,
+    "cloud_authority_total_usd": 7.8,
+    "max_total_reservations": 34,
+    "derived_new_rentals": {
+      "asr": 1,
+      "span_four_job_batches": 27,
+      "render": 1,
+      "recovery": 1
+    },
+    "project_allowlist": "Only exact long project",
+    "rate_deadline_temporary_disk_retention_unchanged": true,
+    "authority_mutation_provider_posts": 0
   }
 }

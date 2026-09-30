@@ -451,14 +451,18 @@ async function observeCloudMedia(environment: HostedRuntimeEnvironment, config: 
           VALUES($1,$2,$3,$4) ON CONFLICT(attempt_id) DO NOTHING`,[scope.accountId,scope.workspaceId,inserted.rows[0]!.id,a.id]);
         return inserted.rows[0]!;
       });
-      if(!r) return {state:"WAITING_CAPACITY",delaySeconds:5};
+      // Other spans remain claimable in this Pod without polling SQL every five seconds.
+      if(!r) return {state:"WAITING_CAPACITY",delaySeconds:30};
     }
     if(!["WAITING_CAPACITY","CLEAN"].includes(String(r.state))) {
       phase="ADMISSION_RENEWAL";
       await tenant(config,scope.accountId,async sql=>{await query(sql,'SELECT videoforge_cloud_media_renew_admission($1)',[r!.id]);});
     }
     if(a.kind==="SPAN_AUDIO" && a.state==="SUCCEEDED" && ACTIVE.includes(String(r.state)) &&
-      Date.parse(String(r.updated_at))+30_000>Date.now()) return {state:"SAVING",delaySeconds:5};
+      Date.parse(String(r.deadline_at))>Date.now() && Date.parse(String(a.deadline_at))>Date.now() &&
+      r.authority_enabled!==false && Date.parse(String(r.authority_expires_at))>Date.now() &&
+      // Cover all three bounded 30-second cleanup callback attempts before stopping compute.
+      Date.parse(String(r.updated_at))+120_000>Date.now()) return {state:"SAVING",delaySeconds:5};
     // A completed process may lose every callback. Reconcile its existing receipt before failing it.
     // Only the trusted observer can publish from this explicit, fenced cleanup marker.
     if(r.state==="STOPPING" && r.failure_code===RECEIPT_PENDING && a.state==="RUNNING" &&

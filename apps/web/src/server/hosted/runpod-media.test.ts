@@ -772,11 +772,21 @@ it("validates selected-span input identity, waveform facts and selection before 
   doc.selection.padded_end_ms_exclusive=3000;await setResultDocument(doc);
   expect((await runRoute("complete",completion))?.status).toBe(200);expect(attempt.state).toBe("SUCCEEDED");
 });
+it("keeps a completed span Pod available through bounded cleanup callback retries",async()=>{
+  attempt.kind="SPAN_AUDIO";attempt.state="SUCCEEDED";reservation.state="SAVING";
+  reservation.updated_at=new Date(Date.now()-90_000).toISOString();
+  expect(await runCloudMediaObservation(environment,config,scope)).toEqual({state:"SAVING",delaySeconds:5});
+  expect(fixture.transport).not.toHaveBeenCalled();
+  expect(reservation.state).toBe("SAVING");
+  reservation.deadline_at=new Date(Date.now()-1).toISOString();
+  await runCloudMediaObservation(environment,config,scope);
+  expect(fixture.transport).toHaveBeenCalled();
+});
 it("keeps other ready spans unreserved for the existing account Pod's bounded batch",async()=>{
   noReservation=true;attempt.kind="SPAN_AUDIO";attempt.state="OUTBOXED";attempt.owner_user_id="fixture-owner";
   await setTemplate("SPAN_AUDIO",{});Object.assign(attempt,{job_spec_object_key:reservation.job_spec_object_key,
     job_spec_content_length:reservation.job_spec_content_length,job_spec_checksum_sha256:reservation.job_spec_checksum_sha256});
-  expect(await runCloudMediaObservation(environment,config,scope)).toEqual({state:"WAITING_CAPACITY",delaySeconds:5});
+  expect(await runCloudMediaObservation(environment,config,scope)).toEqual({state:"WAITING_CAPACITY",delaySeconds:30});
   const statements=fixture.query.mock.calls.map(([statement])=>String(statement));
   expect(statements.some(statement=>statement.includes("pg_advisory_xact_lock"))).toBe(true);
   expect(statements.some(statement=>statement.includes("INSERT INTO cloud_media_reservations"))).toBe(false);
