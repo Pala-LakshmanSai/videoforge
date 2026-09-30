@@ -134,6 +134,8 @@ TO :"runtime_role";
 -- ambiguous provider result.
 GRANT EXECUTE ON FUNCTION public.videoforge_prepare_hosted_voiceover_context(jsonb)
 TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.videoforge_redispatch_hosted_voiceover_context(jsonb)
+TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_complete_hosted_voiceover_context(jsonb)
 TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION public.videoforge_fail_hosted_voiceover_context(uuid,text,text,boolean)

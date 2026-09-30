@@ -192,6 +192,7 @@ INSERT INTO v209_runtime_function_allowlist(signature) VALUES
   ('videoforge_prepare_hosted_pair_send(uuid,uuid,uuid)'),
   ('videoforge_prepare_hosted_prompt_run(jsonb)'),
   ('videoforge_prepare_hosted_voiceover_context(jsonb)'),
+  ('videoforge_redispatch_hosted_voiceover_context(jsonb)'),
   ('videoforge_read_system_avatar_version_assets(uuid)'),
   ('videoforge_reconcile_stale_hosted_prompt_dispatches(uuid)'),
   ('videoforge_reconcile_unknown_hosted_voiceover_context(jsonb)'),

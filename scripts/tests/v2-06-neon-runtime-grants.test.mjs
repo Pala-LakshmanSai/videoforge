@@ -132,6 +132,7 @@ test("the hosted runtime can append through the exact function but has no direct
   ];
   for (const signature of [
     "videoforge_prepare_hosted_voiceover_context(jsonb)",
+    "videoforge_redispatch_hosted_voiceover_context(jsonb)",
     "videoforge_complete_hosted_voiceover_context(jsonb)",
     "videoforge_fail_hosted_voiceover_context(uuid,text,text,boolean)",
     "videoforge_load_hosted_prompt_plan(uuid,uuid,uuid,uuid)",

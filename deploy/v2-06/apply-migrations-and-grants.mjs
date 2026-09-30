@@ -98,6 +98,7 @@ const EXPECTED_RUNTIME_FUNCTIONS = [
   "videoforge_append_hosted_render_plan(uuid,uuid,uuid,uuid,text,jsonb,text)",
   "videoforge_append_hosted_canonical_timing(uuid,uuid,uuid,uuid,uuid,uuid,jsonb)",
   "videoforge_prepare_hosted_voiceover_context(jsonb)",
+  "videoforge_redispatch_hosted_voiceover_context(jsonb)",
   "videoforge_complete_hosted_voiceover_context(jsonb)",
   "videoforge_fail_hosted_voiceover_context(uuid,text,text,boolean)",
   "videoforge_load_hosted_prompt_plan(uuid,uuid,uuid,uuid)",

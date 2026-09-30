@@ -1,0 +1,48 @@
+{
+  "schema_version": "videoforge-long-cloud-recovery-publication/v1",
+  "checkpoint": "V2-09",
+  "task": "VF-10-09",
+  "observed_at": "2026-09-30T05:32:49Z",
+  "project_id": "386e147f-8b40-4a0f-bafd-cf026d991954",
+  "source": "06dbfed34dbde41194a5843ff9fb0209966a8383",
+  "worker_version": "bc8fe8b1-1ab8-4a8f-b5fc-cc26b1134f4e",
+  "traffic_percentage": 100,
+  "preserved": {
+    "secret_bindings": 25,
+    "total_bindings": 50,
+    "workflow_resources": 3,
+    "ledger_rows": 207,
+    "ledger_max": 224,
+    "runtime_image_unchanged": true
+  },
+  "recovery": {
+    "terminal_length_reply_rejected": true,
+    "original_task_read_only_retrieval": true,
+    "missing_runtime_execute_permission": "public.videoforge_redispatch_hosted_voiceover_context(jsonb)",
+    "exact_existing_function_granted": true,
+    "public_execute": false,
+    "schema_or_function_definition_changes": false,
+    "other_grants": 0,
+    "context_accepted": true,
+    "accepted_finish_reason": "stop",
+    "accepted_completion_tokens": 139,
+    "accepted_provider_cost_usd": 0.00012486,
+    "asr_reused": true,
+    "context_redispatch_count": 2,
+    "new_project_count": 1,
+    "scene_count": 347,
+    "avatar_span_count": 105,
+    "planned_avatar_seconds": 382.5,
+    "projected_visual_generation_usd": 3.3
+  },
+  "validation": {
+    "focused_recovery_tests": 287,
+    "exact_runtime_grant_tests": 5,
+    "typecheck": true,
+    "lint": true,
+    "production_build_firewall": true,
+    "secret_scan": true
+  },
+  "acceptance": "IN_PROGRESS_FINAL_RENDER_AND_LONG_CHROME_PLAYBACK_NOT_YET_PROVEN",
+  "spend": "Provider-reported context cost and Cloud conservative debit are not invoices; USD13 finite acceptance stop remains. No retained volume."
+}

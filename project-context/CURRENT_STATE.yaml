@@ -1,7 +1,8 @@
 long_cloud_acceptance_2026_09_30:
   checkpoint: V2-09
   selected_task: VF-10-09
-  status: LONG_ASR_PASS_TERMINAL_CONTEXT_TRUNCATION_RECOVERY_PREPARED
+  status: NORMAL_LONG_CLOUD_PROMPTS_IN_PROGRESS
+  production_source: 06dbfed34dbde41194a5843ff9fb0209966a8383
   project_id: 386e147f-8b40-4a0f-bafd-cf026d991954
   user_authority: User requests20_or30minute Downloads voiceover test viaCloud;proceed without questions. Necessary scoped repair/publication/recovery and cleanup included;no unrestricted spend.
   voiceover: Exact owned1806942ms MP3;whole SHA dc6b95a915b304bda71a169c75a8d7d059c609ade88f19d6733b31cd3d4e3ca3.
@@ -10,6 +11,11 @@ long_cloud_acceptance_2026_09_30:
   repair: Existing definite unusable-task classification now covers identity-verified terminal token limits;incomplete output remains rejected and explicit bounded Retry uses a new task while reusing ASR. Model/tokens/request identity unchanged.
   finite_acceptance_cap: USD13 total;USD10 generation acceptance stop;USD3 additionalCloud. Existing authoritytotal3.8 includesprior0.8debit;max10total/6additional;USD0.80hourceiling;autosizedtemporarydiskminimum100GB;no retainedvolume;expiry2026_09_30T12_30UTC. Authority narrowed to exact new project;newCloudcreationdisabled.
   evidence: evidence/acceptance/VF-10-09/2026-09-30-long-cloud-first-failure.json
+  recovery_publication: Exact source06dbfed3/versionbc8fe8b1 deployed100percent;25secrets/50bindings/three existing Workflow identities preserved. Existing definitions updated and same canonical driver restarted once; immediate version equality was not a valid adoption proof because GET omits definition version. No new Workflow resources.
+  recovery_grant: Actual runtime42501 refused existing bounded context retry; exact existing function EXECUTE granted only to configured restricted runtime. Public remains denied; function definition unchanged; no other grants or migration. Deployment grant inventories corrected;5tests pass.
+  progress: Full30m07ASR reused;context accepted139completiontokens/provider_reportedUSD0.00012486 after2bounded redispatches. Planned347images/105avatarspans/382.5avatarseconds;UI visual generation estimateUSD3.30. Prompt35batches in progress;finalrender/storage/playback remains unverified.
+  recovery_evidence: project-context/evidence/acceptance/VF-10-09/2026-09-30-long-cloud-recovery-publication.json
+
 app_audit_2026_09_30:
   checkpoint: V2-09
   selected_task: VF-10-09
@@ -21,7 +27,7 @@ app_audit_2026_09_30:
   validation: Installed Chrome44/44 after dependency updates; actual owned-audio37.167s Local render and natural complete Chrome playback/download SHA pass. Full database632pass/0fail/11skip. Web2532pass/2fail/1skip; shutdown assertion subsequently fixed and its full64-test file passes. Security scan zero vulnerabilities; workspace lint/typechecks and exact production/staging bundle firewalls pass.
   release_validation: Isolated source focused app170; restore17; deployment-safety48; real Local Chrome1; build and web/Worker typecheck pass. No schema migration changes.
   fixes: Missing Local queue route, pinned Whisper path and required nullable spend field; current snapshot table inventory and transaction-local tenant restore scope; real crypto fixtures and historical guard assertions; patched security dependencies and explicit Node compatibility types.
-  blockers: Historical activation and immutable worker source identities remain unreconciled; PostgreSQL environment gates skipped; fresh full provider/editorial acceptance and retained long Chrome tail remain open. Release is not published.
+  blockers: Historical activation and immutable worker source identities remain unreconciled; PostgreSQL environment gates skipped; fresh full provider/editorial acceptance and retained long Chrome tail remain open. Audit repair source06dbfed3 is now published; long Cloud acceptance remains in progress.
   disk: User freed space; pinned147964211B Whisper model verified;2.2GiB last observed, above2GiB local runtime headroom floor.
   provider_spend: USD0; no provider generation or production mutation.
   paid_compute_shutdown: None launched; current global inventory not queried.
