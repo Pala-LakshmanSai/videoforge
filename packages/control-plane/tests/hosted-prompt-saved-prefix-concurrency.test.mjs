@@ -99,12 +99,24 @@ test("0228 accepts exact duplicate callbacks and reopens only a wholly saved pre
     assert.equal((await executor.query(reopen, [run.runId])).rows[0].reopened, false);
     assert.deepEqual(await snapshot(), before);
     const next = bytes.replace(uuid(228001), uuid(228003));
-    await executor.query("SELECT videoforge_claim_hosted_prompt_batch($1,1,$2,$3,$4)", [
-      run.runId,
-      uuid(228003),
-      next,
-      sha256(next),
+    await executor.query(fail, [run.runId]);
+    await executor.transaction(async (transaction) => {
+      await transaction.query(reopen, [run.runId]);
+      await transaction.query("SELECT videoforge_claim_hosted_prompt_batch($1,1,$2,$3,$4)", [
+        run.runId,
+        uuid(228003),
+        next,
+        sha256(next),
+      ]);
+    });
+    await executor.query("SELECT videoforge_reconcile_stale_hosted_prompt_dispatches($1)", [
+      IDS.projectA,
     ]);
+    assert.equal(
+      (await executor.query("SELECT state FROM hosted_prompt_runs WHERE id=$1", [run.runId]))
+        .rows[0].state,
+      "DISPATCHING",
+    );
     await executor.query(fail, [run.runId]);
     await assert.rejects(executor.query(reopen, [run.runId]), /evidence is invalid/);
     assert.equal(

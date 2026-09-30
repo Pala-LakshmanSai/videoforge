@@ -2,7 +2,7 @@
   "schema_version": "videoforge.long-cloud-saved-prefix-recovery/v1",
   "checkpoint": "V2-09",
   "task": "VF-10-09",
-  "status": "VALIDATED_SCHEMA_INSTALLED_PUBLICATION_PENDING",
+  "status": "PUBLISHED_ATOMIC_CLAIM_FOLLOWUP_VALIDATED",
   "baseline_source": "025b204d27b97c660abad17349dc9934a9dc4ac7",
   "baseline_version": "b702ec90-2ff8-4ed3-86fd-e3d4538c2435",
   "project_id": "386e147f-8b40-4a0f-bafd-cf026d991954",
@@ -39,5 +39,22 @@
     "prompt_reserved_cumulative_ceiling_micro_usd": 8000000,
     "long_render_verified": false
   },
-  "private_evidence": ".videoforge/long-cloud-20260930/saved-prefix-schema-actual-runtime-rollback-private.json"
+  "private_evidence": ".videoforge/long-cloud-20260930/saved-prefix-schema-actual-runtime-rollback-private.json",
+  "publication": {
+    "source": "3fbd7b128818846f995e757bde19b3eddb4f579d",
+    "version": "723e1c2b-c5b5-4078-b4aa-e0dd87b25875",
+    "traffic_percent": 100,
+    "secrets_preserved": 25,
+    "bindings_preserved": 50,
+    "existing_workflow_definitions_updated": 3,
+    "same_canonical_restart_once": true,
+    "new_instances": 0
+  },
+  "followup": {
+    "cause": "Saved prefix reopened but old claim/progress was stale before next Workflow tick; regular detail reconciliation immediately marked UNKNOWN again.",
+    "fix": "Reopen saved prefix and create exact next claim inside one tenant transaction before provider POST; no separate reopen-only return.",
+    "database_pass": 9,
+    "route_pass": 13,
+    "status": "VALIDATED_PUBLICATION_PENDING"
+  }
 }

@@ -71,6 +71,11 @@ async function claimHostedPromptBatch(
       "videoforge.account_id",
       accountId,
     ]);
+    // Keep recovery and its fresh durable claim atomic so stale reconciliation cannot split them.
+    await transaction.query(
+      "SELECT public.videoforge_reopen_saved_hosted_prompt_prefix($1::uuid)",
+      [runId],
+    );
     const result = await transaction.query<{ claimed: boolean }>(
       "SELECT public.videoforge_claim_hosted_prompt_batch($1,$2,$3,$4,$5) AS claimed",
       [runId, request.batchOrdinal, request.taskUUID, request.requestBytes, request.requestHash],
@@ -577,19 +582,6 @@ export async function writeProjectPrompts(
           saved.accepted_scene_count === saved.planned_scene_count
         )
           return await completeAcceptedRun();
-        if (existingState === "UNKNOWN" && !original.claim) {
-          await createNeonExecutor(pool).transaction(async (transaction) => {
-            await transaction.query("SELECT set_config($1, $2, true)", [
-              "videoforge.account_id",
-              scope.account_id,
-            ]);
-            await transaction.query(
-              "SELECT public.videoforge_reopen_saved_hosted_prompt_prefix($1::uuid)",
-              [saved.id],
-            );
-          });
-          return response({ state: "RUNNING", replayed: false }, 202);
-        }
         let acceptedBatch: Awaited<ReturnType<typeof recoverClaimedHostedPromptBatch>> | null;
         try {
           acceptedBatch = original.claim
@@ -608,7 +600,7 @@ export async function writeProjectPrompts(
                   | null,
                 recordedResult: original.claim.recorded_result,
               })
-            : existingState === "DISPATCHING" &&
+            : (existingState === "DISPATCHING" || existingState === "UNKNOWN") &&
                 saved.accepted_batch_count < saved.planned_batch_count
               ? await dispatchOneHostedPromptBatch({
                   apiKey: promptApiKey,

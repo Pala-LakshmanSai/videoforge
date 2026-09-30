@@ -180,3 +180,17 @@ it("binds resumed failure settlement and transitions terminal invalid output bef
   expect(source).toContain("!invalidClaim.retry_of_request_hash");
   expect(source).toContain('existingState === "UNKNOWN" && !original.claim');
 });
+
+it("reopens an accepted prefix and claims its next batch in the same transaction before provider dispatch", () => {
+  const source = readFileSync("src/server/hosted/hosted-prompt-route.ts", "utf8");
+  const start = source.indexOf("async function claimHostedPromptBatch(");
+  const end = source.indexOf("async function recordHostedPromptBatch(", start);
+  const claim = source.slice(start, end);
+  expect(claim.indexOf("videoforge_reopen_saved_hosted_prompt_prefix")).toBeGreaterThan(
+    claim.indexOf(".transaction("),
+  );
+  expect(claim.indexOf("videoforge_claim_hosted_prompt_batch")).toBeGreaterThan(
+    claim.indexOf("videoforge_reopen_saved_hosted_prompt_prefix"),
+  );
+  expect(source).not.toContain('\n        if (existingState === "UNKNOWN" && !original.claim) {');
+});
