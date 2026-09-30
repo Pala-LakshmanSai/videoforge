@@ -211,8 +211,7 @@
   "blockers": [
     "Historical V2-07 activation image/config lineage and immutable Mage/SoulX source-overlay identities remain unreconciled; their guards were not weakened.",
     "Real PostgreSQL qualification is skipped without the configured PostgreSQL environment/Docker daemon. The full local PGlite suite is green; live schema/ledger/grants were not changed.",
-    "Fresh full provider/editorial production acceptance and the final retained long-video Chrome tail remain open.",
-    "The repaired source and security dependencies require a reviewed production release; no deployment has occurred in this audit."
+    "Fresh full provider/editorial production acceptance and the final retained long-video Chrome tail remain open."
   ],
   "disk": {
     "available_gib_observed": 2.2,
@@ -220,7 +219,7 @@
   },
   "provider_spend_usd": 0,
   "paid_compute": "None launched in this audit; current global provider inventory not queried.",
-  "next": "Finish validating the isolated release from published source 2cea7e58, commit only audit repairs, then obtain the exact external publication authority required by AGENTS.md. Paid provider acceptance remains separately bounded.",
+  "next": "Complete authorized normal30m07s Cloud render, whole artifact review, real Chrome playback/download and exact owned compute cleanup; keep historical PostgreSQL/editorial/source-identity gates explicit.",
   "model_download_authority": "User authorized continuation and necessary redo work after freeing disk space; pinned local model downloaded and checksum verified. No paid provider calls.",
   "remaining_script_failure_categories": [
     "Historical migration manifest/source-closure identity drift",
@@ -245,5 +244,14 @@
       "schema_migrations_changed": false,
       "scope": "Only audit repairs applied to published source; unrelated main checkout changes excluded."
     }
+  },
+  "current_publication": {
+    "source": "23c518425b7a7c03c26bb12611f9f4e86581e243",
+    "version_id": "548987db-6e24-4761-8979-bff8b9ba1a42",
+    "traffic_percent": 100,
+    "secrets_preserved": 25,
+    "bindings_preserved": 50,
+    "subsequent_authorized_long_cloud_acceptance": "RUNNING",
+    "final_long_video_verified": false
   }
 }

@@ -1,7 +1,7 @@
 {
   "checkpoint": "V2-09",
   "task": "VF-10-09",
-  "status": "LOCAL_VERIFIED_PUBLICATION_PENDING",
+  "status": "PUBLISHED_NATIVE_PROGRESS_VERIFIED_LONG_RENDER_PENDING",
   "project_id": "386e147f-8b40-4a0f-bafd-cf026d991954",
   "baseline_source": "0f1e8c5da4431b67130f782655ca6b424e8033d7",
   "observations": {
@@ -23,10 +23,9 @@
     "native_batch_limit": 4
   },
   "remaining": [
-    "Focused tests",
-    "Published Workflow adoption without replaying paid creates",
-    "Complete long Cloud video and browser download",
-    "Verified owned compute absence"
+    "Complete normal long Cloud video and browser download",
+    "Verified owned compute absence",
+    "Whole-video timing and provider charge reconciliation"
   ],
   "private_evidence_root": ".videoforge/long-cloud-20260930",
   "validation": {
@@ -34,5 +33,44 @@
     "web_and_worker_typecheck": "PASS",
     "changed_lint": "PASS",
     "production_build_and_no_growth_firewall": "PASS"
+  },
+  "publication": {
+    "source": "23c518425b7a7c03c26bb12611f9f4e86581e243",
+    "version_id": "548987db-6e24-4761-8979-bff8b9ba1a42",
+    "secrets_preserved": 25,
+    "bindings_preserved": 50,
+    "active_cloud_preserved": true,
+    "new_workflow_instances": 0
+  },
+  "workflow_adoption": {
+    "existing_definition_updates": 1,
+    "existing_instance_restarts": 85,
+    "new_instances": 0,
+    "direct_paid_provider_posts": 0,
+    "active_cloud_preserved": true,
+    "async_progress_verified": true
+  },
+  "early_native_timing": {
+    "same_gpu": "NVIDIA RTX PRO 4500 Blackwell Server Edition",
+    "before": {
+      "rentals": 8,
+      "clips": 17,
+      "mean_rental_seconds": 187
+    },
+    "after": {
+      "rentals": 3,
+      "clips": 12,
+      "mean_rental_seconds": 115.6
+    },
+    "qualification": "Early audio preparation throughput only; no whole-video speed claim"
+  },
+  "operator_allowance": {
+    "human_numeric_cap_specified": false,
+    "total_test_stop_usd": 14,
+    "generation_stop_usd": 6,
+    "new_cloud_cap_usd": 8,
+    "authority_total_including_prior_usd": 8.8,
+    "max_rentals_including_prior": 39,
+    "reason": "Five extra bounded rental allowances for observed pre-repair singleton startup overhead; unchanged rate/job/disk/expiry/no-retained-volume limits"
   }
 }
