@@ -231,6 +231,7 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
  LIMIT 5`;
 
 interface DueRow {
+  readonly revision_id: string;
   readonly project_id: string;
   readonly asr_attempt_id: string | null;
   readonly account_id: string;
@@ -379,6 +380,10 @@ export async function runHostedContinuation(
             await import("./hosted-prompt-next-stage")
           ).dispatchHostedProject(row.project_id, scope, environment, config, executionContext);
         } else {
+          if (config.apiGeneration) executionContext.waitUntil(import("./hosted-v209-span-live")
+            .then(m => m.prepareHostedEarlyCloudSpans(environment,config,{accountId:row.account_id,
+              workspaceId:row.workspace_id,userId:row.user_id,projectId:row.project_id},row.revision_id))
+            .catch(() => console.warn("hosted_early_span_preparation_deferred")));
           const { writeProjectPrompts } = await import("./hosted-prompt-route");
           const acceptedHandoff = config.apiGeneration
             ? (await import("./hosted-prompt-next-stage")).dispatchAcceptedHostedPrompts.bind(

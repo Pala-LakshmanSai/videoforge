@@ -238,7 +238,9 @@ function exactFinalization(
 export function createHostedV209SpanAudioCoordinator(
   dependencies: HostedV209SpanAudioCoordinatorDependencies,
 ) {
-  const prepare = async (identity: HostedV209SpanIdentity, reuseScheduled = false) => {
+  const prepare = async (identity: HostedV209SpanIdentity, reuseScheduled = false, maximumNewJobs?: number) => {
+    if (maximumNewJobs !== undefined && (!Number.isInteger(maximumNewJobs) || maximumNewJobs < 1 || maximumNewJobs > 16))
+      throw new HostedV209SpanAudioError("HOSTED_V209_SPAN_SCHEDULE_LIMIT_INVALID");
     if (
       ![identity.accountId, identity.workspaceId, identity.userId].every((id) =>
         DATABASE_UUID.test(id),
@@ -259,12 +261,15 @@ export function createHostedV209SpanAudioCoordinator(
     const scheduledIds = new Set(
       reuseScheduled ? await dependencies.loadScheduledAttemptIds?.(identity) : [],
     );
+    let newJobs = 0;
     for (const job of projection.jobs) {
       if ((await sha256(canonicalJson(job.submissionDocument))) !== job.submissionSha256) {
         throw new HostedV209SpanAudioError("HOSTED_V209_SPAN_SUBMISSION_HASH_MISMATCH");
       }
       const submission = exactHostedSpanAudioSubmission(job.submissionDocument, job.attemptId)!;
       if (scheduledIds.has(job.attemptId)) continue;
+      if (maximumNewJobs !== undefined && newJobs >= maximumNewJobs) break;
+      newJobs += 1;
       const scheduled = await dependencies.schedule(identity, submission, job.attemptId);
       // A span cut runs on the owner's own computer. A local failure is requeued automatically, so
       // keep reporting preparation instead of failing the whole dispatch while that retry is due.

@@ -42,6 +42,7 @@ export function validateCloudVariables(vars) {
     release.schema_version !== "videoforge-runpod-media-release/v1" || release.qualified !== true ||
     release.platform !== "linux/amd64" || release.source_sha256 !== vars.VIDEOFORGE_CLOUD_MEDIA_SOURCE_SHA256 ||
     !sha.test(release.runtime_sha256) || !tooling ||
+    (release.span_batch_protocol !== undefined && ![1,2].includes(release.span_batch_protocol)) ||
     !["ffmpeg_sha256", "ffprobe_sha256", "whisper_sha256", "whisper_model_sha256"].every((key) => sha.test(tooling[key])) ||
     tooling.whisper_model_sha256 !== desktop.whisper_model_sha256 ||
     tooling.ffmpeg_version !== "8.1.2" || tooling.ffprobe_version !== "8.1.2" || tooling.whisper_version !== "1.8.4" ||
@@ -62,7 +63,7 @@ export function prepareCloudConfig(baseline, commit, cloudVariables = { VIDEOFOR
 
 /** Guard the complete observed ledger, including archived entries; apply one reviewed additive migration. */
 export function prepareMigrationSql(observed, manifest, sql, version = 214) {
-  const filenames = { 214: "0214_optional_runpod_media.sql", 215: "0215_hosted_cloud_asr_recovery.sql", 216: "0216_cloud_media_disk_measurements.sql", 217: "0217_hosted_span_audio_current_asr_receipt.sql", 218: "0218_hosted_cloud_preprovider_media.sql" };
+  const filenames = { 214: "0214_optional_runpod_media.sql", 215: "0215_hosted_cloud_asr_recovery.sql", 216: "0216_cloud_media_disk_measurements.sql", 217: "0217_hosted_span_audio_current_asr_receipt.sql", 218: "0218_hosted_cloud_preprovider_media.sql", 230: "0230_hosted_cloud_span_stream.sql" };
   const expected = manifest.migrations.find((entry) => entry.version === version);
   if (!Object.hasOwn(filenames, version) || !expected || expected.filename !== filenames[version] || hash(sql) !== expected.sha256 || !Array.isArray(observed)) fail();
   const ledger = observed.map(({ version, name, filename, sha256 }) => ({ version: Number(version), name, filename, sha256 })).sort((a, b) => a.version - b.version);

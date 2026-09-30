@@ -85,3 +85,13 @@ test("new additive recovery and telemetry migrations guard exact214 before215 an
   assert.throws(()=>prepareMigrationSql([original,recovery,disk,span,preprovider],manifest,"SELECT 218;",218));
   assert.throws(()=>prepareMigrationSql([original,recovery,disk,span],manifest,"SELECT 218;SELECT 1;",218));
 });
+
+test("230 emits only the stream upgrade after a checksum-exact229 ledger",()=>{
+ const entry=(version,name,sql)=>({version,name,filename:`${String(version).padStart(4,"0")}_${name}.sql`,sha256:`sha256:${createHash("sha256").update(sql).digest("hex")}`});
+ const prior=entry(229,"prior","SELECT 229;"),stream=entry(230,"hosted_cloud_span_stream","SELECT 230;");
+ const manifest={migrations:[prior,stream]};
+ const prepared=prepareMigrationSql([prior],manifest,"SELECT 230;",230);
+ assert.match(prepared,/VALUES\(230,/u);assert.equal(prepared.includes("SELECT 229;"),false);
+ assert.throws(()=>prepareMigrationSql([prior,stream],manifest,"SELECT 230;",230));
+ assert.throws(()=>prepareMigrationSql([prior],manifest,"SELECT 230;SELECT 1;",230));
+});

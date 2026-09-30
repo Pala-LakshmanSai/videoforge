@@ -151,9 +151,24 @@ async function resumeHostedApiDispatch(
   identity: DispatchIdentity,
   correlationId: string,
   generationRequestId: string,
+  awaitAcceptedPrompts = false,
 ): Promise<Response> {
   let jobs = await readApiJobs(database, identity, generationRequestId);
   if (jobs.length === 0) {
+    if (awaitAcceptedPrompts) {
+      const ready = await database.transaction(async (transaction) => {
+        await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", identity.accountId]);
+        const result = await transaction.query<{ ready: boolean }>(
+          `SELECT EXISTS(SELECT 1 FROM generation_requests g JOIN hosted_prompt_runs p
+             ON p.project_revision_id=g.project_revision_id AND p.account_id=g.account_id AND p.workspace_id=g.workspace_id
+            WHERE g.id=$1::uuid AND g.account_id=$2::uuid AND g.workspace_id=$3::uuid AND g.project_id=$4::uuid
+              AND g.state='ACTIVE' AND p.state='SUCCEEDED' AND p.acceptance_fingerprint_hash IS NOT NULL) AS ready`,
+          [generationRequestId, identity.accountId, identity.workspaceId, identity.projectId],
+        );
+        return result.rows[0]?.ready === true;
+      });
+      if (!ready) return preparationResponse("WAITING_FOR_PROMPTS", correlationId);
+    }
     const materialized = await database.transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", identity.accountId]);
       const result = await transaction.query<{ jobs: unknown }>(
@@ -530,7 +545,7 @@ function dispatchResponse(candidate: Candidate, correlationId: string, status: n
 }
 
 function preparationResponse(
-  state: "PREPARING_INPUTS" | "SCHEDULED" | "WAITING" | "WAITING_FOR_GPUS",
+  state: "PREPARING_INPUTS" | "SCHEDULED" | "WAITING" | "WAITING_FOR_GPUS" | "WAITING_FOR_PROMPTS",
   correlationId: string,
 ) {
   const base = response(
@@ -657,7 +672,7 @@ export async function resumeHostedV209ProjectDispatch(
       if (legacy.candidateExists || legacy.attemptExists || legacy.pairExists)
         return historicalRunPodConflict();
       return await resumeHostedApiDispatch(
-        environment, runtimeDatabase, identity, correlationId, admission.generationRequestId,
+        environment, runtimeDatabase, identity, correlationId, admission.generationRequestId, config.cloudMedia?.spanBatchProtocol === 2,
       );
     }
     if (!admissionAlreadyEnsured) {
@@ -840,7 +855,7 @@ export async function handleHostedV209ProjectDispatch(
             return preparationResponse("PREPARING_INPUTS", correlationId);
         }
         return await resumeHostedApiDispatch(
-          environment, runtimeDatabase, identity, correlationId, admission.generationRequestId,
+          environment, runtimeDatabase, identity, correlationId, admission.generationRequestId, config.cloudMedia?.spanBatchProtocol === 2,
         );
       }
       if (
@@ -889,7 +904,7 @@ export async function handleHostedV209ProjectDispatch(
       return preparationResponse("SCHEDULED", correlationId);
     }
     if (config.apiGeneration) return await resumeHostedApiDispatch(
-      environment, runtimeDatabase, identity, correlationId, admission.generationRequestId,
+      environment, runtimeDatabase, identity, correlationId, admission.generationRequestId, config.cloudMedia?.spanBatchProtocol === 2,
     );
     return await resumeHostedV209ProjectDispatch(
       environment,

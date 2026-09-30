@@ -1,4 +1,4 @@
-import { createHostedV209SpanAudioCoordinator } from "./hosted-v209-span-audio";
+import { createHostedV209SpanAudioCoordinator, type HostedV209SpanIdentity } from "./hosted-v209-span-audio";
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { canonicalJson, type HostedSpanAudioSubmission } from "./submission";
@@ -80,4 +80,29 @@ export function createHostedV209SpanAudioLiveCoordinator(
       if (!result.ok) throw new Error("HOSTED_V209_SPAN_PAIR_RESUME_REJECTED");
     },
   });
+}
+
+/** A bounded sidecar of the existing durable prompt Workflow; never admits a new workload. */
+export async function prepareHostedEarlyCloudSpans(environment:HostedRuntimeEnvironment,
+  config:HostedRuntimeConfiguration,identity:HostedV209SpanIdentity,revisionId:string):Promise<void> {
+  if(config.cloudMedia?.spanBatchProtocol!==2) return;
+  const pool=createNeonPool(config.neon.databaseUrl);
+  let admitted:boolean;
+  try {
+    admitted=await createNeonExecutor(pool).transaction(async transaction=>{
+      await transaction.query("SELECT set_config($1,$2,true)",["videoforge.account_id",identity.accountId]);
+      const result=await transaction.query<{ready:boolean}>(
+        `SELECT EXISTS(SELECT 1 FROM generation_requests g JOIN project_revisions r ON r.id=g.project_revision_id
+          WHERE g.account_id=$1::uuid AND g.workspace_id=$2::uuid AND g.project_id=$3::uuid
+            AND g.project_revision_id=$4::uuid AND g.state='ACTIVE' AND g.terminal_at IS NULL
+            AND r.status='LOCKED' AND r.media_execution_backend='RUNPOD_POD'
+            AND EXISTS(SELECT 1 FROM provider_workload_leases l WHERE l.generation_request_id=g.id
+              AND l.state='ACTIVE' AND l.expires_at>now())) AS ready`,
+        [identity.accountId,identity.workspaceId,identity.projectId,revisionId]);
+      return result.rows[0]?.ready===true;
+    });
+  }finally {await pool.end();}
+  if(!admitted)return;
+  const coordinator=await (await import("./app")).createHostedV209SpanAudioLiveCoordinator(environment,config);
+  await coordinator.prepare(identity,true,8);
 }

@@ -19,6 +19,7 @@ export interface CloudMediaConfiguration {
   readonly maxHourlyUsd: number;
   readonly budgetUsd: number;
   readonly maxRentalSeconds: number;
+  readonly spanBatchProtocol?: 1 | 2;
 }
 
 /** Absent configuration preserves every desktop path. Enabling requires a qualified Linux release. */
@@ -42,6 +43,7 @@ export function cloudMediaConfiguration(env: HostedRuntimeEnvironment): CloudMed
     manifest.schema_version !== "videoforge-runpod-media-release/v1" || manifest.qualified !== true ||
     manifest.source_sha256 !== sourceSha256 || !SHA256.test(String(manifest.runtime_sha256)) ||
     manifest.platform !== "linux/amd64" || !tooling ||
+    (manifest.span_batch_protocol !== undefined && ![1,2].includes(manifest.span_batch_protocol as number)) ||
     !["ffmpeg_sha256", "ffprobe_sha256", "whisper_sha256", "whisper_model_sha256"].every(k => SHA256.test(tooling[k] ?? "")) ||
     tooling.ffmpeg_version !== "8.1.2" || tooling.ffprobe_version !== "8.1.2" || tooling.whisper_version !== "1.8.4" ||
     ![maxHourlyUsd, budgetUsd].every(n => Number.isFinite(n) && n > 0) ||
@@ -50,5 +52,6 @@ export function cloudMediaConfiguration(env: HostedRuntimeEnvironment): CloudMed
   }
   return Object.freeze({enabled: true, image, registryId, imageDigest: image.split("@")[1]!, sourceSha256,
     executionBundleSha256: sourceSha256, runtimeSha256: String(manifest.runtime_sha256),
-    tooling: Object.freeze({...tooling}), apiKey, budgetAuthorityId, maxHourlyUsd, budgetUsd, maxRentalSeconds});
+    tooling: Object.freeze({...tooling}), apiKey, budgetAuthorityId, maxHourlyUsd, budgetUsd, maxRentalSeconds,
+    spanBatchProtocol: manifest.span_batch_protocol === 2 ? 2 : 1});
 }

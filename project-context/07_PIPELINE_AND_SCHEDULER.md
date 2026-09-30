@@ -312,3 +312,10 @@ Cloud stops between expensive Kie/Fal provider-wait stages; continuation uses du
 without browser or personal-worker polling. Backend selection and retry lineage are immutable. An
 explicit render-only Cloud retry reuses accepted assets and the resolved manifest, with a fresh
 fenced attempt; it does not regenerate prompts/images/avatars. Local remains the default.
+
+Qualified Cloud span protocol2 (local implementation2026-09-30, live release pending) reuses narration
+and one unchanged900second rental for up_to128immediately ready, independently verified clips.
+Historical protocol1 retains four clips. The existing prompt Workflow overlaps at_most8new admitted
+Cloud spans per iteration; API jobs still require accepted prompts. No idle rental between stages,
+no admission/budget/receipt bypass. Migration230 and separately qualified immutable runtime required.
+Evidence: `evidence/acceptance/VF-10-09/2026-09-30-span-stream-implementation.md`.

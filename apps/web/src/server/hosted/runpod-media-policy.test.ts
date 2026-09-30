@@ -64,3 +64,12 @@ describe("qualified optional cloud media policy", () => {
     expect(isCapacityRefusal(422, "invalid image")).toBe(false);
   });
 });
+
+it("enables the stream only through a qualified exact release capability",()=>{
+  const env=environment(),release=JSON.parse(env.VIDEOFORGE_CLOUD_MEDIA_RUNTIME_MANIFEST_JSON!);
+  expect(cloudMediaConfiguration(env)?.spanBatchProtocol).toBe(1);
+  for(const capability of [1,2]) expect(cloudMediaConfiguration({...env,VIDEOFORGE_CLOUD_MEDIA_RUNTIME_MANIFEST_JSON:
+    JSON.stringify({...release,span_batch_protocol:capability})})?.spanBatchProtocol).toBe(capability);
+  for(const capability of [null,true,"2",0,128]) expect(()=>cloudMediaConfiguration({...env,VIDEOFORGE_CLOUD_MEDIA_RUNTIME_MANIFEST_JSON:
+    JSON.stringify({...release,span_batch_protocol:capability})})).toThrow("CLOUD_MEDIA_RUNTIME_UNQUALIFIED");
+});

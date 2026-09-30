@@ -450,7 +450,8 @@ async function handleCpuSubmission(
       const primaryMax = primaryContract.maxBytes;
       const jobSpec = {
         schema_version: executionBackend === "RUNPOD_POD"
-          ? "videoforge-cloud-media-job-template/v1"
+          ? (submission.kind === "SPAN_AUDIO" && config.cloudMedia!.spanBatchProtocol === 2
+              ? "videoforge-cloud-media-job-template/v2" : "videoforge-cloud-media-job-template/v1")
           : "videoforge-personal-worker-job-template/v1",
         attempt_id: attemptId,
         kind: submission.kind,

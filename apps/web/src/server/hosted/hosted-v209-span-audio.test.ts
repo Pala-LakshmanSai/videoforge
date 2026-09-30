@@ -284,3 +284,25 @@ describe("hosted V2-09 span audio coordinator", () => {
     expect(schedule).not.toHaveBeenCalled();
   });
 });
+
+it("caps early new submissions and reuses already scheduled clips",async()=>{
+ const value=await projection();
+ // Distinct idempotent attempts use the real submission validator and hash.
+ value.jobs=await Promise.all(Array.from({length:12},async(_,i)=>{
+   const job=structuredClone(value.jobs[0]!);
+   const id=`66666666-6666-4666-8666-${String(i+1).padStart(12,"0")}`;
+   job.attemptId=id;job.spanId=id;job.idempotencyKey=`span-audio:${id}`;
+   job.submissionDocument.idempotency_key=job.idempotencyKey;
+   job.inputDocument.attempt_id=id;job.inputDocument.cancel_token=id;job.inputDocument.span_id=id;
+   job.inputDocument.output.result_uri=`vf-local-run://${ids.revisionId}/${id}/span-audio-result.json`;
+   job.submissionDocument.input_document=job.inputDocument;
+   job.submissionSha256=await sha256(canonicalJson(job.submissionDocument));return job;
+ }));
+ const schedule=vi.fn(async()=>({state:"OUTBOXED"}));
+ const coordinator=createHostedV209SpanAudioCoordinator({loadJobs:async()=>value,
+  loadScheduledAttemptIds:async()=>[value.jobs[0]!.attemptId],schedule,finalize:vi.fn(),resumePair:vi.fn()});
+ expect((await coordinator.prepare(ids,true,8)).state).toBe("PREPARING_INPUTS");
+ expect(schedule).toHaveBeenCalledTimes(8);
+ expect(schedule.mock.calls[0]).not.toContain(value.jobs[0]!.attemptId);
+ await expect(coordinator.prepare(ids,true,0)).rejects.toThrow("HOSTED_V209_SPAN_SCHEDULE_LIMIT_INVALID");
+});

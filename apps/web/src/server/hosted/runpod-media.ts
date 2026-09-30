@@ -1,6 +1,6 @@
 import type { SqlExecutor, SqlPrimitive } from "@videoforge/control-plane";
 import type { HostedExecutionContext } from "./auth";
-import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
+import type { HostedNeonPool, HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
 import { cloudMediaQualificationOnly } from "./cloud-media-qualification";
 import { deriveCallbackToken, deriveScopedToken, sha256, sha256Bytes } from "./crypto";
 import { createNeonExecutor, createNeonPool } from "./neon";
@@ -147,12 +147,12 @@ export function verifyCloudPlacement(pod: Row, reservation: Row): boolean {
 }
 
 async function tenant<T>(config: HostedRuntimeConfiguration, accountId: string,
-  action: (sql: SqlExecutor) => Promise<T>): Promise<T> {
-  const pool = createNeonPool(config.neon.databaseUrl);
+  action: (sql: SqlExecutor) => Promise<T>, sharedPool?: HostedNeonPool): Promise<T> {
+  const pool = sharedPool ?? createNeonPool(config.neon.databaseUrl);
   try { return await createNeonExecutor(pool).transaction(async sql => {
     await query(sql, "SELECT set_config($1,$2,true)", ["videoforge.account_id", accountId]);
     return action(sql);
-  }); } finally { await pool.end(); }
+  }); } finally { if (!sharedPool) await pool.end(); }
 }
 async function recordCloudDiskMetrics(sql:SqlExecutor,r:Row,metrics:unknown):Promise<boolean> {
   return metrics===undefined || !!(await query(sql,CLOUD_DISK_METRICS_SQL,
@@ -168,7 +168,7 @@ async function updateReservation(config: HostedRuntimeConfiguration, r: Row, sta
   });
 }
 async function finishAttempt(config: HostedRuntimeConfiguration, r: Row, state: string,
-  facts?: {key: string; size: number; checksum: string}, receiptRecovery=false): Promise<boolean> {
+  facts?: {key: string; size: number; checksum: string}, receiptRecovery=false, pool?: HostedNeonPool): Promise<boolean> {
   return tenant(config, String(r.account_id), async sql => {
     const receipt = facts ? await sha256(JSON.stringify({attempt_id:r.leased_attempt_id,content_length:facts.size,
       object_key:facts.key,result_checksum_sha256:facts.checksum})) : null;
@@ -187,7 +187,7 @@ async function finishAttempt(config: HostedRuntimeConfiguration, r: Row, state: 
     await query(sql, CLOUD_TERMINAL_EVENT_SQL,
       [r.leased_attempt_id ?? r.attempt_id,r.account_id,r.workspace_id,state,await sha256(`${r.id}:${state}:${receipt ?? ""}`)]);
     return true;
-  });
+  },pool);
 }
 
 /** A DELETE response is insufficient. Unknown create + empty inventory remains reserved. */
@@ -368,7 +368,7 @@ async function observeCloudMedia(environment: HostedRuntimeEnvironment, config: 
     const r = (await query(sql, "SELECT r.*,b.expires_at AS authority_expires_at,b.enabled AS authority_enabled FROM cloud_media_reservations r JOIN cloud_media_jobs j ON j.reservation_id=r.id JOIN LATERAL public.videoforge_cloud_media_reservation_authority(r.id,r.leased_attempt_id,r.fence_id) b ON true WHERE j.attempt_id=$1 ORDER BY r.created_at DESC LIMIT 1",[scope.attemptId])).rows[0];
     const current = r && r.leased_attempt_id !== a?.id
       ? (await query(sql, "SELECT * FROM hosted_cpu_job_attempts WHERE id=$1", [r.leased_attempt_id])).rows[0] : a;
-    return {a:current,r};
+    return {a:current,r,member:a};
   });
   if (!loaded.a) return {state:"FAILED"};
   let a:Row = loaded.a; let r = loaded.r;
@@ -378,6 +378,12 @@ async function observeCloudMedia(environment: HostedRuntimeEnvironment, config: 
       (await query(sql,"SELECT public.videoforge_cloud_media_qualification_scope($1,$2) AS allowed",[authority,a.project_id])).rows[0]?.allowed===true))
       )
       return {state:"QUALIFICATION_SCOPE_REJECTED"};
+  }
+  if(loaded.r?.span_batch_protocol===2 && loaded.member?.kind==="SPAN_AUDIO" && loaded.member.state==="SUCCEEDED" &&
+    loaded.member.id!==loaded.r?.leased_attempt_id) {
+    // Finish the original member's Workflow while its exact rental handles the next clip.
+    return await finalizeMedia(environment,config,loaded.member)
+      ? {state:"SUCCEEDED"} : {state:"FINALIZATION_PENDING",delaySeconds:30};
   }
   if (!r && TERMINAL.includes(String(a.state))) {
     if(a.state!=="SUCCEEDED" && !await settleFailedCpu(config,a)) return {state:"FINALIZATION_PENDING",delaySeconds:30};
@@ -398,7 +404,8 @@ async function observeCloudMedia(environment: HostedRuntimeEnvironment, config: 
       if (!config.cloudMedia) return {state:"CLOUD_MEDIA_DISABLED",delaySeconds:30};
       phase="TEMPLATE";
       const committed=await cloudTemplate(environment,a), cloud=config.cloudMedia;
-      if(!committed.runtime_identity || !committed.tooling || canonicalJson(committed.runtime_identity)!==canonicalJson({image:cloud.image,registry_id:cloud.registryId ?? null,
+      if((committed.schema_version==="videoforge-cloud-media-job-template/v2" && cloud.spanBatchProtocol!==2) ||
+        !committed.runtime_identity || !committed.tooling || canonicalJson(committed.runtime_identity)!==canonicalJson({image:cloud.image,registry_id:cloud.registryId ?? null,
         source_sha256:cloud.sourceSha256,runtime_sha256:cloud.runtimeSha256}) || canonicalJson(committed.tooling)!==canonicalJson(cloud.tooling)) {
         phase="ATTEMPT_TERMINATION";
         await finishAttempt(config,{...a,id:null,attempt_id:a.id,leased_attempt_id:a.id,fence_id:null,failure_code:"CLOUD_MEDIA_RUNTIME_PIN_MISMATCH"},"FAILED");
@@ -441,12 +448,13 @@ async function observeCloudMedia(environment: HostedRuntimeEnvironment, config: 
         const token=await deriveScopedToken(config.workflowCallbackSecret,"cloud-reservation",id);
         const inserted = await query(sql, `INSERT INTO cloud_media_reservations(id,account_id,workspace_id,project_id,project_revision_id,
           attempt_id,leased_attempt_id,fence_id,capability_sha256,pod_name,image,source_sha256,runtime_sha256,tooling,disk_gb,
-          max_hourly_usd,budget_usd,rental_seconds,budget_authority_id,registry_id,state,placement_deadline_at)
-          VALUES($1,$2,$3,$4,$5,$6,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14,$15,$16,$17,$18,$19,'WAITING_CAPACITY',now()+interval '180 seconds')
+          max_hourly_usd,budget_usd,rental_seconds,budget_authority_id,registry_id,span_batch_protocol,state,placement_deadline_at)
+          VALUES($1,$2,$3,$4,$5,$6,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14,$15,$16,$17,$18,$19,$20,'WAITING_CAPACITY',now()+interval '180 seconds')
           ON CONFLICT(attempt_id) DO UPDATE SET attempt_id=EXCLUDED.attempt_id RETURNING *`,
         [id,scope.accountId,scope.workspaceId,a.project_id,a.project_revision_id,a.id,crypto.randomUUID(),await sha256(token),
           `videoforge-media-${id}`,cloud.image,cloud.sourceSha256,cloud.runtimeSha256,JSON.stringify(cloud.tooling),
-          cloudDiskGb(Number(inputs?.bytes),duration),cloud.maxHourlyUsd,allowance.budgetUsd,allowance.rentalSeconds,cloud.budgetAuthorityId,cloud.registryId ?? null]);
+          cloudDiskGb(Number(inputs?.bytes),duration),cloud.maxHourlyUsd,allowance.budgetUsd,allowance.rentalSeconds,cloud.budgetAuthorityId,cloud.registryId ?? null,
+          committed.schema_version==="videoforge-cloud-media-job-template/v2" ? 2 : 1]);
         await query(sql, `INSERT INTO cloud_media_jobs(account_id,workspace_id,reservation_id,attempt_id)
           VALUES($1,$2,$3,$4) ON CONFLICT(attempt_id) DO NOTHING`,[scope.accountId,scope.workspaceId,inserted.rows[0]!.id,a.id]);
         return inserted.rows[0]!;
@@ -690,10 +698,10 @@ async function adopt(client:RunPodMediaClient,config:HostedRuntimeConfiguration,
   return {state:"STARTING",delaySeconds:30};
 }
 
-async function reservationForToken(request:Request,config:HostedRuntimeConfiguration,id:string):Promise<Row|null> {
+async function reservationForToken(request:Request,config:HostedRuntimeConfiguration,id:string,sharedPool?:HostedNeonPool):Promise<Row|null> {
   const token=request.headers.get("authorization")?.replace(/^Bearer /u,"") ?? "";
   if(!UUID.test(id) || !/^[0-9a-f]{64}$/u.test(token)) return null;
-  const pool=createNeonPool(config.neon.databaseUrl);
+  const pool=sharedPool ?? createNeonPool(config.neon.databaseUrl);
   try {const scope=(await pool.query("SELECT * FROM videoforge_cloud_media_capability_scope($1,$2)",[id,await sha256(token)])).rows[0];
     if(!scope) return null;
     return await createNeonExecutor(pool).transaction(async sql=>{
@@ -703,7 +711,7 @@ async function reservationForToken(request:Request,config:HostedRuntimeConfigura
       FROM cloud_media_reservations r JOIN hosted_cpu_job_attempts a ON a.id=r.leased_attempt_id
       WHERE r.id=$1 AND r.capability_sha256=$2`,[id,await sha256(token)])).rows[0] ?? null;
     });
-  } finally {await pool.end();}
+  } finally {if(!sharedPool) await pool.end();}
 }
 
 /** Size render scratch from the committed timeline, including render-only fixtures/retries. */
@@ -729,7 +737,9 @@ async function cloudTemplate(environment:HostedRuntimeEnvironment,a:Row):Promise
   if(await sha256Bytes(bytes)!==a.job_spec_checksum_sha256) throw new Error("CLOUD_MEDIA_TEMPLATE_INVALID");
   let template:Row;
   try {template=JSON.parse(new TextDecoder().decode(bytes)) as Row;} catch {throw new Error("CLOUD_MEDIA_TEMPLATE_INVALID");}
-  if(template.schema_version!=="videoforge-cloud-media-job-template/v1" ||
+  const optimized=template.schema_version==="videoforge-cloud-media-job-template/v2";
+  if((!optimized && template.schema_version!=="videoforge-cloud-media-job-template/v1") ||
+    (optimized && (template.kind!=="SPAN_AUDIO" || (a.span_batch_protocol!==undefined && a.span_batch_protocol!==2))) ||
     template.attempt_id!==(a.leased_attempt_id ?? a.id) || template.kind!==a.kind)
     throw new Error("CLOUD_MEDIA_TEMPLATE_INVALID");
   return template;
@@ -737,24 +747,28 @@ async function cloudTemplate(environment:HostedRuntimeEnvironment,a:Row):Promise
 function runtimeIdentity(r:Row):Row {
   return {image:r.image,registry_id:r.registry_id ?? null,source_sha256:r.source_sha256,runtime_sha256:r.runtime_sha256};
 }
-async function buildSpec(environment:HostedRuntimeEnvironment,config:HostedRuntimeConfiguration,r:Row):Promise<Row> {
+async function buildSpec(environment:HostedRuntimeEnvironment,config:HostedRuntimeConfiguration,r:Row,pool?:HostedNeonPool):Promise<Row> {
   const fresh=await tenant(config,String(r.account_id),async sql=>(await query(sql,
     `SELECT 1 FROM cloud_media_reservations r JOIN hosted_cpu_job_attempts a ON a.id=r.leased_attempt_id
      WHERE r.id=$1 AND r.leased_attempt_id=$2 AND r.fence_id=$3 AND r.verified_at IS NOT NULL
      AND r.state IN ('STARTING','DOWNLOADING','RENDERING','CHECKING','SAVING')
-     AND a.state='RUNNING' AND r.deadline_at>now() AND a.deadline_at>now()`,[r.id,r.leased_attempt_id,r.fence_id])).rows[0]);
+     AND a.state='RUNNING' AND r.deadline_at>now() AND a.deadline_at>now()`,[r.id,r.leased_attempt_id,r.fence_id])).rows[0],pool);
   if(!fresh) throw new Error("CLOUD_MEDIA_LEASE_STALE");
   const template=await cloudTemplate(environment,r);
   if(!template.runtime_identity || !template.tooling || canonicalJson(template.runtime_identity)!==canonicalJson(runtimeIdentity(r)) || canonicalJson(template.tooling)!==canonicalJson(r.tooling))
     throw new Error("CLOUD_MEDIA_RUNTIME_PIN_MISMATCH");
-  const inputs=await tenant(config,String(r.account_id),async sql=>(await query(sql, "SELECT * FROM media_worker_input_objects WHERE attempt_id=$1 ORDER BY uri",[r.leased_attempt_id])).rows);
+  const inputs=await tenant(config,String(r.account_id),async sql=>(await query(sql, "SELECT * FROM media_worker_input_objects WHERE attempt_id=$1 ORDER BY uri",[r.leased_attempt_id])).rows,pool);
   const signer=new HostedR2Signer(config.r2);
   const objects=await Promise.all(inputs.map(async input=>({uri:input.uri,sha256:input.checksum_sha256,bytes:Number(input.content_length),
     url:(await signer.sign({method:"GET",objectKey:String(input.object_key),contentType:String(input.content_type),
       contentLength:Number(input.content_length),checksumSha256:String(input.checksum_sha256),lifetimeSeconds:3600})).url})));
   const base=`${config.publicOrigin}/api/v2/cloud-media/reservations/${r.id}`;
   const scoped=(action:string)=>`${base}/${action}?attempt_id=${r.leased_attempt_id}`;
-  return {schema_version:"videoforge-runpod-pod-job-spec/v1",reservation_id:r.id,runtime_sha256:r.runtime_sha256,
+  const optimized=r.kind==="SPAN_AUDIO" && r.span_batch_protocol===2;
+  if(optimized !== (template.schema_version==="videoforge-cloud-media-job-template/v2"))
+    throw new Error("CLOUD_MEDIA_SPAN_PROTOCOL_MISMATCH");
+  return {schema_version:optimized ? "videoforge-runpod-pod-job-spec/v2" : "videoforge-runpod-pod-job-spec/v1",
+    ...(optimized ? {span_batch_limit:128}:{}),reservation_id:r.id,runtime_sha256:r.runtime_sha256,
     source_sha256:r.source_sha256,deadline_at:new Date(String(r.deadline_at)).toISOString(),job:{
       schema_version:"videoforge-personal-worker-job-spec/v1",attempt_id:r.leased_attempt_id,kind:r.kind,
       expires_at:new Date(String(r.attempt_deadline)).toISOString(),input_document:template.input_document,objects,
@@ -765,10 +779,18 @@ async function buildSpec(environment:HostedRuntimeEnvironment,config:HostedRunti
 
 export async function handleCloudMediaRequest(request:Request,environment:HostedRuntimeEnvironment,
   config:HostedRuntimeConfiguration,_executionContext:HostedExecutionContext):Promise<Response|null> {
+  if(!/^\/api\/v2\/cloud-media\/reservations\/[0-9a-f-]+\//u.test(new URL(request.url).pathname)) return null;
+  const pool=createNeonPool(config.neon.databaseUrl);
+  try {return await handleCloudRequest(request,environment,config,pool);}
+  finally {await pool.end();}
+}
+
+async function handleCloudRequest(request:Request,environment:HostedRuntimeEnvironment,
+  config:HostedRuntimeConfiguration,pool:HostedNeonPool):Promise<Response|null> {
   const path=new URL(request.url).pathname;
   const match=/^\/api\/v2\/cloud-media\/reservations\/([0-9a-f-]+)\/(spec|heartbeat|upload-port|complete|cleanup|multipart\/(?:part|complete|abort))$/u.exec(path);
   if(!match) return null;
-  const r=await reservationForToken(request,config,match[1]!);
+  const r=await reservationForToken(request,config,match[1]!,pool);
   if(!r) return Response.json({error:{code:"CLOUD_MEDIA_CAPABILITY_REJECTED"}},{status:403});
   const action=match[2];
   const requestedAttempt=new URL(request.url).searchParams.get("attempt_id");
@@ -778,7 +800,7 @@ export async function handleCloudMediaRequest(request:Request,environment:Hosted
     if(request.method!=="GET") return new Response(null,{status:405});
     if(!r.verified_at || !ACTIVE.includes(String(r.state)) || r.attempt_state!=="RUNNING" || Date.parse(String(r.deadline_at))<=Date.now() || Date.parse(String(r.attempt_deadline))<=Date.now())
       return Response.json({error:{code:"CLOUD_MEDIA_NOT_READY"}},{status:409});
-    return Response.json(await buildSpec(environment,config,r));
+    return Response.json(await buildSpec(environment,config,r,pool));
   }
   if(request.method!=="POST") return new Response(null,{status:405});
   if(Number(request.headers.get("content-length"))>1_048_576) return new Response(null,{status:413});
@@ -800,7 +822,7 @@ export async function handleCloudMediaRequest(request:Request,environment:Hosted
     if(!previous || body.status!=="SUCCEEDED" || body.result_object_key!==previous.result_object_key ||
       Number(body.result_content_length)!==Number(previous.result_content_length) || body.result_checksum_sha256!==previous.result_checksum_sha256)
       return new Response(null,{status:409});
-    return Response.json({schema_version:"videoforge-personal-worker-completion-accepted/v1",state:"SUCCEEDED"});
+    return completedSpanResponse(body,r,request,environment,config,pool,String(requestedAttempt));
   }
   if(action==="cleanup") {
     const completed=body.completed_attempt_id;
@@ -837,7 +859,7 @@ export async function handleCloudMediaRequest(request:Request,environment:Hosted
     const a=await tenant(config,String(r.account_id),async sql=>(await query(sql, "SELECT * FROM hosted_cpu_job_attempts WHERE id=$1",[r.leased_attempt_id])).rows[0]!);
     if(body.status!=="SUCCEEDED" || body.result_object_key!==a.result_object_key || Number(body.result_content_length)!==Number(a.result_content_length) || body.result_checksum_sha256!==a.result_checksum_sha256)
       return new Response(null,{status:409});
-    return Response.json({schema_version:"videoforge-personal-worker-completion-accepted/v1",state:"SUCCEEDED"});
+    return completedSpanResponse(body,r,request,environment,config,pool,String(r.leased_attempt_id));
   }
   const active=ACTIVE.includes(String(r.state)) && r.verified_at && r.attempt_state==="RUNNING" && Date.parse(String(r.deadline_at))>Date.now();
   if((action==="heartbeat" || action==="complete") && body.disk_metrics!==undefined && !validCloudDiskMetrics(body.disk_metrics))
@@ -868,10 +890,63 @@ export async function handleCloudMediaRequest(request:Request,environment:Hosted
   }
   if(action==="multipart/abort") return cloudMultipart("abort",body,r,environment,config);
   if(!active) return Response.json({error:{code:"CLOUD_MEDIA_LEASE_STALE"}},{status:409});
-  if(action==="upload-port") return cloudUploadPort(body,r,config);
+  if(action==="upload-port") return body.schema_version==="videoforge-cloud-span-upload-authorities/v1"
+    ? cloudSpanUploadPorts(body,r,config,pool) : cloudUploadPort(body,r,config);
   if(action?.startsWith("multipart/")) return cloudMultipart(action.split("/")[1]!,body,r,environment,config);
-  if(action==="complete") return cloudComplete(body,r,environment,config);
+  if(action==="complete") {
+    if(r.span_batch_protocol===2 && r.kind==="SPAN_AUDIO" &&
+      (typeof body.allow_next_span!=="boolean" || !Number.isInteger(body.executed_span_count) ||
+       Number(body.executed_span_count)<1 || Number(body.executed_span_count)>128)) return new Response(null,{status:400});
+    const accepted=await cloudComplete(body,r,environment,config,false,pool);
+    if(accepted.ok && body.status!=="SUCCEEDED" && r.span_batch_protocol===2 && r.kind==="SPAN_AUDIO") {
+      const acknowledgment=await accepted.json() as Row;
+      return Response.json({...acknowledgment,next_spec:null});
+    }
+    return accepted.ok && body.status==="SUCCEEDED"
+      ? completedSpanResponse(body,r,request,environment,config,pool,String(r.leased_attempt_id)) : accepted;
+  }
   return new Response(null,{status:404});
+}
+
+async function completedSpanResponse(body:Row,r:Row,request:Request,environment:HostedRuntimeEnvironment,
+  config:HostedRuntimeConfiguration,pool:HostedNeonPool,completed:string):Promise<Response> {
+  const response={schema_version:"videoforge-personal-worker-completion-accepted/v1",state:"SUCCEEDED"};
+  if(r.kind!=="SPAN_AUDIO" || r.span_batch_protocol!==2) return Response.json(response);
+  if(typeof body.allow_next_span!=="boolean" || !Number.isInteger(body.executed_span_count) ||
+    Number(body.executed_span_count)<1 || Number(body.executed_span_count)>128) return new Response(null,{status:400});
+  // Completion is already durable. A lost reply reclaims the identical next member, never a new one.
+  const next=body.allow_next_span ? await tenant(config,String(r.account_id),async sql=>(await query(sql,
+    "SELECT videoforge_claim_cloud_media_span($1,$2,$3) AS attempt_id",[r.id,completed,body.executed_span_count])).rows[0]?.attempt_id,pool) : null;
+  if(!next) return Response.json({...response,next_spec:null});
+  const fresh=await reservationForToken(request,config,String(r.id),pool);
+  if(fresh?.leased_attempt_id!==next) return new Response(null,{status:409});
+  return Response.json({...response,next_spec:await buildSpec(environment,config,fresh,pool)});
+}
+
+async function cloudSpanUploadPorts(body:Row,r:Row,config:HostedRuntimeConfiguration,pool:HostedNeonPool):Promise<Response> {
+  if(r.kind!=="SPAN_AUDIO" || r.span_batch_protocol!==2 || !Array.isArray(body.uploads) || body.uploads.length!==2)
+    return new Response(null,{status:400});
+  const uploads=body.uploads as Row[];
+  if(uploads.some((u,i)=>!u || u.schema_version!=="videoforge-personal-worker-upload-authority/v1" ||
+    u.source!==["PRIMARY_RESULT_OUTPUT","RESULT_DOCUMENT"][i] ||
+    !Number.isSafeInteger(u.content_length) || Number(u.content_length)<1 || Number(u.content_length)>[128*1024**2,1024**2][i]! ||
+    !SHA256.test(String(u.checksum_sha256)))) return new Response(null,{status:400});
+  const callback=await deriveCallbackToken(config.workflowCallbackSecret,String(r.leased_attempt_id));
+  const accepted=await tenant(config,String(r.account_id),async sql=>{
+    const fresh=(await query(sql, `SELECT 1 FROM cloud_media_reservations r JOIN hosted_cpu_job_attempts a ON a.id=r.leased_attempt_id
+      WHERE r.id=$1 AND r.fence_id=$2 AND r.leased_attempt_id=$3 AND r.state='SAVING' AND r.deadline_at>now() AND a.state='RUNNING' FOR UPDATE OF r,a`,[r.id,r.fence_id,r.leased_attempt_id])).rows[0];
+    if(!fresh) return false;
+    for(const u of uploads) {
+      const grant=await query(sql,"SELECT videoforge_authorize_hosted_cpu_upload($1,$2,$3,$4,$5,$6,$7,now()) AS authorized",
+        [r.leased_attempt_id,await sha256(callback),u.source,u.object_key,u.content_type,u.content_length,u.checksum_sha256]);
+      if(!grant.rows[0]?.authorized) throw new Error("CLOUD_MEDIA_SPAN_UPLOAD_REJECTED");
+    }
+    return true;
+  },pool).catch(error=>{if(error instanceof Error && error.message==="CLOUD_MEDIA_SPAN_UPLOAD_REJECTED") return false;throw error;});
+  if(!accepted) return new Response(null,{status:409});
+  const signer=new HostedR2Signer(config.r2);
+  return Response.json({uploads:await Promise.all(uploads.map(u=>signer.sign({method:"PUT",objectKey:String(u.object_key),
+    contentType:String(u.content_type),contentLength:Number(u.content_length),checksumSha256:String(u.checksum_sha256),lifetimeSeconds:300})))});
 }
 
 async function cloudUploadPort(body:Row,r:Row,config:HostedRuntimeConfiguration):Promise<Response> {
@@ -880,7 +955,7 @@ async function cloudUploadPort(body:Row,r:Row,config:HostedRuntimeConfiguration)
   const callback=await deriveCallbackToken(config.workflowCallbackSecret,String(r.leased_attempt_id));
   const authority=await tenant(config,String(r.account_id),async sql=>{
     const fresh=(await query(sql, `SELECT 1 FROM cloud_media_reservations r JOIN hosted_cpu_job_attempts a ON a.id=r.leased_attempt_id
-      WHERE r.id=$1 AND r.fence_id=$2 AND r.state='SAVING' AND r.deadline_at>now() AND a.state='RUNNING' FOR UPDATE OF r,a`,[r.id,r.fence_id])).rows[0];
+      WHERE r.id=$1 AND r.fence_id=$2 AND r.leased_attempt_id=$3 AND r.state='SAVING' AND r.deadline_at>now() AND a.state='RUNNING' FOR UPDATE OF r,a`,[r.id,r.fence_id,r.leased_attempt_id])).rows[0];
     if(!fresh) return null;
     const accepted=await query(sql, "SELECT videoforge_authorize_hosted_cpu_upload($1,$2,$3,$4,$5,$6,$7,now()) AS authorized",
       [r.leased_attempt_id,await sha256(callback),body.source,body.object_key,body.content_type,body.content_length,body.checksum_sha256]);
@@ -971,14 +1046,14 @@ async function cloudMultipart(action:string,body:Row,r:Row,environment:HostedRun
   return Response.json({verified:true});
 }
 
-async function cloudComplete(body:Row,r:Row,environment:HostedRuntimeEnvironment,config:HostedRuntimeConfiguration,receiptRecovery=false):Promise<Response> {
+async function cloudComplete(body:Row,r:Row,environment:HostedRuntimeEnvironment,config:HostedRuntimeConfiguration,receiptRecovery=false,pool?:HostedNeonPool):Promise<Response> {
   if(body.schema_version!=="videoforge-personal-worker-completion/v1" || !["SUCCEEDED","FAILED","CANCELLED"].includes(String(body.status))) return new Response(null,{status:400});
   if(body.status!=="SUCCEEDED") {
     if(!await tenant(config,String(r.account_id),sql=>recordCloudDiskMetrics(sql,r,body.disk_metrics))) return new Response(null,{status:409});
     r={...r,failure_code:typeof body.failure_code==="string" && /^[A-Z][A-Z0-9_]{2,63}$/u.test(body.failure_code) ? body.failure_code : "CLOUD_MEDIA_FAILED"};
     await finishAttempt(config,r,String(body.status));
   } else {
-    const authorities=await tenant(config,String(r.account_id),async sql=>(await query(sql, "SELECT * FROM hosted_cpu_upload_authorities WHERE attempt_id=$1 AND issued_at IS NOT NULL",[r.leased_attempt_id])).rows);
+    const authorities=await tenant(config,String(r.account_id),async sql=>(await query(sql, "SELECT * FROM hosted_cpu_upload_authorities WHERE attempt_id=$1 AND issued_at IS NOT NULL",[r.leased_attempt_id])).rows,pool);
     const primary=authorities.find(a=>a.source==="PRIMARY_RESULT_OUTPUT"), result=authorities.find(a=>a.source==="RESULT_DOCUMENT"),bucket=environment.PRIVATE_ARTIFACTS;
     if(!primary || !result || !bucket || body.result_object_key!==result.object_key || Number(body.result_content_length)!==Number(result.issued_content_length) || body.result_checksum_sha256!==result.issued_checksum_sha256)
       return new Response(null,{status:409});
@@ -1035,10 +1110,10 @@ async function cloudComplete(body:Row,r:Row,environment:HostedRuntimeEnvironment
     const fresh=await tenant(config,String(r.account_id),async sql=>(await query(sql, `SELECT 1 FROM cloud_media_reservations r JOIN hosted_cpu_job_attempts a ON a.id=r.leased_attempt_id
       WHERE r.id=$1 AND r.fence_id=$2 AND r.leased_attempt_id=$3 AND
       (r.state='SAVING' OR ($4::boolean AND r.state='STOPPING' AND r.failure_code='CLOUD_MEDIA_RECEIPT_PENDING'))
-      AND r.deadline_at>now() AND a.deadline_at>now() AND a.state='RUNNING'`,[r.id,r.fence_id,r.leased_attempt_id,receiptRecovery])).rows[0]);
+      AND r.deadline_at>now() AND a.deadline_at>now() AND a.state='RUNNING'`,[r.id,r.fence_id,r.leased_attempt_id,receiptRecovery])).rows[0],pool);
     if(!fresh) return new Response(null,{status:409});
-    if(!await tenant(config,String(r.account_id),sql=>recordCloudDiskMetrics(sql,r,body.disk_metrics))) return new Response(null,{status:409});
-    if (!await finishAttempt(config,r,"SUCCEEDED",{key:String(result.object_key),size:Number(result.issued_content_length),checksum:String(result.issued_checksum_sha256)},receiptRecovery)) return new Response(null,{status:409});
+    if(!await tenant(config,String(r.account_id),sql=>recordCloudDiskMetrics(sql,r,body.disk_metrics),pool)) return new Response(null,{status:409});
+    if (!await finishAttempt(config,r,"SUCCEEDED",{key:String(result.object_key),size:Number(result.issued_content_length),checksum:String(result.issued_checksum_sha256)},receiptRecovery,pool)) return new Response(null,{status:409});
   }
   return Response.json({schema_version:"videoforge-personal-worker-completion-accepted/v1",state:body.status});
 }

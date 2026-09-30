@@ -71,6 +71,81 @@ def failure_code(receipt: dict) -> str:
     return code if isinstance(code, str) and code in allowed else "OFFLINE_RECEIPT_INVALID"
 
 
+def qualify_span_stream(document: dict, artifact_root: Path, tools: dict) -> dict:
+    """Exercise the real two-clip worker offline; only control/storage transport is replaced."""
+    import copy
+    import shutil
+    from datetime import datetime, timedelta, timezone
+    from unittest.mock import patch
+    from uuid import uuid4
+    from videoforge_media_local import runpod_job as cloud
+    from videoforge_media_local.artifacts import R2PortFixtureArtifactResolver
+    resolver = R2PortFixtureArtifactResolver(artifact_root)
+    voice = document["source_voiceover"]
+    source = resolver.resolve_object(voice["artifact_uri"])
+    if digest(source) != voice["sha256"]:
+        raise ValueError("Stream qualification source checksum differs")
+    deadline = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+    reservation = str(uuid4())
+    documents = []
+    for _ in range(2):
+        attempt = str(uuid4())
+        child = copy.deepcopy(document)
+        child.update(attempt_id=attempt,cancel_token=attempt)
+        child["output"]["result_uri"] = f"vf-local-run://{child['project_revision_id']}/{attempt}/span-audio-result.json"
+        base = f"https://offline.test/reservations/{reservation}"
+        key = f"tenant/offline/workspace/offline/project/offline/revision/{child['project_revision_id']}/lane/input/job/{attempt}/artifact"
+        documents.append({"schema_version":"videoforge-runpod-pod-job-spec/v2","span_batch_limit":128,
+            "reservation_id":reservation,"source_sha256":voice["sha256"],"runtime_sha256":voice["sha256"],
+            "deadline_at":deadline,"job":{"schema_version":"videoforge-personal-worker-job-spec/v1",
+                "attempt_id":attempt,"kind":"SPAN_AUDIO","expires_at":deadline,"input_document":child,
+                "objects":[{"uri":voice["artifact_uri"],"sha256":voice["sha256"],"bytes":source.stat().st_size,"url":"https://offline.test/source"}],
+                "outputs":[{"source":"PRIMARY_RESULT_OUTPUT","object_key":key+"/audio","sign_url":base+"/upload-port","content_type":"audio/wav","max_bytes":2097152}],
+                "result":{"object_key":key+"/result","sign_url":base+"/upload-port","max_bytes":1048576},
+                "cancellation_url":base+"/heartbeat","completion_url":base+"/complete?attempt_id="+attempt,
+                "tooling":{"whisper_model_sha256":MODEL_SHA256,"whisper_version":"1.8.4","ffmpeg_version":"8.1.2","ffprobe_version":"8.1.2"}}})
+    downloads,receipts,uploads,phases,cleanup = [],[],[],[],[]
+    def download(item,destination,cancelled):
+        if cancelled():
+            raise ValueError("Offline stream cancelled")
+        downloads.append(item["uri"])
+        destination.parent.mkdir(parents=True,exist_ok=True)
+        shutil.copyfile(source,destination)
+    def put(port,stream,size):
+        encoded=stream.read(size+1)
+        if len(encoded)!=size or "sha256:"+hashlib.sha256(encoded).hexdigest()!=port["checksumSha256"]:
+            raise ValueError("Offline stream upload checksum differs")
+        uploads.append(port["checksumSha256"])
+    def control(url,token,lease,body):
+        if "/heartbeat" in url:
+            phases.append(body.get("phase"))
+            return {"schema_version":"videoforge-personal-worker-lease-heartbeat/v1","cancel_requested":False,"lease_expires_in_seconds":300}
+        if "/upload-port" in url:
+            if body.get("schema_version")!="videoforge-cloud-span-upload-authorities/v1":
+                raise ValueError("Offline stream missed combined authorities")
+            return {"uploads":[{"method":"PUT","contentLength":u["content_length"],"checksumSha256":u["checksum_sha256"],"contentType":u["content_type"]} for u in body["uploads"]]}
+        if "/complete" in url:
+            ordinal=body["executed_span_count"]
+            if body["status"]!="SUCCEEDED" or ordinal not in (len(receipts),len(receipts)+1) or ordinal<1:
+                raise ValueError("Offline stream completion failed")
+            if ordinal==len(receipts)+1:
+                receipts.append(body["result_checksum_sha256"])
+                if ordinal==1:
+                    raise OSError("Simulated lost durable completion reply")
+            elif receipts[ordinal-1]!=body["result_checksum_sha256"]:
+                raise ValueError("Offline stream replay changed receipt")
+            return {"schema_version":"videoforge-personal-worker-completion-accepted/v1","state":"SUCCEEDED",
+                "next_spec":documents[1] if ordinal==1 else None}
+        cleanup.append(body)
+        return {"cleanup_requested":True}
+    with patch.object(cloud.media,"_download",side_effect=download), patch.object(cloud.media,"_stream_put",side_effect=put), patch.object(cloud,"_control",side_effect=control):
+        result=cloud.execute_batch(cloud.parse_spec(documents[0]),"offline-capability","offline-lease",
+            cloud.media.ToolPaths(**{name:Path(value["path"]) for name,value in tools.items()}))
+    if result!="SUCCEEDED" or len(downloads)!=1 or len(receipts)!=2 or len(uploads)!=4 or phases!=["SAVING","SAVING"] or len(cleanup)!=1:
+        raise ValueError("Offline span stream acceptance failed")
+    return {"clips":2,"source_downloads":1,"separate_verified_uploads":4,"cleanup_requests":1,"lost_reply_replays":1,"receipt_sha256":receipts}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path, default=Path("/opt/videoforge"))
@@ -142,12 +217,14 @@ def main() -> int:
             raise ValueError(f"Offline {kind} qualification failed: {failure_code(receipt)}")
         evidence[kind] = {"input_sha256": digest(input_path),
                           "receipt_sha256": "sha256:" + hashlib.sha256(canonical(receipt)).hexdigest()}
+    evidence["span_stream"] = qualify_span_stream(json.loads((args.artifact_root / "qualification-inputs/span.json").read_bytes()),args.artifact_root,tools)
     files = {}
     for relative in ("packages/contracts/python", "workers/image-media/src", "workers/media-local/src"):
         for path in sorted((args.root / relative).rglob("*.py")):
             if "__pycache__" not in path.parts:
                 files[str(path.relative_to(args.root))] = digest(path)
     manifest = {"schema_version": "videoforge-linux-media-runtime/v1", "platform": "linux",
+                "span_batch_protocol": 2,
                 "qualified": True, "tools": tools, "source_files": files,
                 "required_cpu_flags": REQUIRED_CPU_FLAGS,
                 "source_sha256": "sha256:" + hashlib.sha256(canonical(files)).hexdigest(),
@@ -156,6 +233,7 @@ def main() -> int:
     args.output.write_bytes(canonical(manifest) + b"\n")
     runtime_sha256 = "sha256:" + hashlib.sha256(canonical(manifest)).hexdigest()
     release = {"schema_version": "videoforge-runpod-media-release/v1", "platform": "linux/amd64",
+               "span_batch_protocol": 2,
                "qualified": True, "runtime_sha256": runtime_sha256,
                "required_cpu_flags": REQUIRED_CPU_FLAGS,
                "source_sha256": manifest["source_sha256"], "tooling": {

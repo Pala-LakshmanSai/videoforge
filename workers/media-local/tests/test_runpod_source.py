@@ -38,6 +38,7 @@ class RunPodSourceTests(unittest.TestCase):
             with patch.dict(prepare.__globals__, pins):
                 candidate = prepare(root, base, overlay["BASE_IMAGE"])
             self.assertIs(candidate["qualified"], False)
+            self.assertEqual(candidate["span_batch_protocol"], 2)
             self.assertNotIn("offline_acceptance", candidate)
             self.assertEqual(candidate["tools"], base["tools"])
             self.assertEqual(candidate["required_cpu_flags"], base["required_cpu_flags"])

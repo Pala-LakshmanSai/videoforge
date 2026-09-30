@@ -92,14 +92,18 @@ class RunPodJob:
     source_sha256: str
     deadline_at: datetime
     job: media.PersonalJob
+    span_batch_limit: int = 4
 
 
 def parse_spec(value: object) -> RunPodJob:
     fields = {"schema_version", "reservation_id", "runtime_sha256", "source_sha256",
               "deadline_at", "job"}
+    optimized = isinstance(value, dict) and value.get("schema_version") == "videoforge-runpod-pod-job-spec/v2"
+    if optimized:
+        fields.add("span_batch_limit")
     if not isinstance(value, dict) or set(value) != fields:
         raise ValueError("RunPod job fields are not exact")
-    if value["schema_version"] != "videoforge-runpod-pod-job-spec/v1":
+    if not optimized and value["schema_version"] != "videoforge-runpod-pod-job-spec/v1":
         raise ValueError("RunPod job version is unsupported")
     if not isinstance(value["reservation_id"], str) or not media._UUID.fullmatch(
         value["reservation_id"]
@@ -110,17 +114,22 @@ def parse_spec(value: object) -> RunPodJob:
             raise ValueError("RunPod runtime identity is invalid")
     deadline = datetime.fromisoformat(str(value["deadline_at"]).replace("Z", "+00:00"))
     job = media.parse_personal_job(value["job"])
+    limit = value.get("span_batch_limit", 4)
+    if optimized and (job.kind != "SPAN_AUDIO" or type(limit) is not int or limit != 128):
+        raise ValueError("RunPod span stream limit is invalid")
     if deadline.tzinfo != timezone.utc or deadline > job.expires_at:
         raise ValueError("RunPod deadline is invalid")
     if not 0 < (deadline - datetime.now(timezone.utc)).total_seconds() <= 4 * 3600:
         raise ValueError("RunPod paid lifetime is invalid")
     return RunPodJob(value["reservation_id"], value["runtime_sha256"],
-                     value["source_sha256"], deadline, job)
+                     value["source_sha256"], deadline, job, limit)
 
 
 def verify_runtime(spec: RunPodJob, manifest_path: Path) -> media.ToolPaths:
     """Never substitute desktop executable hashes for qualified Linux hashes."""
     manifest = json.loads(manifest_path.read_bytes())
+    if spec.span_batch_limit != 4 and manifest.get("span_batch_protocol") != 2:
+        raise ValueError("RunPod runtime does not support the span protocol")
     if f"sha256:{hashlib.sha256(media._canonical(manifest)).hexdigest()}" != spec.runtime_sha256:
         raise ValueError("RunPod runtime manifest hash mismatch")
     if (manifest.get("schema_version") != "videoforge-linux-media-runtime/v1"
@@ -269,6 +278,56 @@ def _upload(url: str, source_name: str, key: str, content_type: str,
         raise ValueError("RunPod upload method or size is unsupported")
 
 
+def _upload_span_outputs(job: media.PersonalJob, primary: BinaryIO, size: int, checksum: str,
+                         encoded: bytes, token: str, lease: str, should_cancel) -> None:
+    """One authority request; separate immutable WAV and result uploads."""
+    output = job.outputs[0]
+    entries = [
+        {"schema_version": "videoforge-personal-worker-upload-authority/v1",
+         "source": output["source"], "object_key": output["object_key"],
+         "content_type": output["content_type"], "content_length": size, "checksum_sha256": checksum},
+        {"schema_version": "videoforge-personal-worker-upload-authority/v1",
+         "source": "RESULT_DOCUMENT", "object_key": job.result["object_key"],
+         "content_type": "application/json", "content_length": len(encoded),
+         "checksum_sha256": f"sha256:{hashlib.sha256(encoded).hexdigest()}"},
+    ]
+    if should_cancel():
+        raise media._PersonalJobCancelled
+    response = _control(output["sign_url"], token, lease,
+                        {"schema_version": "videoforge-cloud-span-upload-authorities/v1", "uploads": entries})
+    ports = response.get("uploads") if isinstance(response, dict) else None
+    if not isinstance(ports, list) or len(ports) != 2:
+        raise ValueError("RunPod span upload authorities are missing")
+    for entry, port in zip(entries, ports):
+        if (not isinstance(port, dict) or port.get("method") != "PUT"
+                or port.get("contentLength") != entry["content_length"]
+                or port.get("checksumSha256") != entry["checksum_sha256"]
+                or port.get("contentType") != entry["content_type"]):
+            raise ValueError("RunPod span upload authority differs from exact facts")
+    def upload_one(port, source, entry):
+        for attempt in range(2):
+            if should_cancel():
+                raise media._PersonalJobCancelled
+            source.seek(0)
+            try:
+                media._stream_put(port, source, entry["content_length"])
+                return
+            except OSError as error:
+                if attempt or not media._is_transient_download_error(error):
+                    raise
+    # Retry only a failed transport with the same checksum-bound bytes; never reupload its sibling.
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="vf-span-upload") as pool:
+        futures = []
+        for source, port, entry in zip((primary, io.BytesIO(encoded)), ports, entries):
+            if should_cancel():
+                raise media._PersonalJobCancelled
+            futures.append(pool.submit(upload_one, port, source, entry))
+        for future in futures:
+            future.result()
+    if should_cancel():
+        raise media._PersonalJobCancelled
+
+
 def _renewed_objects(original: RunPodJob, renewed: RunPodJob) -> dict[str, dict]:
     def facts(spec: RunPodJob):
         return sorted((item["uri"], item["sha256"], item["bytes"]) for item in spec.job.objects)
@@ -276,6 +335,7 @@ def _renewed_objects(original: RunPodJob, renewed: RunPodJob) -> dict[str, dict]
             or renewed.runtime_sha256 != original.runtime_sha256
             or renewed.source_sha256 != original.source_sha256
             or renewed.deadline_at != original.deadline_at
+            or renewed.span_batch_limit != original.span_batch_limit
             or renewed.job.attempt_id != original.job.attempt_id
             or renewed.job.kind != original.job.kind
             or renewed.job.expires_at != original.job.expires_at
@@ -307,7 +367,9 @@ def _download_inputs(spec: RunPodJob, scratch: Path, token: str, lease: str,
             if cancelled():
                 raise media._PersonalJobCancelled
             try:
-                media._download(item, destination, cancelled)
+                download_source = (media._download_span_source if spec.span_batch_limit == 128
+                                   else media._download)
+                download_source(item, destination, cancelled)
             except (media._PersonalDownloadTransportError, urllib.error.URLError):
                 if cancelled():
                     raise media._PersonalJobCancelled
@@ -316,7 +378,7 @@ def _download_inputs(spec: RunPodJob, scratch: Path, token: str, lease: str,
                                     startup_seconds=min(60, seconds), should_cancel=cancelled))
                 objects = _renewed_objects(spec, renewed)
                 destination.unlink(missing_ok=True)
-                media._download(objects[item["uri"]], destination, cancelled)
+                download_source(objects[item["uri"]], destination, cancelled)
         except Exception as error:
             with lock:
                 if failure is None or (isinstance(failure, media._PersonalJobCancelled)
@@ -427,6 +489,8 @@ def run(spec: RunPodJob, token: str, lease: str, tools: media.ToolPaths, *,
               artifact_ms: int | None = None) -> None:
         if name not in _PHASES or remaining() <= 0 or monitor.is_cancelled():
             raise media._PersonalJobCancelled
+        if spec.span_batch_limit == 128 and name != "SAVING":
+            return  # Work still passes its checks; one publication fence replaces four callbacks.
         payload = {"phase": name, "elapsed_seconds": round(time.monotonic() - started, 3)}
         if (disk_facts := disk_metrics.snapshot()) is not None:
             payload["disk_metrics"] = disk_facts
@@ -472,6 +536,9 @@ def run(spec: RunPodJob, token: str, lease: str, tools: media.ToolPaths, *,
         if state != "SUCCEEDED" or result is None:
             status, failure = state or "FAILED", result_failure
         else:
+            encoded = media._canonical(result)
+            if len(encoded) > job.result["max_bytes"]:
+                raise ValueError("RunPod result exceeds bound")
             technical_ms = None
             if job.kind == "RENDER":
                 observed = _read_render_phase(scratch, job.attempt_id, started_ns)
@@ -485,15 +552,16 @@ def run(spec: RunPodJob, token: str, lease: str, tools: media.ToolPaths, *,
                 output = job.outputs[0]
                 if size > output["max_bytes"]:
                     raise ValueError("RunPod output exceeds exact bound")
-                _upload(output["sign_url"], output["source"], output["object_key"],
-                        output["content_type"], source, size, checksum, token, lease, monitor.is_cancelled)
-            encoded = media._canonical(result)
+                if spec.span_batch_limit == 128:
+                    _upload_span_outputs(job, source, size, checksum, encoded, token, lease, monitor.is_cancelled)
+                else:
+                    _upload(output["sign_url"], output["source"], output["object_key"],
+                            output["content_type"], source, size, checksum, token, lease, monitor.is_cancelled)
             checksum = f"sha256:{hashlib.sha256(encoded).hexdigest()}"
-            if len(encoded) > job.result["max_bytes"]:
-                raise ValueError("RunPod result exceeds bound")
-            _upload(job.result["sign_url"], "RESULT_DOCUMENT", job.result["object_key"],
-                    "application/json", io.BytesIO(encoded), len(encoded), checksum,
-                    token, lease, monitor.is_cancelled)
+            if spec.span_batch_limit == 4:
+                _upload(job.result["sign_url"], "RESULT_DOCUMENT", job.result["object_key"],
+                        "application/json", io.BytesIO(encoded), len(encoded), checksum,
+                        token, lease, monitor.is_cancelled)
             facts = {"result_object_key": job.result["object_key"],
                      "result_content_length": len(encoded), "result_checksum_sha256": checksum}
             status, failure = "SUCCEEDED", None
@@ -519,14 +587,24 @@ def run(spec: RunPodJob, token: str, lease: str, tools: media.ToolPaths, *,
                           "status": status, "failure_code": failure, **facts}
             if (disk_facts := disk_metrics.snapshot()) is not None:
                 completion["disk_metrics"] = disk_facts
+            if spec.span_batch_limit == 128:
+                completion.update(allow_next_span=allow_next_span and status == "SUCCEEDED",
+                                  executed_span_count=executed_span_count)
             acknowledged = False
             for _ in range(3):
                 if remaining() <= 0:
                     break
                 try:
                     value = _control(job.completion_url, token, lease, completion)
-                    if media._completion_is_acknowledged(200, value):
+                    acknowledgment = value
+                    if spec.span_batch_limit == 128:
+                        acknowledgment = ({key: value[key] for key in ("schema_version", "state")}
+                            if isinstance(value, dict) and set(value) == {"schema_version", "state", "next_spec"}
+                            and value.get("state") == status else None)
+                    if media._completion_is_acknowledged(200, acknowledgment):
                         acknowledged = True
+                        if spec.span_batch_limit == 128 and status == "SUCCEEDED":
+                            next_spec = value.get("next_spec")
                         break
                 except (OSError, ValueError):
                     continue
@@ -539,10 +617,12 @@ def run(spec: RunPodJob, token: str, lease: str, tools: media.ToolPaths, *,
                 cleanup_request = {"reservation_id": spec.reservation_id,
                          "completed_attempt_id": job.attempt_id,
                          "state": status, "reason": "JOB_FINISHED",
-                         "allow_next_span": allow_next_span and status == "SUCCEEDED",
+                         "allow_next_span": spec.span_batch_limit == 4 and allow_next_span and status == "SUCCEEDED",
                          "executed_span_count": executed_span_count}
+                if spec.span_batch_limit == 128 and status != "SUCCEEDED":
+                    cleanup_request.pop("completed_attempt_id")
                 cleanup = None
-                for attempt in range(3):
+                for attempt in range(0 if next_spec is not None else 3):
                     try:
                         cleanup = _control(cleanup_url, token, lease, cleanup_request)
                         break
@@ -569,31 +649,35 @@ def _same_span_batch(original: RunPodJob, following: RunPodJob,
         and following.source_sha256 == original.source_sha256
         and following.deadline_at == original.deadline_at
         and following.job.tooling == original.job.tooling
+        and following.span_batch_limit == original.span_batch_limit
+        and following.job.input_document.get("source_voiceover") == original.job.input_document.get("source_voiceover")
+        and sorted((i["uri"], i["sha256"], i["bytes"]) for i in following.job.objects)
+            == sorted((i["uri"], i["sha256"], i["bytes"]) for i in original.job.objects)
         and following.job.attempt_id not in attempt_ids
         and original_scope == following_scope
     )
 
 
 def execute_batch(spec: RunPodJob, token: str, lease: str, tools: media.ToolPaths) -> str:
-    """At most four ready spans, without idle grace or a new rental deadline."""
+    """Only immediately ready spans within the immutable protocol limit and rental deadline."""
     original = spec
     attempts: set[str] = set()
-    for ordinal in range(1, 5):
+    for ordinal in range(1, original.span_batch_limit + 1):
         attempts.add(spec.job.attempt_id)
         status, following = run(spec, token, lease, tools,
-                                allow_next_span=spec.job.kind == "SPAN_AUDIO" and ordinal < 4,
+                                allow_next_span=spec.job.kind == "SPAN_AUDIO" and ordinal < original.span_batch_limit,
                                 executed_span_count=ordinal)
         if following is None:
             return status
         try:
             parsed = parse_spec(following)
-            if status != "SUCCEEDED" or ordinal >= 4 or not _same_span_batch(original, parsed, attempts):
+            if status != "SUCCEEDED" or ordinal >= original.span_batch_limit or not _same_span_batch(original, parsed, attempts):
                 raise ValueError("RunPod next span identity conflicts")
         except (ValueError, TypeError, KeyError):
             try:
                 _control(spec.job.completion_url.rsplit("/", 1)[0] + "/cleanup", token, lease,
                          {"reservation_id": spec.reservation_id, "state": "FAILED",
-                          "completed_attempt_id": spec.job.attempt_id,
+                          **({"completed_attempt_id": spec.job.attempt_id} if spec.span_batch_limit == 4 else {}),
                           "reason": "NEXT_SPAN_REJECTED", "allow_next_span": False,
                           "executed_span_count": ordinal})
             except (OSError, ValueError):

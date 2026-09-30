@@ -153,6 +153,143 @@ class RunPodJobTests(unittest.TestCase):
             self.assertEqual(run.call_count, 1)
             self.assertFalse(control.call_args.args[3]["allow_next_span"])
 
+    def test_stream_protocol_runs_105_independent_clips_with_one_deadline(self):
+        documents = span_specs(105)
+        for document in documents:
+            document.update(schema_version="videoforge-runpod-pod-job-spec/v2", span_batch_limit=128)
+        replies = [("SUCCEEDED", following) for following in documents[1:]] + [("SUCCEEDED", None)]
+        with patch.object(cloud, "run", side_effect=replies) as run:
+            self.assertEqual(cloud.execute_batch(cloud.parse_spec(documents[0]), "capability", "lease", None), "SUCCEEDED")
+        self.assertEqual(run.call_count, 105)
+        self.assertEqual([call.kwargs["executed_span_count"] for call in run.call_args_list], list(range(1, 106)))
+        self.assertEqual(len({call.args[0].deadline_at for call in run.call_args_list}), 1)
+        # An unready next clip causes immediate shutdown, even before the protocol limit.
+        self.assertTrue(run.call_args.kwargs["allow_next_span"])
+
+    def test_stream_protocol_is_span_only_and_cannot_widen_legacy_or_change_source(self):
+        document = span_specs(2)[0]
+        for count in (True, 4, 129, "128"):
+            with self.assertRaises(ValueError):
+                cloud.parse_spec({**document, "schema_version": "videoforge-runpod-pod-job-spec/v2", "span_batch_limit": count})
+        with self.assertRaises(ValueError):
+            cloud.parse_spec({**spec(), "schema_version": "videoforge-runpod-pod-job-spec/v2", "span_batch_limit": 128})
+        document.update(schema_version="videoforge-runpod-pod-job-spec/v2", span_batch_limit=128)
+        following = copy.deepcopy(document)
+        following["job"]["attempt_id"] = "99999999-9999-4999-8999-999999999999"
+        for mutation in (lambda d: d["job"]["objects"][0].update(bytes=129),
+                         lambda d: d["job"]["input_document"].update(source_voiceover={"sha256": "different"}),
+                         lambda d: d.update(schema_version="videoforge-runpod-pod-job-spec/v1") or d.pop("span_batch_limit")):
+            changed = copy.deepcopy(following)
+            mutation(changed)
+            self.assertFalse(cloud._same_span_batch(cloud.parse_spec(document), cloud.parse_spec(changed), {document["job"]["attempt_id"]}))
+
+    def test_bulk_upload_retains_two_exact_checksums_and_prevalidates_both_ports(self):
+        parsed = cloud.parse_spec(span_specs()[0])
+        encoded = b'{"accepted":true}'
+        def authority(url, token, lease, body):
+            self.assertEqual(body["schema_version"], "videoforge-cloud-span-upload-authorities/v1")
+            return {"uploads": [{"method": "PUT", "contentLength": u["content_length"],
+                "checksumSha256": u["checksum_sha256"], "contentType": u["content_type"]} for u in body["uploads"]]}
+        with patch.object(cloud, "_control", side_effect=authority) as control, patch.object(cloud.media, "_stream_put") as put:
+            cloud._upload_span_outputs(parsed.job, io.BytesIO(b"abc"), 3, "sha256:" + "a" * 64,
+                                       encoded, "capability", "lease", lambda: False)
+            self.assertEqual(control.call_count, 1)
+            self.assertEqual(put.call_count, 2)
+            ports = authority(None,None,None,control.call_args.args[3])
+            ports["uploads"][1]["checksumSha256"] = "sha256:" + "b" * 64
+            control.side_effect = None
+            control.return_value = ports
+            put.reset_mock()
+            with self.assertRaises(ValueError):
+                cloud._upload_span_outputs(parsed.job, io.BytesIO(b"abc"), 3, "sha256:" + "a" * 64,
+                                           encoded, "capability", "lease", lambda: False)
+            put.assert_not_called()
+
+    def test_bulk_upload_retries_only_failed_transport_with_identical_bytes(self):
+        parsed=cloud.parse_spec(span_specs()[0])
+        calls={"video/mp4":[],"application/json":[]}
+        def authority(url,token,lease,body):
+            return {"uploads":[{"method":"PUT","contentLength":u["content_length"],"checksumSha256":u["checksum_sha256"],
+                "contentType":u["content_type"]} for u in body["uploads"]]}
+        def put(port,stream,size):
+            data=stream.read(size)
+            values=calls[port["contentType"]]
+            values.append(data)
+            if port["contentType"]=="application/json" and len(values)==1:
+                raise ConnectionResetError("lost transport")
+        with patch.object(cloud,"_control",side_effect=authority),patch.object(cloud.media,"_stream_put",side_effect=put):
+            cloud._upload_span_outputs(parsed.job,io.BytesIO(b"abc"),3,"sha256:"+"a"*64,b"{}","capability","lease",lambda:False)
+        self.assertEqual(calls["video/mp4"],[b"abc"])
+        self.assertEqual(calls["application/json"],[b"{}",b"{}"])
+
+    def test_offline_qualifier_exercises_real_stream_and_checksums(self):
+        import runpy
+        import shutil
+        import wave
+        from videoforge_media_local.artifacts import R2PortFixtureArtifactResolver
+        qualifier = runpy.run_path(str(Path(__file__).parents[1] / "qualify_runpod_runtime.py"))
+        ffmpeg,ffprobe = shutil.which("ffmpeg"),shutil.which("ffprobe")
+        if not ffmpeg or not ffprobe:
+            self.skipTest("FFmpeg and FFprobe required for real offline stream qualification")
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory).resolve()
+            source=root/"source.wav"
+            with wave.open(str(source),"wb") as audio:
+                audio.setnchannels(1)
+                audio.setsampwidth(2)
+                audio.setframerate(48000)
+                audio.writeframes(b"\x00\x00"*48000*12)
+            checksum=qualifier["digest"](source)
+            digest=checksum.removeprefix("sha256:")
+            resolver=R2PortFixtureArtifactResolver(root)
+            stored=root/resolver.bucket/"objects"/"sha256"/digest[:2]/f"{digest}.wav"
+            stored.parent.mkdir(parents=True)
+            shutil.copyfile(source,stored)
+            document={"schema_version":"selected-span-audio-job/v1","project_revision_id":"revision_001",
+                "attempt_id":"attempt_001","timeline_plan_id":"plan_001","transcript_id":"transcript_001",
+                "span_id":"span_001","timeline_segment_id":"segment_001","task_key":"audio-span:segment_001",
+                "source_voiceover":{"asset_id":"asset_001","sha256":checksum,"duration_ms":12000,
+                    "artifact_uri":f"vf-local://objects/sha256/{digest[:2]}/{digest}.wav"},
+                "selection":{"selected_start_ms":3000,"selected_end_ms_exclusive":7000,"padded_start_ms":2960,
+                    "padded_end_ms_exclusive":7040,"trim_start_ms":40,"trim_end_ms_exclusive":4040},
+                "output":{"asset_id":"output_001","result_uri":"vf-local-run://revision_001/attempt_001/span-audio-result.json"},
+                "cancel_token":"span-cancel-token-001","output_profile":"SOULX_PCM16_48K_MONO"}
+            tools={"ffmpeg":{"path":ffmpeg},"ffprobe":{"path":ffprobe},
+                   "whisper":{"path":ffmpeg},"whisper_model":{"path":ffmpeg}}
+            # Simulate the Cloud disk allowance; production disk guards are unchanged.
+            with patch.object(cloud.media,"_preflight_disk_space"):
+                proof=qualifier["qualify_span_stream"](document,root,tools)
+            self.assertEqual(proof["source_downloads"],1)
+            self.assertEqual(proof["clips"],2)
+            self.assertEqual(proof["separate_verified_uploads"],4)
+            self.assertEqual(proof["cleanup_requests"],1)
+
+    def test_stream_publication_cancel_preserves_failure_ack_and_cleanup(self):
+        from contextlib import nullcontext
+        document=span_specs()[0]
+        document.update(schema_version="videoforge-runpod-pod-job-spec/v2",span_batch_limit=128)
+        requests=[]
+        def control(url,token,lease,body):
+            requests.append(body)
+            if "phase" in body:
+                return {"schema_version":"videoforge-personal-worker-lease-heartbeat/v1",
+                    "cancel_requested":True,"lease_expires_in_seconds":300}
+            if "status" in body:
+                return {"schema_version":"videoforge-personal-worker-completion-accepted/v1","state":"CANCELLED","next_spec":None}
+            return {"cleanup_requested":True}
+        with patch.object(cloud,"_control",side_effect=control), patch.object(cloud,"_download_inputs"), \
+             patch.object(cloud.media,"_preflight_disk_space"), patch.object(cloud.media,"_run_media_subprocess",return_value=(0,b"")), \
+             patch.object(cloud.media,"_parse_child_result",return_value=({"result":True},"SUCCEEDED",None)), \
+             patch.object(cloud.media,"_verified_primary_source",return_value=nullcontext((io.BytesIO(b"abc"),"sha256:"+"a"*64,3))), \
+             patch.object(cloud,"_upload_span_outputs") as upload:
+            self.assertEqual(cloud.run(cloud.parse_spec(document),"capability","lease",MagicMock())[0],"CANCELLED")
+        upload.assert_not_called()
+        self.assertEqual([r["phase"] for r in requests if "phase" in r],["SAVING"])
+        completions=[r for r in requests if "status" in r]
+        self.assertEqual(len(completions),1)
+        self.assertFalse(completions[0]["allow_next_span"])
+        self.assertNotIn("completed_attempt_id",requests[-1])
+
     def test_runtime_manifest_mismatch_fails_before_processing(self):
         parsed = cloud.parse_spec(spec())
         with patch.object(Path, "read_bytes", return_value=b'{"qualified":false}'), self.assertRaises(ValueError):

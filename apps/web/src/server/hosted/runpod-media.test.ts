@@ -1213,3 +1213,45 @@ it("bounds real PostgreSQL create and placement deadlines by the exact authority
     }
   }finally{await db.close();}
 },30000);
+
+describe("qualified span stream callbacks",()=>{
+ it("authorizes two separate checksum-bound outputs in one request and rejects any invalid member",async()=>{
+   attempt.kind="SPAN_AUDIO";reservation.span_batch_protocol=2;reservation.state="SAVING";
+   const previous=fixture.query.getMockImplementation()!;
+   fixture.query.mockImplementation(async(sql:string,values:unknown[]=[])=>sql.includes("videoforge_authorize_hosted_cpu_upload")
+     ? {rows:[{authorized:values[3]!=="foreign"}]} : previous(sql,values));
+   fixture.sign.mockImplementation(async(input:Row)=>({method:"PUT",contentType:input.contentType,contentLength:input.contentLength,checksumSha256:input.checksumSha256}));
+   const uploads=[{schema_version:"videoforge-personal-worker-upload-authority/v1",source:"PRIMARY_RESULT_OUTPUT",object_key:"primary",
+      content_type:"audio/wav",content_length:100,checksum_sha256:hash},
+     {schema_version:"videoforge-personal-worker-upload-authority/v1",source:"RESULT_DOCUMENT",object_key:"result",
+      content_type:"application/json",content_length:50,checksum_sha256:hash}];
+   const body={schema_version:"videoforge-cloud-span-upload-authorities/v1",uploads};
+   expect((await runRoute("upload-port",body))?.status).toBe(200);
+   expect(fixture.sign).toHaveBeenCalledTimes(2);
+   fixture.sign.mockClear();uploads[1]!.object_key="foreign";
+   expect((await runRoute("upload-port",body))?.status).toBe(409);
+   expect(fixture.sign).not.toHaveBeenCalled();
+   reservation.span_batch_protocol=1;uploads[1]!.object_key="result";
+   expect((await runRoute("upload-port",body))?.status).toBe(400);
+ });
+ it("returns a strict stream failure acknowledgment without claiming another clip",async()=>{
+   attempt.kind="SPAN_AUDIO";reservation.span_batch_protocol=2;reservation.state="SAVING";
+   const result=await runRoute("complete",{schema_version:"videoforge-personal-worker-completion/v1",status:"FAILED",
+     failure_code:"MEDIA_EXECUTION_FAILED",allow_next_span:false,executed_span_count:1});
+   expect(await result?.json()).toEqual({schema_version:"videoforge-personal-worker-completion-accepted/v1",state:"FAILED",next_spec:null});
+   expect(fixture.query.mock.calls.some(([sql])=>String(sql).includes("videoforge_claim_cloud_media_span"))).toBe(false);
+ });
+ it("reconciles the identical accepted receipt and rejects invalid stream ordinals",async()=>{
+   attempt.kind="SPAN_AUDIO";attempt.state="SUCCEEDED";reservation.span_batch_protocol=2;reservation.state="SAVING";
+   Object.assign(attempt,{result_object_key:completion.result_object_key,result_content_length:completion.result_content_length,
+     result_checksum_sha256:completion.result_checksum_sha256});
+   const previous=fixture.query.getMockImplementation()!;
+   fixture.query.mockImplementation(async(sql:string,values:unknown[]=[])=>sql.includes("videoforge_claim_cloud_media_span")
+     ? {rows:[{attempt_id:null}]} : previous(sql,values));
+   const body={...completion,allow_next_span:true,executed_span_count:1};
+   for(let i=0;i<2;i++) expect(await (await runRoute("complete",body))?.json()).toEqual({
+     schema_version:"videoforge-personal-worker-completion-accepted/v1",state:"SUCCEEDED",next_spec:null});
+   expect((await runRoute("complete",{...body,executed_span_count:129}))?.status).toBe(400);
+   expect(fixture.query.mock.calls.filter(([sql])=>String(sql).includes("videoforge_claim_cloud_media_span"))).toHaveLength(2);
+ });
+});

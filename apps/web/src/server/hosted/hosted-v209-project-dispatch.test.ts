@@ -895,6 +895,22 @@ describe("ordinary authenticated V2-09 project dispatch", () => {
     expect(deps.ensureWorkflow).not.toHaveBeenCalled();
   });
 
+  it("lets early Cloud spans finish while keeping paid API jobs behind accepted prompts", async () => {
+    const prepared = await candidate(),deps=dependencies(prepared);
+    const query=vi.fn(async(sql:string)=>sql.includes("videoforge_read_hosted_api_jobs")
+      ? {rows:[{jobs:{generationRequestId:prepared.generationRequestId,jobs:[]}}]}
+      : sql.includes("AS ready") ? {rows:[{ready:false}]} : {rows:[]});
+    const result=await resumeHostedV209ProjectDispatch({} as never,
+      Object.assign({},apiConfig,{cloudMedia:{spanBatchProtocol:2}}) as never,
+      {accountId:scope.account_id,workspaceId:scope.workspace_id,userId:scope.user_id,projectId},
+      {...deps.value,inspectExistingGeneration:vi.fn(async()=>({generationProvider:"KIE_FAL",candidateExists:false,attemptExists:false,pairExists:false})),
+        createExecutor:()=>({transaction:async(work:(db:{query:typeof query})=>Promise<unknown>)=>work({query})})} as never);
+    expect(result.status).toBe(202);
+    expect(await result.json()).toMatchObject({state:"WAITING_FOR_PROMPTS"});
+    expect(query.mock.calls.some(([sql])=>sql.includes("videoforge_materialize_hosted_api_jobs"))).toBe(false);
+    expect(deps.ensureWorkflow).not.toHaveBeenCalled();
+  });
+
   it("rejects cross-origin or non-empty browser authority before database materialization", async () => {
     const prepared = await candidate();
     const crossOrigin = dependencies(prepared);

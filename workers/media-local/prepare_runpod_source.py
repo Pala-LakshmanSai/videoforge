@@ -51,7 +51,7 @@ def prepare(root: Path, base: dict, image: str) -> dict:
     if not sources or sources.keys() != base["source_files"].keys():
         raise ValueError("Source inventory changed; qualify a full runtime build")
     candidate = {key: value for key, value in base.items() if key != "offline_acceptance"}
-    candidate.update(qualified=False, source_files=sources,
+    candidate.update(qualified=False, span_batch_protocol=2, source_files=sources,
                      source_sha256="sha256:" + hashlib.sha256(canonical(sources)).hexdigest(),
                      dependency_lock_sha256=BASE_LOCK_SHA256)
     return candidate
