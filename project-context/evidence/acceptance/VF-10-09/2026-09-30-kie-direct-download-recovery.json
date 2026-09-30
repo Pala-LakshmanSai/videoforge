@@ -1,7 +1,7 @@
 {
   "checkpoint": "V2-09",
   "task": "VF-10-09",
-  "status": "PUBLISHED_NATIVE_PROGRESS_VERIFIED_LONG_RENDER_PENDING",
+  "status": "PUBLISHED_ALL_NATIVE_MEDIA_AND_LONG_FINAL_VERIFIED",
   "rootCause": "Completed Kie task original CDN URL can stall image transfer and serial job refilling.",
   "officialContract": "https://docs.kie.ai/common-api/download-url",
   "nativeProbe": {
@@ -31,8 +31,8 @@
     "noCreateTaskOnRetrieval": true
   },
   "remaining": [
-    "normal long final render/download/playback",
-    "zero owned compute"
+    "native browser downloaded bytes",
+    "historical immutable identity and full PostgreSQL clean-install/restore gates"
   ],
   "operatorTotalStopUsd": 14,
   "newCloudAllowanceUsd": 8,
@@ -61,5 +61,15 @@
     "allAcceptedOutputIdentitiesPresent": true,
     "unknownTasks": 0,
     "failedTasks": 0
+  },
+  "final_acceptance": "2026-09-30-long-cloud-final-acceptance.json",
+  "final_state": {
+    "generation": "SUCCEEDED",
+    "all_api_jobs": 452,
+    "cloud_reservations": "32 CLEAN",
+    "complete_native_inventory_owned_pods": 0,
+    "whole_final_media_decode": "PASS",
+    "machine_label": "GPU released",
+    "chrome_playback": "COMPLETE_TO_ENDED_NO_ERROR_1x_THEN_1_5x"
   }
 }

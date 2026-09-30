@@ -1,7 +1,7 @@
 {
   "checkpoint": "V2-09",
   "task": "VF-10-09",
-  "status": "PUBLISHED_REAL_ACTIVE_LOCAL_HISTORY_AND_CLOUD_GPU_VERIFIED_LONG_FINAL_PENDING",
+  "status": "PUBLISHED_REAL_ACTIVE_LOCAL_HISTORY_CLOUD_GPU_AND_RELEASE_VERIFIED",
   "machine": {
     "source": "exact tenant lease or verified Cloud reservation",
     "activeIdleDistinction": true,
@@ -51,8 +51,8 @@
     "inventoryAt": "2026-09-30T09:50:09Z"
   },
   "remaining": [
-    "long final render/storage/download/playback",
-    "independent zero compute after final"
+    "native browser downloaded bytes",
+    "historical immutable identity and full PostgreSQL clean-install/restore gates"
   ],
   "operatorStopUsd": 14,
   "newCloudAllowanceUsd": 8,
@@ -68,5 +68,15 @@
     "sameApiInstanceRestartedOnce": true,
     "newInstances": 0,
     "acceptedStatesAndProviderIdsPreserved": true
+  },
+  "final_acceptance": "2026-09-30-long-cloud-final-acceptance.json",
+  "final_state": {
+    "generation": "SUCCEEDED",
+    "all_api_jobs": 452,
+    "cloud_reservations": "32 CLEAN",
+    "complete_native_inventory_owned_pods": 0,
+    "whole_final_media_decode": "PASS",
+    "machine_label": "GPU released",
+    "chrome_playback": "COMPLETE_TO_ENDED_NO_ERROR_1x_THEN_1_5x"
   }
 }

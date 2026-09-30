@@ -2,10 +2,8 @@
   "checkpoint": "V2-09",
   "task": "VF-10-09",
   "date": "2026-09-30",
-  "status": "LOCAL_FUNCTIONALITY_AND_PUBLISHED_REPAIRS_VERIFIED_LONG_CLOUD_PENDING",
-  "checkout_commit": "f9b9283ca662e73c0ba276741db22521c3b65357",
-  "changes_committed": false,
-  "scope": "Existing dirty checkout preserved; no deployment or production mutation.",
+  "status": "LOCAL_FLOWS_PUBLISHED_REPAIRS_NORMAL_LONG_CLOUD_MEDIA_AND_CLEANUP_VERIFIED",
+  "scope": "Initial local audit plus subsequent user-authorized isolated publication, normal fresh long Cloud recovery and acceptance; unrelated Main changes preserved.",
   "repairs": [
     "Ordinary project total elapsed sums numbered stage timers; render-only attempts retain their fresh-attempt wall timer.",
     "Project-detail PGlite fixture includes the real timeline frame columns and verifies projected frame counts.",
@@ -206,20 +204,20 @@
         ],
         "quarantine": "PASS"
       }
-    }
+    },
+    "normal_long_cloud_final": "PASS whole SHA,54208frame full decode,31 narration windows,400midpoint samples and real Chrome playthrough to ended at1x then1.5x; not native browser download bytes."
   },
   "blockers": [
     "Historical V2-07 activation image/config lineage and immutable Mage/SoulX source-overlay identities remain unreconciled; their guards were not weakened.",
     "Local PGlite suite and subsequent live recovery schema/RPC/runtime-role rollback proofs are verified. Complete clean installation and production restore qualification remain separate gates.",
-    "Fresh full provider/editorial production acceptance and the final retained long-video Chrome tail remain open."
+    "Normal fresh full-provider30m07 Cloud generation, whole media/decode/narration checks and cleanup pass. Native Chrome download bytes, complete factual/editorial qualification and separate historical retained45minute browser tail remain unverified."
   ],
   "disk": {
     "available_gib_observed": 2.2,
     "local_runtime_headroom_floor_gib": 2
   },
-  "provider_spend_usd": 0,
-  "paid_compute": "None launched in this audit; current global provider inventory not queried.",
-  "next": "Complete authorized normal30m07s Cloud render, whole artifact review, real Chrome playback/download and exact owned compute cleanup; keep historical PostgreSQL/editorial/source-identity gates explicit.",
+  "paid_compute": "All32 test reservations CLEAN; complete independent native provider inventory zero Pods11:51:53UTC. Conservative new Cloud debit7.28USD, not invoice.",
+  "next": "Native browser downloaded bytes, historical immutable source identities and complete PostgreSQL clean-install/production-restore qualification remain open. Core Local and normal fresh30m07s Cloud generation, whole media, full Chrome playback and independent shutdown are verified.",
   "model_download_authority": "User authorized continuation and necessary redo work after freeing disk space; pinned local model downloaded and checksum verified. No paid provider calls.",
   "remaining_script_failure_categories": [
     "Historical migration manifest/source-closure identity drift",
@@ -228,7 +226,26 @@
     "Incomplete legacy fixture imports and pgcrypto setup",
     "Outdated desktop documentation and operator-grant assertions"
   ],
-  "release_preparation": {
+  "current_publication": {
+    "source": "661b6ddf7a17666568d5758479da37fc8e50c68f",
+    "version_id": "12758d33-2625-4b78-ac54-c00fa155389f",
+    "traffic_percent": 100,
+    "secrets_preserved": 25,
+    "bindings_preserved": 50,
+    "subsequent_authorized_long_cloud_acceptance": "SUCCEEDED_WHOLE_MEDIA_AND_CLEANUP_VERIFIED",
+    "final_long_video_verified": true
+  },
+  "long_followup_evidence": [
+    "2026-09-30-machine-and-api-transfer.json",
+    "2026-09-30-kie-direct-download-recovery.json",
+    "2026-09-30-long-cloud-final-acceptance.json"
+  ],
+  "initial_scope": "Existing dirty checkout preserved; no deployment or production mutation.",
+  "initial_provider_spend_usd": 0,
+  "initial_paid_compute": "None launched in this audit; current global provider inventory not queried.",
+  "initial_checkout_commit": "f9b9283ca662e73c0ba276741db22521c3b65357",
+  "initial_changes_committed": false,
+  "initial_release_preparation": {
     "path": "/Users/lakshmansai/.codex/worktrees/app-functional-audit/videoforge",
     "branch": "codex/app-functional-audit",
     "base_commit": "2cea7e581c79107fc0cd43d14f3837849a76882e",
@@ -245,17 +262,7 @@
       "scope": "Only audit repairs applied to published source; unrelated main checkout changes excluded."
     }
   },
-  "current_publication": {
-    "source": "661b6ddf7a17666568d5758479da37fc8e50c68f",
-    "version_id": "12758d33-2625-4b78-ac54-c00fa155389f",
-    "traffic_percent": 100,
-    "secrets_preserved": 25,
-    "bindings_preserved": 50,
-    "subsequent_authorized_long_cloud_acceptance": "RUNNING",
-    "final_long_video_verified": false
-  },
-  "long_followup_evidence": [
-    "2026-09-30-machine-and-api-transfer.json",
-    "2026-09-30-kie-direct-download-recovery.json"
-  ]
+  "current_source_commit": "661b6ddf7a17666568d5758479da37fc8e50c68f",
+  "published_repair_commits": true,
+  "review_history": "Two earlier FAILED voiceover-context tasks remain visible as historical review flags. Current context,452API jobs,VIDEO/final and approval are successful; no current failure is inferred from those preserved retries."
 }
