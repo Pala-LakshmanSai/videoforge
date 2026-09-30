@@ -108,6 +108,8 @@ it("shows the actual assigned machine and distinguishes released GPU and API wor
   expect(hostedMachineLabel("RUNPOD_POD",[],false,2)).toBe("Cloud · Waiting for earlier project");
   expect(hostedMachineLabel("RUNPOD_POD",[cloud],false,2)).toBe("Cloud · RunPod · NVIDIA RTX PRO 4500");
   expect(hostedMachineLabel("PERSONAL_WORKER",[],false,2)).toBe("Local · Waiting for computer");
+  expect(hostedMachineLabel("RUNPOD_POD",[{...cloud,kind:"ASR",state:"CANCELLED",cloud_machine_active:false}],false,2)).toBe("Cloud · No active RunPod compute");
+  expect(hostedMachineLabel("PERSONAL_WORKER",[{...local,kind:"ASR",state:"CANCELLED",local_machine_active:false}],false,2)).toBe("Local · No active computer");
 });
 
 it("shows the active span ahead of queued and completed Cloud attempts", () => {

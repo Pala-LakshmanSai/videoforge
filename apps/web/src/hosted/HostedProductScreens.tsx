@@ -595,6 +595,8 @@ export function hostedMachineLabel(
   if (apiActive) return cloud
     ? "Cloud · Kie / Fal APIs · No active RunPod GPU"
     : "Local render · Kie / Fal APIs · Computer not assigned yet";
+  if (attempts.length && attempts.every(attempt => ["SUCCEEDED", "FAILED", "CANCELLED", "EXPIRED"].includes(attempt.state)))
+    return cloud ? "Cloud · No active RunPod compute" : "Local · No active computer";
   if (cloud && queuePosition && queuePosition > 1) return "Cloud · Waiting for earlier project";
   return cloud ? "Cloud · Waiting for RunPod compute" : "Local · Waiting for computer";
 }
