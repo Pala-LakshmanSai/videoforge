@@ -204,6 +204,15 @@ test("the same metadata snapshot restores exactly, resumes idempotently, and rem
   let destination = await createMigratedDatabase(destinationData);
   try {
     await seedRecoveryMetadata(source.executor);
+    await source.executor.query(
+      `INSERT INTO public.media_worker_connect_commands
+         (id,account_id,workspace_id,token_sha256,expires_at)
+       VALUES ($1,$2,$3,$4,now()+interval '1 hour')`,
+      [uuid(40_008), IDS.accountA, IDS.workspaceA, sha256("fixture-connect-authority")],
+    );
+    await source.executor.query(
+      `INSERT INTO public.hosted_continuation_heartbeats(cron,due_count) VALUES ('fixture',0)`,
+    );
     const first = await exportMetadataSnapshot(source.executor);
     const second = await exportMetadataSnapshot(source.executor);
     const serialized = serializeMetadataSnapshot(first);
@@ -211,6 +220,11 @@ test("the same metadata snapshot restores exactly, resumes idempotently, and rem
     assert.equal(second.snapshotSha256, first.snapshotSha256);
     assert.equal(first.migrationLedger.length, MIGRATION_MANIFEST.length);
     assert.equal(first.tables.length, RELATIONAL_TABLE_NAMES.length);
+    assert.equal(serialized.includes(sha256("fixture-connect-authority")), false);
+    assert.equal(
+      first.tables.some((table) => table.tableName === "hosted_continuation_heartbeats"),
+      false,
+    );
     for (const requiredTable of [
       "memberships",
       "avatar_profile_versions",
@@ -232,6 +246,11 @@ test("the same metadata snapshot restores exactly, resumes idempotently, and rem
       restoredRows: expectedRows,
       alreadyRestored: false,
     });
+    const ephemeralRows = await destination.executor.query(
+      `SELECT (SELECT count(*)::integer FROM public.media_worker_connect_commands) AS commands,
+              (SELECT count(*)::integer FROM public.hosted_continuation_heartbeats) AS heartbeats`,
+    );
+    assert.deepEqual(ephemeralRows.rows, [{ commands: 0, heartbeats: 0 }]);
     assert.equal(
       serializeMetadataSnapshot(await exportMetadataSnapshot(destination.executor)),
       serialized,

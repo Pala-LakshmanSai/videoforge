@@ -51,9 +51,12 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // and9,071 staging bytes. The paid controller/GPU preferences remain only in a dynamic server
 // chunk (56,679 production bytes); native/Python code is absent. Exact2026-09-28 builds are
 // recorded in .videoforge/cloud-media/bundle-measurements.json; these are no-growth ceilings.
+// The 2026-09-30 security dependency repair measures2,784,389 production and2,781,773 staging
+// bytes. Both exact closures and hashes are retained in the app-audit evidence; every additional
+// byte still fails, and provider/validator/native-code quarantine and CPU bounds remain enforced.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_778_357,
-  "wrangler.staging.jsonc": 2_776_188,
+  "wrangler.production.jsonc": 2_784_389,
+  "wrangler.staging.jsonc": 2_781_773,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",

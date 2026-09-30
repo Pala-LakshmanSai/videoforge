@@ -1,8 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PGlite } from "@electric-sql/pglite";
-
 import {
   applyMigrations,
   MIGRATION_TABLE_NAME,
@@ -14,17 +12,14 @@ import { HASHES, IDS, seedLockedProjects } from "./support/fixtures.mjs";
 import {
   expectDatabaseError,
   FIXED_TIME,
-  loadMigrationSources,
-  PGliteExecutor,
+  createFixtureDatabase,
   sha256,
   uuid,
 } from "./support/pglite.mjs";
 
 test("a fresh PGlite database applies the committed migration chain idempotently", async () => {
-  const database = new PGlite();
+  const { database, executor, sources } = await createFixtureDatabase();
   try {
-    const executor = new PGliteExecutor(database);
-    const sources = await loadMigrationSources();
     const versions = sources.map((source) => source.version);
 
     const first = await applyMigrations(executor, sources);
@@ -57,10 +52,8 @@ test("a fresh PGlite database applies the committed migration chain idempotently
 });
 
 test("project-kind migration hides only receipt-proven acceptance fixtures", async () => {
-  const database = new PGlite();
+  const { database, executor, sources } = await createFixtureDatabase();
   try {
-    const executor = new PGliteExecutor(database);
-    const sources = await loadMigrationSources();
     const projectKindIndex = sources.findIndex(
       (source) => source.filename === "0059_project_kind_visibility.sql",
     );
@@ -110,10 +103,8 @@ test("project-kind migration hides only receipt-proven acceptance fixtures", asy
 });
 
 test("hosted prompt progress upgrades the exact 0059 chain through latest manifest", async () => {
-  const database = new PGlite();
+  const { database, executor, sources } = await createFixtureDatabase();
   try {
-    const executor = new PGliteExecutor(database);
-    const sources = await loadMigrationSources();
     // The end of the chain moves with every migration: assert the upgrade semantics (resume exactly
     // where the legacy 0059 chain stopped, run the whole remaining manifest once, in order) instead
     // of pinning a version that a new migration has to keep bumping.
@@ -267,7 +258,8 @@ test("hosted prompt progress upgrades the exact 0059 chain through latest manife
       (row) => row.proname === "videoforge_prepare_hosted_prompt_run",
     );
     assert.match(prompt.definition, /scene-prompt-writer-v2/u);
-    assert.match(prompt.definition, /Hosted Runware scene prompts',2,'PROMPT/u);
+    assert.match(prompt.definition, /Hosted Runware scene prompts',profile_revision,'PROMPT/u);
+    assert.match(prompt.definition, /profile_revision:=7/u);
     const progressSurface = await executor.query(
       `SELECT c.relrowsecurity, c.relforcerowsecurity,
               to_regprocedure('public.videoforge_record_hosted_prompt_scene(uuid,jsonb)') IS NOT NULL
@@ -314,10 +306,9 @@ test("hosted prompt progress upgrades the exact 0059 chain through latest manife
 });
 
 test("third candidate renewal keeps predecessor lineage null-safe", async () => {
-  const database = new PGlite();
+  const { database, executor, sources } = await createFixtureDatabase();
   try {
-    const executor = new PGliteExecutor(database);
-    await applyMigrations(executor, await loadMigrationSources());
+    await applyMigrations(executor, sources);
     const constraint = await executor.query(
       `SELECT pg_get_constraintdef(oid) AS definition
          FROM pg_constraint
@@ -339,10 +330,8 @@ test("third candidate renewal keeps predecessor lineage null-safe", async () => 
 });
 
 test("global-session vNext upgrades the complete legacy chain without rewriting legacy rows", async () => {
-  const database = new PGlite();
+  const { database, executor, sources } = await createFixtureDatabase();
   try {
-    const executor = new PGliteExecutor(database);
-    const sources = await loadMigrationSources();
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),
@@ -396,10 +385,8 @@ test("global-session vNext upgrades the complete legacy chain without rewriting 
 });
 
 test("later durable migrations upgrade the five-migration baseline", async () => {
-  const database = new PGlite();
+  const { database, executor, sources } = await createFixtureDatabase();
   try {
-    const executor = new PGliteExecutor(database);
-    const sources = await loadMigrationSources();
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),
@@ -515,10 +502,8 @@ test("later durable migrations upgrade the five-migration baseline", async () =>
 });
 
 test("reference-contract migration upgrades a clean seven-migration database", async () => {
-  const database = new PGlite();
+  const { database, executor, sources } = await createFixtureDatabase();
   try {
-    const executor = new PGliteExecutor(database);
-    const sources = await loadMigrationSources();
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),
@@ -549,10 +534,8 @@ test("reference-contract migration upgrades a clean seven-migration database", a
 });
 
 test("style artifact migration backfills only accepted analyzer profiles as immutable roots", async () => {
-  const database = new PGlite();
+  const { database, executor, sources } = await createFixtureDatabase();
   try {
-    const executor = new PGliteExecutor(database);
-    const sources = await loadMigrationSources();
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),
@@ -728,10 +711,8 @@ test("style artifact migration backfills only accepted analyzer profiles as immu
 });
 
 test("reference-contract migration refuses to invent rights facts for legacy rows", async () => {
-  const database = new PGlite();
+  const { database, executor, sources } = await createFixtureDatabase();
   try {
-    const executor = new PGliteExecutor(database);
-    const sources = await loadMigrationSources();
     for (const migration of sources.slice(0, 7)) await executor.execute(migration.sql);
     await seedLockedProjects(executor);
     await executor.query(

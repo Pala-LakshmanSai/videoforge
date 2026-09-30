@@ -48,9 +48,18 @@ test("the hosted runtime can append through the exact function but has no direct
     assert.ok(EXPECTED_RUNTIME_FUNCTIONS.includes(signature));
     assert.ok(source.includes(`GRANT EXECUTE ON FUNCTION public.${signature}`));
   }
-  assert.deepEqual(EXPECTED_TABLE_PRIVILEGES.get("hosted_continuation_heartbeats"), ["INSERT", "SELECT"]);
-  assert.match(source, /GRANT SELECT, INSERT ON hosted_continuation_heartbeats TO :"runtime_role";/u);
-  assert.match(source, /GRANT USAGE ON SEQUENCE public\.hosted_continuation_heartbeats_id_seq TO :"runtime_role";/u);
+  assert.deepEqual(EXPECTED_TABLE_PRIVILEGES.get("hosted_continuation_heartbeats"), [
+    "INSERT",
+    "SELECT",
+  ]);
+  assert.match(
+    source,
+    /GRANT SELECT, INSERT ON hosted_continuation_heartbeats TO :"runtime_role";/u,
+  );
+  assert.match(
+    source,
+    /GRANT USAGE ON SEQUENCE public\.hosted_continuation_heartbeats_id_seq TO :"runtime_role";/u,
+  );
   assert.match(
     source,
     /GRANT EXECUTE ON FUNCTION public\.videoforge_archive_hosted_preset\(uuid, uuid, text, uuid\)\s+TO :"runtime_role";/u,
@@ -241,7 +250,7 @@ test("the hosted runtime can append through the exact function but has no direct
   );
 });
 
-test("migration 0188 API generation exposes only tenant-scoped RPCs", async () => {
+test("API generation permits tenant-scoped reads and only RPC writes", async () => {
   const source = await readFile(GRANTS, "utf8");
   const apiFunctions = [
     "videoforge_read_hosted_api_jobs(uuid,uuid,uuid)",
@@ -260,7 +269,12 @@ test("migration 0188 API generation exposes only tenant-scoped RPCs", async () =
     const name = signature.slice(0, signature.indexOf("("));
     assert.match(source, new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${name}\\(`, "u"));
   }
-  assert.doesNotMatch(source, /GRANT[^;]*hosted_api_generation_jobs/iu);
+  assert.deepEqual(EXPECTED_TABLE_PRIVILEGES.get("hosted_api_generation_jobs"), ["SELECT"]);
+  const tableGrants = [
+    ...source.matchAll(/GRANT\s+([^;]+?)\s+ON\s+([^;]+?)\s+TO\s+:"runtime_role";/giu),
+  ].filter((grant) => /\bhosted_api_generation_jobs\b/u.test(grant[2]));
+  assert.ok(tableGrants.length > 0);
+  for (const grant of tableGrants) assert.equal(grant[1].trim(), "SELECT");
   assert.doesNotMatch(source, /videoforge_hosted_api_job_json\(/u);
 });
 
@@ -273,16 +287,18 @@ test("every project-detail relation is covered by the runtime SELECT allowlist",
   const end = product.indexOf("\nasync function ", start + 1);
   assert.ok(start >= 0 && end > start);
   const relations = new Set(
-    [...product.slice(start, end).matchAll(/\b(?:FROM|JOIN)\s+([a-z][a-z0-9_]*)\b/gu)].map(
-      (match) => match[1],
-    ),
+    [
+      ...product.slice(start, end).matchAll(/\b(?:FROM|JOIN)\s+(?:public\.)?([a-z][a-z0-9_]*)\b/gu),
+    ].map((match) => match[1]),
   );
   const commonTableExpressions = new Set(
-    [...product.slice(start, end).matchAll(/\b(?:WITH|,)\s+([a-z][a-z0-9_]*)\s+AS\s*\(/gu)].map(
+    [...product.slice(start, end).matchAll(/(?:\bWITH\b|,)\s+([a-z][a-z0-9_]*)\s+AS\s*\(/gu)].map(
       (match) => match[1],
     ),
   );
   for (const alias of commonTableExpressions) relations.delete(alias);
+  for (const relation of relations)
+    if (relation.startsWith("videoforge_")) relations.delete(relation);
   assert.ok(relations.size > 0);
   for (const relation of relations) {
     assert.ok(

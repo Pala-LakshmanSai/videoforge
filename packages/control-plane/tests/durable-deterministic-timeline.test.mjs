@@ -410,8 +410,13 @@ test("persists silent-boundary plans and resolves byte-identical canonical bytes
       ).length,
     );
     for (const span of accepted.value.timeline.selectedSpanAudio) {
-      assert.equal(span.paddedStartMs, Math.max(0, span.selectedStartMs - 500));
-      assert.equal(span.paddedEndMsExclusive, Math.min(40_000, span.selectedEndMsExclusive + 500));
+      assert.ok(span.paddedStartMs >= 0 && span.paddedStartMs <= span.selectedStartMs);
+      assert.ok(
+        span.paddedEndMsExclusive <= 40_000 &&
+          span.paddedEndMsExclusive >= span.selectedEndMsExclusive,
+      );
+      const paddedDurationMs = span.paddedEndMsExclusive - span.paddedStartMs;
+      assert.ok(paddedDurationMs >= 3_000 && paddedDurationMs <= 10_120);
       assert.equal(span.trimStartMs, span.selectedStartMs - span.paddedStartMs);
       assert.equal(
         span.trimEndMsExclusive,

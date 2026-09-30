@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { PGlite } from "@electric-sql/pglite";
+import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 import {
   applyMigrations,
   FairAdmissionError,
@@ -21,9 +22,14 @@ import type { ApplicationFairAdmission } from "../fair-admission-runtime";
 import { SharedFixtureError, type FixtureTenantScope } from "../shared-app-fixture";
 
 class PGliteExecutor implements TransactionalSqlExecutor {
-  constructor(private readonly database: PGlite) {}
+  constructor(
+    private readonly database: PGlite,
+    private readonly migrationPrerequisites: ReadonlyMap<string, string> = new Map(),
+  ) {}
 
   async execute(sql: string): Promise<void> {
+    const prerequisite = this.migrationPrerequisites.get(sql);
+    if (prerequisite) await this.database.exec(prerequisite);
     await this.database.exec(sql);
   }
 
@@ -37,7 +43,7 @@ class PGliteExecutor implements TransactionalSqlExecutor {
 
   transaction<Value>(work: (transaction: SqlExecutor) => Promise<Value>): Promise<Value> {
     return this.database.transaction((transaction) =>
-      work(new PGliteExecutor(transaction as unknown as PGlite)),
+      work(new PGliteExecutor(transaction as unknown as PGlite, this.migrationPrerequisites)),
     );
   }
 }
@@ -98,14 +104,39 @@ export class NodeFairAdmission implements ApplicationFairAdmission {
   }
 
   private async initialize(dataDir: string, migrationsDir: string) {
-    const database = new PGlite(dataDir);
-    const executor = new PGliteExecutor(database);
+    const database = new PGlite({ dataDir, extensions: { pgcrypto } });
     const sources = await Promise.all(
       MIGRATION_MANIFEST.map(async (entry) => ({
         ...entry,
         sql: await readFile(path.join(migrationsDir, entry.filename), "utf8"),
       })),
     );
+    const continuationGrants = sources.find((entry) => entry.version === 195);
+    if (!continuationGrants) throw new Error("Fixture continuation grant migration is missing.");
+    // Local fixtures emulate the existing deployment's out-of-band prerequisites. Keep registered
+    // migration SQL and ledger hashes intact while recreating the omitted continuation helpers.
+    const continuationPrerequisites = await Promise.all(
+      [
+        "0160_hosted_continuation_heartbeats.sql",
+        "0162_hosted_continuation_tenant_scoped_sweeps.sql",
+        "0163_hosted_continuation_heartbeat_sequence.sql",
+      ].map((filename) => readFile(path.join(migrationsDir, filename), "utf8")),
+    );
+    const executor = new PGliteExecutor(
+      database,
+      new Map([[continuationGrants.sql, continuationPrerequisites.join("\n")]]),
+    );
+    await executor.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto");
+    // Production activation creates these roles outside the migration chain. Fixture replay needs
+    // them before applying migrations with named grants.
+    await executor.execute(`DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'videoforge_v209_runtime_dc9612d6') THEN
+        EXECUTE 'CREATE ROLE videoforge_v209_runtime_dc9612d6 NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS';
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'videoforge_v209_reconciler_dc9612d6') THEN
+        EXECUTE 'CREATE ROLE videoforge_v209_reconciler_dc9612d6 NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS';
+      END IF;
+    END $$;`);
     await applyMigrations(executor, sources);
     const repository = new FairAdmissionRepository(executor);
     await repository.reconstruct({ now: new Date().toISOString(), auditId: crypto.randomUUID() });
@@ -161,7 +192,7 @@ export class NodeFairAdmission implements ApplicationFairAdmission {
                   serverless_predispatch_authorities, serverless_attempts,
                   generation_queue_audits,
                   provider_workload_leases, preset_preview_requests, generation_requests,
-                  account_queue_heads;
+                  account_queue_heads CASCADE;
          UPDATE global_generation_capacity
             SET active_lease_count = 0, schedule_sequence = 0, video_fair_cursor = 0,
                 preview_fair_cursor = 0, version = version + 1, updated_at = now()

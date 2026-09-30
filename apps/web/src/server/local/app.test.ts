@@ -641,6 +641,13 @@ describe("local walking-slice API", () => {
   it("exposes a bounded in-memory queue facade without authorizing providers or spend", async () => {
     const runner = await ControlledRunner.create();
     const app = createApiApp({ mode: "local", localRunner: runner });
+    const emptyQueue = await app.request("/api/v2/queue");
+    expect(emptyQueue.status).toBe(200);
+    await expect(emptyQueue.json()).resolves.toMatchObject({
+      schemaVersion: "videoforge.private-fair-queue/v1",
+      requests: [],
+      capacity: { ownedActive: 0, otherAccountDetailsVisible: false },
+    });
     const shared = await app.request("/api/v1/shared-app");
     expect(shared.status).toBe(200);
     const view = (await shared.json()) as {
@@ -669,6 +676,12 @@ describe("local walking-slice API", () => {
     });
     expect(generated.status).toBe(200);
     await expect(generated.json()).resolves.toMatchObject({ outcome: "STARTED", queueVersion: 1 });
+    const activeQueue = await app.request("/api/v2/queue");
+    expect(activeQueue.status).toBe(200);
+    await expect(activeQueue.json()).resolves.toMatchObject({
+      requests: [{ projectId: PROJECT_ID, state: "ACTIVE" }],
+      capacity: { ownedActive: 1, otherAccountDetailsVisible: false },
+    });
   });
 
   it("exposes the same restart-safe media contract in explicit sandbox mode", async () => {

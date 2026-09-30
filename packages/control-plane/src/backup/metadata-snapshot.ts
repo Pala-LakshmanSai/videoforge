@@ -187,6 +187,7 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "outbox",
   "hosted_voiceover_contexts",
   "hosted_prompt_runs",
+  "hosted_prompt_batch_claims",
   "hosted_prompt_batch_progress",
   "hosted_prompt_scene_progress",
   "prompt_executions",
@@ -230,6 +231,15 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "hosted_v209_span_audio_materializations",
   "hosted_v209_staged_click_reconciliations",
   "hosted_v209_ordinary_resolved_render_manifests",
+  "hosted_api_render_recoveries",
+  "hosted_api_render_io_recoveries",
+  "hosted_api_render_input_recoveries",
+  "hosted_api_first_render_input_recoveries",
+  "hosted_api_second_render_process_recoveries",
+  "hosted_api_third_render_signal_recoveries",
+  "hosted_api_fourth_render_output_recoveries",
+  "hosted_api_local_render_recoveries",
+  "hosted_render_only_runs",
 ] satisfies readonly RelationalTableName[]);
 
 const RESTORE_INSERT_TABLES = new Set<RelationalTableName>(RESTORE_INSERT_ORDER);
@@ -872,19 +882,38 @@ async function insertTable(
         : tableName === "serverless_cost_events"
           ? " ORDER BY attempt_id, sequence"
           : "";
-  const result = await executor.query(
-    `INSERT INTO ${qualifiedTable(tableName)}
-     SELECT * FROM jsonb_populate_recordset(NULL::${qualifiedTable(tableName)}, ${source})${orderedSource}`,
-    [rowsDocument(table)],
+  // Owner-driven restores still pass the security-definer artifact guards for each exact tenant.
+  const groups = new Map<string, string[]>();
+  for (const row of table.rows) {
+    const accountId = (JSON.parse(row) as { account_id?: string }).account_id ?? "";
+    const rows = groups.get(accountId) ?? [];
+    rows.push(row);
+    groups.set(accountId, rows);
+  }
+  const previousScope = await executor.query<{ account_id: string | null }>(
+    "SELECT current_setting('videoforge.account_id',true) AS account_id",
   );
-  if (result.affectedRows !== table.rowCount) {
+  let affectedRows = 0;
+  for (const [accountId, rows] of groups) {
+    await executor.query("SELECT set_config('videoforge.account_id',$1,true)", [accountId]);
+    const result = await executor.query(
+      `INSERT INTO ${qualifiedTable(tableName)}
+       SELECT * FROM jsonb_populate_recordset(NULL::${qualifiedTable(tableName)}, ${source})${orderedSource}`,
+      [`[${rows.join(",")}]`],
+    );
+    affectedRows += result.affectedRows;
+  }
+  await executor.query("SELECT set_config('videoforge.account_id',$1,true)", [
+    previousScope.rows[0]?.account_id ?? "",
+  ]);
+  if (affectedRows !== table.rowCount) {
     throw snapshotProblem(
       "METADATA_RESTORE_VERIFICATION_FAILED",
-      `Table ${tableName} restored ${String(result.affectedRows)} of ${String(table.rowCount)} rows.`,
+      `Table ${tableName} restored ${String(affectedRows)} of ${String(table.rowCount)} rows.`,
       "Discard the destination and retry into a fresh migrated database.",
     );
   }
-  return result.affectedRows;
+  return affectedRows;
 }
 
 async function restoreDeferredColumns(

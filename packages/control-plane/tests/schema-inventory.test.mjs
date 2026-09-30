@@ -11,6 +11,19 @@ import {
 } from "../dist/src/index.js";
 import { withMigratedDatabase } from "./support/pglite.mjs";
 
+const CAPABILITY_WRITTEN_TABLES = [
+  "cloud_media_render_recoveries",
+  "hosted_api_render_recoveries",
+  "hosted_api_render_io_recoveries",
+  "hosted_api_render_input_recoveries",
+  "hosted_api_first_render_input_recoveries",
+  "hosted_api_second_render_process_recoveries",
+  "hosted_api_third_render_signal_recoveries",
+  "hosted_api_fourth_render_output_recoveries",
+  "hosted_api_local_render_recoveries",
+  "hosted_render_only_runs",
+];
+
 const REQUIRED_CUSTOM_INDEXES = [
   "assets_binary_sha256_idx",
   "assets_canonical_document_sha256_idx",
@@ -297,12 +310,17 @@ test("the migration exposes the expected tables, indexes, foreign keys, and inva
               EXISTS (
                 SELECT 1 FROM pg_trigger guard
                  WHERE guard.tgrelid = relation.oid
-                   AND guard.tgname = left(relation.relname || '_tenant_write_guard', 63)
+                   AND guard.tgfoid = 'public.videoforge_assert_tenant_write()'::regprocedure
               ) AS has_write_guard,
               EXISTS (
                 SELECT 1 FROM pg_policy policy
                  WHERE policy.polrelid = relation.oid
-                   AND policy.polname = left(relation.relname || '_tenant_rls', 63)
+                   AND (policy.polname = left(relation.relname || '_tenant_rls', 63)
+                     OR (pg_get_expr(policy.polqual,policy.polrelid) =
+                       '(account_id = videoforge_current_account_id())'
+                       AND coalesce(pg_get_expr(policy.polwithcheck,policy.polrelid),
+                         pg_get_expr(policy.polqual,policy.polrelid)) =
+                         '(account_id = videoforge_current_account_id())'))
               ) AS has_policy,
               EXISTS (
                 SELECT 1 FROM pg_policy policy
@@ -336,7 +354,17 @@ test("the migration exposes the expected tables, indexes, foreign keys, and inva
         );
         continue;
       }
-      assert.ok(row.has_write_guard, `${row.table_name} must carry the tenant write guard`);
+      if (CAPABILITY_WRITTEN_TABLES.includes(row.table_name)) {
+        const privileges = await executor.query(
+          `SELECT has_table_privilege('videoforge_v209_runtime_dc9612d6',$1,'INSERT') AS insert,
+                  has_table_privilege('videoforge_v209_runtime_dc9612d6',$1,'UPDATE') AS update,
+                  has_table_privilege('videoforge_v209_runtime_dc9612d6',$1,'DELETE') AS delete`,
+          [row.table_name],
+        );
+        assert.deepEqual(privileges.rows, [{ insert: false, update: false, delete: false }]);
+      } else {
+        assert.ok(row.has_write_guard, `${row.table_name} must carry the tenant write guard`);
+      }
       assert.ok(row.has_policy, `${row.table_name} must declare its tenant policy`);
       assert.equal(
         row.has_owner_only_policy,
@@ -355,7 +383,7 @@ test("the migration exposes the expected tables, indexes, foreign keys, and inva
               EXISTS (
                 SELECT 1 FROM pg_trigger guard
                  WHERE guard.tgrelid = relation.oid
-                   AND guard.tgname = left(relation.relname || '_tenant_write_guard', 63)
+                   AND guard.tgfoid = 'public.videoforge_assert_tenant_write()'::regprocedure
               ) AS has_write_guard
          FROM pg_class relation
          JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace

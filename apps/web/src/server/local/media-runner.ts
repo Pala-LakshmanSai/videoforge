@@ -508,7 +508,10 @@ async function verifyPinnedTools(
   if (!ffprobeVersion.stdout.startsWith(`ffprobe version ${FFMPEG_VERSION} `)) {
     throw new Error(`Local FFprobe must be pinned to ${FFMPEG_VERSION}.`);
   }
-  if (!whisper.includes(`/whisper-cpp/${WHISPER_VERSION}/`)) {
+  if (
+    !whisper.includes(`/whisper-cpp/${WHISPER_VERSION}/`) &&
+    !whisper.includes(`/whisper.cpp/${WHISPER_VERSION}/`)
+  ) {
     throw new Error(`Local whisper.cpp must be pinned to ${WHISPER_VERSION}.`);
   }
   return Object.freeze({ ffmpegSha256, ffprobeSha256, whisperSha256 });
@@ -1238,6 +1241,7 @@ export class LocalMediaPipelineRunner implements LocalSliceRunner {
         avatar_repair_profile_id: null,
         avatar_quality_profile_id: null,
       },
+      spend_cap_usd: null,
       scheduler_version: "scheduler-v2",
       scheduler_seed: request.createRequest.user_seed ?? 982_341,
       prompt_writer_version: "fixture-prompt-writer-v1",

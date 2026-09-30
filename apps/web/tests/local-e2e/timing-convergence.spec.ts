@@ -237,11 +237,16 @@ test("installed Chrome inspects and accepts the restart-safe real-audio timeline
     await element.play();
     await new Promise<void>((resolve, reject) => {
       const timeout = window.setTimeout(
-        () => reject(new Error("Downloaded playback did not advance.")),
-        10_000,
+        () => reject(new Error("Downloaded playback did not reach the end.")),
+        60_000,
       );
       const poll = () => {
-        if (element.currentTime > 0.1) {
+        if (element.error) {
+          window.clearTimeout(timeout);
+          reject(new Error("Downloaded playback reported a media error."));
+          return;
+        }
+        if (element.ended) {
           window.clearTimeout(timeout);
           resolve();
           return;

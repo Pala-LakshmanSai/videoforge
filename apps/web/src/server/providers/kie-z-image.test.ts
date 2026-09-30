@@ -67,9 +67,9 @@ describe("Kie z-image task client", () => {
       .fn<typeof fetch>()
       .mockResolvedValueOnce(json({ code: 200, data: { taskId: "task_800" } }));
     const client = new KieZImageClient("test-key", fetchPort);
-    await expect(
-      client.create({ prompt: "x".repeat(800), aspectRatio: "1:1" }),
-    ).resolves.toBe("task_800");
+    await expect(client.create({ prompt: "x".repeat(800), aspectRatio: "1:1" })).resolves.toBe(
+      "task_800",
+    );
     await expect(
       client.create({ prompt: "x".repeat(801), aspectRatio: "1:1" }),
     ).rejects.toMatchObject({ code: "INPUT_INVALID" });
@@ -77,9 +77,8 @@ describe("Kie z-image task client", () => {
   });
 
   it("keeps the default global fetch separate from the client receiver", async () => {
-    let fetchReceiver: unknown;
     const nativeFetch = vi.spyOn(globalThis, "fetch").mockImplementation(function (this: unknown) {
-      fetchReceiver = this;
+      expect(this).not.toBeInstanceOf(KieZImageClient);
       return Promise.resolve(json({ code: 200, data: { taskId: "task_1" } }));
     });
     try {
@@ -87,7 +86,6 @@ describe("Kie z-image task client", () => {
         new KieZImageClient("test-key").create({ prompt: "A mountain", aspectRatio: "1:1" }),
       ).resolves.toBe("task_1");
       expect(nativeFetch).toHaveBeenCalledOnce();
-      expect(fetchReceiver).not.toBeInstanceOf(KieZImageClient);
     } finally {
       nativeFetch.mockRestore();
     }

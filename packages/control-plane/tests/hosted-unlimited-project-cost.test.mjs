@@ -1,17 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PGlite } from "@electric-sql/pglite";
-
-import { applyMigrations } from "../dist/src/index.js";
-import { loadMigrationSources, PGliteExecutor } from "./support/pglite.mjs";
+import { createMigratedDatabase } from "./support/pglite.mjs";
 
 test("0086 makes NULL the unlimited project cost representation without weakening accounting", async () => {
-  const database = new PGlite();
+  const { database, executor } = await createMigratedDatabase();
   try {
-    const executor = new PGliteExecutor(database);
-    await applyMigrations(executor, await loadMigrationSources());
-
     const column = await executor.query(
       `SELECT is_nullable
          FROM information_schema.columns

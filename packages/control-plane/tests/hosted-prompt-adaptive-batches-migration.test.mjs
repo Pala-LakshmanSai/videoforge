@@ -527,7 +527,7 @@ test("0194 binds fresh adaptive prompt runs to the v2 operation and scaled reser
     );
     assert.deepEqual(durable.rows, [
       {
-        revision: 6,
+        revision: 7,
         profile_model: "google:gemini@3.5-flash",
         profile_operation: "scene-prompt-writer-v2",
         attempt_operation: "scene-prompt-writer-v2",
@@ -570,7 +570,7 @@ test("0194 fails closed before task or reservation when the v2 profile drifts", 
       `INSERT INTO execution_profiles (
          id, account_id, workspace_id, name, revision, lane, state, dispatch_target,
          configuration, configuration_hash, maximum_rate_micro_usd, checked_at, created_at
-       ) VALUES ($1,$2,$3,'Hosted Runware scene prompts',6,'PROMPT','TESTED','RUNWARE',
+       ) VALUES ($1,$2,$3,'Hosted Runware scene prompts',7,'PROMPT','TESTED','RUNWARE',
          $4::jsonb,'sha256:'||encode(digest(convert_to(($4::jsonb)::text,'UTF8'),'sha256'), 'hex'),
          2000000,$5,$5)`,
       [

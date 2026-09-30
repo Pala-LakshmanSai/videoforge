@@ -1,8 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PGlite } from "@electric-sql/pglite";
-
 import {
   applyMigrations,
   INTERNAL_VIEW_NAMES,
@@ -12,12 +10,12 @@ import {
   SCHEMA_REGISTRY_TABLE_NAMES,
   TENANT_VIEW_NAMES,
 } from "../dist/src/index.js";
-import { loadMigrationSources, PGliteExecutor, sha256 } from "./support/pglite.mjs";
+import { createFixtureDatabase, loadMigrationSources, sha256 } from "./support/pglite.mjs";
 
 async function withDatabase(work) {
-  const database = new PGlite();
+  const { database, executor } = await createFixtureDatabase();
   try {
-    return await work(new PGliteExecutor(database));
+    return await work(executor);
   } finally {
     await database.close();
   }
@@ -214,7 +212,7 @@ test("a hostile search_path cannot relocate migration objects outside public", a
         ...SCHEMA_REGISTRY_TABLE_NAMES,
         ...NON_PORTABLE_TABLE_NAMES,
         ...TENANT_VIEW_NAMES,
-  ...INTERNAL_VIEW_NAMES,
+        ...INTERNAL_VIEW_NAMES,
         MIGRATION_TABLE_NAME,
       ].sort(),
     );

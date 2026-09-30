@@ -41,17 +41,15 @@ test("0187 demotes the superseded scene-batch task before inserting the redispat
   assert.match(migration, /redispatch_count=run\.redispatch_count\+1/u);
 });
 
-test("0187 is the manifest tail and its file hash matches the committed sha256", () => {
+test("0187 is registered in the manifest and its file hash matches the committed sha256", () => {
   const manifest = JSON.parse(
     readFileSync(new URL("../migrations/manifest.json", import.meta.url), "utf8"),
   );
-  const tail = manifest.migrations.at(-1);
+  const tail = manifest.migrations.find((entry) => entry.version === 187);
+  assert.ok(tail);
   assert.equal(tail.version, 187);
   assert.equal(tail.name, "hosted_prompt_redispatch_supersedes_scene_batch_tasks");
-  assert.equal(
-    tail.filename,
-    "0187_hosted_prompt_redispatch_supersedes_scene_batch_tasks.sql",
-  );
+  assert.equal(tail.filename, "0187_hosted_prompt_redispatch_supersedes_scene_batch_tasks.sql");
   const digest = `sha256:${createHash("sha256").update(readFileSync(migrationUrl)).digest("hex")}`;
   assert.equal(tail.sha256, digest);
 });

@@ -24,13 +24,11 @@ import {
   trustedTenantScope,
 } from "../dist/src/index.js";
 import { createPGliteControlPlaneRepositories } from "../dist/src/adapters/index.js";
-import { PGlite } from "@electric-sql/pglite";
 import { IDS, seedLockedProjects } from "./support/fixtures.mjs";
 import {
+  createFixtureDatabase,
   expectDatabaseError,
   FIXED_TIME,
-  loadMigrationSources,
-  PGliteExecutor,
   sha256,
   uuid,
   withMigratedDatabase,
@@ -362,10 +360,8 @@ test("built-in presets are globally readable and immutable while user presets st
 });
 
 test("an upgraded database keeps pre-V2 rows in the inaccessible legacy scope", async () => {
-  const database = new PGlite();
+  const { database, executor, sources } = await createFixtureDatabase();
   try {
-    const executor = new PGliteExecutor(database);
-    const sources = await loadMigrationSources();
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),

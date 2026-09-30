@@ -5,7 +5,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { PGlite } from "@electric-sql/pglite";
 import { canonicalizeJson } from "@videoforge/contracts";
 
 import {
@@ -23,8 +22,7 @@ import { HASHES, IDS, seedLockedProjects } from "./support/fixtures.mjs";
 import {
   createMigratedDatabase,
   FIXED_TIME,
-  loadMigrationSources,
-  PGliteExecutor,
+  createFixtureDatabase,
   sha256,
   uuid,
 } from "./support/pglite.mjs";
@@ -538,10 +536,8 @@ test("accepted prompt authority survives metadata restore and fresh-process repl
 });
 
 test("migrations 0009 onward upgrade live migration-0008 prompt authority and execute", async () => {
-  const database = new PGlite();
+  const { database, executor, sources } = await createFixtureDatabase();
   try {
-    const executor = new PGliteExecutor(database);
-    const sources = await loadMigrationSources();
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations (
          version integer PRIMARY KEY CHECK (version > 0),

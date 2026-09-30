@@ -5661,15 +5661,24 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               tone="success"
             />
             <Metric
-              label="Wall elapsed"
+              label={render?.render_only_run ? "Wall elapsed" : "Total elapsed"}
               value={
-                <HostedElapsed
-                  since={render?.render_only_run ? render.created_at : query.data.project.created_at}
-                  until={render?.state === "SUCCEEDED" ? render.terminal_at : null}
-                  label="Wall elapsed time"
-                />
+                render?.render_only_run ? (
+                  <HostedElapsed
+                    since={render.created_at}
+                    until={render.state === "SUCCEEDED" ? render.terminal_at : null}
+                    label="Wall elapsed time"
+                  />
+                ) : (
+                  <HostedElapsed
+                    since={null}
+                    until={null}
+                    intervals={stageTimings}
+                    label="Total elapsed time"
+                  />
+                )
               }
-              detail="includes waits"
+              detail={render?.render_only_run ? "includes waits" : "numbered stages"}
             />
           </div>
           {cloudFinalPhasePending ? null : <ProgressBar value={overallProgress} label="Overall video progress" />}

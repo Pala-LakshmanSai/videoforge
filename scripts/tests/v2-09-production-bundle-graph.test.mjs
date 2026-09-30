@@ -26,7 +26,9 @@ test("production Worker graph includes only the exact hosted entry capabilities"
     "../src/server/hosted/app",
     "../src/server/hosted/configuration",
     "../src/server/hosted/retention",
+    "../src/server/hosted/stage-continuation-sweep",
     "../src/server/hosted/worker-version",
+    "./hosted-continuation-workflow",
     "./hosted-pair-workflow",
     "./hosted-workflow",
   ]);

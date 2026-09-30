@@ -1,0 +1,249 @@
+{
+  "checkpoint": "V2-09",
+  "task": "VF-10-09",
+  "date": "2026-09-30",
+  "status": "LOCAL_FUNCTIONALITY_VERIFIED_REVIEWABLE_RELEASE_READY",
+  "checkout_commit": "f9b9283ca662e73c0ba276741db22521c3b65357",
+  "changes_committed": false,
+  "scope": "Existing dirty checkout preserved; no deployment or production mutation.",
+  "repairs": [
+    "Ordinary project total elapsed sums numbered stage timers; render-only attempts retain their fresh-attempt wall timer.",
+    "Project-detail PGlite fixture includes the real timeline frame columns and verifies projected frame counts.",
+    "Kie test mock no longer violates the lint rule against aliasing this.",
+    "Local doctor recognizes both Homebrew whisper.cpp and whisper-cpp 1.8.4 paths.",
+    "Fixture migration bootstrap provides pgcrypto and the named runtime/reconciler roles, restores immutable omitted continuation prerequisites before their registered grants, and resets tenant FK children while preserving operator endpoint configuration. Registered migration SQL and ledger hashes remain intact.",
+    "Hosted Chrome checks follow the current installer and saved-prompt disclosures.",
+    "Provider routing, project-kind visibility, and prompt-dispatch assertions follow the current UI and extracted source ownership.",
+    "Cloud media tables are represented in the runtime grant inventory; no live grant change is claimed.",
+    "Installed Chrome acceptance follows current preset/style/Settings/queue wording and disclosures; privacy, mutation idempotency, geometry, download/decode/checksum and keyboard assertions are retained.",
+    "Output catalog attestation reuses the actual migrated Node fixture instead of duplicating incomplete migration replay.",
+    "Historical production bridge test uses the exact already-published Mage successor from retained September 15 publication evidence; wrong-image rejection remains tested.",
+    "Deployment-script regression checks now verify transaction-local tenant scope, exact SELECT-only API job grants, the established continuation Workflow graph, and terminal REST inventory with optional status. Active/unknown/conflicting states remain rejected.",
+    "Real local media runner recognizes both pinned Homebrew Whisper binary spellings and supplies the required nullable spend_cap_usd contract field.",
+    "Local /api/v2/queue reuses the existing admitted private queue projection; generation is no longer disabled by a missing queue endpoint.",
+    "Database test bootstrap reuses real pgcrypto and immutable continuation prerequisites, including upgrade and migration-hardening fixtures; counterfeit crypto shims removed.",
+    "Metadata vocabulary and restore order include current prompt claims, consumed recovery evidence, and render-only lineage. Ephemeral enrollment authority and cron diagnostics remain outside portable snapshots.",
+    "Metadata restore sets transaction-local account scope per tenant row group, restores the prior scope, and retains artifact security guards, exact checksum verification, and rollback.",
+    "Schema inventory checks actual tenant guard function and tenant policy semantics; capability-written tables are additionally checked for absence of runtime INSERT/UPDATE/DELETE privileges.",
+    "Historical fixture assertions verify their registered migration hashes, current prompt profile, immutable capability lineage, supported span bounds, and separately guarded Workflow launch.",
+    "Dependency vulnerabilities removed with exact patched versions; Vitest migrated to its maintained patched major, and Node compatibility types made explicit for the Worker check.",
+    "Child shutdown regression waits for registered signal-handler readiness, verifies signal forwarding and child disappearance, and accepts the launcher documented signal exit code.",
+    "Exact patched production and staging bundle measurements rebaseline the no-growth ceiling; one-byte overflow rejection and graph/quarantine/CPU bounds remain tested."
+  ],
+  "validation": {
+    "focused_ui_project_detail_kie": {
+      "passed": 161
+    },
+    "hosted_chrome": {
+      "passed": 3
+    },
+    "cloudflare_local_runtime": {
+      "passed": 1
+    },
+    "routing_visibility_product": {
+      "passed": 106
+    },
+    "web_and_worker_typecheck": "PASS",
+    "changed_file_lint": "PASS",
+    "production_build_and_bundle_firewall": "PASS after all application edits; no deployment",
+    "diff_check": "PASS",
+    "failed_suite_recheck_before_stale_assertion_repairs": {
+      "passed": 142,
+      "failed": 20,
+      "total": 162
+    },
+    "broad_web_rerun": "Earlier interrupted stdout was unavailable; a fresh complete JSON-reported run supplies broad_web_final.",
+    "installed_chrome_full": {
+      "passed": 44,
+      "failed": 0,
+      "scope": "provider-free fixture, desktop and compact installed Chrome; eight viewport widths; two-account private runtime through MP4 download/decode/checksum"
+    },
+    "durable_fixture_runtime": {
+      "passed": 5
+    },
+    "output_catalog_and_barrier": {
+      "passed": 12
+    },
+    "historical_production_bridge_after_identity_repair": {
+      "passed": 8,
+      "failed": 0
+    },
+    "broad_web_final": {
+      "passed": 2526,
+      "failed": 8,
+      "skipped": 1,
+      "total": 2535,
+      "scope": "Run started before historical production bridge test repair. Seven failures belong to that file, which subsequently passed all eight tests. One V2-07 immutable-lineage test remains failing. No new full-suite green count is inferred."
+    },
+    "deployment_scripts_broad": {
+      "passed": 543,
+      "failed": 28,
+      "skipped": 1,
+      "total": 572,
+      "scope": "Complete run before four subsequent stale-check repairs; no fresh broad green count inferred."
+    },
+    "deployment_scripts_repaired_focus": {
+      "passed": 31,
+      "failed": 0,
+      "files": [
+        "v2-06-activation-safety.test.mjs",
+        "v2-06-neon-runtime-grants.test.mjs",
+        "v2-09-production-bundle-graph.test.mjs",
+        "v2-13-per-mutation-admission.test.mjs"
+      ]
+    },
+    "changed_formatting": "PASS after formatting two changed files; remaining checked files already passed",
+    "local_doctor": "PASS all checks, including pinned Whisper model",
+    "context_and_schema": "PASS with existing read-profile word-budget warnings",
+    "real_local_slice": {
+      "status": "PASS",
+      "duration_ms": 37167,
+      "frames": 1115,
+      "byte_size": 2074299,
+      "sha256": "c865c77e7c22c9000389dec14464722ff0a30e51eaab877a40c482048866a2b3",
+      "download_sha256_matches": true,
+      "evidence": "2026-09-30-local-render-acceptance.json",
+      "scope": "Actual owned narration, real Whisper and FFmpeg, synthetic owned visuals/avatar; no AI generation or editorial/provider proof."
+    },
+    "local_chrome": {
+      "passed": 1,
+      "scope": "Installed Chrome after patched dependencies: create/transcribe/render/review/approve/download, exact byte checksum, seek and natural complete downloaded playback to ended."
+    },
+    "installed_chrome_full_after_dependency_updates": {
+      "passed": 44,
+      "failed": 0,
+      "scope": "Desktop and compact provider-free fixture, eight viewport widths, tenant isolation, queue/recovery/presets/keyboard and downloaded MP4 decode/checksum."
+    },
+    "control_plane_final": {
+      "passed": 632,
+      "failed": 0,
+      "skipped": 11,
+      "total": 643,
+      "scope": "Full fresh run with installed patched dependencies; PostgreSQL environment gates skipped."
+    },
+    "web_with_patched_test_runner": {
+      "passed": 2532,
+      "failed": 2,
+      "skipped": 1,
+      "total": 2535,
+      "scope": "One historical activation identity mismatch remains. The second failure was a child-startup/launcher-exit assertion; its corrected entire 64-test file subsequently passed. No new full-suite total is inferred."
+    },
+    "shutdown_orchestrator_after_repair": {
+      "passed": 64,
+      "failed": 0
+    },
+    "other_packages_after_updates": {
+      "tasks_passed": 20,
+      "tasks_total": 20,
+      "pipeline_tests_passed": 201,
+      "scope": "Build/lint/typecheck/tests for config/contracts/pipeline/provider-sandbox/test-fixtures, with local cache reuse."
+    },
+    "security_dependencies": {
+      "before": {
+        "high": 13,
+        "moderate": 13,
+        "low": 3,
+        "critical": 0
+      },
+      "after": {
+        "high": 0,
+        "moderate": 0,
+        "low": 0,
+        "critical": 0
+      },
+      "patched_versions": {
+        "fast-uri": "3.1.8",
+        "sharp": "0.35.4",
+        "js-yaml": "4.3.2",
+        "undici": "7.29.1",
+        "brace-expansion@1": "1.1.21",
+        "brace-expansion@2": "2.1.7",
+        "hono": "4.13.5",
+        "vitest": "4.1.11"
+      },
+      "primary_advisories": [
+        "https://github.com/fastify/fast-uri/security/advisories/GHSA-qw65-cvwx-89v3",
+        "https://github.com/vitest-dev/vitest/security/advisories/GHSA-82fw-gwwq-j7x9"
+      ],
+      "scope": "Installed local lockfile scan, not a claim that hosted production already uses the fixes."
+    },
+    "current_web_and_worker_typecheck": "PASS after explicit Node types",
+    "current_workspace_lint": "PASS",
+    "bundle_firewall_and_invite_after_updates": {
+      "passed": 29,
+      "failed": 0
+    },
+    "bundle_measurements": {
+      "dist-cloudflare": {
+        "static_bytes": 2784389,
+        "files": [
+          {
+            "file": "assets/index-T80cGG8x.js",
+            "bytes": 2784156,
+            "sha256": "9d5eb3bd119e8d95ca074b1309602365e177aa923a0337e39895b99d76af2fd3"
+          },
+          {
+            "file": "index.js",
+            "bytes": 233,
+            "sha256": "16851194159daa3e9c6bdb65a7842e4c1e68ca7130f598b0c0f01a8cb753c34a"
+          }
+        ],
+        "quarantine": "PASS"
+      },
+      "dist-cloudflare-staging": {
+        "static_bytes": 2781773,
+        "files": [
+          {
+            "file": "assets/index-4SJbMWSW.js",
+            "bytes": 2781580,
+            "sha256": "9706ee3908f792a364b099941a0cd36012b1aab3d385435a10888b297c6230a4"
+          },
+          {
+            "file": "index.js",
+            "bytes": 193,
+            "sha256": "5307535c1ab329ec284125c8f28a56a073036a2c8311e13fb3b4ed2f312004e1"
+          }
+        ],
+        "quarantine": "PASS"
+      }
+    }
+  },
+  "blockers": [
+    "Historical V2-07 activation image/config lineage and immutable Mage/SoulX source-overlay identities remain unreconciled; their guards were not weakened.",
+    "Real PostgreSQL qualification is skipped without the configured PostgreSQL environment/Docker daemon. The full local PGlite suite is green; live schema/ledger/grants were not changed.",
+    "Fresh full provider/editorial production acceptance and the final retained long-video Chrome tail remain open.",
+    "The repaired source and security dependencies require a reviewed production release; no deployment has occurred in this audit."
+  ],
+  "disk": {
+    "available_gib_observed": 2.2,
+    "local_runtime_headroom_floor_gib": 2
+  },
+  "provider_spend_usd": 0,
+  "paid_compute": "None launched in this audit; current global provider inventory not queried.",
+  "next": "Finish validating the isolated release from published source 2cea7e58, commit only audit repairs, then obtain the exact external publication authority required by AGENTS.md. Paid provider acceptance remains separately bounded.",
+  "model_download_authority": "User authorized continuation and necessary redo work after freeing disk space; pinned local model downloaded and checksum verified. No paid provider calls.",
+  "remaining_script_failure_categories": [
+    "Historical migration manifest/source-closure identity drift",
+    "Historical browser deployment lineage drift",
+    "Real PostgreSQL tests require unavailable Docker daemon",
+    "Incomplete legacy fixture imports and pgcrypto setup",
+    "Outdated desktop documentation and operator-grant assertions"
+  ],
+  "release_preparation": {
+    "path": "/Users/lakshmansai/.codex/worktrees/app-functional-audit/videoforge",
+    "branch": "codex/app-functional-audit",
+    "base_commit": "2cea7e581c79107fc0cd43d14f3837849a76882e",
+    "status": "VALIDATED_NOT_PUBLISHED",
+    "remote_mutation": false,
+    "validation": {
+      "focused_app": 170,
+      "metadata_restore": 17,
+      "deployment_safety": 48,
+      "local_chrome_full_playback": 1,
+      "web_worker_typecheck": "PASS",
+      "build": "PASS; emitted build plus exact bundle firewall recheck",
+      "schema_migrations_changed": false,
+      "scope": "Only audit repairs applied to published source; unrelated main checkout changes excluded."
+    }
+  }
+}

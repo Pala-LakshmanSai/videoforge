@@ -30,11 +30,12 @@ test("0190 closes only the exact unknown Fal task after confirmed empty history"
   assert.doesNotMatch(sql, /videoforge_settle_hosted_api_failure/u);
 });
 
-test("0190 is manifest tail and digest matches migration contents", () => {
+test("0190 is registered in the manifest and digest matches migration contents", () => {
   const manifest = JSON.parse(
     readFileSync(new URL("../migrations/manifest.json", import.meta.url), "utf8"),
   );
-  const tail = manifest.migrations.at(-1);
+  const tail = manifest.migrations.find((entry) => entry.version === 190);
+  assert.ok(tail);
   assert.equal(tail.version, 190);
   assert.equal(tail.name, "hosted_api_unknown_no_task_reconciliation");
   assert.equal(tail.filename, "0190_hosted_api_unknown_no_task_reconciliation.sql");

@@ -338,7 +338,6 @@ for (const [name, overrides] of [
 test("raw inventory rejects every missing, unknown, active, or conflicting pod and worker state", () => {
   for (const pod of [
     {},
-    { desiredStatus: "EXITED" },
     { desiredStatus: "UNKNOWN", status: "UNKNOWN" },
     { desiredStatus: "RUNNING", status: "RUNNING" },
     { desiredStatus: "EXITED", status: "RUNNING" },
@@ -389,10 +388,18 @@ test("raw inventory rejects every missing, unknown, active, or conflicting pod a
     }),
     expected,
   );
+  assert.deepEqual(
+    validateRunPodPerMutationRawComputeInventory({
+      pods: [{ desiredStatus: "EXITED" }],
+      endpoints: [{ ...endpoint, workers: [{ desiredStatus: "TERMINATED" }] }],
+      templates,
+      expectedEndpointBindings: expected,
+    }),
+    expected,
+  );
   for (const workers of [
     undefined,
     [{}],
-    [{ desiredStatus: "EXITED" }],
     [{ desiredStatus: "UNKNOWN", status: "UNKNOWN" }],
     [{ desiredStatus: "RUNNING", status: "RUNNING" }],
   ])

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { chmod, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   assertV207DiskHeadroom,
@@ -2248,9 +2248,14 @@ describe("V2-07 live orchestrator", () => {
     const root = await mkdtemp("/tmp/vf-v207-child-");
     roots.push(root);
     const scriptPath = join(root, "signal-handler.ts");
+    const readyPath = join(root, "ready");
     await writeFile(
       scriptPath,
-      'process.on("SIGTERM", () => { process.stdout.write("SIGTERM_HANDLED"); process.exit(0); });\nsetInterval(() => {}, 1000);\n',
+      `import { writeFileSync } from "node:fs";
+process.on("SIGTERM", () => { process.stdout.write("SIGTERM_HANDLED"); process.exit(0); });
+writeFileSync(${JSON.stringify(readyPath)}, String(process.pid));
+setInterval(() => {}, 1000);
+`,
     );
     const controller = new AbortController();
     const child = spawnV207Command({
@@ -2260,12 +2265,20 @@ describe("V2-07 live orchestrator", () => {
       env: { PATH: process.env.PATH },
       signal: controller.signal,
     });
-    await new Promise<void>((resolveSleep) => setTimeout(resolveSleep, 500));
+    await vi.waitFor(
+      async () => {
+        await readFile(readyPath, "utf8");
+      },
+      { timeout: 3_000 },
+    );
     controller.abort();
     const childResult = await child;
-    expect(childResult.exitCode).toBe(0);
+    // tsx may report the forwarded signal as 128 + SIGTERM after the script exits cleanly.
+    expect([0, 143]).toContain(childResult.exitCode);
     expect(childResult.signal).toBeNull();
     expect(childResult.stdout).toBe("SIGTERM_HANDLED");
+    const scriptPid = Number(await readFile(readyPath, "utf8"));
+    expect(() => process.kill(scriptPid, 0)).toThrow();
   });
 
   it("runs rollback and secret cleanup after the qualification child is SIGTERM-terminated", async () => {

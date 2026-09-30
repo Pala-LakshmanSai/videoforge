@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PGlite } from "@electric-sql/pglite";
 import { applyMigrations } from "../dist/src/index.js";
-import { loadMigrationSources, PGliteExecutor } from "./support/pglite.mjs";
+import { createFixtureDatabase } from "./support/pglite.mjs";
 
 const account = "11111111-1111-4111-8111-111111111111";
 const workspace = "22222222-2222-4222-8222-222222222222";
@@ -11,10 +10,8 @@ const request = "33333333-3333-4333-8333-333333333333";
 const digest = (c) => `sha256:${c.repeat(64)}`;
 
 test("0044 pins pgcrypto HMAC and rejects forged and cross-scope proofs before persistence", async () => {
-  const database = new PGlite();
+  const { database, executor, sources } = await createFixtureDatabase();
   try {
-    const executor = new PGliteExecutor(database);
-    const sources = await loadMigrationSources();
     const migration = sources.find((source) => source.version === 44)?.sql ?? "";
     assert.match(migration, /encode\(hmac\(convert_to\(public\.videoforge_canonical_jsonb\(/u);
     assert.match(migration, /decode\(proof_secret,'hex'\),'sha256'\),'hex'\)/u);

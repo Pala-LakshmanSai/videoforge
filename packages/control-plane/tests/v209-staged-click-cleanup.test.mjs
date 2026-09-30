@@ -571,10 +571,10 @@ test("0084 closes commit, Workflow launch, reconciliation, and claim after stage
     const createLock = productSource.indexOf("FOR UPDATE OF create_request", commitStart);
     const projectLock = productSource.indexOf("FOR UPDATE OF project", createLock + 1);
     assert.ok(commitStart >= 0 && createLock > commitStart && projectLock > createLock);
-    assert.match(
-      appSource,
-      /attempt\.state='PLANNED' AND project\.status='ACTIVE'.*FOR UPDATE OF project,attempt/su,
-    );
+    assert.match(appSource, /project\.status='ACTIVE'.*FOR UPDATE OF project,attempt/su);
+    const stateGuard = appSource.indexOf('if (launchable.rows[0].state !== "PLANNED")');
+    const workflowStart = appSource.indexOf("await startHostedCpuWorkflow", stateGuard);
+    assert.ok(stateGuard >= 0 && workflowStart > stateGuard);
     assert.match(
       workerSource,
       /attempt\.state = 'OUTBOXED'.*project\.status='ACTIVE'.*FOR UPDATE OF project,attempt SKIP LOCKED/su,

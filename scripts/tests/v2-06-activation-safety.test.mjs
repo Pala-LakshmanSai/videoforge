@@ -109,20 +109,20 @@ test("V2-06 personal-worker recovery only updates columns present on hosted atte
   assert.doesNotMatch(recoveryUpdate[0], /failure_code\s*=/u);
 });
 
-test("V2-06 lease routes establish tenant scope in the same PostgreSQL statement", async () => {
+test("V2-06 lease routes establish tenant scope in the same PostgreSQL transaction", async () => {
   const source = await read("apps/web/src/server/hosted/personal-worker.ts");
   for (const functionName of ["activeLease", "leaseHeartbeat", "terminalLeaseForCompletion"]) {
     assert.match(
       source,
       new RegExp(
-        `async function ${functionName}\\([\\s\\S]{0,3000}WITH tenant_scope AS MATERIALIZED`,
+        `async function ${functionName}\\([\\s\\S]{0,3000}\\.transaction\\(async \\(transaction\\) => \\{\\s+await transaction\\.query\\("SELECT set_config\\(\\$1, \\$2, true\\)", \\[\\s+"videoforge\\.account_id",[\\s\\S]{0,100}return transaction\\.query`,
         "u",
       ),
     );
   }
   assert.match(
     source,
-    /WITH tenant_scope AS MATERIALIZED \([\s\S]*?FROM hosted_cpu_upload_authorities/u,
+    /const expectedResultQuery = await createNeonExecutor\(pool\)\.transaction\([\s\S]{0,500}SELECT set_config\(\$1, \$2, true\)[\s\S]{0,300}lease\.accountId[\s\S]{0,400}FROM hosted_cpu_upload_authorities/u,
   );
 });
 

@@ -6,7 +6,13 @@ import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 
-import { expectDatabaseError, PGliteExecutor, sha256, uuid } from "./support/pglite.mjs";
+import {
+  createFixtureDatabase,
+  expectDatabaseError,
+  PGliteExecutor,
+  sha256,
+  uuid,
+} from "./support/pglite.mjs";
 
 async function sources() {
   const manifest = JSON.parse(
@@ -315,10 +321,8 @@ test("retained 0045 upgrades through 0046 and replays old disabled/cleanup evide
 });
 
 test("0046 keeps cleanup bridge and receipt identity across restart for every safety operation", async () => {
-  const database = new PGlite({ extensions: { pgcrypto } });
+  const { database, executor } = await createFixtureDatabase();
   try {
-    await database.exec("CREATE EXTENSION IF NOT EXISTS pgcrypto");
-    const executor = new PGliteExecutor(database);
     const migrations = await sources();
     await executor.execute(
       `CREATE TABLE public.videoforge_schema_migrations(

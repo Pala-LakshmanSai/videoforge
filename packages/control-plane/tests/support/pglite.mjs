@@ -22,8 +22,9 @@ const DEPLOYMENT_ROLES = Object.freeze([
 ]);
 
 export class PGliteExecutor {
-  constructor(database) {
+  constructor(database, migrationPrerequisites = new Map()) {
     this.database = database;
+    this.migrationPrerequisites = migrationPrerequisites;
     // Seeded once per executor, before the first statement it runs, and only for a top-level
     // executor: a transaction-scoped executor must leave the transaction's first statement to the
     // caller (a fixture that opens with SET TRANSACTION ISOLATION LEVEL cannot have a role check run
@@ -46,6 +47,8 @@ export class PGliteExecutor {
 
   async execute(sql) {
     if (this.ready) await this.ready;
+    const prerequisite = this.migrationPrerequisites.get(sql);
+    if (prerequisite) await this.database.exec(prerequisite);
     await this.database.exec(sql);
   }
 
@@ -60,7 +63,9 @@ export class PGliteExecutor {
 
   async transaction(work) {
     if (this.ready) await this.ready;
-    return this.database.transaction((transaction) => work(new PGliteExecutor(transaction)));
+    return this.database.transaction((transaction) =>
+      work(new PGliteExecutor(transaction, this.migrationPrerequisites)),
+    );
   }
 }
 
@@ -78,12 +83,32 @@ export async function loadMigrationSources() {
   );
 }
 
-export async function createMigratedDatabase(dataDir) {
-  const database = new PGlite(dataDir);
-  const executor = new PGliteExecutor(database);
+export async function createFixtureDatabase(dataDir) {
+  const database = new PGlite({ dataDir, extensions: { pgcrypto } });
+  await database.exec("CREATE EXTENSION IF NOT EXISTS pgcrypto");
   const sources = await loadMigrationSources();
-  await applyMigrations(executor, sources);
+  const continuationGrants = sources.find((source) => source.version === 195);
+  assert.ok(continuationGrants, "fixture continuation grant migration is missing");
+  // Recreate deployment prerequisites omitted from the retained manifest. Keep registered SQL
+  // and ledger hashes intact; this is fixture bootstrap, not a production migration replay.
+  const prerequisites = await Promise.all(
+    [
+      "0160_hosted_continuation_heartbeats.sql",
+      "0162_hosted_continuation_tenant_scoped_sweeps.sql",
+      "0163_hosted_continuation_heartbeat_sequence.sql",
+    ].map((filename) => readFile(new URL(`../../migrations/${filename}`, import.meta.url), "utf8")),
+  );
+  const executor = new PGliteExecutor(
+    database,
+    new Map([[continuationGrants.sql, prerequisites.join("\n")]]),
+  );
   return { database, executor, sources };
+}
+
+export async function createMigratedDatabase(dataDir) {
+  const context = await createFixtureDatabase(dataDir);
+  await applyMigrations(context.executor, context.sources);
+  return context;
 }
 
 /**
@@ -112,15 +137,11 @@ export async function withMigratedDatabase(work) {
 }
 
 export async function withPgcryptoMigratedDatabase(work) {
-  const database = new PGlite({ extensions: { pgcrypto } });
+  const context = await createMigratedDatabase();
   try {
-    await database.exec("CREATE EXTENSION IF NOT EXISTS pgcrypto");
-    const executor = new PGliteExecutor(database);
-    const sources = await loadMigrationSources();
-    await applyMigrations(executor, sources);
-    return await work({ database, executor, sources });
+    return await work(context);
   } finally {
-    await database.close();
+    await context.database.close();
   }
 }
 

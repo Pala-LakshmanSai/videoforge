@@ -334,6 +334,12 @@ GRANT SELECT, INSERT, UPDATE ON
   artifact_reservations
 TO :"runtime_role";
 
+GRANT SELECT, INSERT, UPDATE ON cloud_media_reservations TO :"runtime_role";
+GRANT SELECT, INSERT ON cloud_media_jobs TO :"runtime_role";
+GRANT UPDATE(downloading_started_at, rendering_started_at, checking_started_at,
+  saving_started_at, technical_verification_ms, artifact_verification_ms, disk_metrics)
+ON cloud_media_jobs TO :"runtime_role";
+
 -- Hosted preset creation writes only the tenant-owned preset parents/versions and their immutable
 -- asset links.  Keep DELETE unavailable: removal uses the archive SECURITY DEFINER function above.
 GRANT SELECT, INSERT, UPDATE ON
@@ -354,6 +360,7 @@ GRANT SELECT ON workspaces TO :"runtime_role";
 -- narrowly scoped write capability.
 GRANT SELECT ON
   hosted_render_plans,
+  hosted_render_only_runs,
   revision_timing_heads,
   timeline_plans,
   generation_tasks,

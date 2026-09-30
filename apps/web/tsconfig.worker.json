@@ -3,7 +3,7 @@
   "compilerOptions": {
     "lib": ["ES2022"],
     "noEmit": true,
-    "types": ["@cloudflare/workers-types", "vite/client"]
+    "types": ["@cloudflare/workers-types", "node", "vite/client"]
   },
   "include": ["worker", "src/server"]
 }

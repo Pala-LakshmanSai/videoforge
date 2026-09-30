@@ -21,23 +21,7 @@ import {
 } from "./support/pglite.mjs";
 import { seedMaterialization } from "./hosted-lane-batch-materialization.test.mjs";
 
-async function seededPair(executor, productionPgcrypto = false, seedOptions = {}) {
-  // PGlite exposes digest/UUID primitives but not pgcrypto's random/envelope helpers. These
-  // provider-free test shims preserve the production function signatures, randomness, encrypted
-  // at-rest bytes, and wrong-key failure semantics exercised below.
-  if (!productionPgcrypto) {
-    await executor.execute(`CREATE FUNCTION public.gen_random_bytes(count integer) RETURNS bytea
-      LANGUAGE sql VOLATILE AS $$ SELECT decode(substring(replace(gen_random_uuid()::text,'-','')||
-        replace(gen_random_uuid()::text,'-','') FROM 1 FOR count*2),'hex') $$`);
-    await executor.execute(`CREATE FUNCTION public.pgp_sym_encrypt(data text,key text,options text)
-      RETURNS bytea LANGUAGE sql STRICT AS $$ SELECT convert_to(encode(sha256(convert_to(key,'UTF8')),'hex')||
-        ':'||reverse(data),'UTF8') $$`);
-    await executor.execute(`CREATE FUNCTION public.pgp_sym_decrypt(data bytea,key text)
-      RETURNS text LANGUAGE plpgsql STRICT AS $$ DECLARE decoded text:=convert_from(data,'UTF8');
-      expected text:=encode(sha256(convert_to(key,'UTF8')),'hex'); BEGIN
-        IF split_part(decoded,':',1)<>expected THEN RAISE EXCEPTION 'Wrong key or corrupt data'; END IF;
-        RETURN reverse(substring(decoded FROM 66)); END $$`);
-  }
+async function seededPair(executor, seedOptions = {}) {
   const seeded = await seedMaterialization(executor, { canonicalV209: true, ...seedOptions });
   await executor.transaction(async (tx) => {
     await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", IDS.accountA]);
@@ -138,6 +122,31 @@ async function seededPair(executor, productionPgcrypto = false, seedOptions = {}
       seeded.planSha256,
       lease.rows[0].id,
       JSON.stringify(lanes),
+      expiresAt,
+    ],
+  );
+  // The current token reader authenticates the same-generation candidate introduced after 0042.
+  const candidate = {
+    schemaVersion: "videoforge.hosted-v209-ordinary-dispatch/v1",
+    laneBindings: lanes,
+  };
+  await executor.query(
+    `INSERT INTO hosted_v209_ordinary_dispatch_candidates
+       (account_id,workspace_id,project_id,project_revision_id,generation_request_id,lease_id,
+        generation_plan_sha256,work_manifest_sha256,candidate_sha256,approval_id,candidate_document,expires_at)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12)`,
+    [
+      IDS.accountA,
+      IDS.workspaceA,
+      IDS.projectA,
+      IDS.revisionA,
+      seeded.generationRequestId,
+      lease.rows[0].id,
+      seeded.planSha256,
+      sha256("0042-candidate-work"),
+      sha256(canonicalizeJson(candidate)),
+      approvalId,
+      JSON.stringify(candidate),
       expiresAt,
     ],
   );
@@ -265,11 +274,13 @@ test("0042 installs only the narrow atomic pair capability", async () => {
   });
 });
 
-test("0042 raw tokens have no durable text column", async () => {
+test("0042 pair raw tokens have no durable text column", async () => {
   await withMigratedDatabase(async ({ executor }) => {
     const columns = await executor.query(
       `SELECT table_name,column_name FROM information_schema.columns
-        WHERE table_schema='public' AND column_name='dispatch_token'`,
+        WHERE table_schema='public' AND column_name='dispatch_token'
+          AND table_name IN ('serverless_attempts','serverless_dispatch_outbox',
+            'hosted_pair_runtime_states','hosted_dispatch_token_vault')`,
     );
     assert.deepEqual(columns.rows, []);
   });
@@ -318,7 +329,7 @@ test("0042 rejects empty/foreign caller work and cumulative completion-cap overf
 
 test("0042 rejects caller-matched durable work drift from the canonical V2-09 plan", async () => {
   await withMigratedDatabase(async ({ executor }) => {
-    const fixture = await seededPair(executor, false, { canonicalWorkDrift: true });
+    const fixture = await seededPair(executor, { canonicalWorkDrift: true });
     await expectDatabaseError(() => commit(executor, fixture, uuid(1_420_305)), "23514");
     const counts = await executor.query(
       `SELECT (SELECT count(*)::int FROM hosted_paid_dispatch_claims) claims,
@@ -634,7 +645,7 @@ test("0043 persists one-shot Mage SENT and refuses ghost-job absence settlement"
 
 test("0044/0082 settle render readiness and exact two-lane success cost idempotently", async () => {
   await withPgcryptoMigratedDatabase(async ({ executor }) => {
-    const fixture = await seededPair(executor, true, {
+    const fixture = await seededPair(executor, {
       rateSource: "V2-09_APPROVED_MAX_USD_1.116_GPU_HOUR",
       reservationUsd: 0.744,
       spendCeilingUsd: 1,

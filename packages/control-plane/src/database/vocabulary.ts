@@ -161,6 +161,7 @@ export const RELATIONAL_TABLE_NAMES = [
   "hosted_project_reviews",
   "hosted_voiceover_contexts",
   "hosted_prompt_runs",
+  "hosted_prompt_batch_claims",
   "hosted_prompt_batch_progress",
   "hosted_prompt_scene_progress",
   "media_worker_enrollments",
@@ -171,6 +172,15 @@ export const RELATIONAL_TABLE_NAMES = [
   "hosted_v209_span_audio_materializations",
   "hosted_v209_staged_click_reconciliations",
   "hosted_v209_ordinary_resolved_render_manifests",
+  "hosted_api_render_recoveries",
+  "hosted_api_render_io_recoveries",
+  "hosted_api_render_input_recoveries",
+  "hosted_api_first_render_input_recoveries",
+  "hosted_api_second_render_process_recoveries",
+  "hosted_api_third_render_signal_recoveries",
+  "hosted_api_fourth_render_output_recoveries",
+  "hosted_api_local_render_recoveries",
+  "hosted_render_only_runs",
 ] as const;
 
 export type RelationalTableName = (typeof RELATIONAL_TABLE_NAMES)[number];
@@ -185,6 +195,9 @@ export type SchemaRegistryTableName = (typeof SCHEMA_REGISTRY_TABLE_NAMES)[numbe
 
 /** Hosted auth rows contain credentials/tokens and rely on Neon native backup/PITR. */
 export const NON_PORTABLE_TABLE_NAMES = [
+  // Ephemeral enrollment authority and bounded cron diagnostics belong to native backup/PITR.
+  "media_worker_connect_commands",
+  "hosted_continuation_heartbeats",
   // Live provider ownership and finite spend authority must never be replayed by portable restore.
   // Neon PITR remains authoritative; reconcile exact provider inventory before enabling allocations.
   "cloud_media_budget_authorities",

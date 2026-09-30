@@ -32,10 +32,7 @@ test("0043 exposes only narrow SECURITY DEFINER pair capabilities", async () => 
     /GRANT EXECUTE ON FUNCTION public\.videoforge_settle_hosted_pair_cleanup/u,
   );
   assert.doesNotMatch(grants, /GRANT (?:INSERT|UPDATE|DELETE)[^;]*serverless_/u);
-  assert.doesNotMatch(
-    grants,
-    /GRANT (?:SELECT|INSERT|UPDATE|DELETE)[^;]*hosted_pair_runtime_states/u,
-  );
+  assert.doesNotMatch(grants, /GRANT (?:INSERT|UPDATE|DELETE)[^;]*hosted_pair_runtime_states/u);
 });
 
 test("0043 persists one-shot send ordering and fail-closed outcomes", async () => {

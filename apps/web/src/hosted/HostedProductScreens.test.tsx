@@ -1125,7 +1125,7 @@ it("shows frozen elapsed times in stage rows and the audio spanning panel", asyn
   expect(screen.getByLabelText("Assemble final video elapsed time")).toHaveTextContent("2m 30s");
   expect(screen.getByLabelText("Review and approve elapsed time")).toHaveTextContent("—");
   expect(screen.getByLabelText("Span audio elapsed time")).toHaveTextContent("1m 01s");
-  expect(screen.getByLabelText("Wall elapsed time")).toHaveTextContent("15m 00s");
+  expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent("4m 42s");
 });
 
 it.each(["KIE_FAL", "RUNPOD"] as const)(
@@ -1201,7 +1201,7 @@ it.each(["KIE_FAL", "RUNPOD"] as const)(
       expect(screen.getByLabelText("Generate avatar video elapsed time")).toHaveTextContent(
         "1m 30s",
       );
-      expect(screen.getByLabelText("Wall elapsed time")).toHaveTextContent("2m 30s");
+      expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent("3m 30s");
     }
   },
 );

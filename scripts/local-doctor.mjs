@@ -34,7 +34,7 @@ let whisperOk = false;
 if (whisperExecutable) {
   const resolved = await realpath(whisperExecutable);
   whisperDetail = resolved;
-  whisperOk = resolved.includes("/whisper-cpp/1.8.4/");
+  whisperOk = /\/whisper[.-]cpp\/1\.8\.4\//u.test(resolved);
 }
 record("whisper.cpp", whisperOk, whisperDetail);
 
