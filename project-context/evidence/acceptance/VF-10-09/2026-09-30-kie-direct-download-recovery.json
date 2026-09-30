@@ -31,7 +31,6 @@
     "noCreateTaskOnRetrieval": true
   },
   "remaining": [
-    "native completion of347images and105avatars",
     "normal long final render/download/playback",
     "zero owned compute"
   ],
@@ -54,8 +53,13 @@
     "acceptedStatesAndProviderTaskIdsPreserved": true
   },
   "nativeProgress": {
-    "images": 155,
-    "avatars": 55,
-    "at": "2026-09-30T10:53:36Z"
+    "images": 347,
+    "avatars": 105,
+    "at": "2026-09-30T10:53:36Z",
+    "imagesFinishedAt": "2026-09-30T11:17:47Z",
+    "avatarsFinishedAt": "2026-09-30T11:12:38Z",
+    "allAcceptedOutputIdentitiesPresent": true,
+    "unknownTasks": 0,
+    "failedTasks": 0
   }
 }
