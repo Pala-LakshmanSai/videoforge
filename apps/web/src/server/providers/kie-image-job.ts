@@ -332,7 +332,7 @@ async function downloadImage(url: string, fetchPort: FetchPort): Promise<Uint8Ar
 export async function observeKieImageJob(input: {
   readonly taskId: string;
   readonly objectKey: string;
-  readonly client: Pick<KieZImageClient, "get">;
+  readonly client: Pick<KieZImageClient, "get"> & Partial<Pick<KieZImageClient, "downloadUrl">>;
   readonly bucket: HostedR2BucketBinding;
   readonly fetchPort?: FetchPort;
 }): Promise<
@@ -349,7 +349,10 @@ export async function observeKieImageJob(input: {
   if (task.state !== "success") return { state: "PENDING" };
   const previous = await readStored(input.bucket, input.objectKey);
   if (previous) return { state: "SUCCEEDED", artifact: previous };
-  const bytes = Uint8Array.from(await downloadImage(task.imageUrl, input.fetchPort ?? fetch));
+  const url = input.client.downloadUrl
+    ? await input.client.downloadUrl(task.imageUrl)
+    : task.imageUrl;
+  const bytes = Uint8Array.from(await downloadImage(url, input.fetchPort ?? fetch));
   const details = imageDetails(bytes);
   const sha256 = await sha256Bytes(bytes);
   try {

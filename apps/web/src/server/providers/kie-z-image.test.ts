@@ -50,6 +50,44 @@ describe("Kie z-image task client", () => {
     );
   });
 
+  it("resolves an existing generated URL with no new generation task", async () => {
+    const fetchPort = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        json({
+          code: 200,
+          data: "https://tempfile.storage.r2.cloudflarestorage.com/image?signature=private",
+        }),
+      );
+    const client = new KieZImageClient("secret", fetchPort);
+    await expect(
+      client.downloadUrl("https://tempfile.aiquickdraw.com/image.png"),
+    ).resolves.toContain("r2.cloudflarestorage.com");
+    expect(fetchPort).toHaveBeenCalledOnce();
+    expect(fetchPort).toHaveBeenCalledWith(
+      "https://api.kie.ai/api/v1/common/download-url",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ url: "https://tempfile.aiquickdraw.com/image.png" }),
+        signal: expect.any(AbortSignal),
+      }),
+    );
+  });
+
+  it("keeps failed download links retrievable and rejects unsafe URLs", async () => {
+    const fetchPort = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(json({ code: 200, data: "http://unsafe.example/image" }));
+    const client = new KieZImageClient("secret", fetchPort);
+    await expect(
+      client.downloadUrl("https://tempfile.aiquickdraw.com/image.png"),
+    ).rejects.toMatchObject({ code: "STATUS_UNKNOWN" });
+    await expect(client.downloadUrl("http://unsafe.example/image")).rejects.toMatchObject({
+      code: "INPUT_INVALID",
+    });
+    expect(fetchPort).toHaveBeenCalledOnce();
+  });
+
   it("keeps a lost submission response uncertain so callers cannot replay automatically", async () => {
     const client = new KieZImageClient(
       "secret",

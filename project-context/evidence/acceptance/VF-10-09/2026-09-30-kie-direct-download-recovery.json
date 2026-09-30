@@ -1,0 +1,43 @@
+{
+  "checkpoint": "V2-09",
+  "task": "VF-10-09",
+  "status": "LOCAL_VERIFIED_PUBLICATION_PENDING",
+  "rootCause": "Completed Kie task original CDN URL can stall image transfer and serial job refilling.",
+  "officialContract": "https://docs.kie.ai/common-api/download-url",
+  "nativeProbe": {
+    "existingGeneratedFileOnly": true,
+    "downloadLinkRequests": 1,
+    "newGenerationTasks": 0,
+    "creditsChanged": false,
+    "status": 200,
+    "wholeBytes": 1744177,
+    "wholeSha256": "sha256:0bb1292415a6216d9f5ec5c5ee5d9e7f9d69572817ec08468eecbe58d021e9ad",
+    "downloadMs": 934
+  },
+  "repair": {
+    "source": "Kie client + shared image observer",
+    "signedDownloadUrlFromSameProvider": true,
+    "persistedTaskIdsPreserved": true,
+    "priorVerifiedTenantMediaSkipsLinkAndDownload": true,
+    "falAdapterUnchanged": true,
+    "transferDeadlineMs": 30000,
+    "wholeBytesValidationAndPrivateReadbackPreserved": true,
+    "mediaObservationConcurrency": 1
+  },
+  "tests": {
+    "focused": 43,
+    "safeUnsafeDownloadUrl": true,
+    "storedArtifactReuseNoSecondUtilityRequest": true,
+    "noCreateTaskOnRetrieval": true
+  },
+  "remaining": [
+    "publish same source",
+    "adopt same existing API instance",
+    "native completion of347images and105avatars",
+    "normal long final render/download/playback",
+    "zero owned compute"
+  ],
+  "operatorTotalStopUsd": 14,
+  "newCloudAllowanceUsd": 8,
+  "invoice": "unobserved"
+}

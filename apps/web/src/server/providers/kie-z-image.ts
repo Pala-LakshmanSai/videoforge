@@ -107,6 +107,27 @@ export class KieZImageClient {
     return taskId;
   }
 
+  /** Resolve the existing generated file through Kie's download utility; never creates a task. */
+  async downloadUrl(imageUrl: string): Promise<string> {
+    if (!safeImageUrl(imageUrl)) throw new KieZImageError("INPUT_INVALID");
+    let payload: JsonRecord | null;
+    try {
+      const response = await this.fetchPort(`${KIE_BASE_URL}/api/v1/common/download-url`, {
+        method: "POST",
+        signal: AbortSignal.timeout(30_000),
+        headers: { Authorization: `Bearer ${this.apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ url: imageUrl }),
+      });
+      if (!response.ok) throw new Error("download link unavailable");
+      payload = record(await response.json());
+    } catch {
+      throw new KieZImageError("STATUS_UNKNOWN");
+    }
+    if (payload?.code !== 200 || !safeImageUrl(payload.data))
+      throw new KieZImageError("STATUS_UNKNOWN");
+    return payload.data;
+  }
+
   async get(taskId: string): Promise<KieImageTask> {
     if (!safeTaskId(taskId)) throw new KieZImageError("INPUT_INVALID");
     let response: Response;

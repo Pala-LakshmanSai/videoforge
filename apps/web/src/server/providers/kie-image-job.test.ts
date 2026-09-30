@@ -300,15 +300,17 @@ describe("Kie image job", () => {
   });
 
   it("stores verified PNG and returns existing R2 bytes after interrupted acceptance", async () => {
-    const apiFetch = vi.fn<typeof fetch>().mockImplementation(async () =>
-      response({
-        data: {
-          taskId: TASK_ID,
-          model: "z-image",
-          state: "success",
-          resultJson: JSON.stringify({ resultUrls: ["https://cdn.example.com/image.png"] }),
-        },
-      }),
+    const apiFetch = vi.fn<typeof fetch>().mockImplementation(async (input) =>
+      String(input).endsWith("/common/download-url")
+        ? response({ code: 200, data: "https://storage.r2.example.com/image.png?signature=test" })
+        : response({
+            data: {
+              taskId: TASK_ID,
+              model: "z-image",
+              state: "success",
+              resultJson: JSON.stringify({ resultUrls: ["https://cdn.example.com/image.png"] }),
+            },
+          }),
     );
     const imageFetch = vi
       .fn<typeof fetch>()
@@ -331,22 +333,26 @@ describe("Kie image job", () => {
     expect(storage.put).toHaveBeenCalledOnce();
     expect(await observeKieImageJob(input)).toEqual(first);
     expect(imageFetch).toHaveBeenCalledOnce();
-    expect(imageFetch).toHaveBeenCalledWith("https://cdn.example.com/image.png", {
+    expect(apiFetch.mock.calls.filter(([url]) => String(url).endsWith("/common/download-url"))).toHaveLength(1);
+    expect(apiFetch.mock.calls.some(([url]) => String(url).includes("createTask"))).toBe(false);
+    expect(imageFetch).toHaveBeenCalledWith("https://storage.r2.example.com/image.png?signature=test", {
       redirect: "manual",
       signal: expect.any(AbortSignal),
     });
   });
 
   it("stores a validated JPEG with the observed MIME type and checksum", async () => {
-    const client = new KieZImageClient("secret", async () =>
-      response({
-        data: {
-          taskId: TASK_ID,
-          model: "z-image",
-          state: "success",
-          resultJson: JSON.stringify({ resultUrls: ["https://cdn.example.com/image.jpg"] }),
-        },
-      }),
+    const client = new KieZImageClient("secret", async (input) =>
+      String(input).endsWith("/common/download-url")
+        ? response({ code: 200, data: "https://cdn.example.com/image.jpg" })
+        : response({
+            data: {
+              taskId: TASK_ID,
+              model: "z-image",
+              state: "success",
+              resultJson: JSON.stringify({ resultUrls: ["https://cdn.example.com/image.jpg"] }),
+            },
+          }),
     );
     const storage = bucket();
     const input = {
@@ -372,15 +378,17 @@ describe("Kie image job", () => {
   });
 
   it("rejects a truncated JPEG without writing private storage", async () => {
-    const client = new KieZImageClient("secret", async () =>
-      response({
-        data: {
-          taskId: TASK_ID,
-          model: "z-image",
-          state: "success",
-          resultJson: JSON.stringify({ resultUrls: ["https://cdn.example.com/image.jpg"] }),
-        },
-      }),
+    const client = new KieZImageClient("secret", async (input) =>
+      String(input).endsWith("/common/download-url")
+        ? response({ code: 200, data: "https://cdn.example.com/image.jpg" })
+        : response({
+            data: {
+              taskId: TASK_ID,
+              model: "z-image",
+              state: "success",
+              resultJson: JSON.stringify({ resultUrls: ["https://cdn.example.com/image.jpg"] }),
+            },
+          }),
     );
     const storage = bucket();
     await expect(
@@ -396,15 +404,17 @@ describe("Kie image job", () => {
   });
 
   it("rejects a PNG with corrupted image data checksum", async () => {
-    const client = new KieZImageClient("secret", async () =>
-      response({
-        data: {
-          taskId: TASK_ID,
-          model: "z-image",
-          state: "success",
-          resultJson: JSON.stringify({ resultUrls: ["https://cdn.example.com/image.png"] }),
-        },
-      }),
+    const client = new KieZImageClient("secret", async (input) =>
+      String(input).endsWith("/common/download-url")
+        ? response({ code: 200, data: "https://cdn.example.com/image.png" })
+        : response({
+            data: {
+              taskId: TASK_ID,
+              model: "z-image",
+              state: "success",
+              resultJson: JSON.stringify({ resultUrls: ["https://cdn.example.com/image.png"] }),
+            },
+          }),
     );
     const corrupt = PNG.slice();
     corrupt[45] = (corrupt[45] ?? 0) ^ 1;
