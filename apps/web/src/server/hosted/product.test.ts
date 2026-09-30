@@ -2163,9 +2163,10 @@ describe("hosted product route contract", () => {
     expect(block).toContain("preparedBatchPlanHash !== batchPlanHash");
     expect(block).toContain("const persistedBatchPlanBinding");
     expect(block).toContain("persistedBatchPlanBinding,");
+    expect(block).toContain("const firstBatch = await dispatchOneHostedPromptBatch");
     expect(
       block.indexOf("preparedBatchPlanHash !== batchPlanHash") <
-        block.indexOf("const accepted = await runHostedPromptExecution"),
+        block.indexOf("const firstBatch = await dispatchOneHostedPromptBatch"),
     ).toBe(true);
   });
 

@@ -1,0 +1,33 @@
+{
+  "checkpoint": "V2-09",
+  "task": "VF-10-09",
+  "date": "2026-09-30",
+  "project_id": "386e147f-8b40-4a0f-bafd-cf026d991954",
+  "voiceover_duration_ms": 1806942,
+  "voiceover_bytes": 43366609,
+  "voiceover_sha256": "sha256:dc6b95a915b304bda71a169c75a8d7d059c609ade88f19d6733b31cd3d4e3ca3",
+  "asr_status": "SUCCEEDED",
+  "asr_attempt_id": "cb729b81-2e3a-4444-8b67-2dad08074ada",
+  "asr_result_sha256": "sha256:2275c08fa3ed3f59b338ca895f1828bf08ce9406552789acd42c66af4c699efc",
+  "transcript_words": 5500,
+  "transcript_chars": 31863,
+  "context_state": "UNKNOWN",
+  "context_request_sha256": "sha256:402628289058fc1390409e8de7bc5469b1830967e01cd91f963ccc69c564b4d6",
+  "provider_archive": {
+    "exact_original_request_hash_verified": true,
+    "http_status": 200,
+    "finish_reason": "length",
+    "completion_tokens": 1200,
+    "input_tokens": 6777,
+    "reported_cost_usd": 0.00104765,
+    "accepted_result": false,
+    "inference_retrieval_posts": 0
+  },
+  "root_cause": "Terminal truncated provider text was classified as an uninspectable response; repeated retrieval could not expose existing bounded fresh-task Retry. This does not prove narration length itself caused provider truncation.",
+  "repair": "After exact archived task/request/result identity and typed usage/cost validation, terminal finishReason length uses the existing definite unusable-result error. Truncated output remains rejected; explicit Retry creates a distinct paid task and reuses accepted ASR. No token/model/request identity change.",
+  "provider_state": "First ASR reservation CLEAN; complete inventory verifies zero owned media Pods; unrelated untouched. Context original paid cost known from archive but not newly settled in product ledger.",
+  "acceptance_cap_usd": 13,
+  "generation_acceptance_stop_usd": 10,
+  "additional_cloud_cap_usd": 3,
+  "remaining_acceptance": "Same project must finish scene/prompts/span/image/avatar/final Cloud render, technical checks, approval, browser recovery/playback/download, and independent cleanup. Release publication pending."
+}

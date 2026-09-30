@@ -336,6 +336,10 @@ export async function retrieveRunwareTextTaskDetails(
   if (!result || originalRows.length !== 1)
     throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
   const parsed = textResult(result);
+  // A terminal token limit confirms that this task has no complete result to recover.
+  // Keep incomplete output rejected and let the existing explicit bounded Retry create a new task.
+  if (parsed.finishReason === "length")
+    throw new RunwareTransportError("RUNWARE_TASK_PROVIDER_FAILED");
   if (parsed.finishReason !== "stop") throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
   const originalResponseBytes = canonicalizeJson(originalResponse as never);
   return Object.freeze({

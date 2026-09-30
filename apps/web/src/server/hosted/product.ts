@@ -6264,7 +6264,7 @@ async function reconcileVoiceoverContext(
           : (contextCode ?? "RUNWARE_RESPONSE_INVALID");
       const message =
         providerCode === "RUNWARE_TASK_PROVIDER_FAILED"
-          ? "Runware confirmed that the original task failed at its upstream provider without a usable result. Checking it again cannot resume this task, and this check sent no new request. Retry in stage 03 to submit a new one."
+          ? "Runware confirmed that the original task finished without a usable complete result. Checking it again cannot resume this task, and this check sent no new request. Retry in stage 03 to submit a new one."
           : providerCode === "RUNWARE_TASK_NOT_FOUND"
             ? "Runware could not find the original task in this workspace. This check sent no new request; Retry in stage 03 submits a new one."
             : providerCode === "RUNWARE_TASK_DETAILS_UNAVAILABLE"

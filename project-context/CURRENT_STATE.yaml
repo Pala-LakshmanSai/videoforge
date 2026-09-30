@@ -1,3 +1,15 @@
+long_cloud_acceptance_2026_09_30:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  status: LONG_ASR_PASS_TERMINAL_CONTEXT_TRUNCATION_RECOVERY_PREPARED
+  project_id: 386e147f-8b40-4a0f-bafd-cf026d991954
+  user_authority: User requests20_or30minute Downloads voiceover test viaCloud;proceed without questions. Necessary scoped repair/publication/recovery and cleanup included;no unrestricted spend.
+  voiceover: Exact owned1806942ms MP3;whole SHA dc6b95a915b304bda71a169c75a8d7d059c609ade88f19d6733b31cd3d4e3ca3.
+  verified: Normal Cloud project created once in signed-in Chrome;full5500word ASR succeeds;exact stored result checksum passes;reservationCLEAN and complete provider inventoryzeroownedPods. Normal tabclose/reopen recovers same project.
+  failure: Exact original provider archiveHTTP200 confirms finishReason length/completion1200/costUSD0.00104765;no complete output. Length causality not established;no inference replay or fake context.
+  repair: Existing definite unusable-task classification now covers identity-verified terminal token limits;incomplete output remains rejected and explicit bounded Retry uses a new task while reusing ASR. Model/tokens/request identity unchanged.
+  finite_acceptance_cap: USD13 total;USD10 generation acceptance stop;USD3 additionalCloud. Existing authoritytotal3.8 includesprior0.8debit;max10total/6additional;USD0.80hourceiling;autosizedtemporarydiskminimum100GB;no retainedvolume;expiry2026_09_30T12_30UTC. Authority narrowed to exact new project;newCloudcreationdisabled.
+  evidence: evidence/acceptance/VF-10-09/2026-09-30-long-cloud-first-failure.json
 app_audit_2026_09_30:
   checkpoint: V2-09
   selected_task: VF-10-09

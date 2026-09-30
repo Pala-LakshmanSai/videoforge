@@ -160,6 +160,50 @@ describe("Runware server HTTP transport", () => {
     }
   });
 
+  it("classifies an identity-verified archived token limit as a terminal unusable result", async () => {
+    const taskUUID = "11111111-1111-4111-8111-111111111111";
+    const originalRequestBytes = canonicalizeJson([{ taskType: "textInference", taskUUID }]);
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(originalRequestBytes),
+    );
+    const originalRequestSha256 = `sha256:${[...new Uint8Array(digest)]
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("")}` as const;
+    const fetch = vi.fn<typeof globalThis.fetch>(async () =>
+      jsonResponse({
+        taskType: "getTaskDetails",
+        taskUUID,
+        request: JSON.parse(originalRequestBytes),
+        response: {
+          data: [
+            {
+              taskType: "textInference",
+              taskUUID,
+              text: '{"continuity":',
+              cost: 0.00104765,
+              finishReason: "length",
+              usage: { promptTokens: 6777, completionTokens: 1200, totalTokens: 7977 },
+            },
+          ],
+        },
+      }),
+    );
+    await expect(
+      retrieveRunwareTextTaskDetails({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        originalTaskUUID: taskUUID,
+        originalRequestBytes,
+        originalRequestSha256,
+        fetch,
+      }),
+    ).rejects.toMatchObject({ code: "RUNWARE_TASK_PROVIDER_FAILED" });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(fetch.mock.calls[0]?.[1]?.body))).toEqual([
+      { taskType: "getTaskDetails", taskUUID },
+    ]);
+  });
+
   it("accepts provider-normalized archived request fields while preserving saved identity", async () => {
     const taskUUID = "11111111-1111-4111-8111-111111111111";
     const originalRequest = [
