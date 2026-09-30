@@ -149,6 +149,7 @@ test("the hosted runtime can append through the exact function but has no direct
     "videoforge_record_hosted_prompt_response(uuid,text,text,jsonb)",
     "videoforge_load_hosted_prompt_response(uuid,text,text)",
     "videoforge_reopen_saved_hosted_prompt_prefix(uuid)",
+    "videoforge_claim_next_hosted_prompt_batch(uuid,integer,text,text,text)",
     ...v209RuntimeSignatures,
   ]) {
     assert.ok(EXPECTED_RUNTIME_FUNCTIONS.includes(signature));

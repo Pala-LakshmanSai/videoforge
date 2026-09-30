@@ -2,7 +2,7 @@
   "schema_version": "videoforge.long-cloud-saved-prefix-recovery/v1",
   "checkpoint": "V2-09",
   "task": "VF-10-09",
-  "status": "PUBLISHED_ATOMIC_CLAIM_FOLLOWUP_VALIDATED",
+  "status": "ATOMIC_PREFIX_PUBLISHED_NEXT_CLAIM_LOCK_VALIDATED",
   "baseline_source": "025b204d27b97c660abad17349dc9934a9dc4ac7",
   "baseline_version": "b702ec90-2ff8-4ed3-86fd-e3d4538c2435",
   "project_id": "386e147f-8b40-4a0f-bafd-cf026d991954",
@@ -55,6 +55,23 @@
     "fix": "Reopen saved prefix and create exact next claim inside one tenant transaction before provider POST; no separate reopen-only return.",
     "database_pass": 9,
     "route_pass": 13,
-    "status": "VALIDATED_PUBLICATION_PENDING"
+    "status": "PUBLISHED_NORMAL_CONTINUATION_VERIFIED",
+    "source": "b70ea588aea751155116362d953cf4916ff34c74",
+    "version": "54422640-269a-4e55-b368-e18ae8ed39cb",
+    "accepted_batches": 24,
+    "accepted_scenes": 238,
+    "reported_micro_usd": 1843895
+  },
+  "next_claim_lock": {
+    "migration": 229,
+    "ledger_rows": 212,
+    "repair": "One shared RPC locks run before exact existing claim check; identical accepted or uncertain claims returnfalse with no reopen/resubmit. Otherwise performs narrow prefix reopen and original strict claim atomically.",
+    "actual_restricted_runtime_rollback": "PASS",
+    "old_prefix_claims_preserved": true,
+    "database_and_grants_pass": 12,
+    "route_pass": 13,
+    "typecheck_lint_build_quarantine": "PASS",
+    "provider_posts": 0,
+    "status": "VALIDATED_SCHEMA_INSTALLED_PUBLICATION_PENDING"
   }
 }

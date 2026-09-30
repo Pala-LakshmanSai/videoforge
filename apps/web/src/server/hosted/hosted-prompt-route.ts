@@ -71,13 +71,8 @@ async function claimHostedPromptBatch(
       "videoforge.account_id",
       accountId,
     ]);
-    // Keep recovery and its fresh durable claim atomic so stale reconciliation cannot split them.
-    await transaction.query(
-      "SELECT public.videoforge_reopen_saved_hosted_prompt_prefix($1::uuid)",
-      [runId],
-    );
     const result = await transaction.query<{ claimed: boolean }>(
-      "SELECT public.videoforge_claim_hosted_prompt_batch($1,$2,$3,$4,$5) AS claimed",
+      "SELECT public.videoforge_claim_next_hosted_prompt_batch($1,$2,$3,$4,$5) AS claimed",
       [runId, request.batchOrdinal, request.taskUUID, request.requestBytes, request.requestHash],
     );
     return result.rows[0]?.claimed === true;

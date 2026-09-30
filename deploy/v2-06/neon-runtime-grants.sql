@@ -418,3 +418,6 @@ GRANT DELETE ON
   hosted_auth_sessions,
   hosted_auth_verifications
 TO :"runtime_role";
+
+GRANT EXECUTE ON FUNCTION public.videoforge_claim_next_hosted_prompt_batch(uuid,integer,text,text,text)
+  TO :"runtime_role";

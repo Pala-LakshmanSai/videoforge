@@ -181,16 +181,13 @@ it("binds resumed failure settlement and transitions terminal invalid output bef
   expect(source).toContain('existingState === "UNKNOWN" && !original.claim');
 });
 
-it("reopens an accepted prefix and claims its next batch in the same transaction before provider dispatch", () => {
+it("uses the atomic tenant claim RPC for both first and continued batches", () => {
   const source = readFileSync("src/server/hosted/hosted-prompt-route.ts", "utf8");
-  const start = source.indexOf("async function claimHostedPromptBatch(");
-  const end = source.indexOf("async function recordHostedPromptBatch(", start);
-  const claim = source.slice(start, end);
-  expect(claim.indexOf("videoforge_reopen_saved_hosted_prompt_prefix")).toBeGreaterThan(
-    claim.indexOf(".transaction("),
+  const claim = source.slice(
+    source.indexOf("async function claimHostedPromptBatch("),
+    source.indexOf("async function recordHostedPromptBatch("),
   );
-  expect(claim.indexOf("videoforge_claim_hosted_prompt_batch")).toBeGreaterThan(
-    claim.indexOf("videoforge_reopen_saved_hosted_prompt_prefix"),
-  );
-  expect(source).not.toContain('\n        if (existingState === "UNKNOWN" && !original.claim) {');
+  expect(claim).toContain("videoforge_claim_next_hosted_prompt_batch");
+  expect(claim).not.toContain("videoforge_reopen_saved_hosted_prompt_prefix");
+  expect(source.match(/claimHostedPromptBatch\(pool,/gu)).toHaveLength(2);
 });
