@@ -1,7 +1,7 @@
 {
   "checkpoint": "V2-09",
   "selected_task": "VF-10-09",
-  "state": "LOCAL_GREEN_PUBLICATION_PENDING",
+  "state": "PRODUCTION_CHROME_ACCEPTED",
   "diagnosis": "Project attempt lease state was incorrectly used as computer connection state.",
   "repair": "Project detail reuses qualifiedPersonalWorkers with tenant/workspace, fresh 90-second heartbeat, ONLINE/BUSY, removal, protocol and bundle guards; hero distinguishes connected waiting/busy from active own lease.",
   "validation": {
@@ -9,13 +9,41 @@
     "web_and_worker_types": "PASS",
     "changed_lint": "PASS",
     "native_cloudflare_build": "PASS",
-    "regressions": "Queued terminal ASR with online computer, assignment wait, busy connection, stale/absent connection, active lease, finished render, Cloud and API modes."
+    "regressions": "Queued terminal ASR with online computer, assignment wait, busy connection, stale/absent connection, active lease, finished render, Cloud and API modes.",
+    "bundle_quarantine": "PASS",
+    "context": "PASS_WITH_EXISTING_WARNINGS"
   },
   "paid_creates": 0,
   "remaining_gates": [
-    "Production publication and Chrome readback",
     "Old STOPPING/UNKNOWN exact provider launch evidence and ordinary cleanup/admission",
     "Whole video acceptance",
     "Approved support request needs missing required last name"
-  ]
+  ],
+  "production_source": "938d69e13b2172e2eb85172ad85bf37e6a117ae6",
+  "production_version": "daba8d30-c708-42e8-83e8-c3cb8dc23c02",
+  "publication": {
+    "traffic_percent": 100,
+    "bindings": 50,
+    "secrets": 25,
+    "workflow_identities_preserved": 3,
+    "new_workflow_instances": 0,
+    "cpu_fallback_enabled": false
+  },
+  "production_acceptance": {
+    "machine_label": "Local \u00b7 Computer online \u00b7 Waiting for earlier project",
+    "worker_fresh_online": true,
+    "saved_prompts": 258,
+    "saved_batches": 26,
+    "generation": "WAITING",
+    "old_workload": "ACTIVE",
+    "old_cleanup": "STOPPING_UNKNOWN_NO_POD_ID",
+    "cleanup_verified": false,
+    "complete_provider_inventory_zero_pods": true,
+    "new_compute": 0
+  },
+  "support": {
+    "authorization": "User approved sending prepared request",
+    "submission": "UNSENT_REQUIRED_LAST_NAME_MISSING",
+    "request_for_missing_field": "Pending user text reply"
+  }
 }
