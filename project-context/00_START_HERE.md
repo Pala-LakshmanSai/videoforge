@@ -1,3 +1,9 @@
+Windows worker download repair: the 0.1.45 paste-to-connect installer took about seven minutes
+with no visible file progress on this PC. The same exact 279,619,334-byte release asset streamed
+through Windows curl in 59.72 seconds and matched its published SHA-256. The local web change
+adds bounded resume and keeps size/hash/install gates; production publication remains pending.
+Read `windows_worker_download_2026_10_01` in CURRENT_STATE.yaml.
+
 Local disk readiness is published at source `213eb13f` / Cloudflare `be1de7dc`, worker0.1.45.
 Read `local_disk_preflight_2026_10_01` in CURRENT_STATE.yaml. Fresh capacity is checked by Local
 Create, retained-input Retry and lease admission; native runtime2GiB_plus2x_inputBytes remains.
