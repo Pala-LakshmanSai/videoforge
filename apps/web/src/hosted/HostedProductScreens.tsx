@@ -594,9 +594,12 @@ export function hostedMachineLabel(
   if (render?.state === "SUCCEEDED") return cloud
     ? render.cloud_cpu ? `Cloud · ${render.cloud_cpu} · Compute released` : `Cloud · ${render.cloud_gpu ?? "GPU not recorded"} · GPU released`
     : `Local · ${render.local_machine_name ?? "Computer not recorded"} · Finished`;
-  if (apiActive) return cloud
-    ? "Cloud · Kie / Fal APIs · No active RunPod GPU"
-    : "Local render · Kie / Fal APIs · Computer not assigned yet";
+  if (apiActive) {
+    if (cloud) return "Cloud · Kie / Fal APIs · No active RunPod GPU";
+    const connection = localWorker?.state === "ONLINE" ? "Computer online"
+      : localWorker?.state === "BUSY" ? "Computer connected · Busy" : "Waiting for computer";
+    return `Local render · ${connection} · Kie / Fal APIs generating media`;
+  }
   if (!cloud && localWorker?.state === "ONLINE") return queuePosition && queuePosition > 1
     ? "Local · Computer online · Waiting for earlier project"
     : "Local · Computer online · Waiting for assignment";

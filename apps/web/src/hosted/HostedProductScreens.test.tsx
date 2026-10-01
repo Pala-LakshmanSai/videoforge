@@ -130,7 +130,36 @@ it("distinguishes a connected computer waiting in the queue from an active proje
   expect(hostedMachineLabel("RUNPOD_POD", [], false, 2, online))
     .toBe("Cloud · Waiting for earlier project");
   expect(hostedMachineLabel("PERSONAL_WORKER", [asr], true, 2, online))
-    .toBe("Local render · Kie / Fal APIs · Computer not assigned yet");
+    .toBe("Local render · Computer online · Kie / Fal APIs generating media");
+});
+
+it.each(["image-generation", "avatar-generation"])(
+  "keeps the computer connection visible during %s", async (stageId) => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+      project: { id: projectId, title: "API generation", revision_id: projectId,
+        revision_state: "LOCKED", media_execution_backend: "PERSONAL_WORKER" },
+      generation_provider: "KIE_FAL", generation: null, attempts: [],
+      gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
+      local_worker: { state: "ONLINE" }, stages: stageList({ [stageId]: "RUNNING" }),
+    })));
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+    expect(await screen.findByLabelText("Rendering machine"))
+      .toHaveTextContent("Local render · Computer online · Kie / Fal APIs generating media");
+    expect(screen.queryByText(/Computer not assigned yet/)).not.toBeInTheDocument();
+  },
+);
+
+it("preserves busy, disconnected and active computer truth during API generation", () => {
+  expect(hostedMachineLabel("PERSONAL_WORKER", [], true, 1, { state: "BUSY" }))
+    .toBe("Local render · Computer connected · Busy · Kie / Fal APIs generating media");
+  for (const worker of [undefined, { state: "WAITING_FOR_YOUR_COMPUTER" as const }]) {
+    expect(hostedMachineLabel("PERSONAL_WORKER", [], true, 1, worker))
+      .toBe("Local render · Waiting for computer · Kie / Fal APIs generating media");
+  }
+  expect(hostedMachineLabel("PERSONAL_WORKER", [{ kind: "SPAN_AUDIO", state: "RUNNING",
+    local_machine_active: true, local_machine_name: "Editing Mac" }], true, 1, { state: "ONLINE" }))
+    .toBe("Local · Editing Mac");
 });
 
 it("shows the active span ahead of queued and completed Cloud attempts", () => {

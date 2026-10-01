@@ -1,0 +1,23 @@
+{
+  "checkpoint": "V2-09",
+  "selected_task": "VF-10-09",
+  "status": "LOCAL_VERIFIED_PRODUCTION_PENDING",
+  "diagnosis": "API-active label returned before reading qualified connected-worker state, reporting computer not assigned during Kie/Fal generation despite Online Windows worker.",
+  "repair": "Use existing fresh tenant-scoped local_worker ONLINE/BUSY/disconnected status in API-generation branch. Active project leases and terminal renders retain precedence.",
+  "validation": {
+    "red_regression_tests": 4,
+    "focused_ui_and_readiness_tests": 177,
+    "web_worker_typecheck": "PASS",
+    "changed_lint": "PASS",
+    "native_production_build_and_bundle_firewall": "PASS",
+    "unrelated_baseline_failure": "project-detail-generation-query.test.ts: column segment.end_frame_exclusive does not exist, reproduced on unchanged 200163f0 baseline.",
+    "context": "PASS_WITH_EXISTING_WARNINGS"
+  },
+  "new_provider_calls": 0,
+  "new_paid_compute": 0,
+  "remaining_gates": [
+    "Production publication and real Chrome verification",
+    "Existing whole-video and provider cleanup gates remain separate"
+  ],
+  "production_base_source": "ae2c98161440a02477fe09e7c9a52589e58df8ce"
+}

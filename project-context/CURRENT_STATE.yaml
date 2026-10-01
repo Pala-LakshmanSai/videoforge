@@ -1,3 +1,16 @@
+api_computer_status_2026_10_01:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  status: LOCAL_VERIFIED_PRODUCTION_PENDING
+  diagnosis: API_generation_label_overrode_fresh_qualified_computer_connection_with_not_assigned.
+  repair: Existing_local_worker_connection_state_during_KieFal_API_work; active_lease_and_finished_render_precedence_retained.
+  validation: Four_red_regressions_then177UI_readiness_PASS; web_Worker_types_changed_lint_native_production_build_bundle_PASS.
+  baseline_failure: Unrelated_project_detail_query_fixture_missing_segment_end_frame_exclusive_reproduced_on_unchanged200163f0.
+  provider_spend: USD0_new_generation_or_compute; existing_user_generation_continues.
+  paid_compute_shutdown: No_compute_started_or_mutated_by_this_repair; existing_shutdown_and_UNKNOWN_gates_unchanged.
+  remaining_gates: Production_Chrome_acceptance_and_existing_whole_video_qualification.
+  evidence: evidence/acceptance/VF-10-09/2026-10-01-api-computer-status.json
+
 local_creation_cleanup_isolation_2026_10_01:
   checkpoint: V2-09
   selected_task: VF-10-09
