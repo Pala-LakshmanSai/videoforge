@@ -63,7 +63,15 @@ Once upload is committed, Cloud processing continues with the browser and person
 RunPod temporary disk holds runtime/input/render scratch; no PC render disk is required. Cloudflare,
 Neon/private R2 and existing Kie/Fal APIs remain the remote control/storage/generation services.
 At2026-09-30T17:28UTC the previously approved account authorities are expired. A failed benchmark's
-UNKNOWN/STOPPING launch also retains admission; complete empty owned-Pod inventory does not clear it.
+UNKNOWN/STOPPING retains Cloud rental capacity; complete empty owned-Pod inventory never clears it.
+The 2026-10-01 Local creation repair separates early failed-video admission from rental cleanup.
+Migration0235 retires only a failed ASR/span video with every CPU terminal, no API jobs or active
+personal-worker lease, an expired rental deadline and disabled/expired authority. The original
+UNKNOWN/STOPPING reservation, debit, identity, cleanup timestamp and Cloud capacity remain intact.
+New Local VIDEO admission may proceed; new Cloud and preview admission remain blocked by that
+reservation. The reconciler continues until exact cleanup is proven. Two-account global capacity
+still counts the unresolved Cloud account. This supersedes the blanket admission hold for this
+narrow early-media failure; accepted provider work and render failures keep their existing guards.
 Renewal requires a new finite approved authority, and exact launch reconciliation remains required.
 Operator rates,
 release ledger guards, gates and rollback are in `cloud-media/RELEASE_RUNBOOK.md`.

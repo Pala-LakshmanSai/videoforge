@@ -48,7 +48,7 @@ const testState = vi.hoisted(() => {
   const workerDeviceRows: Record<string, unknown>[] = [];
   const cleanup = { pending: false };
   const query = vi.fn(async (sql: string, params?: readonly unknown[]) => {
-    if (sql.includes("FROM cloud_media_reservations reservation")) return { rows: [cleanup], affectedRows: 1 };
+    if (sql.includes("FROM cloud_media_reservations r") && sql.includes("AS pending")) return { rows: [cleanup], affectedRows: 1 };
     void params;
     if (sql.includes("videoforge_consume_hosted_rate_limit"))
       return { rows: rateLimitRows, affectedRows: 1 };

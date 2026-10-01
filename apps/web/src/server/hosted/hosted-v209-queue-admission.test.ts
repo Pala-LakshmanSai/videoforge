@@ -12,8 +12,9 @@ it("holds only the current tenant's earlier unconfirmed cleanup and releases aft
   const current = "44444444-4444-4444-8444-444444444444";
   try {
     await db.exec(`CREATE TABLE cloud_media_reservations (
-      account_id uuid, workspace_id uuid, project_id uuid, state text, cleanup_verified_at timestamptz);
-      INSERT INTO cloud_media_reservations VALUES ('${account}','${workspace}','${earlier}','STOPPING',NULL);`);
+      id uuid, account_id uuid, workspace_id uuid, project_id uuid, state text, cleanup_verified_at timestamptz);
+      CREATE FUNCTION videoforge_cloud_cleanup_only(uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;
+      INSERT INTO cloud_media_reservations VALUES ('${earlier}','${account}','${workspace}','${earlier}','STOPPING',NULL);`);
     const sql = db as unknown as SqlExecutor;
     expect(await hostedAccountCleanupPending(sql, account, workspace, current)).toBe(true);
     expect(await hostedAccountCleanupPending(sql, account, workspace)).toBe(true);

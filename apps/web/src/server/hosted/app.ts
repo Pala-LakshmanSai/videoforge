@@ -424,7 +424,7 @@ async function handleCpuSubmission(
         };
       }
       if (submission.kind === "ASR" &&
-        await hostedAccountCleanupPending(transaction, scope.account_id, scope.workspace_id, submission.projectId))
+        await hostedAccountCleanupPending(transaction, scope.account_id, scope.workspace_id, submission.projectId, executionBackend))
         throw new Error("HOSTED_CLOUD_CLEANUP_PENDING");
       const primaryContract = hostedCpuPrimaryOutput(submission.kind);
       const lane = primaryContract.lane;

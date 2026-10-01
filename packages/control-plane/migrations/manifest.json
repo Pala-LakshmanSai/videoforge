@@ -1182,6 +1182,12 @@
       "name": "hosted_prompt_replacement_freshness",
       "filename": "0234_hosted_prompt_replacement_freshness.sql",
       "sha256": "sha256:fff61d6c2a6121a7dbd3a4f749063e94df8c417d0648161726b5fcc8b3918b3d"
+    },
+    {
+      "version": 235,
+      "name": "cloud_cleanup_local_isolation",
+      "filename": "0235_cloud_cleanup_local_isolation.sql",
+      "sha256": "sha256:37f1911d155b402a947dcc120883bb780330bd16899914de61d10da949402aa2"
     }
   ]
 }

@@ -282,7 +282,8 @@ beforeEach(async () => {
     if (sql.includes("SELECT id FROM generation_requests WHERE account_id=")) return { rows: generationActive ? [{ id: "fixture-generation" }] : [] };
     if (sql.includes("SET failure_settled_at=COALESCE")) { reservation.failure_settled_at = new Date().toISOString(); return { rows: [] }; }
     if (sql.includes("UPDATE cloud_media_reservations SET launch_outcome='REFUSED'")) {
-      if(sql.includes("RETURNING id") && (values[1]!==reservation.leased_attempt_id || values[2]!==reservation.fence_id || reservation.state!=="CREATING"))return{rows:[]};
+      if(sql.includes("RETURNING id") && (values[1]!==reservation.leased_attempt_id || values[2]!==reservation.fence_id ||
+        reservation.pod_id != null || reservation.launch_outcome!=="UNKNOWN" || !["CREATING","AMBIGUOUS","STOPPING"].includes(String(reservation.state))))return{rows:[]};
       reservation.launch_outcome = "REFUSED"; return { rows: sql.includes("RETURNING id")?[{id:reservationId,attempt_state:attempt.state}]:[] }; }
     if (sql.includes("videoforge_cloud_media_reserve_budget") || sql.includes("videoforge_cloud_media_renew_admission")) return { rows: [{ reserved: true }] };
     if (sql.includes("SELECT id FROM cloud_media_reservations")) return { rows: reservation.state === "WAITING_CAPACITY" ? [{ id: reservationId }] : [] };
@@ -1228,6 +1229,16 @@ describe("authority deadline at launch and adoption",()=>{
     expect((await runCloudMediaObservation(environment,config,scope)).state).toBe("FAILED");
     expect(attempt.failure_code).toBe("CLOUD_MEDIA_DEADLINE_EXCEEDED");expect(reservation.state).toBe("CLEAN");expect(reservation.launch_outcome).toBe("REFUSED");
     expect(fixture.transport.mock.calls.every(([,options])=>options.method==="GET")).toBe(true);
+  });
+  it.each(["AMBIGUOUS","STOPPING"])("settles the creator's known unsent launch when an observer moves it to %s",async state=>{
+    const prior=fixture.query.getMockImplementation()!;
+    fixture.query.mockImplementation(async(statement:string,values:unknown[])=>{
+      if(statement.includes("allowed_create_reservation")) reservation.state=state;
+      return prior(statement,values);
+    });
+    expect((await runCloudMediaObservation(environment,config,scope)).state).toBe("FAILED");
+    expect(reservation.state).toBe("CLEAN"); expect(reservation.launch_outcome).toBe("REFUSED");
+    expect(fixture.transport.mock.calls.filter(([,options])=>options.method==="POST")).toHaveLength(0);
   });
   it.each(["cancel","revoke","replacement"])("rechecks exact lease and authority immediately before paid POST: %s",async mode=>{
     const prior=fixture.query.getMockImplementation()!;

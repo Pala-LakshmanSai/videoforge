@@ -145,7 +145,7 @@ describe("V2-06 hosted adapters", () => {
     ]) {
       const failure = Object.assign(new Error(detail), { code });
       const query = vi.fn(async (statement: string) => {
-        if (statement.includes("FROM cloud_media_reservations reservation"))
+        if (statement.includes("FROM cloud_media_reservations r") && statement.includes("AS pending"))
           return { rows: [{ pending: code === "cleanup" }] };
         if (statement.includes("INSERT INTO hosted_cpu_job_attempts")) throw failure;
         if (statement.includes("render_plan.schema_version"))

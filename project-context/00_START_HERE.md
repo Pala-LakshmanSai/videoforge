@@ -1,4 +1,6 @@
-Stage-admission recovery is published at source668c162 / Cloudflare03003f91. Existing WAITING requests resume automatically and report actual queue/cleanup state. The published Windows installer download fix is preserved. RunPod ticket49644 awaits authoritative old-launch reconciliation; the UNKNOWN fence remains. Read `stage_admission_recovery_2026_10_01` in CURRENT_STATE.yaml.
+Local creation cleanup isolation is prepared under the 2026-10-01 request. It separates a fully fenced early failed video's admission from UNKNOWN/STOPPING rental cleanup. Cloud capacity, no replay and reconciliation remain intact. Read `local_creation_cleanup_isolation_2026_10_01` in CURRENT_STATE.yaml for publication and current proof.
+
+Stage-admission recovery is published at source668c162 / Cloudflare03003f91. Existing WAITING requests resume automatically and report actual queue/cleanup state. The published Windows installer download fix is preserved. RunPod ticket49644 awaits authoritative old-launch reconciliation; the UNKNOWN rental fence remains. The Local-only early-failure isolation below supersedes the blanket VIDEO admission hold. Read `stage_admission_recovery_2026_10_01` in CURRENT_STATE.yaml.
 
 The published Windows worker installer download fix from source2578bb93 is preserved in this stage-admission release. Read `windows_worker_download_2026_10_01` in CURRENT_STATE.yaml.
 

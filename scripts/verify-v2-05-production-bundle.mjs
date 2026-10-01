@@ -56,8 +56,10 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // byte still fails, and provider/validator/native-code quarantine and CPU bounds remain enforced.
 // The 2026-10-01 cleanup preflight guard, waiting-request recovery, and truthful outcome add exactly
 // 1,648 production and 1,417 staging bytes. Provider/validator/native quarantine stays enforced.
+// Local-only terminal Cloud cleanup isolation adds 66 measured production bytes for backend-aware
+// readiness. SQL lifecycle policy and the provider controller remain in dynamic chunks.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_786_037,
+  "wrangler.production.jsonc": 2_786_103,
   "wrangler.staging.jsonc": 2_783_190,
 })[wranglerConfig];
 const workerForbidden = [

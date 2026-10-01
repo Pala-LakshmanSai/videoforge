@@ -1,0 +1,49 @@
+{
+  "schema_version": "videoforge-local-cleanup-isolation/v1",
+  "checkpoint": "V2-09",
+  "status": "PREPARED_PUBLICATION_PENDING",
+  "migration": 235,
+  "authority": "User requested the Local Create blocker fix and previously authorized production publication",
+  "validation": {
+    "focusedTests": 284,
+    "webTypes": "PASS",
+    "workerTypes": "PASS",
+    "lint": "PASS",
+    "nativeRollback": {
+      "at": "2026-10-01T14:18:22.450Z",
+      "migrationSha256": "sha256:37f1911d155b402a947dcc120883bb780330bd16899914de61d10da949402aa2",
+      "leaseRetired": true,
+      "requestFailed": true,
+      "reservationUnchanged": true,
+      "cpuRowsUnchanged": 105,
+      "rollbackVerified": true,
+      "paidCreates": 0
+    }
+  },
+  "policy": {
+    "earlyFailureOnly": true,
+    "apiJobsMustBeAbsent": true,
+    "allCpuTerminal": true,
+    "authorityExpiredOrDisabled": true,
+    "rentalDeadlineExpired": true,
+    "noActivePersonalLease": true,
+    "cloudReservationUnchanged": true,
+    "cloudAndPreviewStillBlocked": true,
+    "globalCloudAccountCapacityCountRetained": true
+  },
+  "provider": {
+    "newInferenceUsd": 0,
+    "newComputeUsd": 0,
+    "newPods": 0,
+    "oldLaunch": "UNKNOWN",
+    "oldCleanup": "STOPPING",
+    "oldDebitUsd": 0.2,
+    "invoiceVerified": false,
+    "ticket": 49644
+  },
+  "remaining": [
+    "production publication and Local readiness",
+    "exact old Cloud reconciliation",
+    "fresh whole-video acceptance"
+  ]
+}

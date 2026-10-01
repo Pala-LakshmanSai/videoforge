@@ -229,6 +229,7 @@ historical_runpod_invariants:
   - final_two_lane_smoke_and_independent_zero_worker_drain_required_for_runpod_release
 
 approved_decisions:
+  DEC_CLOUD_CLEANUP_ISOLATION_001: fenced_early_failure_retires_video_admission_only_Local_allowed_unknown_Cloud_capacity_retained
   DEC_AUTH_001: invite_only_google_verified_email_identity_no_email_provider
   DEC_AVATAR_004: one_native_clip_two_layouts
   DEC_AVATAR_005: tenant_private_reusable_avatar_hub

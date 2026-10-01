@@ -525,7 +525,9 @@ async function observeCloudMedia(environment: HostedRuntimeEnvironment, config: 
       phase="CLEANUP";
       const clean = r.state === "CLEAN" || await cleanupCloudReservation(client,config,r);
       phase="FAILURE_SETTLEMENT";
-      if(clean && a.state!=="SUCCEEDED" && !await settleFailedCpu(config,a)) return {state:"FINALIZATION_PENDING",delaySeconds:30};
+      // SQL may retire a fully fenced failed video while its uncertain rental keeps reconciling.
+      // This releases only video admission; it never marks the Cloud resource CLEAN.
+      if(a.state!=="SUCCEEDED" && !await settleFailedCpu(config,a) && clean) return {state:"FINALIZATION_PENDING",delaySeconds:30};
       phase="RESULT_FINALIZATION";
       const finalizationDiagnostic: { value?: HostedV209SpanDiagnostic } = {};
       const finalized=clean && a.state === "SUCCEEDED" ? await finalizeMedia(environment,config,a, value => { finalizationDiagnostic.value = value; }) : true;
@@ -615,12 +617,14 @@ async function observeCloudMedia(environment: HostedRuntimeEnvironment, config: 
     const token=await deriveScopedToken(config.workflowCallbackSecret,"cloud-reservation",String(r.id));
     let pod:Row;
     phase="POD_CREATE";
-    // A deadline reached before sending is a confirmed no-send refusal, unlike an ambiguous response.
+    // Only this winning creator knows no POST was sent. Observers cannot infer refusal from absence.
+    // Cancellation or another observer may already have moved this exact fence to STOPPING/AMBIGUOUS.
     const allowedCreate=await tenant(config,scope.accountId,async sql=>(await query(sql,CLOUD_PRE_CREATE_ALLOWED_SQL,[r!.id,r!.leased_attempt_id,r!.fence_id])).rows[0]);
     if(Date.parse(String(r.deadline_at))<=Date.now() || !allowedCreate) {
       const refused=await tenant(config,scope.accountId,async sql=>(await query(sql,
         `UPDATE cloud_media_reservations SET launch_outcome='REFUSED',updated_at=now()
-          WHERE id=$1 AND leased_attempt_id=$2 AND fence_id=$3 AND state='CREATING' RETURNING id,
+          WHERE id=$1 AND leased_attempt_id=$2 AND fence_id=$3 AND pod_id IS NULL
+            AND launch_outcome='UNKNOWN' AND state IN ('CREATING','AMBIGUOUS','STOPPING') RETURNING id,
             (SELECT state FROM hosted_cpu_job_attempts WHERE id=leased_attempt_id) AS attempt_state`,
         [r!.id,r!.leased_attempt_id,r!.fence_id])).rows[0]);
       if(!refused) return {state:"RECONCILING",delaySeconds:30};

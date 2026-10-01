@@ -4846,7 +4846,7 @@ async function projectPreflight(
         ? avatarRuntimeSourceReadyForApi(avatarRow)
         : avatarRuntimeSourceQualified(avatarRow);
       return {
-        cleanupPending: await hostedAccountCleanupPending(transaction, scope.account_id, scope.workspace_id),
+        cleanupPending: await hostedAccountCleanupPending(transaction, scope.account_id, scope.workspace_id, null, input.executionBackend),
         avatarReady: avatar.rows.length > 0,
         avatarRuntimeSourceQualified: runtimeSourceQualified,
         qualifiedAvatarName: qualifiedAvatarName === null ? null : String(qualifiedAvatarName),
@@ -5017,7 +5017,7 @@ async function createProject(
         }
         return replay;
       }
-      if (await hostedAccountCleanupPending(transaction, scope.account_id, scope.workspace_id))
+      if (await hostedAccountCleanupPending(transaction, scope.account_id, scope.workspace_id, null, input.executionBackend))
         throw new Error("HOSTED_CLOUD_CLEANUP_PENDING");
       const resolved = await resolveProjectPresets(
         transaction,
@@ -7654,7 +7654,8 @@ async function projectDetail(
         promptProgress: promptProgress.rows[0] ?? null,
         queue: queue.rows[0] ?? null,
         cleanupPending: queue.rows[0]?.state === "WAITING" &&
-          await hostedAccountCleanupPending(transaction, scope.account_id, scope.workspace_id, projectId),
+          await hostedAccountCleanupPending(transaction, scope.account_id, scope.workspace_id, projectId,
+            project.rows[0].media_execution_backend === "RUNPOD_POD" ? "RUNPOD_POD" : "PERSONAL_WORKER"),
         runtime: runtime.rows[0] ?? null,
         serverlessAttempts: serverlessAttempts.rows,
         serverlessOutputs: serverlessOutputs.rows,

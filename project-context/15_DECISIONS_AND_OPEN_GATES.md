@@ -9,6 +9,7 @@ Every row below is `APPROVED` by the user and recorded in this planning session 
 
 | ID | Decision | Why |
 |---|---|---|
+| `DEC_CLOUD_CLEANUP_ISOLATION_001` | A fenced early ASR/span failure with all CPU jobs terminal, no API jobs, no active personal-worker lease, an expired rental deadline and disabled/expired authority may retire its failed VIDEO admission while UNKNOWN/STOPPING rental cleanup remains independently fenced. Only fresh Local VIDEO admission bypasses that cleanup-only hold; Cloud rentals and presets stay blocked, and the original Cloud account remains counted in global capacity. Never infer CLEAN from absent inventory or replay the launch. | Implements the user's 2026-10-01 request to fix Local creation blocked by an earlier failed Cloud benchmark. Supersedes only the blanket VIDEO admission hold for this narrow early failure; resource cleanup, cost, tenant, concurrency and accepted-media rules remain. See migration0235 and the queue operations domain. |
 | `DEC_SCOPE_001` | MVP uses AI still images, not AI B-roll video | Much simpler, faster, cheaper; user explicitly chose image-only now |
 | `DEC_OUTPUT_001` | Only full avatar, full image, and avatar-left/image-right split | Matches target style without effects |
 | `DEC_OUTPUT_002` | Hard cuts; no motion graphics/text/decorative transitions | Absolute repeated user requirement |
