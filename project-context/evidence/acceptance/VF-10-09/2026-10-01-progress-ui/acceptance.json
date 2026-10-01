@@ -1,7 +1,7 @@
 {
   "checkpoint": "V2-09",
   "decision": "DEC_UX_006",
-  "status": "LOCAL_CHROME_VERIFIED_AWAITING_USER_VISUAL_REVIEW",
+  "status": "USER_VISUAL_APPROVED_MERGE_AUTHORIZED_PUBLICATION_PENDING",
   "implementation_commit": "e3b819cc5474b223bbc13eec1ca9d5bb9fca5fea",
   "base_commit": "fe22d35b08edd1188104aac5d856154cc2c5dccb",
   "review_base": "codex/cloud-pay-per-video",
@@ -51,8 +51,15 @@
   "provider_spend": "USD0; no provider or production mutations",
   "paid_compute_shutdown": "No paid compute allocated or mutated; global inventory not queried",
   "remaining_gates": [
-    "User visual approval",
     "Separately authorized production publication and hosted verification",
     "Existing broad production/editorial/provider qualification gates unchanged"
-  ]
+  ],
+  "user_review": "2026-10-01: user approved interactive local preview and requested PR #2 merge.",
+  "ci_review": {
+    "run": 36889500558,
+    "static_contracts_security": "Prettier reports 134 files; changed HostedProductScreens.tsx also fails unchanged baseline stdin check. Other new UI files do not appear in warnings.",
+    "python": "Ruff I001 in untouched apps/media-worker-desktop/frozen_render_smoke.py:3",
+    "workerd": "PASS",
+    "remaining_jobs": "Still running at merge preflight; no broad green claim."
+  }
 }
