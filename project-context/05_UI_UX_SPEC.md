@@ -1,14 +1,25 @@
 # UI and UX specification
 
-Status: current compact 100%-zoom product UI is the preserved baseline; tenant-private automatic
-Serverless states below are normative transition work
+Status: compact dark product UI; the authorized 2026-10-01 Progress redesign supersedes exact
+geometry for that page. Tenant-private automatic Serverless states remain normative.
 Read when: changing product surfaces, queue/progress behavior, or Chrome acceptance.
 
 ## Design objective
 
+### Progress page redesign — 2026-10-01
+
+The user authorizes rearranging and resizing the Progress page while preserving all functionality
+and reviewing the pull request before publication (`DEC_UX_006`). Use a wider responsive canvas:
+stages and run controls on the left, preview and generation status in the center, saved prompts on
+the right. Smaller screens use two columns, then one. Compact the summary, soften borders and
+retain full saved prompts, stage actions, cancellation, refresh, deletion, and Review access.
+Only markup and scoped CSS change; existing requests, handlers, timers, provider/recovery logic,
+media identity and cost semantics remain intact. Other screens and navigation retain their layout.
+Local appearance/interaction verification does not authorize production publication.
+
 ### Compact interaction pass — 2026-09-14
 
-Keep the existing layout, routes, colors, and media-first structure. Field labels replace repeated
+Keep routes, colors, and the media-first structure; Progress geometry follows the redesign above. Field labels replace repeated
 section instructions. Stage rows show descriptions for current/problem stages, not completed or
 pending stages. Preset traits and generation rules remain available in disclosures. Connected
 computers show setup/installers under an add/update disclosure; first setup and required updates
@@ -20,8 +31,8 @@ Provider-free acceptance and release status: `CURRENT_STATE.yaml`,
 `evidence/acceptance/VF-10-09/2026-09-14-ui-ux-polish/acceptance.json`.
 
 Preserve the current visual system, information architecture, routes, hubs, project flow, and
-responsive behavior. The architecture transition is primarily backend/state-language work, not a UI
-redesign. VideoForge should look like a calm top-tier production product for a non-technical user:
+responsive behavior. The authorized Progress redesign changes presentation only. VideoForge should
+look like a calm production product for a non-technical user:
 large media previews, clear hierarchy, compact primary controls, honest progress/cost, and technical
 detail available on demand.
 

@@ -5798,62 +5798,173 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         </div>
       ) : null}
 
-      <div className="progress-workspace">
-        <Panel className="pipeline-panel" eyebrow="Pipeline" heading="Video production stages">
-          <StageTimeline
-            stages={displayedStages.map(stage => isCloudMediaStage(stage.id) ? {...stage, total: 0} : stage)}
-            actions={stageMediaActions}
-            retries={visibleStageRetries}
-            retryNotices={stageRetryNotices}
-            timings={Object.fromEntries(
-              stageTimings.map((stage, index) => [
-                stage.id,
-                stage.id === "technical-check" ? (
-                  <span key={stage.id} className="gpu-lane-elapsed">
-                    Included in assembly time
-                  </span>
-                ) : (
-                  <HostedElapsed
-                    key={stage.id ?? index}
-                    since={stage.since}
-                    until={stage.until}
-                    running={stage.running}
-                    label={`${stage.name} elapsed time`}
-                  />
-                ),
-              ]),
-            )}
-          />
-          {query.data.generation ? (
-            <section
-              className="generation-plan-summary"
-              aria-labelledby="generation-plan-summary-heading"
-            >
-              <div className="generation-plan-summary-heading">
-                <div>
-                  <p className="eyebrow">Stage 4 · deterministic timeline</p>
-                  <h3 id="generation-plan-summary-heading">Plan scenes detail</h3>
+      <div className="progress-workspace progress-dashboard">
+        <div className="progress-pipeline-column">
+          <Panel className="pipeline-panel" eyebrow="Pipeline" heading="Video production stages">
+            <StageTimeline
+              stages={displayedStages.map(stage => isCloudMediaStage(stage.id) ? {...stage, total: 0} : stage)}
+              actions={stageMediaActions}
+              retries={visibleStageRetries}
+              retryNotices={stageRetryNotices}
+              timings={Object.fromEntries(
+                stageTimings.map((stage, index) => [
+                  stage.id,
+                  stage.id === "technical-check" ? (
+                    <span key={stage.id} className="gpu-lane-elapsed">
+                      Included in assembly time
+                    </span>
+                  ) : (
+                    <HostedElapsed
+                      key={stage.id ?? index}
+                      since={stage.since}
+                      until={stage.until}
+                      running={stage.running}
+                      label={`${stage.name} elapsed time`}
+                    />
+                  ),
+                ]),
+              )}
+            />
+            {query.data.generation ? (
+              <section
+                className="generation-plan-summary"
+                aria-labelledby="generation-plan-summary-heading"
+              >
+                <div className="generation-plan-summary-heading">
+                  <div>
+                    <p className="eyebrow">Stage 4 · deterministic timeline</p>
+                    <h3 id="generation-plan-summary-heading">Plan scenes detail</h3>
+                  </div>
+                  <Badge tone="success">Saved</Badge>
                 </div>
-                <Badge tone="success">Saved</Badge>
+                <div className="detail-facts generation-plan-facts">
+                  <span>
+                    <small>Total segments</small>
+                    <strong>{hostedCountLabel(query.data.generation.total_segments)}</strong>
+                  </span>
+                  <span>
+                    <small>Image scenes</small>
+                    <strong>{hostedCountLabel(query.data.generation.image_scene_count)}</strong>
+                  </span>
+                  <span>
+                    <small>Avatar segments</small>
+                    <strong>{hostedCountLabel(query.data.generation.avatar_segment_count)}</strong>
+                  </span>
+                </div>
+              </section>
+            ) : null}
+          </Panel>
+          <Panel eyebrow="Activity" heading="Current run">
+            <div className="detail-facts">
+              {latestCloudAttempt ? (
+                <span>
+                  <small>Cloud phase</small>
+                  <strong>{cloudMediaPhaseLabel(latestCloudAttempt.cloud_phase, latestCloudAttempt.state, queue?.position)}</strong>
+                </span>
+              ) : null}
+              <span>
+                <small>Queue</small>
+                <strong>
+                  {queue?.position ? `Position ${queue.position}`
+                    : (render?.execution_backend ?? query.data.project.media_execution_backend) === "RUNPOD_POD"
+                      ? "Cloud media execution" : "Local media execution"}
+                </strong>
+              </span>
+              <span>
+                <small>Elapsed</small>
+                <strong>{formatMilliseconds(timing?.end_to_end_ms)}</strong>
+              </span>
+              <span>
+                <small>Worker jobs</small>
+                <strong>{query.data.attempts.length || "Preparing"}</strong>
+              </span>
+              <span>
+                <small>Last update</small>
+                <strong>
+                  {formatTimestamp(
+                    query.data.attempts.at(-1)?.updated_at ?? query.data.project.created_at,
+                  )}
+                </strong>
+              </span>
+            </div>
+            {cancellableAttempts.length > 0 ? (
+              <div className="current-run-actions">
+                {cancellableAttempts.map((attempt) => (
+                  <Button
+                    key={attempt.id}
+                    variant="danger"
+                    busy={cancel.isPending && cancel.variables === attempt.id}
+                    onClick={() => {
+                      if (
+                        attempt.state === "CANCEL_REQUESTED" ||
+                        (armedCancellation?.attemptId === attempt.id &&
+                          armedCancellation.attemptState === attempt.state)
+                      ) {
+                        setArmedCancellation(null);
+                        cancel.mutate(attempt.id);
+                        return;
+                      }
+                      setArmedCancellation({
+                        attemptId: attempt.id,
+                        attemptState: attempt.state,
+                      });
+                    }}
+                  >
+                    <X size={15} />
+                    {attempt.state === "CANCEL_REQUESTED"
+                      ? `Finish stopping ${cancellableAttemptLabel(attempt.kind)}`
+                      : armedCancellation?.attemptId === attempt.id &&
+                          armedCancellation.attemptState === attempt.state
+                        ? `Confirm stop ${cancellableAttemptLabel(attempt.kind)}`
+                        : `Stop ${cancellableAttemptLabel(attempt.kind)}`}
+                  </Button>
+                ))}
               </div>
-              <div className="detail-facts generation-plan-facts">
-                <span>
-                  <small>Total segments</small>
-                  <strong>{hostedCountLabel(query.data.generation.total_segments)}</strong>
-                </span>
-                <span>
-                  <small>Image scenes</small>
-                  <strong>{hostedCountLabel(query.data.generation.image_scene_count)}</strong>
-                </span>
-                <span>
-                  <small>Avatar segments</small>
-                  <strong>{hostedCountLabel(query.data.generation.avatar_segment_count)}</strong>
-                </span>
-              </div>
-            </section>
+            ) : null}
+          </Panel>
+        </div>
+        <div className="progress-media-column">
+          <Panel className="latest-artifact-panel" eyebrow="Latest" heading="Live preview">
+            <div className="latest-artifact-frame">
+              {stableRenderPreviewUrl ? (
+                <video
+                  className="media-artifact-video"
+                  controls
+                  preload="metadata"
+                  src={stableRenderPreviewUrl}
+                />
+              ) : latestArtifact ? (
+                <img src={latestArtifact} alt="Latest accepted project artifact" />
+              ) : (
+                <div className="live-preview-waiting">
+                  <Images size={30} aria-hidden="true" />
+                  <strong>Waiting for first visual</strong>
+                </div>
+              )}
+            </div>
+            <div className="artifact-caption">
+              <span>{latestArtifact ? "Latest accepted" : "Preparing assets"}</span>
+              <Badge tone={latestArtifact ? "success" : "neutral"}>
+                {latestArtifact ? "Ready" : "Waiting"}
+              </Badge>
+            </div>
+          </Panel>
+          <HostedSpanAudioPanel progress={query.data.span_audio ?? null} backend={spanAudioBackend} />
+          <HostedGpuLaneActivityPanel
+            lanes={query.data.gpu_lanes ?? []}
+            apiGeneration={query.data.generation_provider === "KIE_FAL"}
+          />
+          {contextComplete && contextDocument ? (
+            <Panel
+              className="extracted-context-panel"
+              eyebrow="Stage 3 result"
+              heading="Extracted context"
+            >
+              {contextText ? <p className="extracted-context-summary">{contextText}</p> : null}
+            </Panel>
           ) : null}
-        </Panel>
-        <div className="progress-side">
+        </div>
+        <div className="progress-prompts-column">
           {showPromptFeed ? (
             <Panel className="live-prompt-panel" eyebrow="Stage 5 · Live" heading="Image prompts">
               <div className="live-prompt-status" aria-live="polite">
@@ -5968,113 +6079,6 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               )}
             </Panel>
           ) : null}
-          <HostedSpanAudioPanel progress={query.data.span_audio ?? null} backend={spanAudioBackend} />
-          <HostedGpuLaneActivityPanel
-            lanes={query.data.gpu_lanes ?? []}
-            apiGeneration={query.data.generation_provider === "KIE_FAL"}
-          />
-          <Panel className="latest-artifact-panel" eyebrow="Latest" heading="Live preview">
-            <div className="latest-artifact-frame">
-              {stableRenderPreviewUrl ? (
-                <video
-                  className="media-artifact-video"
-                  controls
-                  preload="metadata"
-                  src={stableRenderPreviewUrl}
-                />
-              ) : latestArtifact ? (
-                <img src={latestArtifact} alt="Latest accepted project artifact" />
-              ) : (
-                <div className="live-preview-waiting">
-                  <Images size={30} aria-hidden="true" />
-                  <strong>Waiting for first visual</strong>
-                </div>
-              )}
-            </div>
-            <div className="artifact-caption">
-              <span>{latestArtifact ? "Latest accepted" : "Preparing assets"}</span>
-              <Badge tone={latestArtifact ? "success" : "neutral"}>
-                {latestArtifact ? "Ready" : "Waiting"}
-              </Badge>
-            </div>
-          </Panel>
-          {contextComplete && contextDocument ? (
-            <Panel
-              className="extracted-context-panel"
-              eyebrow="Stage 3 result"
-              heading="Extracted context"
-            >
-              {contextText ? <p className="extracted-context-summary">{contextText}</p> : null}
-            </Panel>
-          ) : null}
-          <Panel eyebrow="Activity" heading="Current run">
-            <div className="detail-facts">
-              {latestCloudAttempt ? (
-                <span>
-                  <small>Cloud phase</small>
-                  <strong>{cloudMediaPhaseLabel(latestCloudAttempt.cloud_phase, latestCloudAttempt.state, queue?.position)}</strong>
-                </span>
-              ) : null}
-              <span>
-                <small>Queue</small>
-                <strong>
-                  {queue?.position ? `Position ${queue.position}`
-                    : (render?.execution_backend ?? query.data.project.media_execution_backend) === "RUNPOD_POD"
-                      ? "Cloud media execution" : "Local media execution"}
-                </strong>
-              </span>
-              <span>
-                <small>Elapsed</small>
-                <strong>{formatMilliseconds(timing?.end_to_end_ms)}</strong>
-              </span>
-              <span>
-                <small>Worker jobs</small>
-                <strong>{query.data.attempts.length || "Preparing"}</strong>
-              </span>
-              <span>
-                <small>Last update</small>
-                <strong>
-                  {formatTimestamp(
-                    query.data.attempts.at(-1)?.updated_at ?? query.data.project.created_at,
-                  )}
-                </strong>
-              </span>
-            </div>
-            {cancellableAttempts.length > 0 ? (
-              <div className="current-run-actions">
-                {cancellableAttempts.map((attempt) => (
-                  <Button
-                    key={attempt.id}
-                    variant="danger"
-                    busy={cancel.isPending && cancel.variables === attempt.id}
-                    onClick={() => {
-                      if (
-                        attempt.state === "CANCEL_REQUESTED" ||
-                        (armedCancellation?.attemptId === attempt.id &&
-                          armedCancellation.attemptState === attempt.state)
-                      ) {
-                        setArmedCancellation(null);
-                        cancel.mutate(attempt.id);
-                        return;
-                      }
-                      setArmedCancellation({
-                        attemptId: attempt.id,
-                        attemptState: attempt.state,
-                      });
-                    }}
-                  >
-                    <X size={15} />
-                    {attempt.state === "CANCEL_REQUESTED"
-                      ? `Finish stopping ${cancellableAttemptLabel(attempt.kind)}`
-                      : armedCancellation?.attemptId === attempt.id &&
-                          armedCancellation.attemptState === attempt.state
-                        ? `Confirm stop ${cancellableAttemptLabel(attempt.kind)}`
-                        : `Stop ${cancellableAttemptLabel(attempt.kind)}`}
-                  </Button>
-                ))}
-              </div>
-            ) : null}
-          </Panel>
         </div>
       </div>
       {!asr ? (

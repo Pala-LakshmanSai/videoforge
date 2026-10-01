@@ -246,6 +246,50 @@ test("Stage 5 feels live and keeps every accepted prompt in a bounded scrollable
   expect(projectReads).toBe(3);
 });
 
+test("Progress dashboard keeps desktop columns, mobile controls and full saved prompts", async ({
+  page,
+}) => {
+  await page.route(`**/api/v2/hosted/projects/${promptProjectId}`, (route) =>
+    route.fulfill({ json: promptProjectDetail(3) }),
+  );
+  await page.goto(`/projects/${promptProjectId}`);
+  await expect(page.getByRole("heading", { name: "Image prompts", exact: true })).toBeVisible();
+  for (const width of [1440, 1024, 390, 320]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const layout = await page.evaluate(() => {
+      const rect = (selector: string) => {
+        const { x, y, width } = document.querySelector(selector)!.getBoundingClientRect();
+        return { x, y, width };
+      };
+      return {
+        overflow: document.documentElement.scrollWidth > window.innerWidth,
+        pipeline: rect(".pipeline-panel"),
+        preview: rect(".latest-artifact-panel"),
+        prompts: rect(".live-prompt-panel"),
+      };
+    });
+    expect(layout.overflow, `Overflow at ${width}px`).toBe(false);
+    if (width === 1440) {
+      expect(layout.pipeline.x).toBeLessThan(layout.preview.x);
+      expect(layout.preview.x).toBeLessThan(layout.prompts.x);
+      expect(layout.pipeline.y).toBe(layout.preview.y);
+      expect(layout.preview.y).toBe(layout.prompts.y);
+    } else if (width <= 390) {
+      expect(layout.preview.y).toBeGreaterThan(layout.pipeline.y);
+      expect(layout.prompts.y).toBeGreaterThan(layout.preview.y);
+    }
+  }
+  const scene = page
+    .getByRole("region", { name: "Accepted image prompts" })
+    .getByRole("listitem")
+    .first();
+  await scene.locator("summary").press("Enter");
+  await expect(
+    scene.getByText(/real local maker performs a concrete workshop action/u),
+  ).toBeVisible();
+  await expect(scene.getByText(/text, captions, logos, motion graphics/u)).toBeVisible();
+});
+
 const regenerationSceneId = "12121212-1212-4212-8212-121212121212";
 const otherSceneId = "13131313-1313-4313-8313-131313131313";
 const regenerationRequestId = "14141414-1414-4414-8414-141414141414";
