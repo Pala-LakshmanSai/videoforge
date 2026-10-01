@@ -187,7 +187,7 @@ it("offers a saved plan only to the targeted prompt handoff", async () => {
   }
 });
 
-it("resumes one admitted API generation only before any span or provider job exists", async () => {
+it("retries one queued or admitted API generation only before any span or provider job exists", async () => {
   const database = await seededDatabase({
     state: "SUCCEEDED",
     hash: "accepted",
@@ -203,7 +203,9 @@ it("resumes one admitted API generation only before any span or provider job exi
     `);
     expect(await nextSteps(database)).toEqual(["dispatch"]);
     await database.exec(`INSERT INTO public.generation_requests VALUES
-      ('66666666-6666-4666-8666-666666666666','${revisionId}','ACTIVE')`);
+      ('66666666-6666-4666-8666-666666666666','${revisionId}','WAITING')`);
+    expect(await nextSteps(database)).toEqual(["dispatch"]);
+    await database.exec("UPDATE public.generation_requests SET state='ACTIVE'");
     expect(await nextSteps(database)).toEqual(["dispatch"]);
     await database.exec(`INSERT INTO public.hosted_api_generation_jobs VALUES
       ('77777777-7777-4777-8777-777777777777','${revisionId}')`);

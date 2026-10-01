@@ -54,11 +54,11 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // The 2026-09-30 security dependency repair measures2,784,389 production and2,781,773 staging
 // bytes. Both exact closures and hashes are retained in the app-audit evidence; every additional
 // byte still fails, and provider/validator/native-code quarantine and CPU bounds remain enforced.
-// The 2026-10-01 cleanup preflight guard and truthful continuation outcome add exactly
-// 1,424 production and 1,193 staging bytes. Provider/validator/native quarantine stays enforced.
+// The 2026-10-01 cleanup preflight guard, waiting-request recovery, and truthful outcome add exactly
+// 1,648 production and 1,417 staging bytes. Provider/validator/native quarantine stays enforced.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_785_813,
-  "wrangler.staging.jsonc": 2_782_966,
+  "wrangler.production.jsonc": 2_786_037,
+  "wrangler.staging.jsonc": 2_783_190,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",
