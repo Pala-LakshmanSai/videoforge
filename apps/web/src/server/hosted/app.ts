@@ -832,42 +832,6 @@ async function hostedSession(
   return auth.api.getSession({ headers: request.headers });
 }
 
-async function handleTenantApi(
-  request: Request,
-  config: ReturnType<typeof hostedRuntimeConfiguration>,
-  executionContext: HostedExecutionContext,
-): Promise<Response> {
-  const pool = createNeonPool(config.neon.databaseUrl);
-  try {
-    const session = await hostedSession(request, config, pool, executionContext);
-    if (!session?.user?.id) return json({ error: { code: "AUTHENTICATION_REQUIRED" } }, 401);
-    const scope = await pool.query(`SELECT * FROM videoforge_hosted_session_scope($1)`, [
-      session.session.token,
-    ]);
-    const row = scope.rows[0];
-    if (!row) return json({ error: { code: "INVITE_ADMISSION_REQUIRED" } }, 403);
-    const workspaceName = await createNeonExecutor(pool).transaction(async (transaction) => {
-      await transaction.query("SELECT set_config($1, $2, true)", [
-        "videoforge.account_id",
-        row.account_id,
-      ]);
-      const workspace = await transaction.query(`SELECT name FROM workspaces WHERE id = $1`, [
-        row.workspace_id,
-      ]);
-      return workspace.rows[0]?.name;
-    });
-    return json({
-      schema_version: "videoforge-hosted-tenant/v1",
-      account_id: row.account_id,
-      workspace_id: row.workspace_id,
-      workspace_name: workspaceName ?? "My workspace",
-      user: { id: session.user.id, email: session.user.email, name: session.user.name },
-      rights: "EQUAL",
-    });
-  } finally {
-    await pool.end();
-  }
-}
 
 async function handleCpuAttemptApi(
   request: Request,
@@ -1363,6 +1327,10 @@ export async function handleHostedRequest(
     const cloudResponse = await handleCloudMediaRequest(request, environment, config, executionContext);
     if (cloudResponse) return cloudResponse;
   }
+  if (url.pathname === "/api/v2/team-access") {
+    const { handleHostedTeamAccess } = await import("./team-access");
+    return handleHostedTeamAccess(request, config, executionContext);
+  }
   if (url.pathname === HOSTED_INVITE_REDEMPTION_PATH) {
     const pool = createNeonPool(config.neon.databaseUrl);
     try {
@@ -1569,7 +1537,7 @@ export async function handleHostedRequest(
     });
   }
   if (request.method === "GET" && url.pathname === "/api/v2/tenant") {
-    return handleTenantApi(request, config, executionContext);
+    return (await import("./team-access")).handleTenantApi(request, config, executionContext);
   }
   if (request.method === "GET" && url.pathname === "/api/v2/library") {
     return handleHostedLibrary(request, environment, config, executionContext);

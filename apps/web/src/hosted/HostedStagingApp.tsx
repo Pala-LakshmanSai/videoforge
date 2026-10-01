@@ -1,3 +1,4 @@
+import { HostedIdentityContext } from "./HostedIdentity";
 import { createAuthClient } from "better-auth/react";
 import { useCallback, useEffect, useRef, useState, type PropsWithChildren } from "react";
 
@@ -6,6 +7,7 @@ interface Tenant {
   readonly account_id: string;
   readonly workspace_id: string;
   readonly workspace_name: string;
+  readonly can_manage_team?: boolean;
   readonly user: { readonly id: string; readonly email: string; readonly name: string };
 }
 
@@ -53,6 +55,7 @@ function parseTenant(value: unknown): Tenant {
     account_id: value.account_id,
     workspace_id: value.workspace_id,
     workspace_name: value.workspace_name,
+    can_manage_team: value.can_manage_team === true,
     user: { id: user.id, email: user.email, name: user.name },
   };
 }
@@ -255,7 +258,17 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
       </main>
     );
   if (access?.state === "ADMITTED") {
-    return children;
+    return (
+      <HostedIdentityContext.Provider
+        value={{
+          email: access.tenant.user.email,
+          canManageTeam: access.tenant.can_manage_team === true,
+          signOut,
+        }}
+      >
+        {children}
+      </HostedIdentityContext.Provider>
+    );
   }
   if (access?.state === "INVITE_REQUIRED") {
     return (

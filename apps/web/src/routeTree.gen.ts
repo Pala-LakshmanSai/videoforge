@@ -15,6 +15,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as LibraryRouteImport } from './routes/library'
 import { Route as AvatarsRouteImport } from './routes/avatars'
+import { Route as AccessRouteImport } from './routes/access'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StylesNewRouteImport } from './routes/styles/new'
 import { Route as ProjectsNewRouteImport } from './routes/projects/new'
@@ -52,6 +53,11 @@ const AvatarsRoute = AvatarsRouteImport.update({
   path: '/avatars',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccessRoute = AccessRouteImport.update({
+  id: '/access',
+  path: '/access',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -85,6 +91,7 @@ const ProjectsProjectIdReviewRoute = ProjectsProjectIdReviewRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/access': typeof AccessRoute
   '/avatars': typeof AvatarsRouteWithChildren
   '/library': typeof LibraryRoute
   '/projects': typeof ProjectsRouteWithChildren
@@ -99,6 +106,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/access': typeof AccessRoute
   '/avatars': typeof AvatarsRouteWithChildren
   '/library': typeof LibraryRoute
   '/projects': typeof ProjectsRouteWithChildren
@@ -114,6 +122,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/access': typeof AccessRoute
   '/avatars': typeof AvatarsRouteWithChildren
   '/library': typeof LibraryRoute
   '/projects': typeof ProjectsRouteWithChildren
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/access'
     | '/avatars'
     | '/library'
     | '/projects'
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/access'
     | '/avatars'
     | '/library'
     | '/projects'
@@ -158,6 +169,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/access'
     | '/avatars'
     | '/library'
     | '/projects'
@@ -173,6 +185,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccessRoute: typeof AccessRoute
   AvatarsRoute: typeof AvatarsRouteWithChildren
   LibraryRoute: typeof LibraryRoute
   ProjectsRoute: typeof ProjectsRouteWithChildren
@@ -223,6 +236,13 @@ declare module '@tanstack/react-router' {
       path: '/avatars'
       fullPath: '/avatars'
       preLoaderRoute: typeof AvatarsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/access': {
+      id: '/access'
+      path: '/access'
+      fullPath: '/access'
+      preLoaderRoute: typeof AccessRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -319,6 +339,7 @@ const StylesRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccessRoute: AccessRoute,
   AvatarsRoute: AvatarsRouteWithChildren,
   LibraryRoute: LibraryRoute,
   ProjectsRoute: ProjectsRouteWithChildren,

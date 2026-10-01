@@ -119,6 +119,23 @@ Invite-only authentication remains. A unique single-use invite is bound to the i
 email and redeemed atomically. Authentication is not sufficient by itself: every read, write,
 signed-URL issue, queue mutation, callback acceptance, and download also passes ownership checks.
 
+### Team access administration
+
+`DEC_TEAM_ACCESS_001` adds `GET/POST /api/v2/team-access`. Only admitted, verified Google identities
+`lakshman121@gmail.com` and `demo9gss@gmail.com` can list admission metadata or perform `INVITE`,
+`REVOKE_INVITE`, `REVOKE`, and `RESTORE`. Request bodies contain exactly `operation` and `target`;
+mutations require the configured browser origin and existing hosted rate limits. The security-definer
+`videoforge_manage_team_access` independently validates the session and exact manager identity.
+No project, media, preset, cost, or job content is exposed across tenants.
+
+Migration 0238 retains immutable invitation rows and makes email uniqueness apply to ACTIVE codes.
+Replacement creation locks the active email row, revokes it, and inserts a fresh 72-hour code hash.
+Consumed codes cannot rotate. `hosted_access_revocations` belongs to native Neon backup/PITR,
+not portable restore. Revocation deletes every target browser session, blocks fresh sign-in and
+session-scope resolution, and preserves the existing account/workspace; restoration requires a
+fresh ordinary Google sign-in. Existing jobs, worker leases, accepted artifacts, provider cleanup,
+and tenant ownership rules remain unchanged. Managers cannot revoke either protected owner.
+
 ## Core relational records
 
 | Record | Required V2 meaning |

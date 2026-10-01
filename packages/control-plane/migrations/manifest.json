@@ -1200,6 +1200,12 @@
       "name": "cloud_terminal_cleanup_admission",
       "filename": "0237_cloud_terminal_cleanup_admission.sql",
       "sha256": "sha256:7bfbc72e35ad96e16fd335264d20d5de4be06b03b97f20f934176582bb001978"
+    },
+    {
+      "version": 238,
+      "name": "hosted_team_access",
+      "filename": "0238_hosted_team_access.sql",
+      "sha256": "sha256:f554ce40b823dec5c12c0c8380f700e95fcc3eda776b5c7139bc3c438244bf2d"
     }
   ]
 }

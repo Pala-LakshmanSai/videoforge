@@ -4,7 +4,7 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-09-06"
 source_of_truth: project-context
 
-current_selected_profile: v2_09_short_live_e2e
+current_selected_profile: v2_09_team_access
 current_selected_brief: tasks/VF-10-09.md
 
 mandatory_read:
@@ -25,6 +25,10 @@ conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
 target_profile_word_budget: 15000
 
 read_profiles:
+  v2_09_team_access:
+    - tasks/VF-10-09.md
+    - 05_UI_UX_SPEC.md
+    - 10_DATA_AND_API_CONTRACTS.md
   v2_00_roadmap_reset_audit:
     - tasks/VF-10-00A.md
     - 15_DECISIONS_AND_OPEN_GATES.md
@@ -232,6 +236,7 @@ approved_decisions:
   DEC_CLOUD_BILLING_001: ordinary_Cloud_pay_per_use_no_account_spend_cap_expiry_or_rental_quota_cost_accounting_and_finite_machine_shutdown_preserved
   DEC_CLOUD_CLEANUP_ISOLATION_001: fenced_terminal_early_failure_allows_Local_and_Cloud_VIDEO_unknown_cleanup_and_global_resource_capacity_retained
   DEC_AUTH_001: invite_only_google_verified_email_identity_no_email_provider
+  DEC_TEAM_ACCESS_001: exact_two_owner_accounts_manage_private_studio_admission
   DEC_AVATAR_004: one_native_clip_two_layouts
   DEC_AVATAR_005: tenant_private_reusable_avatar_hub
   DEC_AVATAR_010: superseded_soulx_pro_historical_attempts_only

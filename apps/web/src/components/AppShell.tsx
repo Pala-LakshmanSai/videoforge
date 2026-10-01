@@ -1,3 +1,4 @@
+import { AccountMenu } from "../hosted/AccountMenu";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
@@ -477,6 +478,8 @@ export function AppShell({ children }: PropsWithChildren) {
                 <Badge tone="warning">Hosted runtime unavailable · fixtures are not live</Badge>
               </div>
             ) : null}
+
+            {hostedBrowser ? <AccountMenu /> : null}
 
             {fixtureControlsEnabled ? (
               <Disclosure

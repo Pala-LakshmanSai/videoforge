@@ -15,6 +15,10 @@ The original project passed hosted ASR; its separate uncertain prompt batch rema
 
 # VideoForge: start here
 
+Team access is implemented for the two selected owners under `DEC_TEAM_ACCESS_001`.
+The isolated `codex/team-access` PR has local UI/API/PostgreSQL/Chrome proof; migration and
+production rollout await review and merge approval. Read `team_access_2026_10_01` in CURRENT_STATE.yaml.
+
 Optional Local/Cloud media execution is published under the2026-09-28 user decision.
 Local stays default; Kie/Fal generation and existing personal-worker releases remain unchanged.
 Ordinary Cloud follows ongoing account-scoped pay-per-use under DEC_CLOUD_BILLING_001. Retained-media technical
