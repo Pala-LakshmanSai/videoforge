@@ -78,5 +78,30 @@
     "workflow_identities_preserved": 3,
     "private_artifacts": ".videoforge/stage-handoff-20261001/prepared-final/",
     "published": false
+  },
+  "repeat_observation": {
+    "at": "2026-10-01T13:16:57.706609Z",
+    "production_source": "938d69e13b2172e2eb85172ad85bf37e6a117ae6",
+    "production_version": "daba8d30-c708-42e8-83e8-c3cb8dc23c02",
+    "new_project_prompt_state": "SUCCEEDED",
+    "accepted_prompts": 30,
+    "handoff_ms": 239.109,
+    "request_state": "WAITING",
+    "span_attempts": 0,
+    "earlier_cpu_states": {
+      "FAILED": 1,
+      "CANCELLED": 104
+    },
+    "old_cloud_state": "STOPPING",
+    "old_launch_outcome": "UNKNOWN",
+    "complete_native_owned_pod_inventory": 0,
+    "focused_recheck": {
+      "files": 4,
+      "tests": 288,
+      "result": "PASS"
+    },
+    "chrome": "REAL_CHROME_PRODUCTION_READ_ONLY: Audio spanning PENDING, queue position2, contradictory Generation is running banner; prepared release still unpublished",
+    "new_inference_compute_usd": 0,
+    "remaining": "Exact publication approval and authoritative old-launch reconciliation"
   }
 }
