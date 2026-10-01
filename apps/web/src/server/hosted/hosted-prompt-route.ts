@@ -252,6 +252,16 @@ export const HOSTED_PROMPT_STALE_RUN_MS = 15 * 60 * 1000;
  * answered, and the answer was wrong -- retrying the same request reproduces the same defect), and
  * every acceptance-path code, because those already produced a durable result.
  */
+/** A progress reader must not adjudicate a live synchronous request before its dispatch window ends. */
+export function hostedPromptClaimInFlight(
+  state: unknown,
+  claim: { claimed_at: string; recorded_result: unknown } | null,
+  now = Date.now(),
+): boolean {
+  return state === "DISPATCHING" && claim !== null && !claim.recorded_result &&
+    now - Date.parse(claim.claimed_at) < HOSTED_PROMPT_STALE_RUN_MS;
+}
+
 /** Exported so the continuation sweep offers exactly the classes this route will accept. */
 export const HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES = new Set([
   "HOSTED_PROMPT_EXECUTION_UNKNOWN",
@@ -424,6 +434,7 @@ export async function writeProjectPrompts(
         if (!saved) return null;
         const claim = await transaction.query<{
           batch_ordinal: number;
+          claimed_at: string;
           provider_task_uuid: string;
           request_bytes: string;
           request_hash: string;
@@ -431,6 +442,7 @@ export async function writeProjectPrompts(
           recorded_result: Parameters<typeof recoverClaimedHostedPromptBatch>[0]["recordedResult"];
         }>(
           `SELECT claim.batch_ordinal,
+                  coalesce(replacement.created_at,claim.created_at)::text AS claimed_at,
                   coalesce(replacement.provider_task_uuid,claim.provider_task_uuid) AS provider_task_uuid,
                   coalesce(replacement.request_bytes,claim.request_bytes) AS request_bytes,
                   coalesce(replacement.request_hash,claim.request_hash) AS request_hash,
@@ -461,6 +473,15 @@ export async function writeProjectPrompts(
       if (original) {
         const saved = original.run;
         runId = saved.id;
+        if (hostedPromptClaimInFlight(existingState, original.claim))
+          return response({
+            schema_version: "videoforge-hosted-prompt-response/v1",
+            state: "RUNNING",
+            replayed: false,
+            accepted_batch_count: saved.accepted_batch_count,
+            accepted_scene_count: saved.accepted_scene_count,
+            planned_batch_count: saved.planned_batch_count,
+          }, 202);
         const identity: HostedPromptIdentity = {
           runId: saved.id,
           taskId: saved.task_id,

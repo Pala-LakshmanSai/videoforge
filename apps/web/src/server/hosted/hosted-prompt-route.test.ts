@@ -191,3 +191,16 @@ it("uses the atomic tenant claim RPC for both first and continued batches", () =
   expect(claim).not.toContain("videoforge_reopen_saved_hosted_prompt_prefix");
   expect(source.match(/claimHostedPromptBatch\(pool,/gu)).toHaveLength(2);
 });
+
+
+it("keeps live original and replacement claims pending while saved replies and expired claims remain recoverable", async () => {
+  const { hostedPromptClaimInFlight, HOSTED_PROMPT_STALE_RUN_MS } = await import("./hosted-prompt-route");
+  const now = Date.now();
+  const claim = { claimed_at: new Date(now - 500).toISOString(), recorded_result: null };
+  expect(hostedPromptClaimInFlight("DISPATCHING", claim, now)).toBe(true);
+  expect(hostedPromptClaimInFlight("DISPATCHING", { ...claim, recorded_result: { status: "succeeded" } }, now)).toBe(false);
+  expect(hostedPromptClaimInFlight("UNKNOWN", claim, now)).toBe(false);
+  expect(hostedPromptClaimInFlight("DISPATCHING", null, now)).toBe(false);
+  expect(hostedPromptClaimInFlight("DISPATCHING", { ...claim, claimed_at: new Date(now - HOSTED_PROMPT_STALE_RUN_MS).toISOString() }, now)).toBe(false);
+  expect(hostedPromptClaimInFlight("DISPATCHING", { ...claim, claimed_at: "invalid" }, now)).toBe(false);
+});
