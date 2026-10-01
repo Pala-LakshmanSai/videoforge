@@ -10,12 +10,16 @@ Read when: changing product surfaces, queue/progress behavior, or Chrome accepta
 
 The user authorizes rearranging and resizing the Progress page while preserving all functionality
 and reviewing the pull request before publication (`DEC_UX_006`). Use a wider responsive canvas:
-stages and run controls on the left, preview and generation status in the center, saved prompts on
-the right. Smaller screens use two columns, then one. Compact the summary, soften borders and
+stages and run controls on the left; context, scene planning and saved prompts in the center;
+audio preparation, generation status and preview in that sequence on the right. Use a canvas up
+to 2080px with 16px stage labels and larger cards, headings and prompt controls. Smaller screens
+use two columns, then one, retaining preparation before generated media. Compact the summary, soften borders and
 retain full saved prompts, stage actions, cancellation, refresh, deletion, and Review access.
 Only markup and scoped CSS change; existing requests, handlers, timers, provider/recovery logic,
 media identity and cost semantics remain intact. Other screens and navigation retain their layout.
-Local appearance/interaction verification does not authorize production publication.
+The user approved the first interactive preview and merged PR #2. The subsequent 2026-10-01
+request explicitly authorizes larger sizing, sequential arrangement and production publication;
+this authority covers UI changes only and no new generation or paid compute.
 
 ### Compact interaction pass — 2026-09-14
 

@@ -254,7 +254,7 @@ test("Progress dashboard keeps desktop columns, mobile controls and full saved p
   );
   await page.goto(`/projects/${promptProjectId}`);
   await expect(page.getByRole("heading", { name: "Image prompts", exact: true })).toBeVisible();
-  for (const width of [1440, 1024, 390, 320]) {
+  for (const width of [2560, 1440, 1024, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 });
     const layout = await page.evaluate(() => {
       const rect = (selector: string) => {
@@ -266,17 +266,23 @@ test("Progress dashboard keeps desktop columns, mobile controls and full saved p
         pipeline: rect(".pipeline-panel"),
         preview: rect(".latest-artifact-panel"),
         prompts: rect(".live-prompt-panel"),
+        media: rect(".progress-media-column"),
+        preparation: rect(".progress-prompts-column"),
+        stageFont: parseFloat(
+          getComputedStyle(document.querySelector(".stage-copy strong")!).fontSize,
+        ),
       };
     });
     expect(layout.overflow, `Overflow at ${width}px`).toBe(false);
-    if (width === 1440) {
-      expect(layout.pipeline.x).toBeLessThan(layout.preview.x);
-      expect(layout.preview.x).toBeLessThan(layout.prompts.x);
-      expect(layout.pipeline.y).toBe(layout.preview.y);
-      expect(layout.preview.y).toBe(layout.prompts.y);
+    if (width >= 1440) {
+      expect(layout.pipeline.x).toBeLessThan(layout.prompts.x);
+      expect(layout.prompts.x).toBeLessThan(layout.preview.x);
+      expect(layout.pipeline.y).toBe(layout.preparation.y);
+      expect(layout.preparation.y).toBe(layout.media.y);
+      expect(layout.stageFont).toBeGreaterThanOrEqual(16);
     } else if (width <= 390) {
-      expect(layout.preview.y).toBeGreaterThan(layout.pipeline.y);
-      expect(layout.prompts.y).toBeGreaterThan(layout.preview.y);
+      expect(layout.prompts.y).toBeGreaterThan(layout.pipeline.y);
+      expect(layout.preview.y).toBeGreaterThan(layout.prompts.y);
     }
   }
   const scene = page
