@@ -5807,5 +5807,6 @@ it("offers a credit check for paused prompts without automatic submission", asyn
   renderHosted(<HostedProjectScreen projectId={projectId} />);
   expect(await screen.findByText("Credit pause")).toBeInTheDocument();
   expect(within(stageRow("Write image prompts")).getByRole("button", { name: "Check again" })).toBeEnabled();
+  expect(screen.queryByText("Scene prompts are generated automatically.")).not.toBeInTheDocument();
   expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(false);
 });

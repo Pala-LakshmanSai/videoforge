@@ -6149,6 +6149,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                             query.data.gpu_readiness.dispatch_available === true)
                           ? "Ready to generate."
                           : "Waiting for GPU qualification."
+                        : promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
+                          ? "Prompt writing is paused for provider credits."
                         : promptAutoStartError
                           ? "Automatic image prompt writing could not start."
                           : "Writing image prompts…"
@@ -6180,7 +6182,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           query.data.generation &&
           promptStage?.status !== "COMPLETE" ? (
             <>
-              <span>Scene prompts are generated automatically.</span>
+              <span>{promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
+                ? "Saved prompts remain intact. Check again after provider credits are available."
+                : "Scene prompts are generated automatically."}</span>
               {promptAutoStartError ? <span>{promptWriting.error.message}</span> : null}
               {promptAutoStartError ? (
                 <Button
