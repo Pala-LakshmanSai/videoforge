@@ -1,7 +1,7 @@
 {
   "checkpoint": "V2-09",
   "selected_task": "VF-10-09",
-  "status": "LOCAL_GREEN_PUBLICATION_PENDING",
+  "status": "PRODUCTION_VERIFIED_PAUSED_FOR_PROVIDER_CREDITS",
   "diagnosis": "Runware original task archive confirms concurrentRequestLimitExceeded due to insufficient available balance despite getResponse reporting processing.",
   "saved_prefix": {
     "scenes": 70,
@@ -24,7 +24,16 @@
     "production_bundle_quarantine": true,
     "live_provider_read_only": true,
     "legacy_runtime_firewall": "Two unchanged preexisting continuation import allowlist failures; production bundle quarantine passes.",
-    "sql_checks": 10
+    "sql_checks": 10,
+    "configured_runtime_pause_rollback": true,
+    "real_chrome": {
+      "blocked_credit_reason": true,
+      "check_again_enabled": true,
+      "normal_check_returns_credit_pause": true,
+      "saved_prompts_claims_and_costs_unchanged": true,
+      "replacement_claims_after_check": 0,
+      "final_activity_pause_message": true
+    }
   },
   "provider_spend": {
     "new_inference_posts": 0,
@@ -32,9 +41,10 @@
     "stage_cap_usd": 6.5
   },
   "remaining_gates": [
-    "Production publication and real Chrome verification",
-    "Configured Runware balance below next-batch minimum",
-    "Paid continuation acceptance requires available Runware credits; whole video completion not claimed"
+    "Configured Runware credits below next-batch minimum; RunPod credits cannot fund prompts",
+    "Funded live continuation and whole-video completion not claimed",
+    "Existing canonical driver adoption deferred while another project is active; Check again route verified",
+    "Unrelated project qualification gates unchanged"
   ],
   "database": {
     "migration": 233,
@@ -46,5 +56,16 @@
     "complete_native_inventory": true,
     "owned_pods": 0,
     "total_pods": 0
+  },
+  "production": {
+    "source": "ecff7b8a4bc087140ee501e91108596d1622ddc9",
+    "version": "1c337afe-2630-4189-9a1d-69ee47dc6be6",
+    "traffic_percent": 100,
+    "secrets_preserved": 25,
+    "bindings_preserved": 50,
+    "workflow_identities_preserved": 3,
+    "future_definitions_updated": 3,
+    "new_workflow_instances": 0,
+    "current_canonical_driver": "Preserved without restart while another project is active"
   }
 }
