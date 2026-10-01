@@ -1,15 +1,15 @@
 /* Scoped to Progress: other pages retain their existing shell and surfaces. */
 .page:has(.progress-dashboard) {
-  width: min(1640px, 100%);
-  gap: 18px;
-  padding: 28px clamp(16px, 2.6vw, 40px) 120px;
+  width: min(2080px, 100%);
+  gap: 24px;
+  padding: 32px clamp(16px, 2.4vw, 48px) 120px;
 }
 
 .page:has(.progress-dashboard) .progress-hero {
   min-height: 0;
-  grid-template-columns: 128px minmax(0, 1fr);
+  grid-template-columns: 144px minmax(0, 1fr);
   gap: 28px;
-  padding: 24px 28px;
+  padding: 28px 32px;
   border-color: rgba(151, 160, 200, 0.2);
   border-radius: 20px;
   background:
@@ -19,8 +19,8 @@
 }
 
 .page:has(.progress-dashboard) .progress-ring {
-  width: 128px;
-  height: 128px;
+  width: 144px;
+  height: 144px;
   box-shadow: none;
 }
 
@@ -32,11 +32,11 @@
 }
 
 .page:has(.progress-dashboard) .progress-ring-inner strong {
-  font-size: 2.6rem;
+  font-size: 44px;
 }
 
 .page:has(.progress-dashboard) .progress-ring-inner span {
-  font-size: 0.65rem;
+  font-size: 12px;
   letter-spacing: 0.12em;
 }
 
@@ -79,7 +79,7 @@
 }
 
 .page:has(.progress-dashboard) .progress-metrics .metric strong {
-  font-size: 1.45rem;
+  font-size: 26px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -93,22 +93,22 @@
 
 .page:has(.progress-dashboard) .progress-metrics .metric small {
   max-width: 32ch;
-  font-size: 0.75rem;
+  font-size: 14px;
   line-height: 1.5;
 }
 
 .page:has(.progress-dashboard) .progress-hero-body > .muted {
   margin: 0;
   overflow-wrap: anywhere;
-  font-size: 0.8rem;
+  font-size: 15px;
 }
 
 .progress-dashboard {
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr) minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.3fr);
+  gap: 24px;
 }
 
-.progress-dashboard:not(:has(.live-prompt-panel)) {
+.progress-dashboard:has(.progress-prompts-column:empty) {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
 }
 
@@ -122,12 +122,12 @@
   display: grid;
   min-width: 0;
   align-content: start;
-  gap: 18px;
+  gap: 24px;
 }
 
 .progress-dashboard .panel {
   min-width: 0;
-  padding: 20px;
+  padding: 24px;
   border-color: rgba(151, 160, 200, 0.18);
   border-radius: 18px;
   background: linear-gradient(140deg, rgba(255, 255, 255, 0.025), transparent 60%), #111522;
@@ -139,12 +139,12 @@
 }
 
 .progress-dashboard .panel-header h2 {
-  font-size: 1.2rem;
+  font-size: 22px;
   letter-spacing: -0.035em;
 }
 
 .progress-dashboard .eyebrow {
-  font-size: 0.65rem;
+  font-size: 12px;
   letter-spacing: 0.13em;
 }
 
@@ -157,10 +157,10 @@
 }
 
 .progress-dashboard .stage-row {
-  min-height: 49px;
+  min-height: 60px;
   grid-template-columns: 20px 12px minmax(0, 1fr) auto;
   gap: 8px;
-  padding: 8px 6px;
+  padding: 10px 8px;
   border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
@@ -182,20 +182,20 @@
 }
 
 .progress-dashboard .stage-copy strong {
-  font-size: 0.83rem;
+  font-size: 16px;
   line-height: 1.4;
 }
 
 .progress-dashboard .stage-copy .badge {
   padding: 2px 6px;
-  font-size: 0.6rem;
+  font-size: 11px;
   line-height: 1.4;
   letter-spacing: 0.04em;
 }
 
 .progress-dashboard .stage-copy p,
 .progress-dashboard .stage-copy .gpu-lane-elapsed {
-  font-size: 0.74rem;
+  font-size: 14px;
   line-height: 1.5;
 }
 
@@ -205,8 +205,8 @@
 }
 
 .progress-dashboard .generation-plan-summary {
-  margin-top: 14px;
-  padding-top: 14px;
+  margin-top: 0;
+  border-top: 1px solid rgba(151, 160, 200, 0.18);
 }
 
 .progress-dashboard .generation-plan-facts {
@@ -221,7 +221,7 @@
 }
 
 .progress-dashboard .detail-facts small {
-  font-size: 0.6rem;
+  font-size: 11px;
   letter-spacing: 0.05em;
 }
 
@@ -240,16 +240,16 @@
 
 .progress-dashboard .gpu-lane-name,
 .progress-dashboard .artifact-caption {
-  font-size: 0.8rem;
+  font-size: 15px;
 }
 
 .progress-dashboard .live-prompt-scroll {
-  max-height: 560px;
+  max-height: 620px;
 }
 
 .progress-dashboard .live-prompt-item {
   gap: 8px;
-  padding: 12px;
+  padding: 16px;
   border-color: rgba(151, 160, 200, 0.14);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.025);
@@ -257,13 +257,49 @@
 
 .progress-dashboard .live-prompt-progress strong,
 .progress-dashboard .live-prompt-helper {
-  font-size: 0.75rem;
+  font-size: 14px;
   line-height: 1.5;
 }
 
 .progress-dashboard .live-prompt-item .disclosure-summary {
   min-height: 44px;
-  font-size: 0.75rem;
+  font-size: 14px;
+}
+
+.page:has(.progress-dashboard) .progress-hero-heading h2 {
+  font-size: 28px;
+}
+
+.page:has(.progress-dashboard) .metric > span,
+.page:has(.progress-dashboard) .notice {
+  font-size: 14px;
+}
+
+.progress-dashboard .live-prompt-status,
+.progress-dashboard .live-prompt-item p,
+.progress-dashboard .extracted-context-summary,
+.progress-dashboard .gpu-lane-copy {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.progress-dashboard .live-prompt-item-heading strong,
+.progress-dashboard .detail-facts strong {
+  font-size: 17px;
+}
+
+.progress-dashboard .live-prompt-item-heading span,
+.progress-dashboard .live-prompt-progress small,
+.progress-dashboard .live-prompt-activity {
+  font-size: 12px;
+}
+
+.progress-dashboard .detail-facts {
+  gap: 12px;
+}
+
+.progress-dashboard .generation-plan-summary-heading h3 {
+  font-size: 22px;
 }
 
 @media (max-width: 1240px) {
@@ -284,14 +320,14 @@
     grid-row: span 2;
   }
 
-  .progress-prompts-column {
+  .progress-media-column {
     grid-column: 2;
   }
 }
 
 @media (max-width: 760px) {
   .page:has(.progress-dashboard) {
-    padding: 20px 16px 120px;
+    padding: 24px 16px 120px;
     gap: 14px;
   }
 
@@ -327,7 +363,7 @@
   }
 
   .page:has(.progress-dashboard) .progress-hero-heading h2 {
-    font-size: 1.2rem;
+    font-size: 22px;
     overflow-wrap: anywhere;
   }
 
@@ -351,7 +387,7 @@
     gap: 14px;
   }
 
-  .progress-dashboard:not(:has(.live-prompt-panel)) {
+  .progress-dashboard:has(.progress-prompts-column:empty) {
     grid-template-columns: minmax(0, 1fr);
   }
 

@@ -10,3 +10,5 @@
 @import "./styles/responsive.css";
 @import "./styles/hosted.css";
 @import "./styles/features/progress-dashboard.css";
+
+@import "./styles/team-access.css";

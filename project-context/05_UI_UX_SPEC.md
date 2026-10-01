@@ -82,10 +82,19 @@ unless backend/provider evidence supports it. Never imply technical QA judged cr
 
 ### 1. Login and admission
 
-- Email/password or Google, verified email, and one single-use invite during signup only.
+- Google-only sign-in, verified email, and one single-use invite during first admission only.
 - Explicit invalid, expired, revoked, consumed, raced, email-mismatch, pending-verification, and
   identity-collision states without leaking whether another account exists.
 - Successful admission creates the user's default workspace. Returning users never see invite UI.
+
+### Team access
+
+An account disclosure in the existing command bar shows the signed-in identity and Sign out.
+Only authorized managers see Team access. `/access` provides invitation creation, one-time code
+copy/dismiss, member search, current status, pending invitations, refresh, and explicit revoke/restore
+confirmation. The responsive dark cards follow the current shell. Assistants receive a clear refusal
+on direct navigation and cannot load the management API. Each assistant retains a private studio;
+Team access never grants visibility into another account's projects or media.
 
 ### 2. Private queue/home
 
