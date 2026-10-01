@@ -5825,34 +5825,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                 ]),
               )}
             />
-            {query.data.generation ? (
-              <section
-                className="generation-plan-summary"
-                aria-labelledby="generation-plan-summary-heading"
-              >
-                <div className="generation-plan-summary-heading">
-                  <div>
-                    <p className="eyebrow">Stage 4 · deterministic timeline</p>
-                    <h3 id="generation-plan-summary-heading">Plan scenes detail</h3>
-                  </div>
-                  <Badge tone="success">Saved</Badge>
-                </div>
-                <div className="detail-facts generation-plan-facts">
-                  <span>
-                    <small>Total segments</small>
-                    <strong>{hostedCountLabel(query.data.generation.total_segments)}</strong>
-                  </span>
-                  <span>
-                    <small>Image scenes</small>
-                    <strong>{hostedCountLabel(query.data.generation.image_scene_count)}</strong>
-                  </span>
-                  <span>
-                    <small>Avatar segments</small>
-                    <strong>{hostedCountLabel(query.data.generation.avatar_segment_count)}</strong>
-                  </span>
-                </div>
-              </section>
-            ) : null}
+
           </Panel>
           <Panel eyebrow="Activity" heading="Current run">
             <div className="detail-facts">
@@ -5923,37 +5896,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             ) : null}
           </Panel>
         </div>
-        <div className="progress-media-column">
-          <Panel className="latest-artifact-panel" eyebrow="Latest" heading="Live preview">
-            <div className="latest-artifact-frame">
-              {stableRenderPreviewUrl ? (
-                <video
-                  className="media-artifact-video"
-                  controls
-                  preload="metadata"
-                  src={stableRenderPreviewUrl}
-                />
-              ) : latestArtifact ? (
-                <img src={latestArtifact} alt="Latest accepted project artifact" />
-              ) : (
-                <div className="live-preview-waiting">
-                  <Images size={30} aria-hidden="true" />
-                  <strong>Waiting for first visual</strong>
-                </div>
-              )}
-            </div>
-            <div className="artifact-caption">
-              <span>{latestArtifact ? "Latest accepted" : "Preparing assets"}</span>
-              <Badge tone={latestArtifact ? "success" : "neutral"}>
-                {latestArtifact ? "Ready" : "Waiting"}
-              </Badge>
-            </div>
-          </Panel>
-          <HostedSpanAudioPanel progress={query.data.span_audio ?? null} backend={spanAudioBackend} />
-          <HostedGpuLaneActivityPanel
-            lanes={query.data.gpu_lanes ?? []}
-            apiGeneration={query.data.generation_provider === "KIE_FAL"}
-          />
+        <div className="progress-prompts-column">
           {contextComplete && contextDocument ? (
             <Panel
               className="extracted-context-panel"
@@ -5963,8 +5906,34 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               {contextText ? <p className="extracted-context-summary">{contextText}</p> : null}
             </Panel>
           ) : null}
-        </div>
-        <div className="progress-prompts-column">
+          {query.data.generation ? (
+            <section
+              className="panel generation-plan-summary"
+              aria-labelledby="generation-plan-summary-heading"
+            >
+              <div className="generation-plan-summary-heading">
+                <div>
+                  <p className="eyebrow">Stage 4 · deterministic timeline</p>
+                  <h3 id="generation-plan-summary-heading">Plan scenes detail</h3>
+                </div>
+                <Badge tone="success">Saved</Badge>
+              </div>
+              <div className="detail-facts generation-plan-facts">
+                <span>
+                  <small>Total segments</small>
+                  <strong>{hostedCountLabel(query.data.generation.total_segments)}</strong>
+                </span>
+                <span>
+                  <small>Image scenes</small>
+                  <strong>{hostedCountLabel(query.data.generation.image_scene_count)}</strong>
+                </span>
+                <span>
+                  <small>Avatar segments</small>
+                  <strong>{hostedCountLabel(query.data.generation.avatar_segment_count)}</strong>
+                </span>
+              </div>
+            </section>
+          ) : null}
           {showPromptFeed ? (
             <Panel className="live-prompt-panel" eyebrow="Stage 5 · Live" heading="Image prompts">
               <div className="live-prompt-status" aria-live="polite">
@@ -6079,7 +6048,41 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               )}
             </Panel>
           ) : null}
+        </div>        <div className="progress-media-column">
+
+          <HostedSpanAudioPanel progress={query.data.span_audio ?? null} backend={spanAudioBackend} />
+          <HostedGpuLaneActivityPanel
+            lanes={query.data.gpu_lanes ?? []}
+            apiGeneration={query.data.generation_provider === "KIE_FAL"}
+          />
+
+          <Panel className="latest-artifact-panel" eyebrow="Latest" heading="Live preview">
+            <div className="latest-artifact-frame">
+              {stableRenderPreviewUrl ? (
+                <video
+                  className="media-artifact-video"
+                  controls
+                  preload="metadata"
+                  src={stableRenderPreviewUrl}
+                />
+              ) : latestArtifact ? (
+                <img src={latestArtifact} alt="Latest accepted project artifact" />
+              ) : (
+                <div className="live-preview-waiting">
+                  <Images size={30} aria-hidden="true" />
+                  <strong>Waiting for first visual</strong>
+                </div>
+              )}
+            </div>
+            <div className="artifact-caption">
+              <span>{latestArtifact ? "Latest accepted" : "Preparing assets"}</span>
+              <Badge tone={latestArtifact ? "success" : "neutral"}>
+                {latestArtifact ? "Ready" : "Waiting"}
+              </Badge>
+            </div>
+          </Panel>
         </div>
+
       </div>
       {!asr ? (
         <div className="notice" role="status">
