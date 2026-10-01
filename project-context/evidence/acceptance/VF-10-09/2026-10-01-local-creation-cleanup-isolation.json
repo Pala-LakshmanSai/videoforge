@@ -1,7 +1,7 @@
 {
   "schema_version": "videoforge-local-cleanup-isolation/v1",
   "checkpoint": "V2-09",
-  "status": "PREPARED_PUBLICATION_PENDING",
+  "status": "PRODUCTION_PUBLISHED_LOCAL_ADMISSION_RESTORED",
   "migration": 235,
   "authority": "User requested the Local Create blocker fix and previously authorized production publication",
   "validation": {
@@ -18,6 +18,28 @@
       "cpuRowsUnchanged": 105,
       "rollbackVerified": true,
       "paidCreates": 0
+    },
+    "productionBundle": "PASS",
+    "stagingBundle": "PASS",
+    "context": "PASS_WITH_EXISTING_OPTIONAL_ASSET_PROFILE_WARNINGS",
+    "nativeApplied": {
+      "migration": 235,
+      "ledgerRows": 218,
+      "requestState": "FAILED",
+      "videoLeaseState": "RELEASED",
+      "releaseReason": "CLOUD_CLEANUP_ISOLATED",
+      "originalReservationUnchanged": true,
+      "cpuRowsUnchanged": 105,
+      "restrictedRuntimeCleanupOnly": true,
+      "newPaidActions": 0
+    },
+    "realChrome": {
+      "selectedLocal": true,
+      "connectedComputer": true,
+      "originalNarrationAndPresetsPreserved": true,
+      "oldCleanupNoticeClearedOnNormalModeChange": true,
+      "freshPreflightAndCreateClicked": false,
+      "note": "The form runs readiness inside Create project & start. Avoided starting new paid generation; prior generic failed-submit alert can remain until the next normal submission."
     }
   },
   "policy": {
@@ -39,11 +61,34 @@
     "oldCleanup": "STOPPING",
     "oldDebitUsd": 0.2,
     "invoiceVerified": false,
-    "ticket": 49644
+    "ticket": 49644,
+    "finalOwnedPods": 0,
+    "unrelatedPodPreserved": true
   },
   "remaining": [
-    "production publication and Local readiness",
-    "exact old Cloud reconciliation",
-    "fresh whole-video acceptance"
-  ]
+    "exact old Cloud launch reconciliation through ticket49644; original UNKNOWN/STOPPING fence retained",
+    "fresh production one-click Create and whole-video acceptance; no new paid run was started",
+    "existing broader release qualification gates remain separately tracked"
+  ],
+  "implementation_commit": "ae2c98161440a02477fe09e7c9a52589e58df8ce",
+  "production": {
+    "source": "ae2c98161440a02477fe09e7c9a52589e58df8ce",
+    "version": "809eb668-a37a-4457-aab5-0ae0c68967c3",
+    "trafficPercent": 100,
+    "bindingsPreserved": 50,
+    "secretsPreserved": 25,
+    "workflowIdentitiesPreserved": 3,
+    "existingCanonicalRestarted": 1,
+    "newInstances": 0,
+    "canonicalVersion": "71c5b111-091e-41e9-8fae-f67ee73d37c7",
+    "canonicalStartedAt": "2026-10-01T14:32:28.430Z",
+    "canonicalStatus": "running",
+    "canonicalError": null,
+    "canonicalFirstOutput": {
+      "dispatched": 0,
+      "observers": 0,
+      "cloud": 1,
+      "error": null
+    }
+  }
 }
