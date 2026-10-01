@@ -478,6 +478,15 @@ describe("hosted continuation sweep stage-3 recovery", () => {
           ('77777777-7777-4777-8777-777777777777','55555555-5555-4555-8555-555555555555',0);
       `);
       expect(await nextSteps(database)).toEqual([]);
+      // A user-requested project handoff can retrieve its existing claim before media admission.
+      const target = await database.query<{ next_step: string }>(DUE_QUERY, [
+        accountId, "11111111-1111-4111-8111-111111111111", "prompts", revisionId,
+      ]);
+      expect(target.rows.map((row) => row.next_step)).toEqual(["prompts"]);
+      const wrongRevision = await database.query(DUE_QUERY, [
+        accountId, "11111111-1111-4111-8111-111111111111", "prompts", userId,
+      ]);
+      expect(wrongRevision.rows).toEqual([]);
       await database.exec(`INSERT INTO public.generation_requests VALUES
         ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','${revisionId}','ACTIVE')`);
       expect(await nextSteps(database)).toEqual(["prompts"]);

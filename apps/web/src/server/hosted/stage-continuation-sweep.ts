@@ -197,7 +197,7 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
              WHEN prompt_state = 'UNKNOWN' AND prompt_accepted_set IS NULL
                AND prompt_problem_code IN ('HOSTED_PROMPT_EXECUTION_UNKNOWN','HOSTED_PROMPT_DISPATCH_TIMEOUT','HOSTED_PROMPT_PROVIDER_CREDITS_LOW')
                AND (
-                 (active_generation_requests=1 AND EXISTS (
+                 ((active_generation_requests=1 OR $2::uuid IS NOT NULL) AND EXISTS (
                    SELECT 1 FROM public.hosted_prompt_batch_claims claim_row
                     WHERE claim_row.run_id=prompt_run_id AND claim_row.batch_ordinal=(
                       SELECT count(*) FROM public.hosted_prompt_batch_progress WHERE run_id=prompt_run_id)))
