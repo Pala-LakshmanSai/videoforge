@@ -1,0 +1,49 @@
+{
+  "checkpoint": "V2-09",
+  "selected_task": "VF-10-09",
+  "status": "LOCAL_DISK_REPAIR_PUBLISHED_VERIFIED",
+  "production_source": "213eb13f57e0b62800a050b031a9f31b4c14d901",
+  "production_version": "be1de7dc-e190-4587-bc3d-e1007ce1941c",
+  "worker_version": "0.1.45",
+  "execution_bundle_sha256": "sha256:81b66d3cba333a83a026ac65abbba759f7a1e8d4ca30c1d43737f9892a41f0a0",
+  "ci_run": 36814234704,
+  "cause": "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT: real connected Mac scratch space below 2GiB + 2x input bytes. Online alone did not prove capacity.",
+  "repair": [
+    "Existing heartbeat reports scratch filesystem available bytes; additive232 stores observation.",
+    "Create and retained-input Retry require known adequate fresh capacity.",
+    "Claim reads exact input bytes before creating lease; unknown/low storage remains queued.",
+    "Native runtime disk guard retained for disk changes after heartbeat."
+  ],
+  "validation": {
+    "focused_web_checks": 288,
+    "media_worker_checks": 115,
+    "media_worker_skips": 1,
+    "migration_checks": 10,
+    "typechecks_lint_native_production_build_context": "PASS",
+    "native_mac_and_windows_installer_ci": "PASS",
+    "production_binding_secret_resource_preservation": "50 bindings, 25 secrets, 3 existing Workflow identities; 100 percent traffic and public source independently verified",
+    "migration": "232 applied once, 215 rows, historical214 preserved; runtime permissions verified",
+    "installed_mac": "0.1.45 Online; fresh heartbeat freeBytes observed",
+    "real_chrome": "Create Local default/readiness and installed Mac version/Online verified; original project Stage2 COMPLETE",
+    "exact_retained_offline_asr": {
+      "status": "SUCCEEDED",
+      "input_bytes": 32612728,
+      "duration_ms": 1358864,
+      "words": 4201,
+      "engine": "Pinned installed worker1.8.4 tools with current source CLI; private filesystem artifact transport, separate offline identity, no hosted callback"
+    },
+    "hosted_asr": "Original failed attempt preserved; separately retried hosted attempt SUCCEEDED before this deployment"
+  },
+  "cleanup": "Only authorized disposable test renders, fixtures, package caches, unused build outputs/runtimes removed; uploaded voiceovers, saved final videos, installers and recovery backups preserved.",
+  "provider_spend": "USD0 new paid generation or compute from this repair; no project replay. Existing prompt provider task polled read-only.",
+  "paid_compute_shutdown": {
+    "complete_native_inventory": true,
+    "videoforge_pods": 0,
+    "all_pods": 0,
+    "existing_unknown_reservation": "Preserved STOPPING/UNKNOWN; absence is not resolution"
+  },
+  "remaining_gates": [
+    "Screenshot project now has an independent Stage5 uncertain prompt batch; native getResponse HTTP200 still processing, accepted70 retained, fresh paid request blocked.",
+    "No new hosted video render or native Windows installation performed; existing unrelated Cloud launch, editorial, historical identity, native browser download and PostgreSQL restore gates remain."
+  ]
+}
