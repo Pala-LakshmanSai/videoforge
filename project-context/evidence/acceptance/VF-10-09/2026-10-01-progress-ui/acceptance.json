@@ -1,0 +1,58 @@
+{
+  "checkpoint": "V2-09",
+  "decision": "DEC_UX_006",
+  "status": "LOCAL_CHROME_VERIFIED_AWAITING_USER_VISUAL_REVIEW",
+  "implementation_commit": "e3b819cc5474b223bbc13eec1ca9d5bb9fca5fea",
+  "base_commit": "fe22d35b08edd1188104aac5d856154cc2c5dccb",
+  "review_base": "codex/cloud-pay-per-video",
+  "presentation_only_proof": {
+    "all_existing_jsx_expressions": "IDENTICAL sorted TypeScript AST expressions after whitespace normalization",
+    "pre_layout_logic": "BYTE_IDENTICAL to production baseline",
+    "backend_files_changed": [],
+    "navigation_files_changed": []
+  },
+  "validation": {
+    "unit_tests": "175 PASS: HostedProductScreens.test.tsx and ui.test.tsx",
+    "installed_chrome": "3 PASS: Stage 5 live prompt updates, 1440/1024/390/320 responsive layout and keyboard disclosure, Stage 6 single-scene regeneration/accepted-media retention",
+    "manual_chrome": "Synthetic local page: desktop/mobile no horizontal overflow, full saved prompt and Avoid disclosure, refresh retains all 28 saved prompts, no console warnings/errors",
+    "lint": "PASS changed TSX and browser spec",
+    "web_build": "PASS vite build",
+    "cloudflare_build": "PASS vite build --config vite.cloudflare.config.ts --outDir dist-cloudflare",
+    "bundle_guard": "PASS verify-v2-05-production-bundle.mjs",
+    "diff_check": "PASS",
+    "context": "PASS with existing optional-reference and oversized-profile warnings"
+  },
+  "baseline_failures": [
+    {
+      "check": "tsc --noEmit",
+      "candidate_and_unchanged_baseline": "TS2554 Expected 1 arguments, but got 2 at src/server/hosted/runware-prompt-execution.ts lines 186 and 315",
+      "note": "Dependency links reuse installed workspace packages; no dependency changes were made."
+    },
+    {
+      "check": "Existing hosted auth browser journey",
+      "candidate_and_unchanged_baseline": "Timeout waiting for removed Settings label 'Add or update a computer'; three task-relevant journeys pass."
+    }
+  ],
+  "screenshots": {
+    "before": "before.png",
+    "after": "after.png",
+    "desktop_full": "desktop.png",
+    "mobile_full": "mobile.png",
+    "mobile_viewport": "mobile-viewport.png",
+    "data": "Synthetic fixture data only; no production project/customer data",
+    "css_viewports": [
+      1440,
+      1024,
+      390,
+      320
+    ],
+    "note": "Chrome existing 80% zoom preserved; screenshots capture the corresponding visible device pixels."
+  },
+  "provider_spend": "USD0; no provider or production mutations",
+  "paid_compute_shutdown": "No paid compute allocated or mutated; global inventory not queried",
+  "remaining_gates": [
+    "User visual approval",
+    "Separately authorized production publication and hosted verification",
+    "Existing broad production/editorial/provider qualification gates unchanged"
+  ]
+}

@@ -280,6 +280,7 @@ approved_decisions:
   DEC_UX_003: visual_presets_and_audit_details
   DEC_UX_004: visible_layered_surface_spacing
   DEC_UX_005: preserve_ui_remove_manual_compute_controls
+  DEC_UX_006: progress_dashboard_presentation_only_pull_request_review
 
 open_gates:
   GATE_CONCURRENCY_001: v2_multi_user_load_and_recovery
