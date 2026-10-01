@@ -2860,6 +2860,31 @@ describe("hosted product journey", () => {
     expect(screen.getByText("Connect your computer")).toBeInTheDocument();
   });
 
+  it("explains unresolved Cloud cleanup and blocks Start before uploading complete inputs", async () => {
+    const message = "An earlier project's Cloud cleanup is unconfirmed. New work is paused until cleanup is verified.";
+    const fetchMock = vi.fn(async () => Response.json({
+      avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
+      styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
+      media_worker_state: "ONLINE", generation_provider: "KIE_FAL", cloud_media: { available: false, message },
+      gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedCreateProjectScreen />);
+    await screen.findByText("Your computer is connected");
+    fireEvent.change(screen.getByLabelText("Video title"), { target: { value: "Cloud video" } });
+    fireEvent.change(screen.getByLabelText("Final voiceover"), { target: { files: [new File(["audio"], "voice.mp3", { type: "audio/mpeg" })] } });
+    expect(screen.getByRole("button", { name: "Create project & start" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("radio", { name: "Cloud" }));
+    expect(screen.getByText(message)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create project & start" })).toBeDisabled();
+    expect(screen.queryByText("No connected computer is required. Capacity is checked when your video is admitted.")).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("radio", { name: "Local" }));
+    expect(screen.getByLabelText("Video title")).toHaveValue("Cloud video");
+    expect(screen.getByText("voice.mp3")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create project & start" })).toBeEnabled();
+  });
+
   it("imports a dropped voiceover through the hosted picker", async () => {
     vi.stubGlobal(
       "fetch",

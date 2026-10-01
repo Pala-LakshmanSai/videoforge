@@ -1188,6 +1188,12 @@
       "name": "cloud_cleanup_local_isolation",
       "filename": "0235_cloud_cleanup_local_isolation.sql",
       "sha256": "sha256:37f1911d155b402a947dcc120883bb780330bd16899914de61d10da949402aa2"
+    },
+    {
+      "version": 236,
+      "name": "cloud_pay_per_use",
+      "filename": "0236_cloud_pay_per_use.sql",
+      "sha256": "sha256:fac3380a37d0f826750f997cf46d0a981d57df8f30b6b58f471fca76d893d9f8"
     }
   ]
 }

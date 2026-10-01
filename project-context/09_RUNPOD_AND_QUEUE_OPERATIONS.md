@@ -4,6 +4,10 @@ Status: optional Cloud media Pod lifecycle plus historical generation cleanup; f
 Read when: building admission, dispatch, Serverless handlers/endpoints, progress, cancellation,
 reconciliation, storage isolation, or cost controls.
 
+## Ongoing ordinary Cloud billing — 2026-10-01
+
+The user explicitly removes ordinary Cloud spend caps, account allowance expiry, rental-count quotas and repeated finite-budget approvals. Selecting Cloud and starting a video authorizes its normal paid processing. DEC_CLOUD_BILLING_001 supersedes prior temporary finite-account requirements for ordinary videos. Preserve account scope, durable estimated-versus-settled cost attribution, no-replay, fair admission, cancellation and finite machine shutdown deadlines. Historical finite authorities and the prior UNKNOWN/STOPPING launch remain immutable; ongoing access cannot clear an uncertain launch or its capacity fence. Migration0236 provides ongoing access without an account spend ceiling or expiry; live activation remains pending verification.
+
 ## Boundary and preserved evidence
 
 `DEC_API_GENERATION_001` selects Kie z-image and Fal FlashHead audio-to-video for fresh ordinary
@@ -72,7 +76,7 @@ New Local VIDEO admission may proceed; new Cloud and preview admission remain bl
 reservation. The reconciler continues until exact cleanup is proven. Two-account global capacity
 still counts the unresolved Cloud account. This supersedes the blanket admission hold for this
 narrow early-media failure; accepted provider work and render failures keep their existing guards.
-Renewal requires a new finite approved authority, and exact launch reconciliation remains required.
+Ordinary Cloud access now follows DEC_CLOUD_BILLING_001; exact old launch reconciliation remains required.
 Operator rates,
 release ledger guards, gates and rollback are in `cloud-media/RELEASE_RUNBOOK.md`.
 

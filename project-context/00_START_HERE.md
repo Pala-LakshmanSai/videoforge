@@ -1,3 +1,7 @@
+Ordinary Cloud billing now follows DEC_CLOUD_BILLING_001: pay as videos are created, no account spend cap or expiry.
+Additive236 is locally verified with native rollback; publication is pending.
+Read cloud_pay_per_use_2026_10_01 in CURRENT_STATE.yaml; the original UNKNOWN launch still needs reconciliation.
+
 Local creation cleanup isolation is prepared under the 2026-10-01 request. It separates a fully fenced early failed video's admission from UNKNOWN/STOPPING rental cleanup. Cloud capacity, no replay and reconciliation remain intact. Read `local_creation_cleanup_isolation_2026_10_01` in CURRENT_STATE.yaml for publication and current proof.
 
 Stage-admission recovery is published at source668c162 / Cloudflare03003f91. Existing WAITING requests resume automatically and report actual queue/cleanup state. The published Windows installer download fix is preserved. RunPod ticket49644 awaits authoritative old-launch reconciliation; the UNKNOWN rental fence remains. The Local-only early-failure isolation below supersedes the blanket VIDEO admission hold. Read `stage_admission_recovery_2026_10_01` in CURRENT_STATE.yaml.

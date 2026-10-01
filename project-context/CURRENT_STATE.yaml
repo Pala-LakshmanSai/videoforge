@@ -1,3 +1,15 @@
+cloud_pay_per_use_2026_10_01:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  status: LOCAL_GREEN_NATIVE_ROLLBACK_PUBLICATION_PENDING
+  decision: DEC_CLOUD_BILLING_001
+  user_authority: Ordinary_Cloud_videos_spend_as_created_without_account_spend_cap_expiry_rental_count_quota_or_repeated_finite_budget_approval;production_publication_requested.
+  repair: Additive236_ongoing_account_access_preserves_old_finite_authorities_ledger_tenant_scope_cost_debits_and_finite_rental_shutdown;catalog_explains_cleanup_hold_and_Start_blocks_before_upload.
+  validation: Seven_full_schema_SQL_169UI_twoCatalog_PASS;web_Worker_types_changedLint_nativeBuild_bundle_PASS;nativePostgreSQL_rollback_preserves_original218ledgerRows_and_all_rows.
+  provider_spend: USD0_new_generation_compute_or_provider_mutation;old_UNKNOWN_STOPPING_launch_and_noReplay_remain.
+  remaining_gates: Production_publication_and_ongoing_account_activation;exact_old_provider_launch_reconciliation_through49644;fresh_Cloud_end_to_end_render_acceptance.
+  evidence: evidence/acceptance/VF-10-09/2026-10-01-cloud-pay-per-use.json
+
 api_computer_status_2026_10_01:
   checkpoint: V2-09
   selected_task: VF-10-09
@@ -6377,7 +6389,7 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/stage-handoff
+  branch: codex/cloud-pay-per-video
   branch_upstream: null
   branch_published: false
   current_source_head: "fb07ed988f0491b9c4fc5df845594abe631be842"

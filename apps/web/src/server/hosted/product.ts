@@ -4101,8 +4101,12 @@ async function catalog(
         transaction, config.mediaWorkerRelease, scope.account_id, scope.workspace_id,
       );
       const cloudReady = config.cloudMedia?.enabled ? await transaction.query<{allowed:boolean}>("SELECT public.videoforge_cloud_media_new_project_ready($1::uuid) AS allowed", [config.cloudMedia.budgetAuthorityId]) : null;
+      const cloudCleanupPending = config.cloudMedia?.enabled && await hostedAccountCleanupPending(
+        transaction, scope.account_id, scope.workspace_id,
+      );
       return {
         cloudAvailable: cloudReady?.rows[0]?.allowed === true,
+        cloudMessage: cloudCleanupPending ? HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE : null,
         avatars: avatars.rows,
         styles: styles.rows,
         avatar_drafts: avatarDrafts.rows,
@@ -4203,7 +4207,7 @@ async function catalog(
       style_drafts: styleDraftRows,
       media_worker_state: data.workers > 0 ? "ONLINE" : "WAITING_FOR_YOUR_COMPUTER",
       local_media_free_bytes: data.availableDiskBytes,
-      cloud_media: { available: data.cloudAvailable },
+      cloud_media: { available: data.cloudAvailable, message: data.cloudMessage },
       generation_provider: config.apiGeneration ? "KIE_FAL" : "RUNPOD",
       gpu_transport: gpuReadiness.gpu_transport,
       gpu_readiness: gpuReadiness,

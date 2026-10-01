@@ -131,7 +131,7 @@ export interface CatalogResponse {
   readonly style_drafts?: readonly HostedStyleDraft[];
   readonly local_media_free_bytes?: number | null;
   readonly media_worker_state: "ONLINE" | "WAITING_FOR_YOUR_COMPUTER";
-  readonly cloud_media?: { readonly available: boolean };
+  readonly cloud_media?: { readonly available: boolean; readonly message?: string | null };
   readonly generation_provider?: "KIE_FAL" | "RUNPOD";
   readonly gpu_transport: "DISABLED_UNQUALIFIED" | "QUALIFIED_EXACT";
   readonly gpu_readiness: {
@@ -3033,7 +3033,9 @@ export function HostedCreateProjectScreen() {
               </strong>
               <small>
                 {executionBackend === "RUNPOD_POD"
-                  ? "No connected computer is required. Capacity is checked when your video is admitted."
+                  ? executionReady
+                    ? "No connected computer is required. Capacity is checked when your video is admitted."
+                    : catalog.data.cloud_media?.message ?? "Cloud access is not enabled for your account."
                   : workerOnline && !localDiskReady ? diskSpaceMessage : workerOnline
                   ? "Ready when inputs are complete."
                   : "Connect your media worker in Settings."}
@@ -3109,6 +3111,7 @@ export function HostedCreateProjectScreen() {
               (!canPreflight && !preflightReady(preflightResult)) ||
               preflightMutation.isPending ||
               submit.isPending ||
+              (executionBackend === "RUNPOD_POD" && !executionReady) ||
               (preflightReady(preflightResult) && !executionReady)
             }
             onClick={() => submit.mutate()}

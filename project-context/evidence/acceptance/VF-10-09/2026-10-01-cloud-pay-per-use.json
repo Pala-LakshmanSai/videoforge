@@ -1,0 +1,23 @@
+{
+  "checkpoint": "V2-09",
+  "selected_task": "VF-10-09",
+  "status": "LOCAL_GREEN_NATIVE_ROLLBACK_PUBLICATION_PENDING",
+  "decision": "DEC_CLOUD_BILLING_001",
+  "production_base": "e42faeb0a9931ef02d8c6e39aef2661f181c502a",
+  "validation": {
+    "full_schema_sql": 7,
+    "ui": 169,
+    "catalog": 2,
+    "web_and_worker_types": "PASS",
+    "changed_lint": "PASS",
+    "native_postgres_rollback": "PASS",
+    "original_ledger_rows": 218
+  },
+  "new_provider_calls": 0,
+  "new_paid_compute": 0,
+  "remaining_gates": [
+    "Production publication and ongoing account activation",
+    "Original UNKNOWN launch exact provider reconciliation",
+    "Fresh Cloud render end-to-end acceptance"
+  ]
+}

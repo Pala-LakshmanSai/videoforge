@@ -21,6 +21,10 @@ or presenting paid authority.
 Prices and availability change. Refresh official pricing and exact compatible `EU-RO-1` inventory
 read-only at each paid checkpoint. A document snapshot is never dispatch authority.
 
+## Ongoing ordinary Cloud billing — 2026-10-01
+
+The user explicitly removes ordinary Cloud spend caps, account allowance expiry, rental-count quotas and repeated finite-budget approvals. Selecting Cloud and starting a video authorizes its normal paid processing. DEC_CLOUD_BILLING_001 supersedes prior temporary finite-account requirements for ordinary videos. Preserve account scope, durable estimated-versus-settled cost attribution, no-replay, fair admission, cancellation and finite machine shutdown deadlines. Historical finite authorities and the prior UNKNOWN/STOPPING launch remain immutable; ongoing access cannot clear an uncertain launch or its capacity fence. Migration0236 provides ongoing access without an account spend ceiling or expiry; live activation remains pending verification.
+
 ## Current planning references
 
 RunPod Serverless pricing pages list Flex billing by the second for startup, execution, and idle time,
