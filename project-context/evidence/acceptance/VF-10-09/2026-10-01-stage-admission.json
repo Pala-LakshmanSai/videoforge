@@ -1,0 +1,82 @@
+{
+  "schema_version": "videoforge-stage-admission-investigation/v1",
+  "date": "2026-10-01",
+  "checkpoint": "V2-09",
+  "selected_task": "VF-10-09",
+  "status": "LOCAL_GREEN_PUBLICATION_AND_OLD_LAUNCH_RECONCILIATION_PENDING",
+  "implementation_commit": "fb07ed988f0491b9c4fc5df845594abe631be842",
+  "production_source": "938d69e13b2172e2eb85172ad85bf37e6a117ae6",
+  "production_version": "daba8d30-c708-42e8-83e8-c3cb8dc23c02",
+  "observed": {
+    "prompt_state": "SUCCEEDED",
+    "accepted_prompts": 30,
+    "accepted_batches": 3,
+    "prompt_finished_at": "2026-10-01T12:17:35.824Z",
+    "generation_request_created_at": "2026-10-01T12:17:36.108025Z",
+    "handoff_ms": 284.025,
+    "request_state": "WAITING",
+    "queue_position": 3,
+    "span_attempts": 0,
+    "earlier_benchmark_cpu_terminal": 105,
+    "earlier_cloud_state": "STOPPING",
+    "earlier_launch_outcome": "UNKNOWN",
+    "pod_id": null,
+    "cleanup_verified_at": null,
+    "lease_state": "ACTIVE",
+    "native_log_events": 17,
+    "native_log_outcomes": {
+      "ok": 17
+    },
+    "production_sweep_due_count": 0
+  },
+  "causes": [
+    "Earlier unresolved Cloud launch holds the same-account workload lease; no next-stage timer delay.",
+    "Continuation DUE_QUERY omitted an existing WAITING API request; browser automatic dispatch also runs once per generation identity.",
+    "Successful 202 WAITING was counted as a dispatch and shown as generation running; QUEUED stage badges mapped to PENDING."
+  ],
+  "repair": [
+    "Existing WAITING admission is due for continuation only while one request exists and no span/provider job has materialized; all SQL admission caps and create fences retained.",
+    "WAITING is no progress and no error; normal automatic recovery continues.",
+    "Tenant-scoped cleanup guard runs at preflight/Create and direct ASR submission before new work; idempotent replay remains available.",
+    "Stage 6 reports BLOCKED with reason or QUEUED; accepted spans and failure states retain precedence; polling remains active."
+  ],
+  "validation": {
+    "focused_tests": 339,
+    "test_files": 8,
+    "web_types": "PASS",
+    "worker_types": "PASS",
+    "changed_lint": "PASS",
+    "production_build_and_quarantine": "PASS",
+    "staging_build_and_quarantine": "PASS",
+    "production_static_bytes": 2786037,
+    "staging_static_bytes": 2783190,
+    "chrome": "REAL_CHROME_LOCAL_FIXTURE_ONLY: BLOCKED to QUEUED to RUNNING; queue badge and warning verified; no paid or fixture writes",
+    "production_chrome": "Current user project read only; no repaired-production acceptance yet",
+    "context": "PASS: existing optional assets/profile budget warnings"
+  },
+  "provider": {
+    "new_paid_requests": 0,
+    "new_resources": 0,
+    "new_workflow_instances": 0,
+    "spend_cap_usd": 0,
+    "complete_owned_pod_inventory": 0,
+    "old_cleanup": "UNCONFIRMED: empty inventory is not authoritative exact launch proof",
+    "invoice_verified": false
+  },
+  "remaining_gates": [
+    "Approved exact Worker/assets publication and existing Workflow definitions; one canonical continuation restart only after same-fence/no-new-work preflight.",
+    "Authoritative provider launch/cleanup reconciliation; ordinary account admission release.",
+    "Real Chrome production Stage6 running and whole-video acceptance."
+  ],
+  "private_evidence_directory": ".videoforge/stage-handoff-20261001/",
+  "release_preparation": {
+    "source": "fb07ed988f0491b9c4fc5df845594abe631be842",
+    "dry_run": "PASS",
+    "assets": 23,
+    "bindings_preserved": 50,
+    "secret_names_preserved": 25,
+    "workflow_identities_preserved": 3,
+    "private_artifacts": ".videoforge/stage-handoff-20261001/prepared-final/",
+    "published": false
+  }
+}
