@@ -158,6 +158,55 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+test("Team access confirmation receives a mouse click above its overlay", async ({ page }) => {
+  let revoked = false;
+  await page.route("**/api/v2/tenant", (route) =>
+    route.fulfill({
+      json: {
+        account_id: "22222222-2222-4222-8222-222222222222",
+        workspace_id: "33333333-3333-4333-8333-333333333333",
+        workspace_name: "Private test studio",
+        schema_version: "videoforge-hosted-tenant/v1",
+        can_manage_team: true,
+        user: { id: "test-owner", email: "owner@example.test", name: "Owner" },
+      },
+    }),
+  );
+  await page.route("**/api/v2/team-access", async (route) => {
+    if (route.request().method() === "POST") {
+      expect(route.request().postDataJSON()).toEqual({
+        operation: "REVOKE_INVITE",
+        target: "test-invitation",
+      });
+      revoked = true;
+      return route.fulfill({ json: { updated: true } });
+    }
+    return route.fulfill({
+      json: {
+        members: [],
+        invites: [
+          {
+            id: "test-invitation",
+            email: "assistant@example.test",
+            state: revoked ? "REVOKED" : "ACTIVE",
+            expires_at: "2099-01-01T00:00:00Z",
+          },
+        ],
+      },
+    });
+  });
+  await page.goto("/access");
+  await page.getByRole("button", { name: "Revoke invitation", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Confirm revoke", exact: true })
+    .click();
+  await expect(page.getByRole("status").filter({ hasText: "Access revoked." })).toBeVisible();
+  expect(revoked).toBe(true);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Revoke invitation", exact: true })).toHaveCount(0);
+});
+
 test("hosted auth mounts the product router and account-owned worker surfaces", async ({
   page,
 }) => {
