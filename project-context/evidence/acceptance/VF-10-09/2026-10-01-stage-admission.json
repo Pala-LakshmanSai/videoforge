@@ -3,10 +3,10 @@
   "date": "2026-10-01",
   "checkpoint": "V2-09",
   "selected_task": "VF-10-09",
-  "status": "LOCAL_GREEN_PUBLICATION_AND_OLD_LAUNCH_RECONCILIATION_PENDING",
-  "implementation_commit": "fb07ed988f0491b9c4fc5df845594abe631be842",
-  "production_source": "938d69e13b2172e2eb85172ad85bf37e6a117ae6",
-  "production_version": "daba8d30-c708-42e8-83e8-c3cb8dc23c02",
+  "status": "PRODUCTION_PUBLISHED_CANONICAL_ADOPTED_PROVIDER_SUPPORT_PENDING",
+  "implementation_commit": "668c162144da83cc6e7a8ee9c13fc9b7aacdec86",
+  "production_source": "668c162144da83cc6e7a8ee9c13fc9b7aacdec86",
+  "production_version": "03003f91-4236-42c1-9761-82022c1b8901",
   "observed": {
     "prompt_state": "SUCCEEDED",
     "accepted_prompts": 30,
@@ -61,12 +61,13 @@
     "spend_cap_usd": 0,
     "complete_owned_pod_inventory": 0,
     "old_cleanup": "UNCONFIRMED: empty inventory is not authoritative exact launch proof",
-    "invoice_verified": false
+    "invoice_verified": false,
+    "foreign_pods_preserved": 1
   },
   "remaining_gates": [
-    "Approved exact Worker/assets publication and existing Workflow definitions; one canonical continuation restart only after same-fence/no-new-work preflight.",
-    "Authoritative provider launch/cleanup reconciliation; ordinary account admission release.",
-    "Real Chrome production Stage6 running and whole-video acceptance."
+    "Authoritative RunPod launch/cleanup evidence for old STOPPING/UNKNOWN reservation; no absence-based fence clearing.",
+    "Ordinary admission release only after verified cleanup.",
+    "Fresh production stage6 and whole-video acceptance under explicit finite generation spend scope."
   ],
   "private_evidence_directory": ".videoforge/stage-handoff-20261001/",
   "release_preparation": {
@@ -103,5 +104,46 @@
     "chrome": "REAL_CHROME_PRODUCTION_READ_ONLY: Audio spanning PENDING, queue position2, contradictory Generation is running banner; prepared release still unpublished",
     "new_inference_compute_usd": 0,
     "remaining": "Exact publication approval and authoritative old-launch reconciliation"
+  },
+  "publication": {
+    "traffic_percent": 100,
+    "bindings": 50,
+    "secret_names": 25,
+    "workflow_identities_preserved": 3,
+    "definitions_updated": 3,
+    "canonical_restarts": 1,
+    "new_instances": 0,
+    "new_paid_creates": 0,
+    "source_public_status_verified": true,
+    "preserved_windows_download_source": "2578bb932b6cecec09e9e0a2df036041c1f45298",
+    "validation": {
+      "focused_tests": 303,
+      "files": 5,
+      "web_types": "PASS",
+      "worker_types": "PASS",
+      "changed_lint": "PASS",
+      "native_cloudflare_build": "PASS",
+      "production_bundle_quarantine": "PASS"
+    },
+    "canonical_execution": {
+      "started_at": "2026-10-01T13:45:14.888Z",
+      "status": "running",
+      "first_output": {
+        "dispatched": 0,
+        "observers": 0,
+        "cloud": 1,
+        "error": null
+      }
+    },
+    "chrome": "REAL_CHROME_PRODUCTION: Queue API healthy and Local connected; New project Local default and input gates intact. Both screenshot projects ARCHIVED by external state; no new project or paid acceptance started."
+  },
+  "support": {
+    "ticket": 49644,
+    "url": "https://contact.runpod.io/hc/requests/49644",
+    "submission": "NATIVE_CONFIRMED_TICKET_SUCCESSFULLY_CREATED",
+    "request": "Exact old launch accepted/refused or known terminated Pod ID; no resource creation/restart",
+    "provider_response_window": "48-72 hours",
+    "confirmation_screenshot": ".videoforge/stage-handoff-20261001/support-confirmation.png",
+    "customer_details_retained_in_vault": false
   }
 }

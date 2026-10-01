@@ -1,3 +1,5 @@
+Stage-admission recovery is published at source668c162 / Cloudflare03003f91. Existing WAITING requests resume automatically and report actual queue/cleanup state. The published Windows installer download fix is preserved. RunPod ticket49644 awaits authoritative old-launch reconciliation; the UNKNOWN fence remains. Read `stage_admission_recovery_2026_10_01` in CURRENT_STATE.yaml.
+
 The published Windows worker installer download fix from source2578bb93 is preserved in this stage-admission release. Read `windows_worker_download_2026_10_01` in CURRENT_STATE.yaml.
 
 Local disk readiness is published at source `213eb13f` / Cloudflare `be1de7dc`, worker0.1.45.

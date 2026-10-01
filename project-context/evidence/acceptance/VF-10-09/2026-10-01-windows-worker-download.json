@@ -1,0 +1,43 @@
+{
+  "checkpoint": "V2-09",
+  "selected_task": "VF-10-09",
+  "status": "PRODUCTION_ACTIVE_VERIFIED",
+  "source_commit": "2578bb932b6cecec09e9e0a2df036041c1f45298",
+  "production_version": "229f0bca-8966-4db4-a9dc-87ac3cbf78e7",
+  "release_version": "0.1.45",
+  "diagnosis": "The Windows paste-to-connect script used Invoke-WebRequest with progress disabled. Its temporary installer stayed at zero visible bytes for about seven minutes while transferring the 279619334-byte release asset.",
+  "change": "Windows curl streams the existing immutable release through HTTPS-only redirects, with bounded connection, stall and total time, at most three resumable attempts, and the unchanged exact size and SHA-256 gate before installation.",
+  "same_host_transfer": {
+    "observed_old_seconds_approx": 420,
+    "new_seconds": 59.72,
+    "bytes": 279619334,
+    "new_sha256": "sha256:130ad55da51b172573f5a87faf12ea24bd3490fccdacd2c8abf3e3d49d7bfc48",
+    "published_sha256_matched": true,
+    "scope": "Installer transfer only; connection speed and whole-video production vary."
+  },
+  "validation": {
+    "windows_powershell_generated_script_syntax": "PASS",
+    "focused_connection_tests": "13 PASS, 2 SKIP",
+    "web_typecheck": "PASS",
+    "native_cloudflare_build": "PASS",
+    "production_bundle_firewall": "PASS",
+    "candidate_bindings": 50,
+    "candidate_secrets": 25,
+    "candidate_binding_value_changes": ["VIDEOFORGE_COMMIT"],
+    "workflow_names_preserved": [
+      "videoforge-video-workflow",
+      "videoforge-pair-workflow",
+      "videoforge-continuation-workflow"
+    ],
+    "deployment_traffic_percent": 100,
+    "production_status_http": 200,
+    "production_status_version_header": "229f0bca-8966-4db4-a9dc-87ac3cbf78e7",
+    "chrome_connected_windows_worker": "MI_Notebook 0.1.45 Online"
+  },
+  "provider_spend_usd": 0,
+  "paid_compute_shutdown": "No new compute activated; prior STOPPING/UNKNOWN fence preserved.",
+  "remaining_gates": [
+    "Run the revised script on a future native Windows install or upgrade; current installed 0.1.45 predates this web change.",
+    "Existing unrelated provider cleanup and whole-video acceptance remain open."
+  ]
+}
