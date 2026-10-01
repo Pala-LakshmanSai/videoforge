@@ -1,0 +1,43 @@
+{
+  "checkpoint": "V2-09",
+  "source_commit": "0e1a9cba1ef93e9c19aef09ac6a001dab22fe215",
+  "worker_version": "3591420e-e1db-458a-b509-9b75665e286e",
+  "traffic_percent": 100,
+  "pr": 3,
+  "merge_commit": "cf5dd2de2005ba542b76f6f85aa635928ff7987c",
+  "migration": 238,
+  "ledger_rows": 221,
+  "checks": {
+    "focused": 152,
+    "component_dialog_rerun": 6,
+    "native_postgresql_rollback": true,
+    "runtime_manager_and_nonmanager_guards": true,
+    "runtime_global_revocations_table_denied": true,
+    "production_build_and_bundle_guard": true,
+    "production_client_asset_hashes": 23,
+    "hosted_google_manager": true,
+    "hosted_invite_copy_dismiss": true,
+    "hosted_confirm_mouse_and_revoke_after_refresh": true
+  },
+  "preserved": {
+    "runtime_bindings": 50,
+    "secret_bindings": 25,
+    "workflow_identities": 3,
+    "current_progress_ui": true,
+    "existing_invite_and_studio_hashes": true,
+    "real_member_revocations": 0
+  },
+  "cleanup": {
+    "disposable_test_invites": 2,
+    "active_test_invites": 0,
+    "test_accounts": 0,
+    "new_paid_compute": 0,
+    "new_provider_jobs": 0,
+    "global_provider_inventory_queried": false
+  },
+  "limits": [
+    "One exact requested owner identity is absent; a similarly named admitted account remains non-manager pending explicit user correction.",
+    "No fresh assistant Google OAuth enrollment was performed; admission/revocation/restore were exercised in native PostgreSQL and rolled back.",
+    "Broad CI formatting failures are pre-existing; broad green is not claimed."
+  ]
+}

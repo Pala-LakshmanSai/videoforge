@@ -15,9 +15,10 @@ The original project passed hosted ASR; its separate uncertain prompt batch rema
 
 # VideoForge: start here
 
-Team access is implemented for the two selected owners under `DEC_TEAM_ACCESS_001`.
-The isolated `codex/team-access` PR has local UI/API/PostgreSQL/Chrome proof; migration and
-production rollout are now authorized once properly verified; preserve current published Progress sizing. Read `team_access_2026_10_01` in CURRENT_STATE.yaml.
+Team access is published on source0e1a9cba / Cloudflare3591420e at100%, migration238.
+Native PostgreSQL and live Google-owner Chrome invitation/confirmation checks pass. The two exact
+requested identities remain authoritative; a similar existing account stays non-manager pending
+explicit user correction. Read `team_access_2026_10_01` in CURRENT_STATE.yaml.
 
 Optional Local/Cloud media execution is published under the2026-09-28 user decision.
 Local stays default; Kie/Fal generation and existing personal-worker releases remain unchanged.

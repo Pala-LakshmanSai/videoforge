@@ -1,8 +1,8 @@
 # Team access review handoff — 2026-10-01
 
 Checkpoint: V2-09 / VF-10-09. Branch: `codex/team-access`, based on application review base `c809c697` (production source `3932c982`).
-Implementation identity: `dbcd9d48fe2955f578cb0204e262ce99d6789637`. Review: [PR3](https://github.com/Pala-LakshmanSai/videoforge/pull/3). Review PR targets the current
-published `codex/cloud-pay-per-video` branch because default `main` contains bootstrap code.
+Implementation identity: `dbcd9d48fe2955f578cb0204e262ce99d6789637`. Review: [PR3](https://github.com/Pala-LakshmanSai/videoforge/pull/3). Review PR targets the application integration
+`codex/cloud-pay-per-video` branch because default `main` contains bootstrap code.
 
 ## Behavior and scope
 
@@ -34,7 +34,7 @@ Screenshots contain disposable member data and no invitation code:
 ![Desktop account menu and Team access](team-access/desktop.png)
 ![Narrow Team access](team-access/narrow.png)
 
-## Release and remaining gates
+## Initial review boundary (superseded by the authorized release below)
 
 Migration `0238_hosted_team_access.sql` and runtime EXECUTE grant are prepared. Production database,
 real invitations/sessions/permissions, Cloudflare deployment, providers and personal workers were
@@ -73,7 +73,12 @@ without invoking the mutation. Keyboard activation succeeded. The focused fix re
 200 dialog layer; real local Chrome confirms the button receives pointer events, the mouse click
 revokes the fixture invitation and the dialog closes. Six component checks pass. A browser
 regression in `hosted-product-router.spec.ts` exercises the real pointer click and mutation outcome.
-Publishing this CSS correction and live pointer verification remain pending at this source.
+The correction is published at source `0e1a9cba1ef93e9c19aef09ac6a001dab22fe215`, Worker
+`3591420e-e1db-458a-b509-9b75665e286e`,100% traffic. Backend bytes match the initial Team access
+release exactly. All23public assets match SHA256. Real production Chrome confirms pointer hit
+testing and mouse-click revocation, dialog closure and stable revoked state after refresh. Both
+disposable release-test invitations are revoked; no test account exists and existing invitation/
+studio hashes match the pre-release snapshot when the two test rows are excluded.
 
 USD0 new provider/generation/compute. No new Workflow instances or provider resources; no compute
 started by this task needs shutdown. Broad CI formatting failures remain separate; fresh assistant
