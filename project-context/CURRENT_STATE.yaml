@@ -6415,11 +6415,11 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/progress-ui-redesign
-  branch_upstream: origin/codex/progress-ui-redesign
+  branch: codex/progress-ui-sizing
+  branch_upstream: origin/codex/progress-ui-sizing
   branch_published: true
-  current_source_head: "e3b819cc5474b223bbc13eec1ca9d5bb9fca5fea"
-  current_source_head_semantics: isolated_progress_UI_verified_for_pull_request_review_not_deployed
+  current_source_head: "21bd1f5"
+  current_source_head_semantics: larger_sequential_Progress_UI_verified_and_publication_authorized
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
   current_source_head_note: "Presentation-only Progress implementation based on production handoff fe22d35b; resolve Git HEAD for later context commits. Production source3932c982 remains unchanged; no provider or deployment authority transfers."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
