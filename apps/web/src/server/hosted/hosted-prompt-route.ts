@@ -34,6 +34,12 @@ import {
   type HostedRecoveredPromptBatch,
 } from "./runware-prompt-execution";
 import { canonicalJson } from "./submission";
+import { readRunwareCreditBalance } from "../providers/runware-http-transport";
+
+async function requirePromptCredits(apiKey: string): Promise<void> {
+  if (await readRunwareCreditBalance(apiKey) < 0.25)
+    throw new HostedPromptExecutionError("HOSTED_PROMPT_PROVIDER_CREDITS_LOW", "UNKNOWN", true, null);
+}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
@@ -65,7 +71,9 @@ async function claimHostedPromptBatch(
   accountId: string,
   runId: string,
   request: { batchOrdinal: number; taskUUID: string; requestBytes: string; requestHash: string },
+  apiKey: string,
 ): Promise<boolean> {
+  await requirePromptCredits(apiKey);
   return createNeonExecutor(pool).transaction(async (transaction) => {
     await transaction.query("SELECT set_config($1, $2, true)", [
       "videoforge.account_id",
@@ -606,7 +614,7 @@ export async function writeProjectPrompts(
                     saved.reserved_cost_micro_usd -
                     saved.accepted_cost_micro_usd -
                     saved.discarded_cost_micro_usd,
-                  claim: (claim) => claimHostedPromptBatch(pool, scope.account_id, saved.id, claim),
+                  claim: (claim) => claimHostedPromptBatch(pool, scope.account_id, saved.id, claim, promptApiKey),
                   recordResult: (value) =>
                     recordPromptResponse(pool, scope.account_id, saved.id, value),
                 })
@@ -639,8 +647,9 @@ export async function writeProjectPrompts(
                 invalidClaim.request_hash as HostedRecoveredPromptBatch["requestHash"],
               recordResult: (value) =>
                 recordPromptResponse(pool, scope.account_id, saved.id, value),
-              claim: (replacement) =>
-                createNeonExecutor(pool).transaction(async (transaction) => {
+              claim: async (replacement) => {
+                await requirePromptCredits(promptApiKey);
+                return createNeonExecutor(pool).transaction(async (transaction) => {
                   await transaction.query("SELECT set_config($1,$2,true)", [
                     "videoforge.account_id",
                     scope.account_id,
@@ -658,7 +667,8 @@ export async function writeProjectPrompts(
                     ],
                   );
                   return result.rows[0]?.claimed === true;
-                }),
+                });
+              },
             });
             replacementDispatched = true;
           } else {
@@ -840,7 +850,7 @@ export async function writeProjectPrompts(
       persistedBinding: persistedBatchPlanBinding,
       batchOrdinal: 0,
       remainingReservationMicroUsd: reservedCostMicroUsd,
-      claim: (claim) => claimHostedPromptBatch(pool, scope.account_id, persistedRunId, claim),
+      claim: (claim) => claimHostedPromptBatch(pool, scope.account_id, persistedRunId, claim, promptApiKey),
       recordResult: (value) => recordPromptResponse(pool, scope.account_id, persistedRunId, value),
     });
     if (firstBatch)
@@ -884,6 +894,10 @@ export async function writeProjectPrompts(
               "videoforge.account_id",
               scope.account_id,
             ]);
+            if (promptFailure.problemCode === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW") {
+              await transaction.query("SELECT public.videoforge_pause_hosted_prompt_for_credits($1)", [runId]);
+              return;
+            }
             await transaction.query(
               "SELECT public.videoforge_fail_hosted_prompt_run($1,$2,$3,$4,$5)",
               [
@@ -931,7 +945,9 @@ export async function writeProjectPrompts(
         error: {
           code: promptFailure.problemCode,
           message:
-            promptFailure.terminalState === "FAILED"
+            promptFailure.problemCode === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
+              ? "Prompt writing is paused while provider credits are unavailable. Saved prompts remain intact; check again after credits are available."
+              : promptFailure.terminalState === "FAILED"
               ? "Image prompt writing was rejected before VideoForge accepted a result. The request will not be automatically repeated."
               : "Image prompt writing stopped without a durable accepted result. The request will not be automatically repeated.",
         },

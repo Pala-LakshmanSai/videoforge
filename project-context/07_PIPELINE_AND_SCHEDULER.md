@@ -13,6 +13,13 @@ Slots include their final interval to preserve pacing across passes and the two 
 Accepted work advances immediately; a pending-only pass sleeps two seconds. A submission error
 stops queued paid calls while already claimed calls finish recording their exact identities.
 
+Hosted prompt batches check the configured Runware balance before claiming a new request. Insufficient
+credits pause the existing run without changing its saved prefix or reservation. Recovery verifies
+the original task archive, including exact request/task/model identity; a confirmed admission refusal
+uses the existing bounded replacement gate. A polling `processing` response alone never authorizes
+replay. Credit pauses can resume through the normal continuation or Check again action; RunPod credits
+do not fund Runware inference. See `evidence/acceptance/VF-10-09/2026-10-01-prompt-credit-recovery.json`.
+
 Status: transcript and deterministic-scheduler foundations accepted; tenant-fair Serverless integration pending
 Read when: implementing transcript alignment, scheduling, generation, dispatch, or final assembly.
 

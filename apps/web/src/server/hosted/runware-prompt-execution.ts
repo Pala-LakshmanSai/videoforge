@@ -26,6 +26,7 @@ import {
   RunwarePromptHttpTransport,
   RunwareSpendLedger,
   retrieveRunwareTextTaskDetails,
+  RunwareArchivedTaskRejectedError,
   type RunwareSafeDiagnostic,
 } from "../providers/runware-http-transport";
 
@@ -74,7 +75,7 @@ export class HostedPromptArchivedOutputInvalidError extends Error {
   public constructor(
     public readonly responseHash: Sha256Digest,
     public readonly knownCostMicroUsd: number,
-    public readonly validationDiagnostic: RunwarePromptValidationDiagnostic,
+    public readonly validationDiagnostic: RunwarePromptValidationDiagnostic | null,
   ) {
     super("Archived prompt output failed strict validation.");
   }
@@ -115,7 +116,8 @@ export async function recoverClaimedHostedPromptBatch(input: {
     input.requestHash !== (await sha256Utf8(input.requestBytes))
   )
     throw invalidPlanBinding();
-  const recovered =
+  let recovered;
+  try { recovered =
     input.recordedResult ??
     (await retrieveRunwareTextTaskDetails({
       apiKey: input.apiKey,
@@ -124,6 +126,11 @@ export async function recoverClaimedHostedPromptBatch(input: {
       originalRequestSha256: input.requestHash,
       fetch: input.fetcher,
     }));
+  } catch (error) {
+    if (error instanceof RunwareArchivedTaskRejectedError)
+      throw new HostedPromptArchivedOutputInvalidError(error.responseHash, 0, null);
+    throw error;
+  }
   const recoveredText = recovered.outputText.trim();
   let nativeJsonValid = false;
   try {
@@ -408,6 +415,7 @@ export type HostedPromptProblemCode =
   | "HOSTED_PROMPT_INPUT_INVALID"
   | "HOSTED_PROMPT_OUTPUT_INVALID"
   | "HOSTED_PROMPT_PROVIDER_REJECTED"
+  | "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
   | "HOSTED_PROMPT_EXECUTION_UNKNOWN";
 
 /**
@@ -603,6 +611,7 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
     let currentDispatchStart = 0;
     let persistenceStarted = false;
     let claimUncertain = false;
+    let claimFailure: HostedPromptExecutionError | null = null;
     try {
       const recovered = this.continuation.acceptedBatches ?? [];
       if (recovered.length > this.plan.batches.length) throw invalidPlanBinding();
@@ -680,7 +689,8 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
                 requestBytes: request.requestBytes,
                 requestHash: request.requestSha256,
               });
-            } catch {
+            } catch (error) {
+              if (error instanceof HostedPromptExecutionError) claimFailure = error;
               claimUncertain = true;
               throw new Error("HOSTED_PROMPT_BATCH_CLAIM_UNCONFIRMED");
             }
@@ -789,6 +799,7 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
       ]);
       return Object.freeze({ output, attempts });
     } catch (error) {
+      if (claimFailure) throw claimFailure;
       if (error instanceof HostedPromptExecutionError) throw error;
       if (claimUncertain)
         throw new HostedPromptExecutionError(

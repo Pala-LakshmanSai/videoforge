@@ -5791,3 +5791,21 @@ describe("hosted product journey", () => {
     expect(screen.queryByText(/estimated/u)).not.toBeInTheDocument();
   });
 });
+
+it("offers a credit check for paused prompts without automatic submission", async () => {
+  const projectId = "11111111-1111-4111-8111-111111111111";
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL) => Response.json({
+    project: { id: projectId, title: "Credit pause", created_at: "2026-08-17T10:00:00.000Z",
+      revision_id: "22222222-2222-4222-8222-222222222222", revision_state: "LOCKED" },
+    attempts: [], gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
+    generation: { id: "55555555-5555-4555-8555-555555555555" },
+    stages: [{ id: "prompt-writing", name: "Write image prompts", status: "BLOCKED" }],
+    prompts: [], prompt_progress: { state: "UNKNOWN", total_batches: "26", accepted_batches: "7",
+      total_scenes: "258", accepted_scenes: "70", problem_code: "HOSTED_PROMPT_PROVIDER_CREDITS_LOW" },
+  }));
+  vi.stubGlobal("fetch", fetchMock);
+  renderHosted(<HostedProjectScreen projectId={projectId} />);
+  expect(await screen.findByText("Credit pause")).toBeInTheDocument();
+  expect(within(stageRow("Write image prompts")).getByRole("button", { name: "Check again" })).toBeEnabled();
+  expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(false);
+});

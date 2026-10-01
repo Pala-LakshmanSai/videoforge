@@ -91,6 +91,9 @@ test("0228 accepts exact duplicate callbacks and reopens only a wholly saved pre
       executor.query(recover, [run.runId, uuid(228002), JSON.stringify(supplied)]),
     );
     await executor.query(fail, [run.runId]);
+    await executor.query("SELECT videoforge_pause_hosted_prompt_for_credits($1)", [run.runId]);
+    await executor.query("SELECT videoforge_pause_hosted_prompt_for_credits($1)", [run.runId]);
+    assert.deepEqual(await snapshot(), before);
     await executor.query("SELECT set_config('videoforge.account_id',$1,false)", [IDS.accountB]);
     await assert.rejects(executor.query(reopen, [run.runId]), /state is invalid/);
     await assert.rejects(executor.query(record, [run.runId, JSON.stringify(supplied)]));
@@ -139,5 +142,26 @@ test("0228 accepts exact duplicate callbacks and reopens only a wholly saved pre
       ).rows[0].helper,
       false,
     );
+  });
+});
+
+test("0233 pauses before the first claim without costs and reopens only that provider-free empty prefix", async () => {
+  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+    const run = await seedAdaptivePromptRun(executor, { sceneCount: 2, plannedBatchCount: 2, reservedMicroUsd: 500000 });
+    const snapshot = async () => (await executor.query(
+      "SELECT (SELECT jsonb_agg(to_jsonb(c)) FROM cost_events c WHERE attempt_id=$2) AS costs,(SELECT count(*) FROM hosted_prompt_batch_claims WHERE run_id=$1) AS claims", [run.runId,run.attemptId])).rows;
+    const before = await snapshot();
+    const pause = "SELECT videoforge_pause_hosted_prompt_for_credits($1) AS paused";
+    await executor.query("SELECT set_config('videoforge.account_id',$1,false)", [IDS.accountB]);
+    await assert.rejects(executor.query(pause,[run.runId]), /state is invalid/);
+    await executor.query("SELECT set_config('videoforge.account_id',$1,false)", [IDS.accountA]);
+    assert.equal((await executor.query(pause,[run.runId])).rows[0].paused,true);
+    assert.equal((await executor.query(pause,[run.runId])).rows[0].paused,true);
+    assert.deepEqual(await snapshot(),before);
+    assert.equal((await executor.query("SELECT videoforge_reopen_saved_hosted_prompt_prefix($1) AS reopened",[run.runId])).rows[0].reopened,true);
+    assert.deepEqual(await snapshot(),before);
+    await executor.query("SELECT videoforge_fail_hosted_prompt_run($1,'UNKNOWN','HOSTED_PROMPT_EXECUTION_UNKNOWN',true,0)",[run.runId]);
+    await assert.rejects(executor.query(pause,[run.runId]), /evidence is invalid/);
+    await assert.rejects(executor.query("SELECT videoforge_reopen_saved_hosted_prompt_prefix($1)",[run.runId]), /evidence is invalid/);
   });
 });

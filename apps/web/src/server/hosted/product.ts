@@ -4739,13 +4739,21 @@ const PROMPT_WRITER_STATES: ReadonlyMap<
 export function hostedPromptWritingState(
   promptTaskState: unknown,
   planExists: boolean,
-  progress?: { readonly acceptedScenes: number; readonly totalScenes: number },
+  progress?: { readonly acceptedScenes: number; readonly totalScenes: number; readonly problemCode?: unknown },
 ): {
   readonly status: "COMPLETE" | "FAILED" | "BLOCKED" | "RETRY_WAIT" | "RUNNING" | "WAITING";
   readonly progressPercent: number;
   readonly detail: string;
 } {
   const taskState = typeof promptTaskState === "string" ? promptTaskState : "";
+  if (progress?.problemCode === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW") {
+    return {
+      status: "BLOCKED",
+      progressPercent: progress.totalScenes > 0
+        ? Math.min(99, Math.floor(progress.acceptedScenes / progress.totalScenes * 100)) : 0,
+      detail: `Prompt writing is paused while provider credits are unavailable. ${progress.acceptedScenes} saved prompts remain intact.`,
+    };
+  }
   // A scene-batch prompt task is created the moment prompt writing starts, and its durable state is
   // READY -> DISPATCHING -> RUNNING before it settles. Reporting every state outside a short list as
   // WAITING made the numbered stage read PENDING for the whole time prompts were actually being
@@ -7894,7 +7902,7 @@ async function projectDetail(
     const promptStage = hostedPromptWritingState(
       (detail.generation as Record<string, unknown> | null)?.prompt_task_state,
       detail.generation !== null,
-      { acceptedScenes: acceptedPromptScenes, totalScenes: totalPromptScenes },
+      { acceptedScenes: acceptedPromptScenes, totalScenes: totalPromptScenes, problemCode: promptProgress?.problem_code },
     );
     const voiceoverContext = detail.voiceoverContext as Record<string, unknown> | null;
     const contextState = String(voiceoverContext?.state ?? "WAITING");

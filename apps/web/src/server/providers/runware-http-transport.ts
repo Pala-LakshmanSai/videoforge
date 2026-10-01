@@ -26,6 +26,33 @@ export class RunwareTransportError extends Error {
   }
 }
 
+/** An archived admission refusal proves that this exact task never ran. */
+export class RunwareArchivedTaskRejectedError extends RunwareTransportError {
+  constructor(readonly responseHash: `sha256:${string}`) {
+    super("RUNWARE_TASK_PROVIDER_FAILED");
+  }
+}
+
+export async function readRunwareCreditBalance(apiKey: string, fetcher: FetchPort = fetch): Promise<number> {
+  if (apiKey.trim().length < 20) throw new RunwareTransportError("RUNWARE_AUTH_INVALID");
+  const taskUUID = crypto.randomUUID();
+  const response = await fetcher(DEFAULT_ENDPOINT, {
+    method: "POST",
+    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+    body: canonicalizeJson([{ taskType: "accountManagement", taskUUID, operation: "getDetails" }]),
+    signal: AbortSignal.timeout(30_000),
+  });
+  const body = record(JSON.parse(await response.text()));
+  const rows = Array.isArray(body?.data) ? body.data.map(record) : [];
+  const row = rows[0];
+  const balance = typeof row?.balance === "number" ? row.balance : record(row?.balance)?.amount;
+  if (!response.ok || (Array.isArray(body?.errors) && body.errors.length > 0) || rows.length !== 1 ||
+      row?.taskUUID !== taskUUID || row.taskType !== "accountManagement" || row.operation !== "getDetails" ||
+      typeof balance !== "number" || !Number.isFinite(balance) || balance < 0)
+    throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
+  return balance;
+}
+
 export interface RunwareSpendSnapshot {
   readonly capUsd: number;
   readonly reservedUsd: number;
@@ -301,6 +328,15 @@ export async function retrieveRunwareTextTaskDetails(
     throw new RunwareTransportError("RUNWARE_IDEMPOTENCY_CONFLICT");
 
   const originalResponse = record(details.response);
+  const admissionErrors = Array.isArray(originalResponse?.errors) ? originalResponse.errors.map(record) : [];
+  const admissionError = admissionErrors[0];
+  if (originalResponse && admissionErrors.length === 1 &&
+      !('data' in originalResponse) && !('response' in originalResponse) &&
+      admissionError?.taskUUID === options.originalTaskUUID && admissionError.taskType === "textInference" &&
+      admissionError.code === "concurrentRequestLimitExceeded") {
+    options.onDiagnostic?.({ stage: "response", httpStatus: 200, providerCode: admissionError.code, providerParameter: null });
+    throw new RunwareArchivedTaskRejectedError(await sha256(canonicalizeJson(originalResponse as never)) as `sha256:${string}`);
+  }
   const archivedProviderResponse = record(originalResponse?.response);
   const archivedProviderError = record(archivedProviderResponse?.errors);
   const archivedProviderErrorDetails = record(archivedProviderError?.additionalDetails);
@@ -469,7 +505,8 @@ class RunwareHttpClient {
         providerParameter:
           typeof first?.parameter === "string" ? first.parameter.slice(0, 80) : null,
       });
-      return { disposition: "failed", item: null };
+      // Reconcile temporary admission refusals by exact archive identity before replacing a task.
+      return { disposition: first?.code === "concurrentRequestLimitExceeded" ? "ambiguous" : "failed", item: null };
     }
     const data = Array.isArray(body?.data) ? body.data.map(record).filter(Boolean) : [];
     const item = data.find((candidate) => candidate?.taskUUID === taskUUID) ?? null;

@@ -2096,6 +2096,10 @@ describe("hosted product route contract", () => {
   });
 
   it("does not report image prompts complete merely because a timeline exists", () => {
+    expect(hostedPromptWritingState("FAILED", true, { acceptedScenes: 70, totalScenes: 258,
+      problemCode: "HOSTED_PROMPT_PROVIDER_CREDITS_LOW" })).toMatchObject({
+      status: "BLOCKED", progressPercent: 27, detail: expect.stringContaining("70 saved prompts remain intact"),
+    });
     expect(hostedPromptWritingState(null, true)).toEqual({
       status: "WAITING",
       progressPercent: 0,

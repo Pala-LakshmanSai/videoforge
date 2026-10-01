@@ -10,6 +10,8 @@ import {
   RunwareSpendLedger,
   RunwareStyleHttpTransport,
   RunwareTransportError,
+  RunwareArchivedTaskRejectedError,
+  readRunwareCreditBalance,
   retrieveRunwareTextTaskDetails,
 } from "./runware-http-transport";
 
@@ -45,6 +47,42 @@ const jsonResponse = (item: Record<string, unknown>, status = 200) =>
   });
 
 describe("Runware server HTTP transport", () => {
+  it("checks credits without inference and recognizes only an exact archived admission rejection", async () => {
+    const apiKey = "runware-test-key-at-least-twenty-characters";
+    for (const balance of [0.23815, { amount: 0.23815, currency: "USD" }]) {
+      const fetcher = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        const [request] = JSON.parse(String(init?.body));
+        expect(request).toMatchObject({ taskType: "accountManagement", operation: "getDetails" });
+        return jsonResponse({ ...request, balance });
+      });
+      await expect(readRunwareCreditBalance(apiKey, fetcher)).resolves.toBe(0.23815);
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    }
+    const taskUUID = "11111111-1111-4111-8111-111111111111";
+    const originalRequest = [{ taskType: "textInference", taskUUID, model: "google:gemini@3.5-flash" }];
+    const originalRequestBytes = canonicalizeJson(originalRequest);
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(originalRequestBytes));
+    const originalRequestSha256 = `sha256:${[...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2,"0")).join("")}` as const;
+    const rejection = { code: "concurrentRequestLimitExceeded", taskType: "textInference", taskUUID };
+    for (const [response, rejected] of [
+      [{ errors: [rejection] }, true],
+      [{ errors: [{ ...rejection, taskUUID: crypto.randomUUID() }] }, false],
+      [{ errors: [{ ...rejection, taskType: "imageInference" }] }, false],
+      [{ errors: [rejection, rejection] }, false],
+      [{ errors: [rejection], data: [] }, false],
+      [{ status: "processing" }, false],
+    ] as const) {
+      const fetcher = vi.fn(async () => jsonResponse({ taskType: "getTaskDetails", taskUUID,
+        request: originalRequest, response }));
+      const result = retrieveRunwareTextTaskDetails({ apiKey, originalTaskUUID: taskUUID,
+        originalRequestBytes, originalRequestSha256, fetch: fetcher });
+      if (rejected) await expect(result).rejects.toBeInstanceOf(RunwareArchivedTaskRejectedError);
+      else await expect(result).rejects.not.toBeInstanceOf(RunwareArchivedTaskRejectedError);
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    }
+    await expect(readRunwareCreditBalance(apiKey, async () => jsonResponse({ balance: -1 })))
+      .rejects.toBeInstanceOf(RunwareTransportError);
+  });
   it("retrieves one exact archived text result without redispatching inference", async () => {
     const originalRequest = [
       {

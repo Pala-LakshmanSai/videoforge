@@ -1408,6 +1408,12 @@ describe("hosted Runware prompt writer", () => {
     ).rejects.toMatchObject({ problemCode: "HOSTED_PROMPT_EXECUTION_UNKNOWN" });
     expect(fetcher).not.toHaveBeenCalled();
 
+    await expect(new HostedRunwarePromptWriter("configured-test-key-value", planned, fetcher,
+      undefined, undefined, { acceptedBatches: [recovered], beforeBatchSubmit: async () => {
+        throw new HostedPromptExecutionError("HOSTED_PROMPT_PROVIDER_CREDITS_LOW", "UNKNOWN", true, null);
+      } }).write(batch)).rejects.toMatchObject({ problemCode: "HOSTED_PROMPT_PROVIDER_CREDITS_LOW" });
+    expect(fetcher).not.toHaveBeenCalled();
+
     await expect(
       new HostedRunwarePromptWriter(
         "configured-test-key-value",

@@ -1,0 +1,50 @@
+{
+  "checkpoint": "V2-09",
+  "selected_task": "VF-10-09",
+  "status": "LOCAL_GREEN_PUBLICATION_PENDING",
+  "diagnosis": "Runware original task archive confirms concurrentRequestLimitExceeded due to insufficient available balance despite getResponse reporting processing.",
+  "saved_prefix": {
+    "scenes": 70,
+    "planned_scenes": 258,
+    "preserved": true
+  },
+  "repair": [
+    "Exact archived task/request/model refusal verification",
+    "Shared account credit check before ordinary or replacement claim",
+    "Resumable credit pause with unchanged saved prefix, cost ledger and budget reservation",
+    "Existing bounded replacement and ambiguous task no-replay guards retained"
+  ],
+  "validation": {
+    "web_focused": 168,
+    "hosted_ui": 162,
+    "sql_credit_pause_and_prefix": 2,
+    "web_and_worker_typecheck": true,
+    "changed_lint": true,
+    "native_cloudflare_build": true,
+    "production_bundle_quarantine": true,
+    "live_provider_read_only": true,
+    "legacy_runtime_firewall": "Two unchanged preexisting continuation import allowlist failures; production bundle quarantine passes.",
+    "sql_checks": 10
+  },
+  "provider_spend": {
+    "new_inference_posts": 0,
+    "new_compute": 0,
+    "stage_cap_usd": 6.5
+  },
+  "remaining_gates": [
+    "Production publication and real Chrome verification",
+    "Configured Runware balance below next-batch minimum",
+    "Paid continuation acceptance requires available Runware credits; whole video completion not claimed"
+  ],
+  "database": {
+    "migration": 233,
+    "ledger_rows": 216,
+    "original_ledger_rows_preserved": 215,
+    "pause_rollback_exact_preimage": true
+  },
+  "paid_compute_shutdown": {
+    "complete_native_inventory": true,
+    "owned_pods": 0,
+    "total_pods": 0
+  }
+}

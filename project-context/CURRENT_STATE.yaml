@@ -1,3 +1,16 @@
+prompt_credit_recovery_2026_10_01:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  status: LOCAL_GREEN_PUBLICATION_PENDING
+  diagnosis: Exact_Runware_archive_concurrentRequestLimitExceeded_insufficient_available_balance; getResponse_processing_is_not_terminal_truth.
+  repair: Identity_verified_archived_refusal_reuses_bounded_replacement; shared_credit_check_before_claim; resumable_pause_preserves_saved_prompts_claims_reservation_and_costs; UNKNOWN_without_exact_terminal_proof_never_replayed.
+  validation: Focused168web_plus162UI_PASS; credit_balance_and_original_task_archive_live_read_only_PASS; prefix_credit_pause_SQL_and_empty_prefix_guards_PASS; web_Worker_types_changed_lint_native_production_build_bundle_quarantine_PASS.
+  database: Additive233_installed_once_216rows_original215_preserved; tenant_scoped_pause_rollback_passes_with_unchanged_prompt_cost_claim_evidence.
+  provider_spend: USD0_new_inference_or_compute_from_repair; originalUSD6_50_stage_ceiling_unchanged; RunPod_balance_does_not_fund_Runware.
+  paid_compute_shutdown: Complete_fresh_native_inventory_zeroPods; no_new_compute.
+  remaining_gates: Production_publication_and_Chrome_pause_recovery; configured_Runware_credits_below_next_batch_minimum; whole_video_completion_and_unrelated_qualification_gates_remain_open.
+  evidence: evidence/acceptance/VF-10-09/2026-10-01-prompt-credit-recovery.json
+
 local_disk_preflight_2026_10_01:
   checkpoint: V2-09
   selected_task: VF-10-09
@@ -12,7 +25,7 @@ local_disk_preflight_2026_10_01:
   validation: Focused288web_115media_worker_one_skip_10migration_checks_typechecks_lint_native_build_bundle_context_PASS; CI36814234704_mac_and_Windows_installers_PASS; exact_production_source100percent_50bindings25secrets3WorkflowIdentities_preserved; nativeMac0.1.45_Online_fresh_capacity_and_realChrome_Local_readiness_PASS; exact_retained22m39s_offline_ASR4201words_SUCCEEDED.
   provider_spend: USD0_new_generation_or_compute_no_project_replay_original_failed_attempt_retained.
   paid_compute_shutdown: Complete_native_inventory_zeroPods; priorSTOPPING_UNKNOWN_preserved_not_CLEAN.
-  remaining_gates: Independent_Stage5_provider_batch7_still_processing_70saved_prompts_retained_duplicate_paid_request_blocked; nativeWindows_installation_and_existing_unrelated_qualification_gates_unchanged.
+  remaining_gates: Stage5_task_archive_confirms_Runware_credit_admission_refusal_despite_processing_poll; see_prompt_credit_recovery_2026_10_01; nativeWindows_installation_and_existing_unrelated_qualification_gates_unchanged.
   evidence: evidence/acceptance/VF-10-09/2026-10-01-local-disk-preflight.json
 
 cloud_capacity_startup_2026_09_30:
@@ -6258,7 +6271,7 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/local-disk-preflight
+  branch: codex/prompt-credit-recovery
   branch_upstream: null
   branch_published: false
   current_source_head: "431f22f96eb532b60fc493457abbda54d3941dd0"

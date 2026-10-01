@@ -5438,7 +5438,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       unavailableRetryReason(stageId)
     );
   const failedStageIds = new Set(
-    displayedStages.filter((stage) => stage.status === "FAILED").map((stage) => stage.id),
+    displayedStages.filter((stage) => stage.status === "FAILED" ||
+      (stage.id === "prompt-writing" && promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"))
+      .map((stage) => stage.id),
   );
   const savedUnknownPromptsCanFinish =
     promptProgress?.state === "UNKNOWN" &&
@@ -5541,13 +5543,15 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             : {}
       : {}),
     ...(failedStageIds.has("prompt-writing") && query.data.generation?.id &&
-    (promptProgress?.state !== "UNKNOWN" || savedUnknownPromptsCanFinish) &&
+    (promptProgress?.state !== "UNKNOWN" || savedUnknownPromptsCanFinish ||
+      promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW") &&
     promptProgress?.problem_code !== "HOSTED_PROMPT_OUTPUT_INVALID"
       ? {
           "prompt-writing": stageRetryButton(
             promptWriting.isPending,
             () => promptWriting.mutate(),
-            savedUnknownPromptsCanFinish ? "Finish saved prompts" : "Retry",
+            savedUnknownPromptsCanFinish ? "Finish saved prompts" :
+              promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW" ? "Check again" : "Retry",
           ),
         }
       : {}),
@@ -5888,7 +5892,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                   : promptWritingStopped
                     ? promptProgress?.problem_code === "HOSTED_PROMPT_OUTPUT_INVALID"
                       ? "The original provider result was invalid. Saved prompts are intact; another paid batch will not be sent automatically."
-                      : "No new prompt batch will be sent automatically."
+                      : promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
+                        ? "Prompt writing is paused while provider credits are unavailable. Saved prompts remain intact."
+                        : "No new prompt batch will be sent automatically."
                     : acceptedPrompts.length > 0
                       ? "Accepted prompts saved."
                       : "Waiting for prompt writing."}
