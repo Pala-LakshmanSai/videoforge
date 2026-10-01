@@ -1,3 +1,5 @@
+The published Windows worker installer download fix from source2578bb93 is preserved in this stage-admission release. Read `windows_worker_download_2026_10_01` in CURRENT_STATE.yaml.
+
 Local disk readiness is published at source `213eb13f` / Cloudflare `be1de7dc`, worker0.1.45.
 Read `local_disk_preflight_2026_10_01` in CURRENT_STATE.yaml. Fresh capacity is checked by Local
 Create, retained-input Retry and lease admission; native runtime2GiB_plus2x_inputBytes remains.

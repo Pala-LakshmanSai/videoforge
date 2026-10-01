@@ -86,10 +86,24 @@ try {
   }
   if (-not (Test-Path -LiteralPath $executable) -or $installedVersion -ne '@@VERSION@@') {
     if ((Get-WorkerProcesses).Count -gt 0) { throw 'Cannot verify the running worker is idle. Let it finish and close it before connecting.' }
-  Write-Host 'Downloading VideoForge Worker @@VERSION@@…'
-  $installer = Join-Path $work 'worker.exe'
-  Invoke-WebRequest -UseBasicParsing -Uri '@@URL@@' -OutFile $installer
-  if ((Get-Item $installer).Length -ne @@SIZE@@ -or (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant() -ne '@@HASH@@') { throw 'Worker download failed verification. Get a fresh command and try again.' }
+    Write-Host 'Downloading VideoForge Worker @@VERSION@@ (@@SIZE@@ bytes)…'
+    $installer = Join-Path $work 'worker.exe'
+    $curl = (Get-Command curl.exe -CommandType Application -ErrorAction Stop).Source
+    $download = [Diagnostics.Stopwatch]::StartNew()
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+      $remaining = [Math]::Max(1, [int][Math]::Ceiling(900 - $download.Elapsed.TotalSeconds))
+      if ($remaining -le 1) { break }
+      # GitHub release assets support byte ranges. Resume only this private temporary file;
+      # the exact published size and SHA-256 below still gate installation.
+      & $curl --fail --location --proto '=https' --proto-redir '=https' --tlsv1.2 `
+        --connect-timeout 20 --speed-limit 1024 --speed-time 45 --max-time $remaining `
+        --continue-at - --progress-bar --output $installer '@@URL@@'
+      if ($LASTEXITCODE -eq 0) { break }
+      if ($attempt -eq 3) { throw 'Worker download failed. Get a fresh command in Settings and try again.' }
+      Write-Host 'Download interrupted; resuming…'
+      Start-Sleep -Seconds 2
+    }
+    if (-not (Test-Path -LiteralPath $installer) -or (Get-Item $installer).Length -ne @@SIZE@@ -or (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant() -ne '@@HASH@@') { throw 'Worker download failed verification. Get a fresh command and try again.' }
   $install = Start-Process -FilePath $installer -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-' -Wait -PassThru
   if ($install.ExitCode -ne 0) { throw 'Worker installation failed.' }
   if ((Get-InstalledVersion) -ne '@@VERSION@@' -or -not (Test-Path -LiteralPath $executable)) { throw 'Latest worker installation could not be verified.' }
