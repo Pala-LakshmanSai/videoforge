@@ -1,3 +1,16 @@
+local_disk_preflight_2026_10_01:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  status: SOURCE_VALIDATED_PUBLICATION_PENDING
+  production_base: f5bdf1f92af0caa22617a65ade17b6f9c5967495
+  diagnosis: Local ASR refused low scratch disk capacity before download; connected Mac Online does not establish storage readiness.
+  repair: Worker0.1.45 reports scratch-filesystem available bytes in existing heartbeat; additive232 stores tenant-private observation. Create preflight and exact retained-input Retry check capacity; job claim reads input sizes before creating leases. Worker runtime floor remains2GiB_plus2x_inputBytes.
+  authority: User requested fix_and_push_production; separately approved cleanup of disposable tests/builds. No new paid generation or compute authority.
+  validation: Focused288web_checks_and115media_worker_checks_pass_one_skip; web_Worker_typechecks_lint_native_production_build_and_bundle_firewall_pass. Installer_and_live_acceptance_pending.
+  provider_spend: USD0_new_generation_or_compute; existing failed attempt and voiceover retained; no paid project replay.
+  paid_compute_shutdown: No compute started; independent inventory pending.
+  remaining_gates: Both immutable platform installers, native Mac installation and exact production release/readback; existing unrelated qualification gates unchanged.
+
 cloud_capacity_startup_2026_09_30:
   checkpoint: V2-09
   selected_task: VF-10-09
@@ -6241,7 +6254,7 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/cloud-capacity-startup
+  branch: codex/local-disk-preflight
   branch_upstream: null
   branch_published: false
   current_source_head: "431f22f96eb532b60fc493457abbda54d3941dd0"

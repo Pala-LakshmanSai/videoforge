@@ -1967,6 +1967,15 @@ describe("hosted product journey", () => {
     ).resolves.toBe(20_000);
   });
 
+  it.each([0, null])("blocks Local before upload when disk capacity is %s", async capacity => {
+    vi.stubGlobal("fetch", vi.fn(async()=>Response.json({avatars:[],styles:[],media_worker_state:"ONLINE",local_media_free_bytes:capacity,
+      cloud_media:{available:true},gpu_transport:"DISABLED_UNQUALIFIED",gpu_readiness:gpuReadiness})));
+    renderHosted(<HostedCreateProjectScreen />);
+    await screen.findByText("Free disk space before starting");
+    expect(screen.getByText(/Local media needs 2.00 GiB free/)).toBeVisible();
+    expect(screen.getByRole("button",{name:"Create project & start"})).toBeDisabled();
+  });
+
   it("flags a custom avatar that cannot produce avatar video, and leaves a qualified one unmarked", async () => {
     const catalogFor = (avatar: Record<string, unknown>) => ({
       avatars: [avatar],

@@ -129,6 +129,7 @@ export interface CatalogResponse {
   }[];
   /** Workspace-owned style versions that are not published yet. */
   readonly style_drafts?: readonly HostedStyleDraft[];
+  readonly local_media_free_bytes?: number | null;
   readonly media_worker_state: "ONLINE" | "WAITING_FOR_YOUR_COMPUTER";
   readonly cloud_media?: { readonly available: boolean };
   readonly generation_provider?: "KIE_FAL" | "RUNPOD";
@@ -2629,8 +2630,12 @@ export function HostedCreateProjectScreen() {
   };
   const keywordsValid = extraPromptKeywords.length <= 500;
   const workerOnline = catalog.data?.media_worker_state === "ONLINE";
+  const requiredDiskBytes = 2 * 1024 ** 3 + (voiceover?.size ?? 0) * 2;
+  const localDiskReady = catalog.data?.local_media_free_bytes === undefined ||
+    (catalog.data.local_media_free_bytes !== null && catalog.data.local_media_free_bytes >= requiredDiskBytes);
+  const diskSpaceMessage = `Free disk space on your connected computer. Local media needs ${(requiredDiskBytes / 1024 ** 3).toFixed(2)} GiB free; ${catalog.data?.local_media_free_bytes == null ? "capacity is unknown" : `${(catalog.data.local_media_free_bytes / 1024 ** 3).toFixed(2)} GiB available`}.`;
   const executionReady = executionBackend === "RUNPOD_POD"
-    ? catalog.data?.cloud_media?.available === true : workerOnline;
+    ? catalog.data?.cloud_media?.available === true : workerOnline && localDiskReady;
   const inputChecklist = [
     { label: "Video title", complete: Boolean(title.trim()) },
     { label: "Voiceover", complete: Boolean(voiceover) },
@@ -3014,12 +3019,12 @@ export function HostedCreateProjectScreen() {
               <strong>
                 {executionBackend === "RUNPOD_POD"
                   ? executionReady ? "Cloud execution is enabled" : "Cloud execution is unavailable"
-                  : workerOnline ? "Your computer is connected" : "Connect your computer"}
+                  : workerOnline ? localDiskReady ? "Your computer is connected" : "Free disk space before starting" : "Connect your computer"}
               </strong>
               <small>
                 {executionBackend === "RUNPOD_POD"
                   ? "No connected computer is required. Capacity is checked when your video is admitted."
-                  : workerOnline
+                  : workerOnline && !localDiskReady ? diskSpaceMessage : workerOnline
                   ? "Ready when inputs are complete."
                   : "Connect your media worker in Settings."}
               </small>

@@ -9,6 +9,8 @@ import platform
 import plistlib
 import re
 import secrets
+import shutil
+import tempfile
 import subprocess
 import sys
 import time
@@ -32,7 +34,7 @@ from videoforge_media_local.personal_execution import (
 from videoforge_media_local.personal_tls import https_context
 
 _SERVICE = "com.videoforge.personal-media-worker"
-_WORKER_VERSION = "0.1.44"
+_WORKER_VERSION = "0.1.45"
 _PROTOCOL_VERSION = 1
 _USER_AGENT = f"VideoForge-Worker/{_WORKER_VERSION}"
 _UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
@@ -693,6 +695,7 @@ def run_forever() -> int:
                     "schema_version": "videoforge-media-worker-heartbeat/v1",
                     "platform": worker_platform,
                     "architecture": architecture,
+                    "available_disk_bytes": shutil.disk_usage(tempfile.gettempdir()).free,
                     "worker_version": _WORKER_VERSION,
                     "protocol_version": _PROTOCOL_VERSION,
                     "execution_bundle_sha256": execution_bundle_sha256,
@@ -768,7 +771,8 @@ def connect_from_file(path: Path) -> int:
         {"schema_version": "videoforge-media-worker-heartbeat/v1",
          "platform": worker_platform, "architecture": architecture,
          "worker_version": _WORKER_VERSION, "protocol_version": _PROTOCOL_VERSION,
-         "execution_bundle_sha256": bundle},
+         "execution_bundle_sha256": bundle,
+         "available_disk_bytes": shutil.disk_usage(tempfile.gettempdir()).free},
         {"authorization": f"Bearer {token}"},
     )
     if status != 200 or not isinstance(value, dict) or value.get("status") != "ONLINE":

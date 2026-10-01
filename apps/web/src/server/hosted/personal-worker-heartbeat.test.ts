@@ -64,11 +64,12 @@ beforeEach(() => {
   state.tenant = false;
   state.failUpdate = false;
 });
-const request = () =>
+const request = (available_disk_bytes?: number | null) =>
   new Request("https://example.test/api/v2/media-worker/heartbeat", {
     method: "POST",
     headers: { authorization: `Bearer ${"b".repeat(64)}` },
     body: JSON.stringify({
+      available_disk_bytes,
       schema_version: "videoforge-media-worker-heartbeat/v1",
       platform: "MACOS",
       architecture: "AARCH64",
@@ -99,3 +100,17 @@ it("rolls back and releases the pinned connection when update fails", async () =
   expect(state.calls).toEqual(["BEGIN", "TENANT", "UPDATE", "ROLLBACK", "RELEASE", "END"]);
   expect(state.tenant).toBe(false);
 });
+
+it.each([-1, 1.5, Number.MAX_SAFE_INTEGER + 1])(
+  "rejects invalid disk observations %s",
+  async (available) => {
+    const response = await handlePersonalWorkerRequest(
+      request(available),
+      {},
+      { waitUntil() {} },
+      config,
+    );
+    expect(response?.status).toBe(400);
+    expect(state.calls).not.toContain("UPDATE");
+  },
+);

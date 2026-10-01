@@ -1,4 +1,5 @@
 import type { SqlExecutor } from "@videoforge/control-plane";
+import { localMediaRequiredBytes } from "./personal-worker-readiness";
 import { workerConnectScript } from "./worker-connect-scripts";
 
 import type { JsonValue } from "@videoforge/contracts";
@@ -923,8 +924,15 @@ async function heartbeat(request: Request, config: HostedRuntimeConfiguration) {
     }
     const row = value as Record<string, unknown>;
     if (
-      Object.keys(row).sort().join(",") !==
+      Object.keys(row)
+        .filter((key) => key !== "available_disk_bytes")
+        .sort()
+        .join(",") !==
         "architecture,execution_bundle_sha256,platform,protocol_version,schema_version,worker_version" ||
+      (row.available_disk_bytes !== undefined &&
+        row.available_disk_bytes !== null &&
+        (!Number.isSafeInteger(row.available_disk_bytes) ||
+          Number(row.available_disk_bytes) < 0)) ||
       row.schema_version !== "videoforge-media-worker-heartbeat/v1" ||
       !supportedWorkerPlatform(row.platform, row.architecture) ||
       typeof row.worker_version !== "string" ||
@@ -949,6 +957,7 @@ async function heartbeat(request: Request, config: HostedRuntimeConfiguration) {
       status,
       String(row.platform),
       String(row.architecture),
+      row.available_disk_bytes == null ? null : Number(row.available_disk_bytes),
     ];
     const updated = await createNeonExecutor(pool).transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1, $2, true)", [
@@ -958,7 +967,7 @@ async function heartbeat(request: Request, config: HostedRuntimeConfiguration) {
       return transaction.query(
         `UPDATE media_worker_devices
           SET worker_version = $2, protocol_version = $3, execution_bundle_sha256 = $4, status = $5,
-              last_seen_at = now(), updated_at = now()
+              last_seen_at = now(), updated_at = now(), available_disk_bytes = $8
         WHERE id = $1 AND platform = $6 AND architecture = $7 AND status <> 'REVOKED'
       RETURNING id`,
         heartbeatParameters,
@@ -1235,11 +1244,20 @@ async function claim(
         "videoforge.account_id",
         scope.accountId,
       ]);
-      const currentDevice = await transaction.query<{ status: string }>(
-        "SELECT status FROM media_worker_devices WHERE id=$1 FOR UPDATE",
-        [scope.deviceId],
-      );
+      const currentDevice = await transaction.query<{
+        status: string;
+        available_disk_bytes: string | number | null;
+      }>("SELECT status, available_disk_bytes FROM media_worker_devices WHERE id=$1 FOR UPDATE", [
+        scope.deviceId,
+      ]);
       if (!currentDevice.rows[0] || currentDevice.rows[0].status !== "ONLINE")
+        return { status: "EMPTY" };
+      const availableDiskBytes = Number(currentDevice.rows[0].available_disk_bytes);
+      if (
+        currentDevice.rows[0].available_disk_bytes == null ||
+        !Number.isSafeInteger(availableDiskBytes) ||
+        availableDiskBytes < localMediaRequiredBytes(0)
+      )
         return { status: "EMPTY" };
       const expiredLeases = await transaction.query<{
         id: string;
@@ -1471,6 +1489,18 @@ async function claim(
         batchSize !== null && row.kind === "SPAN_AUDIO" ? crypto.randomUUID() : null;
       const claims: ClaimedLease[] = [];
       for (const selected of rows) {
+        const inputs = await transaction.query<ClaimedInput>(
+          `SELECT uri, object_key, content_type, content_length, checksum_sha256
+             FROM media_worker_input_objects WHERE attempt_id = $1 ORDER BY uri`,
+          [selected.id],
+        );
+        const inputBytes = inputs.rows.reduce((sum, item) => sum + Number(item.content_length), 0);
+        if (
+          !Number.isSafeInteger(inputBytes) ||
+          inputBytes < 0 ||
+          availableDiskBytes < localMediaRequiredBytes(inputBytes)
+        )
+          continue;
         const leaseId = crypto.randomUUID();
         const leaseToken = await deriveScopedToken(config.mediaWorkerTokenSecret, "lease", leaseId);
         await transaction.query(
@@ -1495,14 +1525,9 @@ async function claim(
             WHERE id = $1 AND state = 'OUTBOXED'`,
           [selected.id, config.mediaWorkerRelease.executionBundleSha256],
         );
-        const inputs = await transaction.query<ClaimedInput>(
-          `SELECT uri, object_key, content_type, content_length, checksum_sha256
-             FROM media_worker_input_objects WHERE attempt_id = $1 ORDER BY uri`,
-          [selected.id],
-        );
         claims.push({ leaseId, leaseToken, attempt: selected, inputs: inputs.rows });
       }
-      return { status: "CLAIMED", claims };
+      return claims.length ? { status: "CLAIMED", claims } : { status: "EMPTY" };
     });
     if (claimed.status === "EMPTY") return new Response(null, { status: 204 });
     const signer = new HostedR2Signer(config.r2);

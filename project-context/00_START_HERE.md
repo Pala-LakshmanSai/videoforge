@@ -1,3 +1,7 @@
+Local disk preflight repair is ready for publication. Read `local_disk_preflight_2026_10_01`
+in CURRENT_STATE.yaml. Worker0.1.45 reports real scratch capacity; Local Create/Retry/claim preserve
+the2GiB safety floor and reject insufficient storage before an attempt starts. Publication pending.
+
 # VideoForge: start here
 
 Optional Local/Cloud media execution is published under the2026-09-28 user decision.

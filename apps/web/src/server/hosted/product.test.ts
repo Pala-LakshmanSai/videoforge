@@ -806,7 +806,8 @@ describe("hosted product route contract", () => {
     ).toBe(false);
   });
 
-  it("creates a fresh bounded ASR submission after an explicit failed attempt", async () => {
+  it.each([4 * 1024 ** 3, 1024 ** 3, null])("checks capacity before explicit ASR retry: %s", async capacity => {
+    testState.workerDeviceRows.push({status:"ONLINE",count:1,available_disk_bytes:capacity});
     const previousProject = testState.projectRows[0];
     const revisionId = "22222222-2222-4222-8222-222222222222";
     testState.projectRows[0] = {
@@ -817,6 +818,7 @@ describe("hosted product route contract", () => {
       content_type: "audio/mpeg",
       duration_ms: 159_216,
       receipt_id: "44444444-4444-4444-8444-444444444444",
+      content_length: 320_000,
       asr_attempt_count: 1,
       asr_total_attempt_count: 1,
       latest_asr_state: "FAILED",
@@ -828,6 +830,11 @@ describe("hosted product route contract", () => {
         stagingConfig,
         executionContext,
       );
+      if (capacity === null || capacity < 2 * 1024 ** 3 + 640_000) {
+        expect(result?.status).toBe(409);
+        expect(await result?.json()).toMatchObject({error:{code:"MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT"}});
+        return;
+      }
       expect(result?.status).toBe(202);
       const body = (await result?.json()) as {
         project_revision_id: string;
@@ -866,6 +873,7 @@ describe("hosted product route contract", () => {
       expect(commit).toContain("hostedAsrSubmissionIdentity(projectId, revisionId, 1)");
     } finally {
       testState.projectRows[0] = previousProject!;
+      testState.workerDeviceRows.pop();
     }
   });
 
@@ -873,6 +881,7 @@ describe("hosted product route contract", () => {
     // A project whose transcriptions all failed because the owner's own computer ran out of disk is
     // recoverable on that machine, so those attempts must not spend the bounded retry budget: the
     // state row reports them in asr_total_attempt_count only.
+    testState.workerDeviceRows.push({status:"ONLINE",count:1,available_disk_bytes:4*1024**3});
     const previousProject = testState.projectRows[0];
     testState.projectRows[0] = {
       revision_id: "22222222-2222-4222-8222-222222222222",
@@ -882,6 +891,7 @@ describe("hosted product route contract", () => {
       content_type: "audio/mpeg",
       duration_ms: 159_216,
       receipt_id: "44444444-4444-4444-8444-444444444444",
+      content_length: 320_000,
       asr_attempt_count: 0,
       asr_total_attempt_count: 3,
       latest_asr_state: "FAILED",
@@ -901,10 +911,12 @@ describe("hosted product route contract", () => {
       );
     } finally {
       testState.projectRows[0] = previousProject!;
+      testState.workerDeviceRows.pop();
     }
   });
 
   it("refuses the hand-off once the total attempt ceiling is reached", async () => {
+    testState.workerDeviceRows.push({status:"ONLINE",count:1,available_disk_bytes:4*1024**3});
     const previousProject = testState.projectRows[0];
     testState.projectRows[0] = {
       revision_id: "22222222-2222-4222-8222-222222222222",
@@ -914,6 +926,7 @@ describe("hosted product route contract", () => {
       content_type: "audio/mpeg",
       duration_ms: 159_216,
       receipt_id: "44444444-4444-4444-8444-444444444444",
+      content_length: 320_000,
       asr_attempt_count: 0,
       asr_total_attempt_count: 12,
       latest_asr_state: "FAILED",
@@ -931,10 +944,12 @@ describe("hosted product route contract", () => {
       });
     } finally {
       testState.projectRows[0] = previousProject!;
+      testState.workerDeviceRows.pop();
     }
   });
 
   it("permits a fresh ASR identity after an older execution bundle's invalid output", async () => {
+    testState.workerDeviceRows.push({status:"ONLINE",count:1,available_disk_bytes:4*1024**3});
     const previousProject = testState.projectRows[0];
     testState.projectRows[0] = {
       revision_id: "22222222-2222-4222-8222-222222222222",
@@ -944,6 +959,7 @@ describe("hosted product route contract", () => {
       content_type: "audio/mpeg",
       duration_ms: 159_216,
       receipt_id: "44444444-4444-4444-8444-444444444444",
+      content_length: 320_000,
       asr_attempt_count: 0,
       asr_total_attempt_count: 3,
       latest_asr_state: "FAILED",
@@ -977,10 +993,12 @@ describe("hosted product route contract", () => {
       expect(String(stateQuery?.[0])).toContain("attempt.execution_bundle_sha256 <> $4");
     } finally {
       testState.projectRows[0] = previousProject!;
+      testState.workerDeviceRows.pop();
     }
   });
 
   it("refuses the hand-off once the voiceover itself failed the bounded number of times", async () => {
+    testState.workerDeviceRows.push({status:"ONLINE",count:1,available_disk_bytes:4*1024**3});
     const previousProject = testState.projectRows[0];
     testState.projectRows[0] = {
       revision_id: "22222222-2222-4222-8222-222222222222",
@@ -990,6 +1008,7 @@ describe("hosted product route contract", () => {
       content_type: "audio/mpeg",
       duration_ms: 159_216,
       receipt_id: "44444444-4444-4444-8444-444444444444",
+      content_length: 320_000,
       asr_attempt_count: 3,
       asr_total_attempt_count: 3,
       latest_asr_state: "FAILED",
@@ -1007,6 +1026,7 @@ describe("hosted product route contract", () => {
       });
     } finally {
       testState.projectRows[0] = previousProject!;
+      testState.workerDeviceRows.pop();
     }
   });
 
@@ -1876,7 +1896,7 @@ describe("hosted product route contract", () => {
 
   it("blocks a pinned avatar version whose runtime source is a pass-through upload", async () => {
     testState.publishedStyleRows.push({});
-    testState.workerDeviceRows.push({ status: "ONLINE", count: "1" });
+    testState.workerDeviceRows.push({ status: "ONLINE", count: "1", available_disk_bytes: 4 * 1024 ** 3 });
     testState.preflightAvatarRows.push({
       source_preparation_profile: "hosted-avatar-source-pass-through-v1",
       object_key:
@@ -1915,7 +1935,7 @@ describe("hosted product route contract", () => {
 
   it("blocks a pinned avatar runtime source whose key is not a canonical avatar.png", async () => {
     testState.publishedStyleRows.push({});
-    testState.workerDeviceRows.push({ status: "ONLINE", count: "1" });
+    testState.workerDeviceRows.push({ status: "ONLINE", count: "1", available_disk_bytes: 4 * 1024 ** 3 });
     testState.preflightAvatarRows.push({
       source_preparation_profile: "soulx-pro-vf924u-approved-v1",
       object_key:
@@ -1944,7 +1964,7 @@ describe("hosted product route contract", () => {
 
   it("accepts a pinned system avatar version whose runtime source is canonical", async () => {
     testState.publishedStyleRows.push({});
-    testState.workerDeviceRows.push({ status: "ONLINE", count: "1" });
+    testState.workerDeviceRows.push({ status: "ONLINE", count: "1", available_disk_bytes: 4 * 1024 ** 3 });
     testState.preflightAvatarRows.push({
       source_preparation_profile: "soulx-pro-vf924u-approved-v1",
       object_key:
@@ -1974,7 +1994,7 @@ describe("hosted product route contract", () => {
 
   it("names the qualified avatar in the blocker when the workspace has one", async () => {
     testState.publishedStyleRows.push({});
-    testState.workerDeviceRows.push({ status: "ONLINE", count: "1" });
+    testState.workerDeviceRows.push({ status: "ONLINE", count: "1", available_disk_bytes: 4 * 1024 ** 3 });
     testState.preflightAvatarRows.push({
       source_preparation_profile: "hosted-avatar-source-pass-through-v1",
       object_key:
@@ -2611,13 +2631,15 @@ describe("Cloud ASR immutable successor recovery", () => {
     testState.projectRows[0]={revision_id:"22222222-2222-4222-8222-222222222222",revision_number:1,
       voiceover_asset_id:"33333333-3333-4333-8333-333333333333",checksum_sha256:`sha256:${"a".repeat(64)}`,
       content_type:"audio/mpeg",duration_ms:159216,receipt_id:"44444444-4444-4444-8444-444444444444",
+      content_length: 320_000,
       asr_attempt_count:1,asr_total_attempt_count:1,latest_asr_state:"FAILED",latest_asr_backend:"RUNPOD_POD",latest_asr_attempt_id:failedId};
     testState.query.mockImplementation(async (statement,parameters)=>{
       if(statement.includes("videoforge_prepare_cloud_media_asr_recovery")) {
         expect(parameters).toEqual([testState.scopeRows[0]?.account_id,testState.scopeRows[0]?.workspace_id,
           testState.scopeRows[0]?.user_id,PROJECT_ID,failedId]);
         testState.projectRows[0]={...testState.projectRows[0],revision_id:successor,revision_number:2,
-          asr_attempt_count:0,asr_total_attempt_count:0,latest_asr_state:null,latest_asr_attempt_id:null};
+          content_length: 320_000,
+      asr_attempt_count:0,asr_total_attempt_count:0,latest_asr_state:null,latest_asr_attempt_id:null};
         return {rows:[{revision_id:successor}],affectedRows:1};
       }
       return original(statement,parameters);

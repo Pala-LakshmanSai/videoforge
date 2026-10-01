@@ -4,9 +4,11 @@ import { handlePersonalWorkerRequest } from "./personal-worker";
 const state = vi.hoisted(() => ({
   calls: [] as string[],
   fresh: true,
+  diskBytes: (4 * 1024 ** 3) as number | null,
   revoked: false,
   active: true,
   failInputs: false,
+  inputBytes: 0,
   bytes: new Uint8Array(),
   checksum: "",
   attemptId: "attempt",
@@ -83,8 +85,15 @@ vi.mock("./neon", async (original) => ({
             return { rows: [] };
           }
 
-          if (sql.includes("SELECT status FROM media_worker_devices"))
-            return { rows: [{ status: state.revoked ? "REVOKED" : "ONLINE" }] };
+          if (sql.includes("SELECT status, available_disk_bytes FROM media_worker_devices"))
+            return {
+              rows: [
+                {
+                  status: state.revoked ? "REVOKED" : "ONLINE",
+                  available_disk_bytes: state.diskBytes,
+                },
+              ],
+            };
           if (sql.includes("SELECT 1 FROM media_worker_devices")) {
             state.calls.push("FRESHNESS");
             return { rows: state.fresh ? [{ ok: 1 }] : [] };
@@ -96,7 +105,9 @@ vi.mock("./neon", async (original) => ({
           if (sql.includes("FROM media_worker_input_objects")) {
             state.calls.push("INPUTS");
             if (state.failInputs) throw Error("input read failure");
-            return { rows: [] };
+            return {
+              rows: state.inputBytes ? [{ uri: "input", content_length: state.inputBytes }] : [],
+            };
           }
           if (sql.includes("LIMIT $5")) {
             state.calls.push("BATCH_ATTEMPT");
@@ -172,9 +183,11 @@ const environment = () =>
 beforeEach(async () => {
   state.calls = [];
   state.fresh = true;
+  state.diskBytes = 4 * 1024 ** 3;
   state.revoked = false;
   state.active = true;
   state.failInputs = false;
+  state.inputBytes = 0;
   state.attemptId = "attempt";
   state.attemptKind = "ASR";
   state.batchRows = [];
@@ -210,7 +223,7 @@ it("folds freshness and inputs into the claim transaction", async () => {
   expect(state.calls.filter((call) => call === "BEGIN")).toHaveLength(2);
   expect(state.calls).toContain("FRESHNESS");
   expect(state.calls.indexOf("FRESHNESS")).toBeLessThan(state.calls.indexOf("LEASE"));
-  expect(state.calls.indexOf("LEASE")).toBeLessThan(state.calls.indexOf("INPUTS"));
+  expect(state.calls.indexOf("INPUTS")).toBeLessThan(state.calls.indexOf("LEASE"));
   expect(state.calls.filter((x) => x === "LEASE")).toHaveLength(1);
 });
 it("claims up to four spans in one scoped batch and keeps per-lease shapes", async () => {
@@ -287,17 +300,10 @@ it("rolls back the claim when input rows fail to load", async () => {
   await expect(
     handlePersonalWorkerRequest(request(), environment(), { waitUntil() {} }, config),
   ).rejects.toThrow("input read failure");
-  expect(state.calls.slice(-6)).toEqual([
-    "ATTEMPT",
-    "LEASE",
-    "INPUTS",
-    "ROLLBACK",
-    "RELEASE",
-    "END",
-  ]);
+  expect(state.calls.slice(-5)).toEqual(["ATTEMPT", "INPUTS", "ROLLBACK", "RELEASE", "END"]);
   expect(state.calls.filter((x) => x === "BEGIN")).toHaveLength(2);
   expect(state.calls.filter((x) => x === "COMMIT")).toHaveLength(1);
-  expect(state.calls.filter((x) => x === "LEASE")).toHaveLength(1);
+  expect(state.calls.filter((x) => x === "LEASE")).toHaveLength(0);
 });
 
 const leaseRequest = (action: string, body?: unknown) =>
@@ -412,5 +418,36 @@ it("rejects a stale online scope after an account switch revoked the device", as
     config,
   );
   expect(result?.status).toBe(204);
+  expect(state.calls).not.toContain("LEASE");
+});
+
+it.each([null, 0, 2 * 1024 ** 3 - 1])(
+  "leaves jobs outboxed without leasing when disk capacity is %s",
+  async (diskBytes) => {
+    state.active = false;
+    state.diskBytes = diskBytes;
+    const response = await handlePersonalWorkerRequest(
+      request(),
+      environment(),
+      { waitUntil() {} },
+      config,
+    );
+    expect(response?.status).toBe(204);
+    expect(state.calls).not.toContain("LEASE");
+  },
+);
+
+it("checks exact input working space before creating any lease", async () => {
+  state.active = false;
+  state.diskBytes = 2 * 1024 ** 3 + 100;
+  state.inputBytes = 101;
+  const response = await handlePersonalWorkerRequest(
+    request(),
+    environment(),
+    { waitUntil() {} },
+    config,
+  );
+  expect(response?.status).toBe(204);
+  expect(state.calls).toContain("INPUTS");
   expect(state.calls).not.toContain("LEASE");
 });

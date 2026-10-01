@@ -1164,6 +1164,12 @@
       "name": "cloud_media_cpu_placement",
       "filename": "0231_cloud_media_cpu_placement.sql",
       "sha256": "sha256:fbe69e086ca76f2dedcb494ca30c3fa001392bc65d56303acdd750744ccd2d5e"
+    },
+    {
+      "version": 232,
+      "name": "personal_worker_disk_capacity",
+      "filename": "0232_personal_worker_disk_capacity.sql",
+      "sha256": "sha256:e4c58e84fe214b03cd7bfa8d956ec11f95bfc41a6dc42d8e41bef9375b47eb59"
     }
   ]
 }

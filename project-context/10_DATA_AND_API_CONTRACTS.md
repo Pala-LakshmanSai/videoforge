@@ -508,3 +508,15 @@ minus5MiB for included headers (official footnote4). The existing10GiB applicati
 not a single-PUT/storage guarantee. Compatible Local files below that ceiling retain their current
 upload behavior, including decimal5GB+ files; larger Cloud objects require scoped multipart.
 [Cloudflare R2 limits](https://developers.cloudflare.com/r2/platform/limits/).
+
+## Personal worker disk capacity — 2026-10-01
+
+The existing v1 heartbeat accepts optional `available_disk_bytes`: a nonnegative safe integer
+measured on the worker's temporary scratch filesystem, or null when unreported. Additive migration
+0232 stores it on the same tenant-private device row and overwrites older observations on every
+heartbeat. A heartbeat without telemetry clears capacity; an Online computer alone is not storage
+readiness. Fresh qualified-device queries retain the existing 90-second bound. Local Create checks
+2 GiB plus twice the selected voiceover bytes; Retry checks the immutable retained receipt. Claims
+read exact input sizes before allocating leases, leaving insufficient-capacity attempts OUTBOXED.
+The worker repeats its unchanged runtime disk check because other processes can consume storage
+between observations. Cloud admission and budgets do not depend on Local disk capacity.

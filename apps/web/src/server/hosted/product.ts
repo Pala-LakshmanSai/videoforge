@@ -1,3 +1,4 @@
+import { localMediaRequiredBytes } from "./personal-worker-readiness";
 import type { HostedExecutionContext } from "./auth";
 import type { SqlExecutor, TransactionalSqlExecutor } from "@videoforge/control-plane";
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
@@ -4106,6 +4107,7 @@ async function catalog(
         avatar_drafts: avatarDrafts.rows,
         style_drafts: styleDrafts.rows,
         workers: workers.count,
+        availableDiskBytes: workers.availableDiskBytes,
       };
     });
     const avatarRows = (data.avatars as Record<string, unknown>[]).map((row) => ({
@@ -4199,6 +4201,7 @@ async function catalog(
       avatar_drafts: avatarDraftRows,
       style_drafts: styleDraftRows,
       media_worker_state: data.workers > 0 ? "ONLINE" : "WAITING_FOR_YOUR_COMPUTER",
+      local_media_free_bytes: data.availableDiskBytes,
       cloud_media: { available: data.cloudAvailable },
       generation_provider: config.apiGeneration ? "KIE_FAL" : "RUNPOD",
       gpu_transport: gpuReadiness.gpu_transport,
@@ -4839,6 +4842,7 @@ async function projectPreflight(
         qualifiedAvatarName: qualifiedAvatarName === null ? null : String(qualifiedAvatarName),
         styleReady: style.rows.length > 0,
         workers: workers.count,
+        availableDiskBytes: workers.availableDiskBytes,
       };
     });
     const blockers: HostedPreflightBlocker[] = [];
@@ -4871,6 +4875,11 @@ async function projectPreflight(
         message: "Connect your personal media worker before generating.",
         severity: "BLOCKING",
       });
+    }
+    if (input.executionBackend === "PERSONAL_WORKER" && facts.workers > 0 &&
+      (facts.availableDiskBytes === null || facts.availableDiskBytes < localMediaRequiredBytes(input.voiceover.contentLength))) {
+      blockers.push({code: "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT",
+        message: "Free disk space on your connected computer before starting. Local media needs 2 GiB plus twice the voiceover size.", severity: "BLOCKING"});
     }
     if (input.executionBackend === "RUNPOD_POD" && !config.cloudMedia?.enabled) {
       blockers.push({
@@ -5523,6 +5532,8 @@ async function asrHandoff(
         content_type: string;
         duration_ms: number | string;
         receipt_id: string;
+        content_length: string | number;
+        media_execution_backend: string;
         asr_attempt_count: number | string;
         asr_total_attempt_count: number | string;
         latest_asr_state: string | null;
@@ -5532,7 +5543,7 @@ async function asrHandoff(
         `SELECT revision.id::text AS revision_id,
                 revision.revision_number,
                 revision.voiceover_asset_id::text AS voiceover_asset_id,
-                receipt.checksum_sha256, receipt.content_type,
+                receipt.checksum_sha256, receipt.content_type, receipt.content_length, revision.media_execution_backend,
                 asset.duration_ms, receipt.id::text AS receipt_id,
                 -- Only a failure that is about the work itself may spend the bounded retry budget.
                 -- An attempt the owner's own computer refused for a local resource reason (no disk
@@ -5628,7 +5639,14 @@ async function asrHandoff(
         result=await load();
         if(result.rows[0]?.revision_id!==revision) throw new Error("HOSTED_ASR_RECOVERY_NOT_ELIGIBLE");
       }
-      return result.rows[0] ?? null;
+      const row = result.rows[0];
+      if (row && (row.media_execution_backend ?? row.latest_asr_backend) !== "RUNPOD_POD") {
+        const workers = await (await import("./personal-worker-readiness")).qualifiedPersonalWorkers(transaction, config.mediaWorkerRelease, scope.account_id, scope.workspace_id);
+        const required = localMediaRequiredBytes(Number(row.content_length));
+        if (!Number.isSafeInteger(required) || workers.availableDiskBytes === null || workers.availableDiskBytes < required)
+          throw new Error("MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT");
+      }
+      return row ?? null;
     });
     if (!state) return response({ error: { code: "HOSTED_ASR_HANDOFF_NOT_READY" } }, 409);
     const asrAttemptCount = Number(state.asr_attempt_count);
@@ -5735,6 +5753,8 @@ async function asrHandoff(
     if((error instanceof Error && error.message==="HOSTED_ASR_RECOVERY_NOT_ELIGIBLE") ||
       (cloudRecovery && error && typeof error==="object" && "code" in error && ["42501","23514","23505","55000"].includes(String(error.code))))
       return response({error:{code:"HOSTED_ASR_RECOVERY_NOT_ELIGIBLE"}},409);
+    if (error instanceof Error && error.message === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT")
+      return response({error:{code:error.message,message:"Free disk space on your connected computer before retrying transcription. Local media needs 2 GiB plus twice the voiceover size."}},409);
     throw error;
   } finally {
     await pool.end();
