@@ -1,0 +1,21 @@
+{
+  "checkpoint": "V2-09",
+  "selected_task": "VF-10-09",
+  "state": "LOCAL_GREEN_PUBLICATION_PENDING",
+  "diagnosis": "Project attempt lease state was incorrectly used as computer connection state.",
+  "repair": "Project detail reuses qualifiedPersonalWorkers with tenant/workspace, fresh 90-second heartbeat, ONLINE/BUSY, removal, protocol and bundle guards; hero distinguishes connected waiting/busy from active own lease.",
+  "validation": {
+    "focused_tests": 172,
+    "web_and_worker_types": "PASS",
+    "changed_lint": "PASS",
+    "native_cloudflare_build": "PASS",
+    "regressions": "Queued terminal ASR with online computer, assignment wait, busy connection, stale/absent connection, active lease, finished render, Cloud and API modes."
+  },
+  "paid_creates": 0,
+  "remaining_gates": [
+    "Production publication and Chrome readback",
+    "Old STOPPING/UNKNOWN exact provider launch evidence and ordinary cleanup/admission",
+    "Whole video acceptance",
+    "Approved support request needs missing required last name"
+  ]
+}

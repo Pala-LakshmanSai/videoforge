@@ -1,4 +1,4 @@
-import { localMediaRequiredBytes } from "./personal-worker-readiness";
+import { localMediaRequiredBytes, qualifiedPersonalWorkers } from "./personal-worker-readiness";
 import type { HostedExecutionContext } from "./auth";
 import type { SqlExecutor, TransactionalSqlExecutor } from "@videoforge/control-plane";
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
@@ -7635,6 +7635,9 @@ async function projectDetail(
       );
       return {
         project: project.rows[0],
+        localWorker: project.rows[0].media_execution_backend === "PERSONAL_WORKER"
+          ? await qualifiedPersonalWorkers(transaction, config.mediaWorkerRelease, scope.account_id, scope.workspace_id)
+          : null,
         attempts: attempts.rows,
         voiceoverContext: voiceoverContext.rows[0] ?? null,
         generation: generation.rows[0] ?? null,
@@ -8302,6 +8305,7 @@ async function projectDetail(
     return response({
       schema_version: "videoforge-hosted-project-detail/v1",
       project: detail.project,
+      local_worker: detail.localWorker ? { state: detail.localWorker.state } : null,
       attempts,
       cloud_media: { available: Boolean(config.cloudMedia?.enabled) },
       api_recovery: {

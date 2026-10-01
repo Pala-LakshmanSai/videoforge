@@ -583,6 +583,7 @@ export function hostedMachineLabel(
   attempts: readonly Pick<HostedAttempt, "kind" | "state" | "execution_backend" | "cloud_gpu" | "cloud_cpu" | "cloud_machine_active" | "local_machine_name" | "local_machine_active">[],
   apiActive = false,
   queuePosition?: number | null,
+  localWorker?: { readonly state: "ONLINE" | "BUSY" | "WAITING_FOR_YOUR_COMPUTER" } | null,
 ): string {
   const active = [...attempts].reverse().find(attempt => attempt.cloud_machine_active || attempt.local_machine_active);
   if (active?.cloud_machine_active && active.cloud_gpu) return `Cloud · RunPod · ${active.cloud_gpu}`;
@@ -596,6 +597,10 @@ export function hostedMachineLabel(
   if (apiActive) return cloud
     ? "Cloud · Kie / Fal APIs · No active RunPod GPU"
     : "Local render · Kie / Fal APIs · Computer not assigned yet";
+  if (!cloud && localWorker?.state === "ONLINE") return queuePosition && queuePosition > 1
+    ? "Local · Computer online · Waiting for earlier project"
+    : "Local · Computer online · Waiting for assignment";
+  if (!cloud && localWorker?.state === "BUSY") return "Local · Computer connected · Busy";
   if (attempts.length && attempts.every(attempt => ["SUCCEEDED", "FAILED", "CANCELLED", "EXPIRED"].includes(attempt.state)))
     return cloud ? "Cloud · No active RunPod compute" : "Local · No active computer";
   if (cloud && queuePosition && queuePosition > 1) return "Cloud · Waiting for earlier project";
@@ -1017,6 +1022,7 @@ interface ProjectDetailResponse {
     media_execution_backend?: "PERSONAL_WORKER" | "RUNPOD_POD";
   };
   readonly attempts: readonly HostedAttempt[];
+  readonly local_worker?: { readonly state: "ONLINE" | "BUSY" | "WAITING_FOR_YOUR_COMPUTER" } | null;
   readonly cloud_media?: { readonly available: boolean };
   readonly generation_provider?: "KIE_FAL" | "RUNPOD";
   readonly api_recovery?: { readonly can_resume_saved_work: boolean; readonly provider_calls_authorized: false };
@@ -5727,7 +5733,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           </div>
           <p className="muted" aria-label="Rendering machine">
             <strong>Machine: </strong>{hostedMachineLabel(query.data.project.media_execution_backend, query.data.attempts,
-              uiStages.some(stage => ["image-generation", "avatar-generation"].includes(stage.id) && stage.status === "RUNNING"), queue?.position)}
+              uiStages.some(stage => ["image-generation", "avatar-generation"].includes(stage.id) && stage.status === "RUNNING"), queue?.position, query.data.local_worker)}
           </p>
           {cloudFinalPhasePending ? null : <ProgressBar value={overallProgress} label="Overall video progress" />}
         </div>

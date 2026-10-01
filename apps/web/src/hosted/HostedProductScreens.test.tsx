@@ -112,6 +112,27 @@ it("shows the actual assigned machine and distinguishes released GPU and API wor
   expect(hostedMachineLabel("PERSONAL_WORKER",[{...local,kind:"ASR",state:"CANCELLED",local_machine_active:false}],false,2)).toBe("Local · No active computer");
 });
 
+it("distinguishes a connected computer waiting in the queue from an active project lease", () => {
+  const asr = {kind: "ASR" as const, state: "SUCCEEDED", local_machine_active: false};
+  const online = {state: "ONLINE" as const};
+  expect(hostedMachineLabel("PERSONAL_WORKER", [asr], false, 2, online))
+    .toBe("Local · Computer online · Waiting for earlier project");
+  expect(hostedMachineLabel("PERSONAL_WORKER", [asr], false, 1, online))
+    .toBe("Local · Computer online · Waiting for assignment");
+  expect(hostedMachineLabel("PERSONAL_WORKER", [asr], false, 2, {state: "BUSY"}))
+    .toBe("Local · Computer connected · Busy");
+  expect(hostedMachineLabel("PERSONAL_WORKER", [asr], false, 2, {state: "WAITING_FOR_YOUR_COMPUTER"}))
+    .toBe("Local · No active computer");
+  expect(hostedMachineLabel("PERSONAL_WORKER", [{...asr, local_machine_active: true, local_machine_name: "Editing Mac"}], false, 2, online))
+    .toBe("Local · Editing Mac");
+  expect(hostedMachineLabel("PERSONAL_WORKER", [{...asr, kind: "RENDER", local_machine_name: "Editing Mac"}], false, 2, online))
+    .toBe("Local · Editing Mac · Finished");
+  expect(hostedMachineLabel("RUNPOD_POD", [], false, 2, online))
+    .toBe("Cloud · Waiting for earlier project");
+  expect(hostedMachineLabel("PERSONAL_WORKER", [asr], true, 2, online))
+    .toBe("Local render · Kie / Fal APIs · Computer not assigned yet");
+});
+
 it("shows the active span ahead of queued and completed Cloud attempts", () => {
   const complete={state:"SUCCEEDED",cloud_phase:"CLEAN"},active={state:"RUNNING",cloud_phase:"RENDERING"},queued={state:"OUTBOXED",cloud_phase:"WAITING_CAPACITY"};
   expect(currentHostedAttempt([complete,active,queued])).toBe(active);
