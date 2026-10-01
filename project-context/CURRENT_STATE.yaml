@@ -2,9 +2,14 @@ progress_ui_review_2026_10_01:
   checkpoint: V2-09
   selected_task: VF-10-09
   read_profile: ui_shell
-  status: SIZING_AND_SEQUENTIAL_LAYOUT_VERIFIED_PUBLICATION_AUTHORIZED
+  status: PRODUCTION_PUBLISHED_HOSTED_CHROME_VERIFIED
   decision: DEC_UX_006
   user_review: User_approved_PR2_then_requested_larger_sizing_sequential_layout_and_production_publication_on_2026_10_01;UI_only_no_functionality_changes.
+  production_source: 212382e4a885c858451b7e9a06d353cef37af027
+  production_version: 41cd255c-f256-401c-adbf-aaeefdaec0be
+  production_percent: 100
+  backend_preservation: Exact_live_7587540byte_backend_module_reused_SHA256_91d64f1c35cee50ba0216b7468bd1be01b0b3e4c2a14db179ed535321be4b3be;50bindings25secrets_threeWorkflowIdentities_preserved_no_definition_or_instance_mutations.
+  hosted_acceptance: Production_status_source_matches;all21public_client_assets_HTTP200_and_exactSHA256;realChrome_2080px_canvas16px_stage_text_sequential_sections_no_overflow_31saved_prompts_disclosure_refresh_PASS.
   implementation_commit: e3b819cc5474b223bbc13eec1ca9d5bb9fca5fea
   base_commit: fe22d35b08edd1188104aac5d856154cc2c5dccb
   branch: codex/progress-ui-sizing
@@ -12,9 +17,9 @@ progress_ui_review_2026_10_01:
   scope: Progress_markup_and_scoped_CSS_only;all_existing_JSX_expressions_handlers_and_pre_layout_logic_match_production;no_backend_provider_or_navigation_changes.
   validation: 175_existing_UI_tests_and3_installed_Chrome_Progress_prompt_regeneration_journeys_PASS;2560_1440_1024_390_320px_no_horizontal_overflow;manual_Chrome_disclosure_refresh_PASS;lint_web_Cloudflare_build_bundle_guard_diff_PASS.
   baseline_failures: Two_TS2554_errors_in_untouched_runware_prompt_execution_reproduced_on_unchanged_baseline;old_Settings_browser_test_waits_for_removed_Add_or_update_a_computer_label_on_both_baseline_and_candidate.
-  provider_spend: USD0_new_generation_or_compute;synthetic_read_only_local_preview_only;no_production_mutation.
+  provider_spend: USD0_new_generation_or_compute;authorized_UI_application_publication_only;no_database_provider_or_paid_resource_mutation.
   paid_compute_shutdown: No_paid_compute_started_or_stopped_by_this_task;global_inventory_not_queried;existing_provider_cleanup_gates_unchanged.
-  remaining_gates: Authorized_publication_and_hosted_Chrome_readback;broader_existing_qualification_gates_unchanged.
+  remaining_gates: No_UI_publication_gates_remain;broader_existing_qualification_gates_unchanged.
   evidence: evidence/acceptance/VF-10-09/2026-10-01-progress-ui/acceptance.json
 
 cloud_pay_per_use_2026_10_01:
@@ -6418,10 +6423,10 @@ repository:
   branch: codex/progress-ui-sizing
   branch_upstream: origin/codex/progress-ui-sizing
   branch_published: true
-  current_source_head: "21bd1f5"
-  current_source_head_semantics: larger_sequential_Progress_UI_verified_and_publication_authorized
+  current_source_head: "212382e4a885c858451b7e9a06d353cef37af027"
+  current_source_head_semantics: production_UI_source_with_exact_prior_backend_bytes
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Presentation-only Progress implementation based on production handoff fe22d35b; resolve Git HEAD for later context commits. Production source3932c982 remains unchanged; no provider or deployment authority transfers."
+  current_source_head_note: "Presentation-only Progress release212382e4 is live at41cd255c with exact prior backend bytes and all runtime bindings preserved; resolve Git HEAD for later evidence handoff commits."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."

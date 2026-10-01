@@ -1,7 +1,7 @@
 {
   "checkpoint": "V2-09",
   "decision": "DEC_UX_006",
-  "status": "SIZING_AND_SEQUENTIAL_LAYOUT_VERIFIED_PUBLICATION_AUTHORIZED",
+  "status": "PRODUCTION_PUBLISHED_HOSTED_CHROME_VERIFIED",
   "implementation_commit": "e3b819cc5474b223bbc13eec1ca9d5bb9fca5fea",
   "base_commit": "fe22d35b08edd1188104aac5d856154cc2c5dccb",
   "review_base": "codex/cloud-pay-per-video",
@@ -48,11 +48,10 @@
     ],
     "note": "Chrome existing 80% zoom preserved; screenshots capture the corresponding visible device pixels."
   },
-  "provider_spend": "USD0; no provider or production mutations",
+  "provider_spend": "USD0 new generation/compute; UI application deployment only",
   "paid_compute_shutdown": "No paid compute allocated or mutated; global inventory not queried",
   "remaining_gates": [
-    "Authorized production publication and hosted Chrome verification",
-    "Existing broad production/editorial/provider qualification gates unchanged"
+    "Broader existing production/editorial/provider qualification gates unchanged"
   ],
   "user_review": "2026-10-01: PR2 merged c809c697; user then requests larger sizing, sequential layout, UI-only production publication.",
   "ci_review": {
@@ -69,5 +68,22 @@
     "order": "Timeline and controls; context -> plan -> prompts; audio -> generation -> preview",
     "presentation_only_proof": "617 JSX expressions identical after static class normalization; all pre-layout source byte-identical; server/worker/package Git diff empty.",
     "validation": "175 UI tests and 3 installed-Chrome journeys PASS; 2560/1440/1024/390/320 no overflow, keyboard prompt details and regeneration retain accepted media; lint/build/bundle PASS."
+  },
+  "publication": {
+    "source": "212382e4a885c858451b7e9a06d353cef37af027",
+    "version": "41cd255c-f256-401c-adbf-aaeefdaec0be",
+    "traffic_percent": 100,
+    "backend_bytes": 7587540,
+    "backend_sha256": "91d64f1c35cee50ba0216b7468bd1be01b0b3e4c2a14db179ed535321be4b3be",
+    "backend": "Exact live production module reused; no functional code changes.",
+    "preserved_bindings": 50,
+    "preserved_secret_bindings": 25,
+    "preserved_workflow_identities": 3,
+    "new_workflow_instances": 0,
+    "database_mutations": 0,
+    "new_paid_generation_or_compute": 0,
+    "public_client_assets": "21 HTTP200 and exact SHA256 matches",
+    "chrome": "Real production project: 2080px canvas, 16px stage labels, sequential context/plan/prompts then audio/generation/preview; no overflow; all 11 stages and 31 saved prompts, full details and refresh verified.",
+    "screenshot": "sized-sequential-preview.png is synthetic local data; production screenshot retained privately only."
   }
 }
