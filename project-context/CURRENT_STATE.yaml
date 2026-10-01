@@ -5,7 +5,8 @@ team_access_2026_10_01:
   decision: DEC_TEAM_ACCESS_001
   branch: codex/team-access
   base_source: c809c697209ea0aa1565cd86b081a6cc6b34afd9
-  implementation_commit: See_Git_commit_containing_this_entry
+  implementation_commit: dbcd9d48fe2955f578cb0204e262ce99d6789637
+  pull_request: https://github.com/Pala-LakshmanSai/videoforge/pull/3
   user_authority: Implement_Frontier5_style_Team_access_for_two_exact_owner_accounts_and_create_PR;merge_after_user_approval.
   validation: SQL_invitation_revocation_restore_and_existing_admission_schema_checks_PASS;UI_API_hosted_regressions142_PASS;web_Worker_types_and_focused_lint_PASS;Chrome_local_real_handler_SQL_invite_copy_revoke_restore_PASS.
   release: Not_deployed;migration0238_prepared_unapplied_in_production;no_real_invites_permissions_or_sessions_mutated.
@@ -6432,8 +6433,8 @@ repository:
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
   branch: codex/team-access
-  branch_upstream: null
-  branch_published: false
+  branch_upstream: origin/codex/team-access
+  branch_published: true
   current_source_head: "c809c697209ea0aa1565cd86b081a6cc6b34afd9"
   current_source_head_semantics: published_application_base_for_isolated_team_access_PR
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."

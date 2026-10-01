@@ -1,7 +1,7 @@
 # Team access review handoff — 2026-10-01
 
 Checkpoint: V2-09 / VF-10-09. Branch: `codex/team-access`, based on application review base `c809c697` (production source `3932c982`).
-Implementation identity: the Git commit containing this report. Review PR targets the current
+Implementation identity: `dbcd9d48fe2955f578cb0204e262ce99d6789637`. Review: [PR3](https://github.com/Pala-LakshmanSai/videoforge/pull/3). Review PR targets the current
 published `codex/cloud-pay-per-video` branch because default `main` contains bootstrap code.
 
 ## Behavior and scope
