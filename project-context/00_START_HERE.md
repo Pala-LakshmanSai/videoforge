@@ -1,6 +1,6 @@
-Ordinary Cloud billing now follows DEC_CLOUD_BILLING_001: pay as videos are created, no account spend cap or expiry.
-Ongoing account access is published at source58f9df9 / Cloudflare5f0f0797. Additive237 separates fenced terminal cleanup from fresh Cloud video admission; publication/whole-video proof is tracked in CURRENT_STATE.yaml.
-The old UNKNOWN launch remains independently reconciled; it is not a prerequisite for a fresh video.
+Ordinary Cloud follows DEC_CLOUD_BILLING_001: pay for temporary RunPod uptime as videos are created, without an account spend cap, expiry or rental quota.
+Published source3932c982 / Cloudflare252dedc0 completes a fresh159.2s video with all media execution remote, exact R2 checksum/full decode and real Chrome playback. All five Pods terminated; zero owned VideoForge Pods remain. Read `cloud_pay_per_use_2026_10_01` in CURRENT_STATE.yaml.
+The historical UNKNOWN launch remains independently reconciled; additive237 permits fresh Local and Cloud VIDEO admission past strictly fenced terminal cleanup while retaining global resource accounting and no replay.
 
 Local creation cleanup isolation is prepared under the 2026-10-01 request. It separates a fully fenced early failed video's admission from UNKNOWN/STOPPING rental cleanup. Cloud capacity, no replay and reconciliation remain intact. Read `local_creation_cleanup_isolation_2026_10_01` in CURRENT_STATE.yaml for publication and current proof.
 

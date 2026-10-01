@@ -1,23 +1,84 @@
 {
   "checkpoint": "V2-09",
   "selected_task": "VF-10-09",
-  "status": "LOCAL_GREEN_NATIVE_ROLLBACK_PUBLICATION_PENDING",
+  "status": "PRODUCTION_CLOUD_E2E_VERIFIED",
   "decision": "DEC_CLOUD_BILLING_001",
-  "production_base": "e42faeb0a9931ef02d8c6e39aef2661f181c502a",
+  "production_source": "3932c98235b8e6c00b4a56c0110b8c9b701175c2",
+  "production_version": "252dedc0-839c-45b2-ba8f-367ec4baafb9",
+  "production_percent": 100,
+  "authority": "User-requested ongoing ordinary Cloud generation and production publication; no account spend cap, expiry or rental quota.",
+  "database": {
+    "new_migrations": [
+      236,
+      237
+    ],
+    "ledger_rows": 220,
+    "previous_ledger_rows_preserved": true,
+    "old_unknown_reservation_and_debit_preserved": true,
+    "one_live_rental_per_account": true,
+    "global_two_resources_includes_old_unknown": true
+  },
+  "publication": {
+    "bindings_preserved": 50,
+    "secrets_preserved": 25,
+    "workflow_identities_preserved": 3,
+    "existing_canonical_adopted": true,
+    "new_workflow_instances": 0,
+    "cpu_fallback_disabled": true
+  },
   "validation": {
-    "full_schema_sql": 7,
+    "full_schema_sql": 8,
+    "cleanup_sql": 2,
     "ui": 169,
     "catalog": 2,
     "web_and_worker_types": "PASS",
     "changed_lint": "PASS",
-    "native_postgres_rollback": "PASS",
-    "original_ledger_rows": 218
+    "native_build": "PASS",
+    "bundle_no_growth": "PASS",
+    "context": "PASS_WITH_EXISTING_WARNINGS",
+    "native_postgres_rollback_apply_readback": "PASS"
   },
-  "new_provider_calls": 0,
-  "new_paid_compute": 0,
+  "fresh_video": {
+    "project_id": "06cdea5c-837b-499e-aca0-a8e6ab08b8dd",
+    "request_state": "SUCCEEDED",
+    "runtime_stage": "COMPLETE",
+    "cpu_attempts": 11,
+    "cpu_backends": [
+      "RUNPOD_POD"
+    ],
+    "personal_worker_leases": 0,
+    "kie_images": 31,
+    "fal_avatar_clips": 9,
+    "duration_seconds": 159.2,
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "video_codec": "h264",
+    "audio_codec": "aac",
+    "bytes": 24791321,
+    "sha256": "sha256:cc5520005e153d16a67bde3dcf2c3600eb8532bf3ee6c6b9b58401be3f6ddd58",
+    "r2_exact_checksum": "PASS",
+    "full_local_decode": "PASS",
+    "chrome_playback": "PASS",
+    "editorial_approval": "LEFT_FOR_USER"
+  },
+  "provider": {
+    "new_rentals": 5,
+    "new_creates": "CONFIRMED",
+    "new_rentals_cleanup": "ALL_CLEAN",
+    "zero_owned_videoforge_pods_complete_inventory": true,
+    "unrelated_pods_preserved": 1,
+    "gpu": "RTX PRO 4500 Blackwell Server Edition",
+    "gpu_hourly_quote_usd": 0.72,
+    "ephemeral_disk_extra_hourly_usd": 0.0138889,
+    "conservative_budget_debits_usd": 1.0,
+    "debits_are_invoice": false,
+    "invoice": "UNVERIFIED",
+    "old_unknown_cleanup": "INDEPENDENT_NO_REPLAY_NOT_FRESH_VIDEO_PREREQUISITE"
+  },
   "remaining_gates": [
-    "Production publication and ongoing account activation",
-    "Original UNKNOWN launch exact provider reconciliation",
-    "Fresh Cloud render end-to-end acceptance"
+    "User editorial review of this output",
+    "Historical UNKNOWN launch exact reconciliation remains independent",
+    "Broader long-video benchmarks were not requalified"
   ]
 }

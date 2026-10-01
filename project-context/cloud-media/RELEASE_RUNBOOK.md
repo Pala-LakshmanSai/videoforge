@@ -1,4 +1,8 @@
-# Current production release — 2026-09-29
+# Ordinary Cloud authority — 2026-10-01
+
+DEC_CLOUD_BILLING_001 supersedes historical finite account caps, expiry and rental-count quotas for ordinary Cloud videos. Production uses ongoing account-scoped access under migration0236. Migration0237 admits fresh Local/Cloud VIDEO work past strictly fenced terminal early-media cleanup; the historical UNKNOWN resource/debit remains unchanged and still occupies a global resource slot. Use current provider inventory/rates, the existing singleton-locked one-live-rental/account guard, remote R2 receipts, cancellation and automatic compute shutdown. An old support request is not a prerequisite for fresh generation. Existing historical test authorities keep their exact controls. Current deployment and whole-video evidence live in CURRENT_STATE.yaml.
+
+# Historical production release — 2026-09-29
 
 Published source30b04855 / Cloudflare601d8ff3 at100 percent after accepted-source Cloud result and independent cleanup. Additive222/223 installed once; ledger206. Local default and NewProject-only Cloud selector,25 secrets/41 bindings/KieFal/privateR2 remain. Finite new account scope:USD1.60/max5 rentals/expiry2026-09-30T12:30UTC; no unlimited ongoing authority. All10 prior reservations CLEAN, conservativeUSD2.87 not invoice. Current Chrome native download is blocked by organization policy; no bypass. See [FINAL_RELEASE.md](FINAL_RELEASE.md) for identities, tests, measurements, browser and45-minute boundaries.
 
