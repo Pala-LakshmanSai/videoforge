@@ -1,0 +1,72 @@
+{
+  "checkpoint": "V2-09",
+  "task": "VF-10-09",
+  "status": "LOCAL_CAPACITY_RESTORED_PROVIDER_LAUNCH_RECONCILIATION_PENDING",
+  "production_source": "a8e42ddd704627e2b5938eb6b8bbbef2fa5e16f8",
+  "production_version": "da24cb5f-2686-411e-b02d-170cdc7cb77d",
+  "app_source_changed": false,
+  "cleanup": {
+    "disposable_files_removed": 33528,
+    "logical_bytes_removed": 2061293694,
+    "cache_types": [
+      "Chrome HTTP cache",
+      "Adobe conformed media cache",
+      "Antigravity HTTP cache",
+      "Claude HTTP and compiled-code caches"
+    ],
+    "guards": [
+      "exact cache directories only",
+      "skip symlinks",
+      "skip files opened by running applications",
+      "skip files modified within the previous hour"
+    ],
+    "preserved": [
+      "saved videos",
+      "uploaded voiceovers",
+      "installers",
+      "recovery backups",
+      "browser sessions",
+      "application databases",
+      "models",
+      "other projects and foreign provider resources"
+    ]
+  },
+  "verification": {
+    "at": "2026-10-01T11:09:17.581548+00:00",
+    "local_worker_status": "ONLINE",
+    "heartbeat_at": "2026-10-01T11:09:11.925157+00:00",
+    "available_disk_bytes": 2455797760,
+    "local_audio_required_bytes": 2212709104,
+    "local_audio_capacity_sufficient": true,
+    "prompt_state": "SUCCEEDED",
+    "prompts_accepted": 258,
+    "real_chrome_stage5": "COMPLETE",
+    "original_generation": "WAITING"
+  },
+  "provider_reconciliation": {
+    "prior_benchmark_cpu_attempts": "all terminal",
+    "reservation_state": "STOPPING",
+    "launch_outcome": "UNKNOWN",
+    "provider_pod_id_known": false,
+    "complete_current_inventory": "zero Pods",
+    "exact_pod_name_audit_search": "no matching log found",
+    "yesterday_audit": "resource IDs and timestamps visible; no exact launch outcome established",
+    "historical_gpu_billing": "aggregate GPU totals; no exact reservation identity established",
+    "ordinary_cancellation": "live installed SQL requires verified cleanup; cannot retire this request while its reservation is unclean",
+    "fence_preserved": true,
+    "support_request": "private draft prepared; sending awaits explicit user permission"
+  },
+  "spend": {
+    "new_inference_usd": 0,
+    "new_compute_usd": 0,
+    "provider_mutations": 0,
+    "prior_prompt_reported_usd": 1.729956,
+    "prior_prompt_ceiling_usd": 6.5
+  },
+  "remaining_gates": [
+    "authoritative original RunPod launch outcome and cleanup",
+    "ordinary queue release after proof",
+    "Local capacity at each later job, especially final render",
+    "whole video acceptance"
+  ]
+}
