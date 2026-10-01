@@ -1176,6 +1176,12 @@
       "name": "hosted_prompt_credit_pause",
       "filename": "0233_hosted_prompt_credit_pause.sql",
       "sha256": "sha256:fc97c4990c886e0e32dc3d6efac4d5b3fbde60141ca409a3c977827f51cc8fe3"
+    },
+    {
+      "version": 234,
+      "name": "hosted_prompt_replacement_freshness",
+      "filename": "0234_hosted_prompt_replacement_freshness.sql",
+      "sha256": "sha256:fff61d6c2a6121a7dbd3a4f749063e94df8c417d0648161726b5fcc8b3918b3d"
     }
   ]
 }

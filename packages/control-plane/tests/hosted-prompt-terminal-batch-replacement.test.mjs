@@ -316,3 +316,95 @@ test("0225 stops after the replacement fails and settles both known charges", as
     );
   });
 });
+
+test("0234 gives a fresh replacement its own timeout window without replaying the old claim", async () => {
+  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+    const run = await seedAdaptivePromptRun(executor, {
+      sceneCount: 1,
+      plannedBatchCount: 1,
+      reservedMicroUsd: 500000,
+    });
+    const request = (attemptIndex) =>
+      JSON.stringify([
+        {
+          taskType: "textInference",
+          taskUUID: uuid(234010 + attemptIndex),
+          model: "google:gemini@3.5-flash",
+          deliveryMethod: "sync",
+          includeCost: true,
+          messages: [
+            {
+              role: "user",
+              content: JSON.stringify({
+                batch_id: "batch-0",
+                attempt_index: attemptIndex,
+                scenes: [{ scene_id: "scene-0" }],
+              }),
+            },
+          ],
+        },
+      ]);
+    const original = request(1),
+      replacement = request(2);
+    // Immutable history is seeded old; the real replacement helper creates the new timestamp.
+    await executor.query(
+      `INSERT INTO hosted_prompt_batch_claims (
+      id,account_id,workspace_id,run_id,task_id,attempt_id,outbox_id,batch_ordinal,
+      provider_task_uuid,request_bytes,request_hash,created_at
+    ) SELECT $1,account_id,workspace_id,id,task_id,attempt_id,outbox_id,0,$2,$3,$4,
+      clock_timestamp()-interval '30 minutes' FROM hosted_prompt_runs WHERE id=$5`,
+      [uuid(234001), JSON.parse(original)[0].taskUUID, original, sha256(original), run.runId],
+    );
+    await executor.query(
+      "SELECT videoforge_fail_hosted_prompt_run($1,'UNKNOWN','HOSTED_PROMPT_EXECUTION_UNKNOWN',true,0)",
+      [run.runId],
+    );
+    await executor.query(
+      "SELECT videoforge_replace_invalid_hosted_prompt_batch($1,0,$2,$3,0,$4,$5)",
+      [
+        run.runId,
+        JSON.parse(original)[0].taskUUID,
+        sha256("terminal rejection"),
+        replacement,
+        sha256(replacement),
+      ],
+    );
+    const snapshot = async () =>
+      (
+        await executor.query(
+          `SELECT
+      (SELECT jsonb_agg(to_jsonb(c)) FROM hosted_prompt_batch_claims c WHERE run_id=$1) AS claims,
+      (SELECT jsonb_agg(to_jsonb(c)) FROM hosted_prompt_batch_replacements c WHERE run_id=$1) AS replacements,
+      (SELECT jsonb_agg(to_jsonb(c)) FROM cost_events c WHERE attempt_id=$2) AS costs`,
+          [run.runId, run.attemptId],
+        )
+      ).rows;
+    const before = await snapshot();
+    assert.equal(
+      (
+        await executor.query(
+          "SELECT videoforge_reconcile_stale_hosted_prompt_dispatches($1) AS result",
+          [IDS.projectA],
+        )
+      ).rows[0].result.prompt_reconciled,
+      0,
+    );
+    assert.equal(
+      (await executor.query("SELECT state FROM hosted_prompt_runs WHERE id=$1", [run.runId]))
+        .rows[0].state,
+      "DISPATCHING",
+    );
+    await executor.query("SELECT set_config('videoforge.account_id',$1,false)", [IDS.accountB]);
+    assert.equal(
+      (
+        await executor.query(
+          "SELECT videoforge_reconcile_stale_hosted_prompt_dispatches($1) AS result",
+          [IDS.projectA],
+        )
+      ).rows[0].result.prompt_reconciled,
+      0,
+    );
+    await executor.query("SELECT set_config('videoforge.account_id',$1,false)", [IDS.accountA]);
+    assert.deepEqual(await snapshot(), before);
+  });
+});
