@@ -1,3 +1,4 @@
+import { hostedAccountCleanupPending, HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE } from "./hosted-v209-queue-admission";
 import { localMediaRequiredBytes, qualifiedPersonalWorkers } from "./personal-worker-readiness";
 import type { HostedExecutionContext } from "./auth";
 import type { SqlExecutor, TransactionalSqlExecutor } from "@videoforge/control-plane";
@@ -4845,6 +4846,7 @@ async function projectPreflight(
         ? avatarRuntimeSourceReadyForApi(avatarRow)
         : avatarRuntimeSourceQualified(avatarRow);
       return {
+        cleanupPending: await hostedAccountCleanupPending(transaction, scope.account_id, scope.workspace_id),
         avatarReady: avatar.rows.length > 0,
         avatarRuntimeSourceQualified: runtimeSourceQualified,
         qualifiedAvatarName: qualifiedAvatarName === null ? null : String(qualifiedAvatarName),
@@ -4854,6 +4856,9 @@ async function projectPreflight(
       };
     });
     const blockers: HostedPreflightBlocker[] = [];
+    if (facts.cleanupPending) blockers.push({
+      code: "HOSTED_CLOUD_CLEANUP_PENDING", message: HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE, severity: "BLOCKING",
+    });
     if (!facts.avatarReady) {
       blockers.push({
         code: "AVATAR_PROFILE_NOT_READY",
@@ -5012,6 +5017,8 @@ async function createProject(
         }
         return replay;
       }
+      if (await hostedAccountCleanupPending(transaction, scope.account_id, scope.workspace_id))
+        throw new Error("HOSTED_CLOUD_CLEANUP_PENDING");
       const resolved = await resolveProjectPresets(
         transaction,
         scope,
@@ -5249,6 +5256,8 @@ async function createProject(
       return response({ error: { code: error.message } }, 409);
     if (error instanceof Error && error.message === "VOICEOVER_UPLOAD_NOT_RENEWABLE")
       return response({ error: { code: error.message } }, 409);
+    if (error instanceof Error && error.message === "HOSTED_CLOUD_CLEANUP_PENDING")
+      return response({ error: { code: error.message, message: HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE } }, 409);
     if (error instanceof Error && error.message === "PROJECT_PRESET_NOT_READY")
       return response({ error: { code: error.message } }, 409);
     if (error instanceof Error && error.message === "AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED")
@@ -7644,6 +7653,8 @@ async function projectDetail(
         prompts: prompts.rows,
         promptProgress: promptProgress.rows[0] ?? null,
         queue: queue.rows[0] ?? null,
+        cleanupPending: queue.rows[0]?.state === "WAITING" &&
+          await hostedAccountCleanupPending(transaction, scope.account_id, scope.workspace_id, projectId),
         runtime: runtime.rows[0] ?? null,
         serverlessAttempts: serverlessAttempts.rows,
         serverlessOutputs: serverlessOutputs.rows,
@@ -7920,6 +7931,10 @@ async function projectDetail(
             : !voiceoverContext && asr?.state === "SUCCEEDED"
               ? "RUNNING"
               : contextState;
+    const admissionWaiting = (detail.queue as Record<string, unknown> | null)?.state === "WAITING";
+    const spanAdmissionWaiting = promptStage.status === "COMPLETE" && admissionWaiting &&
+      spanAudioProgress.started_at === null && spanAudioProgress.failed === 0 &&
+      spanAudioProgress.materialized === 0;
     const stages = [
       {
         id: "prepare",
@@ -8021,7 +8036,9 @@ async function projectDetail(
         id: "audio-spanning",
         name: "Audio spanning",
         status:
-          spanAudioProgress.failed > 0
+          spanAdmissionWaiting
+            ? detail.cleanupPending ? "BLOCKED" : "QUEUED"
+            : spanAudioProgress.failed > 0
             ? spanAudioProgress.retrying > 0
               ? "RUNNING"
               : "FAILED"
@@ -8039,7 +8056,11 @@ async function projectDetail(
         started_at: spanAudioProgress.started_at,
         completed_at: spanAudioProgress.completed_at,
         detail:
-          cloudMedia
+          spanAdmissionWaiting
+            ? detail.cleanupPending
+              ? HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE + " Saved prompts remain available; this stage resumes automatically after cleanup."
+              : "Waiting for an earlier project. Audio preparation starts automatically when the account slot opens."
+            : cloudMedia
             ? spanAudioProgress.failed > 0
               ? `${spanAudioProgress.materialized} of ${spanTotal} clips are saved. Cloud audio preparation failed; accepted clips remain available.`
               : "Cloud media execution prepares the exact selected audio spans."
@@ -8139,6 +8160,7 @@ async function projectDetail(
           ahead: numberOrNull(queueRow.ahead),
           total: numberOrNull(queueRow.total),
           status: queueRow.state ?? null,
+          blocked_reason: detail.cleanupPending ? "HOSTED_CLOUD_CLEANUP_PENDING" : null,
           estimated_wait_ms: null,
           fair_rotation: "DETERMINISTIC_ACCOUNT_ROTATION",
         }

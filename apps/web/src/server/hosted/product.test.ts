@@ -46,7 +46,9 @@ const testState = vi.hoisted(() => {
   const presetAvatarRows: Record<string, unknown>[] = [];
   const runtimeSourceRows: Record<string, unknown>[] = [];
   const workerDeviceRows: Record<string, unknown>[] = [];
+  const cleanup = { pending: false };
   const query = vi.fn(async (sql: string, params?: readonly unknown[]) => {
+    if (sql.includes("FROM cloud_media_reservations reservation")) return { rows: [cleanup], affectedRows: 1 };
     void params;
     if (sql.includes("videoforge_consume_hosted_rate_limit"))
       return { rows: rateLimitRows, affectedRows: 1 };
@@ -153,6 +155,7 @@ const testState = vi.hoisted(() => {
   );
   const executor = { execute: vi.fn(), query, transaction };
   return {
+    cleanup,
     scopeRows,
     projectRows,
     projectDetailAttemptRows,
@@ -1042,6 +1045,33 @@ describe("hosted product route contract", () => {
       expect(failedTasks).toBeUndefined();
     } finally {
       testState.projectRows.push(...previous);
+    }
+  });
+
+  it.each([false, true])("projects waiting admission truthfully and preserves saved spans (cleanup=%s)", async (pending) => {
+    const original = testState.query.getMockImplementation()!;
+    let saved = false;
+    testState.cleanup.pending = pending;
+    testState.query.mockImplementation(async (sql, params) => {
+      if (sql.includes("AS prompt_task_state")) return { rows: [{ id: PROJECT_ID, prompt_task_state: "COMPLETE" }], affectedRows: 1 };
+      if (sql.includes("SELECT request.id, request.state, request.queue_order")) return { rows: [{ state: "WAITING", ahead: 2, total: 3 }], affectedRows: 1 };
+      if (saved && sql.includes("FROM selected_span_audio AS span")) return { rows: [{ state: "MATERIALIZED", total: 1 }], affectedRows: 1 };
+      if (saved && sql.includes("SELECT job.state, count(*)::int AS total")) return { rows: [{ state: "SUCCEEDED", total: 1, started_at: "2026-10-01T12:00:00Z", completed_at: "2026-10-01T12:00:01Z" }], affectedRows: 1 };
+      return original(sql, params);
+    });
+    const detail = async () => (await (await handleHostedProductRequest(request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"), environment, stagingConfig, executionContext))!.json()) as { stages: { id: string; status: string; detail: string }[]; queue: { blocked_reason: string | null } };
+    try {
+      const waiting = await detail();
+      expect(waiting.stages.find(stage => stage.id === "audio-spanning"))
+        .toMatchObject({ status: pending ? "BLOCKED" : "QUEUED" });
+      expect(waiting.queue.blocked_reason).toBe(pending ? "HOSTED_CLOUD_CLEANUP_PENDING" : null);
+      saved = true;
+      const retained = await detail();
+      expect(retained.stages.find(stage => stage.id === "audio-spanning"))
+        .toMatchObject({ status: "COMPLETE" });
+    } finally {
+      testState.query.mockImplementation(original);
+      testState.cleanup.pending = false;
     }
   });
 
@@ -2675,4 +2705,30 @@ describe("Cloud ASR immutable successor recovery", () => {
       expect(result?.status).toBe(409);expect(await result?.json()).toEqual({error:{code:"HOSTED_ASR_RECOVERY_NOT_ELIGIBLE"}});
     } finally {testState.projectRows[0]=previous;testState.query.mockImplementation(original);}
   });
+});
+
+ it("blocks preflight and direct creation before any new reservation while earlier Cloud cleanup is unconfirmed", async () => {
+  testState.cleanup.pending = true;
+  const body = {
+    title: "Cleanup guarded project",
+    avatar_profile_version_id: "22222222-2222-4222-8222-222222222222",
+    image_style_version_id: "33333333-3333-4333-8333-333333333333",
+    voiceover: { filename: "voiceover.mp3", content_type: "audio/mpeg", content_length: 320000,
+      checksum_sha256: `sha256:${"a".repeat(64)}`, duration_ms: 20000 },
+  };
+  try {
+    const preflight = await handleHostedProductRequest(request("/api/v2/hosted/projects/preflight", "POST", {
+      ...body, schema_version: "videoforge-hosted-project-preflight/v1",
+    }), environment, stagingConfig, executionContext);
+    expect(await preflight!.json()).toMatchObject({ ok: false, blockers: expect.arrayContaining([
+      expect.objectContaining({ code: "HOSTED_CLOUD_CLEANUP_PENDING", severity: "BLOCKING" }),
+    ]) });
+    testState.query.mockClear();
+    const created = await handleHostedProductRequest(request("/api/v2/hosted/projects", "POST", {
+      ...body, schema_version: "videoforge-hosted-project-create/v1",
+    }, true, { "idempotency-key": "cleanup-guard-0000000000000001" }), { ...environment, PRIVATE_ARTIFACTS: {} } as HostedRuntimeEnvironment, stagingConfig, executionContext);
+    expect(created!.status).toBe(409);
+    expect(await created!.json()).toMatchObject({ error: { code: "HOSTED_CLOUD_CLEANUP_PENDING" } });
+    expect(testState.query.mock.calls.some(([sql]) => sql.includes("INSERT INTO"))).toBe(false);
+  } finally { testState.cleanup.pending = false; }
 });

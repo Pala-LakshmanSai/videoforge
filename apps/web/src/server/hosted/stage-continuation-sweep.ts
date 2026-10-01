@@ -254,12 +254,17 @@ export interface HostedContinuationTarget {
  * a stage sat stranded with a green-looking sweep. The status and the route's own error code are the
  * signal; the body is never trusted beyond that.
  */
-async function continuationOutcome(
+export async function continuationOutcome(
   response: Response | null,
-): Promise<{ ok: boolean; detail: string }> {
+): Promise<{ ok: boolean; detail: string; waiting?: boolean }> {
   // The GPU-dispatch coordinator may answer with nothing at all; that is not progress either.
   if (response === null) return { ok: false, detail: "no-response" };
-  if (response.ok) return { ok: true, detail: `${response.status}` };
+  if (response.ok) {
+    const body = await response.clone().json().catch(() => null) as { state?: unknown } | null;
+    if (body?.state === "WAITING")
+      return { ok: false, waiting: true, detail: `${response.status}:WAITING` };
+    return { ok: true, detail: `${response.status}` };
+  }
   let code = "";
   try {
     const body = (await response.clone().json()) as { error?: { code?: unknown } };
@@ -408,6 +413,7 @@ export async function runHostedContinuation(
           result: outcome.detail,
         });
         if (!outcome.ok) {
+          if (outcome.waiting) continue;
           // A handler that answers with an error is not progress: record it, so the heartbeat and the
           // log tell the truth about the stage instead of reporting a dispatch that never happened.
           failures.push(`${row.project_id}:${row.next_step}:${outcome.detail}`);

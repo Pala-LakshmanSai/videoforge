@@ -1,4 +1,24 @@
-import type { TransactionalSqlExecutor } from "@videoforge/control-plane";
+import type { SqlExecutor, TransactionalSqlExecutor } from "@videoforge/control-plane";
+
+export const HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE =
+  "An earlier project's Cloud cleanup is unconfirmed. New work is paused until cleanup is verified.";
+
+export async function hostedAccountCleanupPending(
+  transaction: SqlExecutor,
+  accountId: string,
+  workspaceId: string,
+  projectId: string | null = null,
+): Promise<boolean> {
+  const result = await transaction.query<{ pending: boolean } & Record<string, unknown>>(
+    `SELECT EXISTS(SELECT 1 FROM cloud_media_reservations reservation
+      WHERE reservation.account_id=$1 AND reservation.workspace_id=$2
+        AND reservation.state IN ('AMBIGUOUS','STOPPING')
+        AND reservation.cleanup_verified_at IS NULL
+        AND ($3::uuid IS NULL OR reservation.project_id<>$3::uuid)) AS pending`,
+    [accountId, workspaceId, projectId],
+  );
+  return result.rows[0]?.pending === true;
+}
 
 export interface HostedV209AdmissionIdentity {
   readonly accountId: string;

@@ -10,6 +10,7 @@ import {
   CONTEXT_REDISPATCH_BUDGET,
   CONTEXT_REDISPATCHABLE_PROBLEM_CODES,
   DUE_QUERY,
+  continuationOutcome,
   PLAN_STAGE_REVISION_CONFIG_SCHEMA_VERSION,
   PROMPT_REDISPATCHABLE_PROBLEM_CODES,
 } from "./stage-continuation-sweep";
@@ -21,6 +22,15 @@ import {
   HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES,
   HOSTED_PROMPT_STALE_RUN_MS,
 } from "./hosted-prompt-route";
+
+it("never counts queued admission as started work while preserving successful stage handoffs", async () => {
+  expect(await continuationOutcome(Response.json({ state: "WAITING" }, { status: 202 })))
+    .toEqual({ ok: false, waiting: true, detail: "202:WAITING" });
+  expect(await continuationOutcome(Response.json({ state: "PREPARING_INPUTS" }, { status: 202 })))
+    .toEqual({ ok: true, detail: "202" });
+  expect(await continuationOutcome(Response.json({ state: "COMPLETE" })))
+    .toEqual({ ok: true, detail: "200" });
+});
 
 const accountId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const workspaceId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";

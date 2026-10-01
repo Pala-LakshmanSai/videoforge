@@ -5831,3 +5831,22 @@ it("offers a credit check for paused prompts without automatic submission", asyn
   expect(screen.queryByText("Scene prompts are generated automatically.")).not.toBeInTheDocument();
   expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(false);
 });
+
+it.each([null, "HOSTED_CLOUD_CLEANUP_PENDING"])("shows queue waiting truthfully for blocker %s and keeps cleanup recovery polling", async (reason) => {
+  const data = {
+    project: { id: "queue-wait", title: "Waiting video", created_at: "2026-10-01T12:15:00Z", revision_id: "revision", revision_state: "LOCKED" },
+    attempts: [], generation: null, generation_provider: "KIE_FAL" as const,
+    gpu_transport: "DISABLED_UNQUALIFIED" as const, gpu_readiness: gpuReadiness,
+    queue: { status: "WAITING", position: 3, blocked_reason: reason },
+    stages: stageList({ prepare: "COMPLETE", transcription: "COMPLETE", "voiceover-context": "COMPLETE",
+      planning: "COMPLETE", "prompt-writing": "COMPLETE", "audio-spanning": reason ? "BLOCKED" : "QUEUED" }),
+  };
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json(data)));
+  renderHosted(<HostedProjectScreen projectId="queue-wait" />);
+  expect(await screen.findByText(reason
+    ? /An earlier project needs confirmed Cloud cleanup/u
+    : /Waiting for an earlier project. Generation starts automatically/u)).toBeInTheDocument();
+  expect(screen.queryByText(/Generation is running/u)).not.toBeInTheDocument();
+  expect(within(stageRow("Audio spanning")).getByText(reason ? "BLOCKED" : "QUEUED")).toBeInTheDocument();
+  expect(hostedProjectPollInterval(data)).toBe(2000);
+});

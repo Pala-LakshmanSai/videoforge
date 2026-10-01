@@ -699,6 +699,7 @@ interface HostedQueueSnapshot {
   readonly status?: string | null;
   readonly estimated_wait_ms?: number | null;
   readonly fair_rotation?: string | null;
+  readonly blocked_reason?: string | null;
 }
 
 interface HostedStage {
@@ -1698,6 +1699,7 @@ function isHostedV209PreSendIntegrityError(error: unknown): boolean {
 }
 
 export function hostedProjectPollInterval(data: ProjectDetailResponse | undefined) {
+  if (data?.queue?.blocked_reason === "HOSTED_CLOUD_CLEANUP_PENDING") return 2_000;
   if (!data) return 2_000;
   if (["DISPATCHING", "UNKNOWN"].includes(data.prompt_progress?.state ?? "")) return 2_000;
   const activeWork = hostedHasActiveWork(data.stages, data.attempts, data.gpu_lanes);
@@ -2473,6 +2475,7 @@ function fallbackHostedStages(
 
 function hostedStageStatus(status: string): ProjectStage["status"] {
   const normalized = status.toUpperCase();
+  if (["QUEUED", "IN_QUEUE"].includes(normalized)) return "QUEUED";
   if (["COMPLETE", "SUCCEEDED", "APPROVED", "READY_FOR_REVIEW"].includes(normalized))
     return "COMPLETE";
   if (
@@ -2503,8 +2506,6 @@ function hostedStageStatus(status: string): ProjectStage["status"] {
     return "RUNNING";
   if (
     [
-      "QUEUED",
-      "IN_QUEUE",
       "WAITING_FOR_GPU",
       "WAITING_FOR_GPUS",
       "WAITING_FOR_GPU_QUALIFICATION",
@@ -5375,7 +5376,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   );
   const stageTimings = stages.map((stage, index) => {
     const id = stage.id ?? `stage-${index + 1}`;
-    const running = !["COMPLETE", "FAILED", "CANCELLED", "PENDING"].includes(
+    const running = !["COMPLETE", "FAILED", "CANCELLED", "PENDING", "QUEUED"].includes(
       displayedStages[index]?.status ?? "PENDING",
     );
     const apiLane =
@@ -5761,6 +5762,12 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               </Button>
             </>
           )}
+        </div>
+      ) : gpuDispatch.data?.state === "WAITING" || query.data.queue?.status === "WAITING" ? (
+        <div className="validation validation-warning" role="status" aria-live="polite">
+          {query.data.queue?.blocked_reason === "HOSTED_CLOUD_CLEANUP_PENDING"
+            ? "An earlier project needs confirmed Cloud cleanup. Saved work resumes automatically after cleanup."
+            : "Waiting for an earlier project. Generation starts automatically when the account slot opens."}
         </div>
       ) : gpuDispatch.data?.state === "WAITING_FOR_GPUS" || generationWaitingForGpu ? (
         <div className="validation validation-info" role="status" aria-live="polite">

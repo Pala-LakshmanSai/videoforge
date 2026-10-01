@@ -1,3 +1,4 @@
+import { hostedAccountCleanupPending, HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE } from "./hosted-v209-queue-admission";
 import { SharedAdmissionRepository } from "@videoforge/control-plane";
 
 import { createHostedAuth, type HostedExecutionContext } from "./auth";
@@ -422,6 +423,9 @@ async function handleCpuSubmission(
           state: existing.rows[0].state,
         };
       }
+      if (submission.kind === "ASR" &&
+        await hostedAccountCleanupPending(transaction, scope.account_id, scope.workspace_id, submission.projectId))
+        throw new Error("HOSTED_CLOUD_CLEANUP_PENDING");
       const primaryContract = hostedCpuPrimaryOutput(submission.kind);
       const lane = primaryContract.lane;
       const prefix = `tenant/${scope.account_id}/workspace/${scope.workspace_id}/project/${submission.projectId}/revision/${submission.projectRevisionId}/lane/${lane}/job/${attemptId}/artifact`;
@@ -690,6 +694,8 @@ async function handleCpuSubmission(
         message: "Another project is already queued or running for this account. Open Queue to finish or cancel it, then try again.",
       } }, 409);
     }
+    if (error instanceof Error && error.message === "HOSTED_CLOUD_CLEANUP_PENDING")
+      return json({ error: { code: error.message, message: HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE } }, 409);
     if (error instanceof Error && error.message === "CLOUD_MEDIA_UNAVAILABLE") {
       return json({ error: { code: "CLOUD_MEDIA_UNAVAILABLE" } }, 503);
     }

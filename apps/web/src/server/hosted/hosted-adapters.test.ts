@@ -141,9 +141,12 @@ describe("V2-06 hosted adapters", () => {
       ["23514", "both global personal CPU projects are occupied"],
       ["23514", "CPU backend differs from immutable revision or recovery authority"],
       ["42501", message],
+      ["cleanup", "HOSTED_CLOUD_CLEANUP_PENDING"],
     ]) {
       const failure = Object.assign(new Error(detail), { code });
       const query = vi.fn(async (statement: string) => {
+        if (statement.includes("FROM cloud_media_reservations reservation"))
+          return { rows: [{ pending: code === "cleanup" }] };
         if (statement.includes("INSERT INTO hosted_cpu_job_attempts")) throw failure;
         if (statement.includes("render_plan.schema_version"))
           return { rows: [{ media_execution_backend: "PERSONAL_WORKER" }] };
@@ -163,7 +166,11 @@ describe("V2-06 hosted adapters", () => {
         method: "POST", body,
         headers: { origin: source.VIDEOFORGE_PUBLIC_ORIGIN!, "content-length": String(body.length) },
       }), source, { waitUntil() {} });
-      if (code === "23514" && detail === message) {
+      if (code === "cleanup") {
+        const result = await pending;
+        expect(result.status).toBe(409);
+        expect(await result.json()).toMatchObject({ error: { code: "HOSTED_CLOUD_CLEANUP_PENDING" } });
+      } else if (code === "23514" && detail === message) {
         const result = await pending;
         expect(result.status).toBe(409);
         await expect(result.json()).resolves.toEqual({ error: {
@@ -171,7 +178,7 @@ describe("V2-06 hosted adapters", () => {
           message: "Another project is already queued or running for this account. Open Queue to finish or cancel it, then try again.",
         } });
       } else await expect(pending).rejects.toBe(failure);
-      expect(query.mock.calls.some(([statement]) => statement.includes("INSERT INTO hosted_cpu_job_attempts"))).toBe(true);
+      expect(query.mock.calls.some(([statement]) => statement.includes("INSERT INTO hosted_cpu_job_attempts"))).toBe(code !== "cleanup");
       expect(put).not.toHaveBeenCalled();
       expect(create).not.toHaveBeenCalled();
     }
