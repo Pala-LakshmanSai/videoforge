@@ -1194,6 +1194,12 @@
       "name": "cloud_pay_per_use",
       "filename": "0236_cloud_pay_per_use.sql",
       "sha256": "sha256:fac3380a37d0f826750f997cf46d0a981d57df8f30b6b58f471fca76d893d9f8"
+    },
+    {
+      "version": 237,
+      "name": "cloud_terminal_cleanup_admission",
+      "filename": "0237_cloud_terminal_cleanup_admission.sql",
+      "sha256": "sha256:7bfbc72e35ad96e16fd335264d20d5de4be06b03b97f20f934176582bb001978"
     }
   ]
 }

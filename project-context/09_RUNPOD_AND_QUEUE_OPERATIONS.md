@@ -6,7 +6,7 @@ reconciliation, storage isolation, or cost controls.
 
 ## Ongoing ordinary Cloud billing — 2026-10-01
 
-The user explicitly removes ordinary Cloud spend caps, account allowance expiry, rental-count quotas and repeated finite-budget approvals. Selecting Cloud and starting a video authorizes its normal paid processing. DEC_CLOUD_BILLING_001 supersedes prior temporary finite-account requirements for ordinary videos. Preserve account scope, durable estimated-versus-settled cost attribution, no-replay, fair admission, cancellation and finite machine shutdown deadlines. Historical finite authorities and the prior UNKNOWN/STOPPING launch remain immutable; ongoing access cannot clear an uncertain launch or its capacity fence. Migration0236 provides ongoing access without an account spend ceiling or expiry; live activation remains pending verification.
+The user explicitly removes ordinary Cloud spend caps, account allowance expiry, rental-count quotas and repeated finite-budget approvals. Selecting Cloud and starting a video authorizes its normal paid processing. DEC_CLOUD_BILLING_001 supersedes prior temporary finite-account requirements for ordinary videos. Preserve account scope, durable estimated-versus-settled cost attribution, no-replay, fair admission, cancellation and finite machine shutdown deadlines. Historical finite authorities and the prior UNKNOWN/STOPPING launch remain immutable; ongoing access cannot clear an uncertain launch or its capacity fence. Migration0236 is live with ongoing access and no account spend ceiling, expiry or rental quota. Migration0237 permits fresh Cloud VIDEO admission past fully fenced terminal early-media cleanup; the old UNKNOWN/STOPPING record and debit remain unchanged and still count against the two-resource global ceiling. A fresh rental retains the singleton-locked one-live-rental/account check. Cloud runs hosted ASR, audio preparation and rendering on temporary RunPod Pods, commits results to R2, and terminates compute after upload; existing hosted Kie/Fal generation stays remote. No personal computer is required.
 
 ## Boundary and preserved evidence
 
@@ -72,11 +72,10 @@ The 2026-10-01 Local creation repair separates early failed-video admission from
 Migration0235 retires only a failed ASR/span video with every CPU terminal, no API jobs or active
 personal-worker lease, an expired rental deadline and disabled/expired authority. The original
 UNKNOWN/STOPPING reservation, debit, identity, cleanup timestamp and Cloud capacity remain intact.
-New Local VIDEO admission may proceed; new Cloud and preview admission remain blocked by that
-reservation. The reconciler continues until exact cleanup is proven. Two-account global capacity
+Migration0237 extends this narrow exception to fresh Cloud VIDEO admission; preview admission stays blocked. The reconciler continues until exact cleanup is proven. Two-account global capacity
 still counts the unresolved Cloud account. This supersedes the blanket admission hold for this
 narrow early-media failure; accepted provider work and render failures keep their existing guards.
-Ordinary Cloud access now follows DEC_CLOUD_BILLING_001; exact old launch reconciliation remains required.
+Ordinary Cloud access now follows DEC_CLOUD_BILLING_001; exact old launch reconciliation continues independently of fresh videos.
 Operator rates,
 release ledger guards, gates and rollback are in `cloud-media/RELEASE_RUNBOOK.md`.
 

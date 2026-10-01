@@ -11,7 +11,7 @@ const reservation="55555555-5555-4555-8555-555555555555", attempt="66666666-6666
 const request="77777777-7777-4777-8777-777777777777", authority="88888888-8888-4888-8888-888888888888";
 const other="99999999-9999-4999-8999-999999999999";
 
-it("retires only fenced early video admission, keeps uncertain Cloud capacity, and admits only Local",async()=>{
+it("retires only fenced early video admission and preserves the historical Local-only SQL boundary",async()=>{
  const db=new PGlite();
  try {
   const old=await readFile(new URL("../../../../../packages/control-plane/migrations/0214_optional_runpod_media.sql",import.meta.url),"utf8");
@@ -71,7 +71,7 @@ it("retires only fenced early video admission, keeps uncertain Cloud capacity, a
   }
   const sql=db as unknown as SqlExecutor;
   expect(await hostedAccountCleanupPending(sql,account,workspace,null,"PERSONAL_WORKER")).toBe(false);
-  expect(await hostedAccountCleanupPending(sql,account,workspace,null,"RUNPOD_POD")).toBe(true);
+  expect(await hostedAccountCleanupPending(sql,account,workspace,null,"RUNPOD_POD")).toBe(false);
   expect((await db.query<{ok:boolean}>("SELECT videoforge_settle_cloud_media_cpu_failure($1) AS ok",[attempt])).rows[0]?.ok).toBe(true);
   expect((await db.query("SELECT state FROM generation_requests")).rows).toEqual([{state:"FAILED"}]);
   expect((await db.query("SELECT state,release_reason FROM provider_workload_leases")).rows).toEqual([{state:"RELEASED",release_reason:"CLOUD_CLEANUP_ISOLATED"}]);

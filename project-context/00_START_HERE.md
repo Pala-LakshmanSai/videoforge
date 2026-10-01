@@ -1,6 +1,6 @@
 Ordinary Cloud billing now follows DEC_CLOUD_BILLING_001: pay as videos are created, no account spend cap or expiry.
-Additive236 is locally verified with native rollback; publication is pending.
-Read cloud_pay_per_use_2026_10_01 in CURRENT_STATE.yaml; the original UNKNOWN launch still needs reconciliation.
+Ongoing account access is published at source58f9df9 / Cloudflare5f0f0797. Additive237 separates fenced terminal cleanup from fresh Cloud video admission; publication/whole-video proof is tracked in CURRENT_STATE.yaml.
+The old UNKNOWN launch remains independently reconciled; it is not a prerequisite for a fresh video.
 
 Local creation cleanup isolation is prepared under the 2026-10-01 request. It separates a fully fenced early failed video's admission from UNKNOWN/STOPPING rental cleanup. Cloud capacity, no replay and reconciliation remain intact. Read `local_creation_cleanup_isolation_2026_10_01` in CURRENT_STATE.yaml for publication and current proof.
 
@@ -17,7 +17,7 @@ The original project passed hosted ASR; its separate uncertain prompt batch rema
 
 Optional Local/Cloud media execution is published under the2026-09-28 user decision.
 Local stays default; Kie/Fal generation and existing personal-worker releases remain unchanged.
-Cloud is enabled only within the recorded finite account authority. Retained-media technical
+Ordinary Cloud follows ongoing account-scoped pay-per-use under DEC_CLOUD_BILLING_001. Retained-media technical
 qualification does not establish fresh provider/editorial acceptance. Read
 `optional_cloud_media_2026_09_28` in CURRENT_STATE.yaml and `cloud-media/RELEASE_RUNBOOK.md`.
 

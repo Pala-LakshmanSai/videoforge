@@ -53,8 +53,8 @@ test('ongoing Cloud access preserves finite approvals, tenant isolation, debit a
    await db.query("SELECT set_config('videoforge.account_id',$1,false)",[IDS.accountA]);
    assert.equal((await db.query("SELECT has_table_privilege('videoforge_v209_runtime_dc9612d6','cloud_media_budget_authorities','UPDATE') allowed")).rows[0].allowed,false);
   });
-  await db.query(`INSERT INTO projects(id,workspace_id,owner_user_id,name,normalized_name)
-   VALUES($1,$2,$3,'Ongoing Cloud','ongoing cloud')`,[project,IDS.workspaceA,IDS.userA]);
+  await db.query(`INSERT INTO projects(id,workspace_id,owner_user_id,name,normalized_name,generation_provider)
+   VALUES($1,$2,$3,'Ongoing Cloud','ongoing cloud','KIE_FAL')`,[project,IDS.workspaceA,IDS.userA]);
   await db.query(`INSERT INTO project_revisions SELECT(jsonb_populate_record(NULL::project_revisions,to_jsonb(r)||
    jsonb_build_object('id',$1::text,'project_id',$2::text,'media_execution_backend','RUNPOD_POD','created_at',now(),'locked_at',now()))).*
    FROM project_revisions r WHERE r.id=$3`,[revision,project,IDS.revisionA]);
@@ -87,6 +87,52 @@ test('ongoing Cloud access preserves finite approvals, tenant isolation, debit a
    assert.equal(await ready(authority),false);
    await db.query('UPDATE cloud_media_budget_authorities SET enabled=false WHERE id=$1',[authority]);
    assert.equal((await db.query('SELECT enabled FROM videoforge_cloud_media_reservation_authority($1,$2,$3)',[reservation,attempt,fence])).rows[0].enabled,false);
+  });
+  await t.test('fenced terminal cleanup permits a fresh Cloud rental while retaining its global slot and unknown history',async()=>{
+   await db.query("UPDATE hosted_cpu_job_attempts SET state='FAILED',submitted_at=now(),terminal_at=now(),failure_code='CLOUD_MEDIA_FAILED' WHERE id=$1",[attempt]);
+   await db.query("UPDATE cloud_media_reservations SET deadline_at=now()-interval '1 second' WHERE id=$1",[reservation]);
+   assert.equal((await db.query('SELECT videoforge_cloud_cleanup_only($1) ok',[reservation])).rows[0].ok,true);
+   assert.equal((await db.query('SELECT videoforge_settle_cloud_media_cpu_failure($1) ok',[attempt])).rows[0].ok,true);
+   const frozen=(await db.query('SELECT to_jsonb(r) row FROM cloud_media_reservations r WHERE id=$1',[reservation])).rows[0].row;
+   await executor.execute(read('0237_cloud_terminal_cleanup_admission.sql'));
+   const nextAuthority=uuid(237001),nextProject=uuid(237002),nextRevision=uuid(237003),nextAttempt=uuid(237004),nextRental=uuid(237005);
+   await db.query(`INSERT INTO cloud_media_budget_authorities SELECT(jsonb_populate_record(NULL::cloud_media_budget_authorities,
+    to_jsonb(b)||jsonb_build_object('id',$1::text,'enabled',true,'debited_usd',0))).* FROM cloud_media_budget_authorities b WHERE id=$2`,[nextAuthority,authority]);
+   assert.equal(await ready(nextAuthority),true);
+   await db.query(`INSERT INTO projects(id,workspace_id,owner_user_id,name,normalized_name,generation_provider)
+    VALUES($1,$2,$3,'Fresh Cloud','fresh cloud','KIE_FAL')`,[nextProject,IDS.workspaceA,IDS.userA]);
+   await db.query(`INSERT INTO project_revisions SELECT(jsonb_populate_record(NULL::project_revisions,to_jsonb(r)||
+    jsonb_build_object('id',$1::text,'project_id',$2::text))).* FROM project_revisions r WHERE r.id=$3`,[nextRevision,nextProject,revision]);
+   const nextPrefix=`tenant/${IDS.accountA}/workspace/${IDS.workspaceA}/project/${nextProject}/revision/${nextRevision}/lane/input/job/${nextAttempt}/artifact`;
+   await db.query(`INSERT INTO hosted_cpu_job_attempts SELECT(jsonb_populate_record(NULL::hosted_cpu_job_attempts,to_jsonb(a)||
+    jsonb_build_object('id',$1::text,'project_id',$2::text,'project_revision_id',$3::text,'state','OUTBOXED',
+    'submitted_at',NULL,'terminal_at',NULL,'failure_code',NULL,'job_spec_object_key',$4::text,'result_object_key',$5::text))).*
+    FROM hosted_cpu_job_attempts a WHERE id=$6`,[nextAttempt,nextProject,nextRevision,nextPrefix+'/spec',nextPrefix+'/result',attempt]);
+   assert.equal((await db.query('SELECT videoforge_admit_hosted_v209_generation($1,$2,$3,$4) admission',[IDS.accountA,IDS.workspaceA,IDS.userA,nextProject])).rows[0].admission.state,'ACTIVE');
+   await db.query(`INSERT INTO cloud_media_reservations SELECT(jsonb_populate_record(NULL::cloud_media_reservations,to_jsonb(r)||
+    jsonb_build_object('id',$1::text,'project_id',$2::text,'project_revision_id',$3::text,'attempt_id',$4::text,
+    'leased_attempt_id',$4::text,'fence_id',$1::text,'budget_authority_id',$5::text,'pod_name','videoforge-media-'||$1::text,
+    'state','WAITING_CAPACITY','launch_outcome',NULL,'deadline_at',NULL,'budget_reserved_at',NULL))).*
+    FROM cloud_media_reservations r WHERE id=$6`,[nextRental,nextProject,nextRevision,nextAttempt,nextAuthority,reservation]);
+   await db.query('SELECT videoforge_cloud_media_reserve_budget($1)',[nextRental]);
+   await db.query("UPDATE cloud_media_reservations SET state='CREATING' WHERE id=$1",[nextRental]);
+   assert.equal((await db.query("SELECT count(*)::int n FROM cloud_media_reservations WHERE state NOT IN ('WAITING_CAPACITY','CLEAN')")).rows[0].n,2);
+   const extraAttempt=uuid(237006),extraRental=uuid(237007),extraPrefix=nextPrefix.replace(nextAttempt,extraAttempt);
+   await db.query(`INSERT INTO hosted_cpu_job_attempts SELECT(jsonb_populate_record(NULL::hosted_cpu_job_attempts,to_jsonb(a)||
+    jsonb_build_object('id',$1::text,'job_spec_object_key',$2::text,'result_object_key',$3::text))).*
+    FROM hosted_cpu_job_attempts a WHERE id=$4`,[extraAttempt,extraPrefix+'/spec',extraPrefix+'/result',nextAttempt]);
+   await db.query(`INSERT INTO cloud_media_reservations SELECT(jsonb_populate_record(NULL::cloud_media_reservations,to_jsonb(r)||
+    jsonb_build_object('id',$1::text,'attempt_id',$2::text,'leased_attempt_id',$2::text,'fence_id',$1::text,
+    'pod_name','videoforge-media-'||$1::text,'state','WAITING_CAPACITY','budget_reserved_at',NULL))).*
+    FROM cloud_media_reservations r WHERE id=$3`,[extraRental,extraAttempt,nextRental]);
+   await db.query('SELECT videoforge_cloud_media_reserve_budget($1)',[extraRental]);
+   await assert.rejects(db.query("UPDATE cloud_media_reservations SET state='CREATING' WHERE id=$1",[extraRental]),/cloud media capacity occupied/);
+   assert.deepEqual((await db.query('SELECT to_jsonb(r) row FROM cloud_media_reservations r WHERE id=$1',[reservation])).rows[0].row,frozen);
+   // If late inventory identifies the old Pod, it immediately becomes a blocking cleanup responsibility again.
+   await db.query("UPDATE cloud_media_reservations SET pod_id='late-pod' WHERE id=$1",[reservation]);
+   assert.equal(await ready(nextAuthority),false);
+   await db.query('UPDATE cloud_media_reservations SET pod_id=NULL WHERE id=$1',[reservation]);
+   assert.equal(await ready(nextAuthority),true);
   });
  } finally {await db.close();}
 });

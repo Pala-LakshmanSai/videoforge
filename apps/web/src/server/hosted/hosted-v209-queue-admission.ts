@@ -8,14 +8,14 @@ export async function hostedAccountCleanupPending(
   accountId: string,
   workspaceId: string,
   projectId: string | null = null,
-  executionBackend: "PERSONAL_WORKER" | "RUNPOD_POD" = "RUNPOD_POD",
+  _executionBackend: "PERSONAL_WORKER" | "RUNPOD_POD" = "RUNPOD_POD",
 ): Promise<boolean> {
   const result = await transaction.query<{ pending: boolean } & Record<string, unknown>>(
     `SELECT EXISTS(SELECT 1 FROM cloud_media_reservations r
  WHERE r.account_id=$1 AND r.workspace_id=$2 AND r.state IN ('AMBIGUOUS','STOPPING')
  AND r.cleanup_verified_at IS NULL AND ($3::uuid IS NULL OR r.project_id<>$3::uuid)
- AND ($4::text<>'PERSONAL_WORKER' OR NOT public.videoforge_cloud_cleanup_only(r.id))) AS pending`,
-    [accountId, workspaceId, projectId, executionBackend],
+ AND NOT public.videoforge_cloud_cleanup_only(r.id)) AS pending`,
+    [accountId, workspaceId, projectId],
   );
   return result.rows[0]?.pending === true;
 }
