@@ -31,8 +31,7 @@ def render_observer(root: Path, attempt_id: str):
                  "technical_verification_ms": duration_ms}
         # The job root is fresh and owned. Never follow an existing temporary symlink.
         with temporary.open("xb") as stream:
-            if hasattr(os, "fchmod"):
-                os.fchmod(stream.fileno(), 0o600)
+            os.fchmod(stream.fileno(), 0o600)
             stream.write(json.dumps(value, separators=(",", ":")).encode("utf-8"))
         os.replace(temporary, destination)
 

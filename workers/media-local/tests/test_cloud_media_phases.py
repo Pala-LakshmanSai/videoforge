@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import tempfile
 import threading
 import time
@@ -15,6 +16,7 @@ from videoforge_media_local.cloud_media_cli import PHASE_FILENAME, render_observ
 from test_runpod_job import spec
 
 
+@unittest.skipIf(os.name == "nt", "Cloud runtime requires Unix descriptor and no-follow guards")
 class CloudMediaPhaseTests(unittest.TestCase):
     def test_disk_samples_preserve_high_water_after_transient_cleanup(self):
         samples = [SimpleNamespace(total=1000, used=100, free=850),
