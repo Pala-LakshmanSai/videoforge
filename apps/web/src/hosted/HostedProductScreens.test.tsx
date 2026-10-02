@@ -282,15 +282,10 @@ it("ticks elapsed stage time and freezes on success, failure, cancellation and r
   expect(screen.getByLabelText("Elapsed time")).toHaveTextContent("—");
   restored.unmount();
   vi.setSystemTime(new Date("2026-09-15T10:00:10Z"));
-  const intervals = [
-    { since, until: "2026-09-15T10:00:06Z", running: false },
-    { since: "2026-09-15T10:00:08Z", until: null, running: true },
-    { since: null, until: null, running: false },
-  ];
-  const total = render(<HostedElapsed since={null} until={null} intervals={intervals} />);
-  expect(screen.getByLabelText("Elapsed time")).toHaveTextContent("0m 08s");
-  act(() => vi.advanceTimersByTime(2_000));
+  const total = render(<HostedElapsed since={since} until={null} />);
   expect(screen.getByLabelText("Elapsed time")).toHaveTextContent("0m 10s");
+  act(() => vi.advanceTimersByTime(2_000));
+  expect(screen.getByLabelText("Elapsed time")).toHaveTextContent("0m 12s");
   total.unmount();
   vi.useRealTimers();
 });
@@ -1225,8 +1220,36 @@ it("shows frozen elapsed times in stage rows and the audio spanning panel", asyn
   expect(screen.getByLabelText("Assemble final video elapsed time")).toHaveTextContent("2m 30s");
   expect(screen.getByLabelText("Review and approve elapsed time")).toHaveTextContent("—");
   expect(screen.getByLabelText("Span audio elapsed time")).toHaveTextContent("1m 01s");
-  expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent("4m 42s");
+  expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent("12m 30s");
 });
+
+it.each(["SUCCEEDED", "FAILED", "CANCELLED"])(
+  "freezes total wall elapsed at production %s, excluding later human review",
+  async (state) => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-02T10:25:00Z"));
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+      project: { id: "wall-time", title: "Wall time", created_at: "2026-10-02T10:00:00Z",
+        revision_id: "revision", revision_state: "LOCKED" },
+      attempts: [], generation: null, gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
+      stages: [
+        { id: "image-generation", name: "Generate images", status: "SUCCEEDED",
+          started_at: "2026-10-02T10:01:00Z", completed_at: "2026-10-02T10:03:00Z" },
+        { id: "avatar-generation", name: "Generate avatar video", status: "SUCCEEDED",
+          started_at: "2026-10-02T10:02:00Z", completed_at: "2026-10-02T10:04:00Z" },
+        { id: "render", name: "Assemble final video", status: state,
+          started_at: "2026-10-02T10:06:00Z", completed_at: "2026-10-02T10:08:00Z" },
+        { id: "review", name: "Review and approve", status: "COMPLETE",
+          started_at: "2026-10-02T10:08:00Z", completed_at: "2026-10-02T10:20:00Z" },
+      ],
+    })));
+    const view = renderHosted(<HostedProjectScreen projectId="wall-time" />);
+    expect(await screen.findByLabelText("Total elapsed time")).toHaveTextContent("8m 00s");
+    view.unmount();
+    vi.mocked(Date.now).mockReturnValue(Date.parse("2026-10-03T10:25:00Z"));
+    renderHosted(<HostedProjectScreen projectId="wall-time" />);
+    expect(await screen.findByLabelText("Total elapsed time")).toHaveTextContent("8m 00s");
+  },
+);
 
 it.each(["KIE_FAL", "RUNPOD"] as const)(
   "%s uses persisted API lane times only for API image and avatar stages",
@@ -1301,7 +1324,7 @@ it.each(["KIE_FAL", "RUNPOD"] as const)(
       expect(screen.getByLabelText("Generate avatar video elapsed time")).toHaveTextContent(
         "1m 30s",
       );
-      expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent("3m 30s");
+      expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent("2m 30s");
     }
   },
 );

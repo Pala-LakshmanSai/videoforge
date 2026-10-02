@@ -137,6 +137,11 @@ the only persistent applied-state indicator.
 
 ### 4. Progress
 
+- Total elapsed is wall-clock time from project creation (the Prepare project start) to now while
+  production is active, or its persisted terminal time after success/failure/cancellation. Count
+  parallel work once and include queue/handoff waits. Human review does not extend production
+  time. Render-only retries retain their own attempt start. Individual stage timers stay unchanged.
+
 - Human stage rows: Prepare -> Transcribe -> Plan -> Write image prompts -> Generate images /
   Generate avatar -> Assemble -> Technical check -> Review.
 - Image/avatar lane cards may progress in parallel and show current counts such as `Image 42/80` or

@@ -1435,29 +1435,18 @@ export function HostedElapsed({
   until,
   running = true,
   label = "Elapsed time",
-  intervals,
 }: {
   readonly since: string | null;
   readonly until: string | null;
   readonly running?: boolean;
   readonly label?: string;
-  readonly intervals?: readonly {
-    readonly since: string | null;
-    readonly until: string | null;
-    readonly running: boolean;
-  }[];
 }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    if (
-      intervals
-        ? !intervals.some((interval) => interval.since && !interval.until && interval.running)
-        : !since || until || !running
-    )
-      return;
+    if (!since || until || !running) return;
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(timer);
-  }, [since, until, running, intervals]);
+  }, [since, until, running]);
   const elapsedSeconds = (
     start: string | null,
     end: string | null,
@@ -1468,13 +1457,7 @@ export function HostedElapsed({
     if (!Number.isFinite(started) || !Number.isFinite(ended) || (!end && !active)) return null;
     return Math.max(0, Math.floor((ended - started) / 1_000));
   };
-  const seconds = intervals
-    ? intervals.reduce(
-        (sum, interval) =>
-          sum + (elapsedSeconds(interval.since, interval.until, interval.running) ?? 0),
-        0,
-      )
-    : elapsedSeconds(since, until, running);
+  const seconds = elapsedSeconds(since, until, running);
   if (seconds === null)
     return (
       <span className="gpu-lane-elapsed" aria-label={label}>
@@ -5438,6 +5421,17 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       running,
     };
   });
+  // Wall time counts concurrent stages once and includes queue/handoff waits. Human review
+  // happens after production and must not extend the saved production duration.
+  const elapsedStopped = estimateStopped || render?.state === "SUCCEEDED" ||
+    uiStages.some(stage => stage.id === "render" && stage.status === "COMPLETE") || allComplete;
+  const elapsedUntil = render?.render_only_run
+    ? render.terminal_at
+    : render?.state === "SUCCEEDED"
+      ? render.terminal_at
+      : stageTimings.filter(stage => stage.id !== "review").map(stage => stage.until)
+        .filter((value): value is string => !!value && Number.isFinite(Date.parse(value)))
+        .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null;
   // Every failed row owns a Retry control. Only a server-bounded recovery is enabled; a failed
   // provider lane cannot be sent again from the browser because its charge may already exist.
   const stageRetryButton = (busy: boolean, run: () => void, label = "Retry") => (
@@ -5755,22 +5749,14 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             <Metric
               label={render?.render_only_run ? "Wall elapsed" : "Total elapsed"}
               value={
-                render?.render_only_run ? (
-                  <HostedElapsed
-                    since={render.created_at}
-                    until={render.state === "SUCCEEDED" ? render.terminal_at : null}
-                    label="Wall elapsed time"
-                  />
-                ) : (
-                  <HostedElapsed
-                    since={null}
-                    until={null}
-                    intervals={stageTimings}
-                    label="Total elapsed time"
-                  />
-                )
+                <HostedElapsed
+                  since={render?.render_only_run ? render.created_at : query.data.project.created_at}
+                  until={elapsedStopped ? elapsedUntil : null}
+                  running={!elapsedStopped}
+                  label={render?.render_only_run ? "Wall elapsed time" : "Total elapsed time"}
+                />
               }
-              detail={render?.render_only_run ? "includes waits" : "numbered stages"}
+              detail="includes waits · parallel work counted once"
             />
           </div>
           <p className="muted" aria-label="Rendering machine">
