@@ -1220,7 +1220,7 @@ it("shows frozen elapsed times in stage rows and the audio spanning panel", asyn
   expect(screen.getByLabelText("Assemble final video elapsed time")).toHaveTextContent("2m 30s");
   expect(screen.getByLabelText("Review and approve elapsed time")).toHaveTextContent("—");
   expect(screen.getByLabelText("Span audio elapsed time")).toHaveTextContent("1m 01s");
-  expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent("12m 30s");
+  expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent(/^12m 30s$/);
 });
 
 it.each(["SUCCEEDED", "FAILED", "CANCELLED"])(
@@ -1243,11 +1243,11 @@ it.each(["SUCCEEDED", "FAILED", "CANCELLED"])(
       ],
     })));
     const view = renderHosted(<HostedProjectScreen projectId="wall-time" />);
-    expect(await screen.findByLabelText("Total elapsed time")).toHaveTextContent("8m 00s");
+    expect(await screen.findByLabelText("Total elapsed time")).toHaveTextContent(/^8m 00s$/);
     view.unmount();
     vi.mocked(Date.now).mockReturnValue(Date.parse("2026-10-03T10:25:00Z"));
     renderHosted(<HostedProjectScreen projectId="wall-time" />);
-    expect(await screen.findByLabelText("Total elapsed time")).toHaveTextContent("8m 00s");
+    expect(await screen.findByLabelText("Total elapsed time")).toHaveTextContent(/^8m 00s$/);
   },
 );
 
@@ -1324,7 +1324,7 @@ it.each(["KIE_FAL", "RUNPOD"] as const)(
       expect(screen.getByLabelText("Generate avatar video elapsed time")).toHaveTextContent(
         "1m 30s",
       );
-      expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent("2m 30s");
+      expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent(/^2m 30s$/);
     }
   },
 );
