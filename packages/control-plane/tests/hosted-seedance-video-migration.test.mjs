@@ -24,6 +24,10 @@ const fallbackSource = readFileSync(
   new URL("../migrations/0244_hosted_seedance_video_static_fallback.sql", import.meta.url),
   "utf8",
 );
+const readerGrantSource = readFileSync(
+  new URL("../migrations/0245_hosted_seedance_video_render_reader_grant.sql", import.meta.url),
+  "utf8",
+);
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const hash = "sha256:" + "a".repeat(64);
 
@@ -85,6 +89,73 @@ test("0240 applies to the real prior chain and enforces private immutable video 
     await executor.execute(noTaskSource);
     await executor.execute(firstPostSource);
     await executor.execute(fallbackSource);
+    // CREATE after RENAME changed the reader OID: 0192's reconciler grant stayed
+    // on the predecessor. Reproduce the actual caller-role denial before repair.
+    const readerSignature = "videoforge_read_hosted_v209_ready_render_inputs(uuid,uuid,uuid)";
+    const readerRole = "videoforge_v209_reconciler_dc9612d6";
+    assert.equal(
+      (
+        await db.query("SELECT has_function_privilege($1,$2,'EXECUTE') allowed", [
+          readerRole,
+          readerSignature,
+        ])
+      ).rows[0].allowed,
+      false,
+    );
+    assert.equal(
+      (
+        await db.query(
+          "SELECT has_function_privilege($1,'videoforge_read_hosted_v209_ready_render_inputs_before_video(uuid,uuid,uuid)','EXECUTE') allowed",
+          [readerRole],
+        )
+      ).rows[0].allowed,
+      true,
+    );
+    await db.exec("BEGIN; SET LOCAL ROLE videoforge_v209_reconciler_dc9612d6");
+    await assert.rejects(
+      db.query("SELECT videoforge_read_hosted_v209_ready_render_inputs($1,$2,$3)", [
+        IDS.accountA,
+        IDS.workspaceA,
+        id(999),
+      ]),
+      /permission denied for function videoforge_read_hosted_v209_ready_render_inputs/,
+    );
+    await db.exec("ROLLBACK");
+    await executor.execute(readerGrantSource);
+    assert.equal(
+      (
+        await db.query("SELECT has_function_privilege($1,$2,'EXECUTE') allowed", [
+          readerRole,
+          readerSignature,
+        ])
+      ).rows[0].allowed,
+      true,
+    );
+    // The fix grants no table writes, helper entrypoints or operator recovery.
+    for (const signature of [
+      "videoforge_hosted_videos_ready(uuid,uuid,uuid)",
+      "videoforge_hosted_video_manifest_valid(uuid,uuid,uuid,jsonb)",
+      "videoforge_reconcile_hosted_video_unknown_no_task(uuid,uuid,uuid,uuid,uuid,text,text,text)",
+      "videoforge_authorize_hosted_video_first_post(uuid,uuid,uuid,uuid,uuid,text,text,text,numeric)",
+    ])
+      assert.equal(
+        (
+          await db.query("SELECT has_function_privilege($1,$2,'EXECUTE') allowed", [
+            readerRole,
+            signature,
+          ])
+        ).rows[0].allowed,
+        false,
+      );
+    assert.equal(
+      (
+        await db.query("SELECT has_table_privilege($1,'hosted_video_jobs','UPDATE') allowed", [
+          readerRole,
+        ])
+      ).rows[0].allowed,
+      false,
+    );
+
     const extendedConstraint = (
       await db.query(
         "SELECT pg_get_expr(conbin,conrelid) AS predicate FROM pg_constraint WHERE conrelid='artifact_reservations'::regclass AND conname='artifact_reservations_object_key_check'",
@@ -1104,6 +1175,66 @@ test("0240 applies to the real prior chain and enforces private immutable video 
         .rows[0].state,
       "SUCCEEDED",
     );
+    // Native positive handoff proof under each real deployment role. Seed only
+    // predecessor acceptance metadata; the real reader chain, video barrier,
+    // SECURITY DEFINER boundary and tenant checks all execute without mocks.
+    const voiceAsset = id(245001),
+      voiceReservation = id(245002),
+      voiceReceipt = id(245003);
+    const voiceHash = "sha256:" + "d".repeat(64);
+    const voiceKey = `tenant/${a}/workspace/${w}/project/${p}/revision/${r}/lane/input/job/voiceover/artifact/${voiceAsset}`;
+    await seed(
+      "assets",
+      `INSERT INTO assets(id,account_id,workspace_id,project_id,project_revision_id,kind,state,object_key,binary_sha256,content_type,byte_size,verified_at) VALUES($1,$2,$3,$4,$5,'VOICEOVER','ACCEPTED',$6,$7,'audio/wav',2000,now())`,
+      [voiceAsset, a, w, p, r, voiceKey, voiceHash],
+    );
+    await seed(
+      "project_revisions",
+      "UPDATE project_revisions SET voiceover_asset_id=$2,voiceover_binary_sha256=$3 WHERE id=$1",
+      [r, voiceAsset, voiceHash],
+    );
+    await seed(
+      "artifact_reservations",
+      `INSERT INTO artifact_reservations(id,account_id,workspace_id,project_id,project_revision_id,asset_id,lane,job_id,artifact_id,object_key,method,content_type,content_length,checksum_sha256,expires_at,max_uses,used_count,state,retention_class,deletion_owner_account_id) VALUES($1,$2,$3,$4,$5,$6::uuid,'INPUT','voiceover',$6::uuid::text,$7,'PUT','audio/wav',2000,$8,now()+interval '1 hour',1,1,'COMMITTED','PROJECT',$2)`,
+      [voiceReservation, a, w, p, r, voiceAsset, voiceKey, voiceHash],
+    );
+    await db.query(
+      `INSERT INTO artifact_receipts(id,account_id,workspace_id,reservation_id,callback_id,object_key,content_type,content_length,checksum_sha256,probe,receipt_sha256,committed_at) VALUES($1,$2,$3,$4,'voice-role-fixture',$5,'audio/wav',2000,$6,'{}',$6,now())`,
+      [voiceReceipt, a, w, voiceReservation, voiceKey, voiceHash],
+    );
+    await seed(
+      "video_runtime_accepted_units",
+      `INSERT INTO video_runtime_accepted_units(id,account_id,workspace_id,runtime_id,project_revision_id,lane,item_id,object_key,checksum_sha256,content_length,accepted_attempt_id,api_job_id,accepted_at) VALUES($1,$2,$3,$4,$5,'mage_image','scene',$6,$7,2000,NULL,$8,now())`,
+      [id(245004), a, w, runtime, r, sourceKey, hash, sourceJob],
+    );
+    for (const role of [readerRole, "videoforge_v209_runtime_dc9612d6"]) {
+      await db.exec(`SET LOCAL ROLE ${role}`);
+      const readyUnderRole = (
+        await db.query("SELECT videoforge_read_hosted_v209_ready_render_inputs($1,$2,$3) value", [
+          a,
+          w,
+          g,
+        ])
+      ).rows[0].value;
+      assert.equal(readyUnderRole.generationRequestId, g);
+      assert.equal(readyUnderRole.schemaVersion, "videoforge.hosted-v209-ready-render-inputs/v1");
+      assert.equal(readyUnderRole.videoPlan.coverage_percent, 7);
+      assert.deepEqual(readyUnderRole.acceptedVideos, []);
+      assert.equal(readyUnderRole.acceptedVisuals.length, 1);
+      assert.equal(readyUnderRole.acceptedVisuals[0].assetId, sourceAsset);
+      assert.equal(readyUnderRole.voiceover.assetId, voiceAsset);
+      assert.equal(
+        (
+          await db.query("SELECT videoforge_read_hosted_v209_ready_render_inputs($1,$2,$3) value", [
+            IDS.accountB,
+            IDS.workspaceB,
+            g,
+          ])
+        ).rows[0].value,
+        null,
+      );
+      await db.exec("RESET ROLE");
+    }
     await db.exec("ROLLBACK");
     await db.exec("BEGIN; SAVEPOINT paid_video");
     const result = await call("videoforge_commit_hosted_video_output", [
