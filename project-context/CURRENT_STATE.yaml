@@ -2,15 +2,18 @@ progress_elapsed_2026_10_02:
   checkpoint: V2-09
   selected_task: VF-10-09
   read_profile: v2_09_short_live_e2e
-  status: LOCAL_VERIFIED_PUBLICATION_PENDING
+  status: PRODUCTION_ACTIVE_EXACT_ASSETS_AUTHENTICATED_READBACK_VERIFIED
   branch: codex/progress-elapsed
+  production_source: f705d6c21bf7b6ab46ba1801fb30eff0b58729f0
+  production_version: f8b36fdf-b445-4485-94a6-53f706bfc454
   base_source: d3ca02764ab6afa53de613084fc79a67ded0aa22
   user_authority: Fix_parallel_stage_double_counting_and_push_to_production.
   repair: Total_elapsed_measures_project_creation_to_now_or_production_terminal_timestamp_including_waits_and_counting_parallel_work_once;review_excluded;render_only_attempt_start_preserved.
-  validation: Two_red_regressions_then183UI_PASS;web_Worker_types_and_changed_lint_PASS.
+  validation: Two_red_regressions_then183UI_PASS;seven_exact_timer_checks_PASS;web_Worker_types_lint_native_build_bundle_context_PASS;four_exact_public_assets_two_authenticated_accounts_original46outputs_and_other_tenant_denial_PASS.
   provider_spend: USD0_new_generation_or_compute.
   paid_compute_shutdown: No_compute_started_or_stopped;existing_jobs_and_cleanup_preserved.
-  remaining_gates: Production_build_publication_asset_readback;Chrome_transport_unavailable;Pages_read_failed.
+  publication: Source100percent_50bindings25secrets3WorkflowIdentities_preserved;no_new_instances_or_schema_change.
+  remaining_gates: Real_Chrome_visual_acceptance_unverified_transport_unavailable;GPT_Space_update_unavailable_after_two_Internal_error_reads.
   evidence: evidence/acceptance/VF-10-09/2026-10-02-progress-elapsed.md
 
 avatar_progress_2026_10_02:
@@ -6488,14 +6491,14 @@ repository:
   branch: codex/progress-elapsed
   branch_upstream: origin/codex/progress-elapsed
   branch_published: true
-  current_source_head: "fc3122577fd8fbc86ce369cf5db713a234eb64d1"
-  current_source_head_semantics: published_application_source_natural_documentary_handoff_follows
+  current_source_head: "f705d6c21bf7b6ab46ba1801fb30eff0b58729f0"
+  current_source_head_semantics: published_application_source_elapsed_fix_handoff_follows
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Resolve Git HEAD for Natural Documentary implementation. User explicitly authorized production; main unrelated work is preserved."
+  current_source_head_note: "Resolve Git HEAD for the elapsed-time release. User explicitly authorized production; main unrelated work is preserved."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
-  working_tree_expected: clean_tracked_after_natural_documentary_handoff_commit
+  working_tree_expected: clean_tracked_after_elapsed_fix_handoff_commit
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
 live_development:

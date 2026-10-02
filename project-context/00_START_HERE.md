@@ -1,4 +1,4 @@
-Progress elapsed fix is prepared on `codex/progress-elapsed`: wall-clock time counts parallel work once and includes waits. Read `progress_elapsed_2026_10_02` in CURRENT_STATE.yaml.
+Progress elapsed fix is published from `f705d6c2` / Worker `f8b36fdf` on `codex/progress-elapsed`: wall-clock time counts parallel work once and includes waits. Read `progress_elapsed_2026_10_02` in CURRENT_STATE.yaml.
 
 Natural Documentary default is published at source `fc312257` / Worker `0eb01e34` (2026-10-02). Migration239 and two-account authenticated catalog/default/privacy readback pass. Read `natural_documentary_2026_10_02` in CURRENT_STATE.yaml first for current release proof and limitations. Historical style versions and existing project pins are preserved.
 
