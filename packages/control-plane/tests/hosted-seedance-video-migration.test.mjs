@@ -16,6 +16,10 @@ const noTaskSource = readFileSync(
   new URL("../migrations/0242_hosted_seedance_video_unknown_no_task.sql", import.meta.url),
   "utf8",
 );
+const firstPostSource = readFileSync(
+  new URL("../migrations/0243_hosted_seedance_video_first_post.sql", import.meta.url),
+  "utf8",
+);
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const hash = "sha256:" + "a".repeat(64);
 
@@ -75,6 +79,7 @@ test("0240 applies to the real prior chain and enforces private immutable video 
     await executor.execute(source);
     await executor.execute(costSource);
     await executor.execute(noTaskSource);
+    await executor.execute(firstPostSource);
     const extendedConstraint = (
       await db.query(
         "SELECT pg_get_expr(conbin,conrelid) AS predicate FROM pg_constraint WHERE conrelid='artifact_reservations'::regclass AND conname='artifact_reservations_object_key_check'",
@@ -343,6 +348,160 @@ test("0240 applies to the real prior chain and enforces private immutable video 
       claim,
     );
     await call("videoforge_mark_hosted_video_unknown", [a, w, g, j, claim]);
+    const firstPost = (overrides = {}) =>
+      call("videoforge_authorize_hosted_video_first_post", [
+        overrides.account ?? a,
+        overrides.workspace ?? w,
+        overrides.request ?? g,
+        overrides.job ?? j,
+        overrides.claim ?? claim,
+        overrides.input ?? claimed.inputSha256,
+        overrides.evidence ?? hash,
+        overrides.reason ?? "WORKER_FETCH_REJECTED_BEFORE_NETWORK",
+        overrides.budget ?? 1,
+      ]);
+    for (const overrides of [
+      { account: IDS.accountB },
+      { workspace: IDS.workspaceB },
+      { request: id(999) },
+      { job: id(999) },
+      { claim: id(999) },
+      { input: hash },
+      { evidence: "invalid" },
+      { reason: "TASK_NOT_FOUND" },
+      { budget: 0 },
+      { budget: -1 },
+      { budget: 4.01 },
+      { budget: 0.1 },
+      { budget: "NaN" },
+      { budget: "Infinity" },
+    ])
+      await assert.rejects(firstPost(overrides), /video first POST/);
+    for (const role of ["videoforge_v209_runtime_dc9612d6", "videoforge_v209_reconciler_dc9612d6"])
+      assert.equal(
+        (
+          await db.query(
+            "SELECT has_function_privilege($1,'videoforge_authorize_hosted_video_first_post(uuid,uuid,uuid,uuid,uuid,text,text,text,numeric)','EXECUTE') AS allowed",
+            [role],
+          )
+        ).rows[0].allowed,
+        false,
+      );
+    await db.exec("BEGIN; SAVEPOINT first_post");
+    await db.exec("SET LOCAL ROLE videoforge_v209_runtime_dc9612d6");
+    await assert.rejects(firstPost(), /permission denied/);
+    await db.exec("ROLLBACK TO SAVEPOINT first_post");
+    await call("videoforge_record_hosted_video_cost", [a, w, g, j, 0.01]);
+    await db.exec("SAVEPOINT charged_first_post");
+    await assert.rejects(firstPost(), /state lease or budget invalid/);
+    await db.exec("ROLLBACK TO SAVEPOINT first_post");
+    await call("videoforge_record_hosted_video_task", [a, w, g, j, claim, j]);
+    await db.exec("SAVEPOINT acknowledged_first_post");
+    await assert.rejects(firstPost(), /state lease or budget invalid/);
+    await db.exec("ROLLBACK TO SAVEPOINT first_post");
+    const pendingSibling = async (n) => {
+      const sibling = id(n),
+        siblingInput = {
+          ...claimed.inputManifest,
+          taskUUID: sibling,
+          durationSeconds: 2,
+          videoFrameCount: 60,
+          segmentId: `pending-${n}`,
+        };
+      await db.query(
+        `INSERT INTO hosted_video_jobs(id,account_id,workspace_id,project_id,project_revision_id,generation_request_id,segment_id,source_task_key,video_frame_count,duration_seconds,state,claim_id,provider_task_id,input_manifest,input_sha256,source_api_job_id,source_asset_id,source_sha256,output_object_key) VALUES($1::uuid,$2,$3,$4,$5,$6,$7,'image:scene',60,2,'SUBMITTED',$8,$1::uuid::text,$9::jsonb,'sha256:'||encode(sha256(convert_to(videoforge_canonical_jsonb($9::jsonb),'UTF8')),'hex'),$10,$11,$12,$13)`,
+        [
+          sibling,
+          a,
+          w,
+          p,
+          r,
+          g,
+          `pending-${n}`,
+          claim,
+          JSON.stringify(siblingInput),
+          sourceJob,
+          sourceAsset,
+          hash,
+          `tenant/${a}/workspace/${w}/project/${p}/revision/${r}/lane/scene-video/job/${sibling}/artifact/${sibling}`,
+        ],
+      );
+      return sibling;
+    };
+    const overpricedSibling = await pendingSibling(240060);
+    await call("videoforge_record_hosted_video_cost", [a, w, g, overpricedSibling, 0.2]);
+    await db.exec("SAVEPOINT price_fence_first_post");
+    await assert.rejects(firstPost(), /state lease or budget invalid/);
+    await db.exec("ROLLBACK TO SAVEPOINT first_post");
+    for (const n of [240060, 240061, 240062, 240063]) await pendingSibling(n);
+    await db.exec("SAVEPOINT capacity_first_post");
+    await assert.rejects(firstPost(), /state lease or budget invalid/);
+    await db.exec("ROLLBACK TO SAVEPOINT first_post");
+    await db.query("DELETE FROM provider_workload_leases WHERE generation_request_id=$1", [g]);
+    await db.exec("SAVEPOINT absent_lease_first_post");
+    await assert.rejects(firstPost(), /state lease or budget invalid/);
+    await db.exec("ROLLBACK TO SAVEPOINT first_post");
+    await db.query(
+      "UPDATE artifact_receipts SET deleted_at=now(),deletion_reason='fixture tombstone' WHERE id=$1",
+      [sourceReceipt],
+    );
+    await db.exec("SAVEPOINT missing_source_first_post");
+    await assert.rejects(firstPost(), /accepted source invalid/);
+    await db.exec("ROLLBACK TO SAVEPOINT first_post");
+    const authorized = await firstPost();
+    assert.equal(authorized.authorized, true);
+    assert.equal(authorized.job.state, "SUBMITTING");
+    assert.equal(authorized.job.claimId, claim);
+    assert.equal(authorized.job.id, j);
+    assert.deepEqual(authorized.job.inputManifest, claimed.inputManifest);
+    assert.equal(authorized.job.inputSha256, claimed.inputSha256);
+    assert.equal(authorized.job.providerTaskId, null);
+    assert.equal((await firstPost()).authorized, false);
+    await call("videoforge_mark_hosted_video_unknown", [a, w, g, j, claim]);
+    assert.equal(
+      (await firstPost()).authorized,
+      false,
+      "a later uncertain response never reauthorizes POST",
+    );
+    const intent = (
+      await db.query(
+        "SELECT result_payload FROM repository_mutation_receipts WHERE workspace_id=$1 AND idempotency_key=$2",
+        [w, `seedance-first-post:${j}`],
+      )
+    ).rows[0].result_payload;
+    assert.equal(intent.input_sha256, claimed.inputSha256);
+    assert.equal(intent.evidence_sha256, hash);
+    assert.equal(intent.remaining_budget_usd, 1);
+    assert.equal(intent.quote_usd, 0.1336);
+    assert.equal(
+      (
+        await db.query(
+          "SELECT state FROM provider_workload_leases WHERE generation_request_id=$1",
+          [g],
+        )
+      ).rows[0].state,
+      "ACTIVE",
+    );
+    assert.equal(
+      (await db.query("SELECT state FROM hosted_api_generation_jobs WHERE id=$1", [sourceJob]))
+        .rows[0].state,
+      "SUCCEEDED",
+    );
+    assert.deepEqual(
+      (
+        await db.query("SELECT selections FROM hosted_video_plans WHERE project_revision_id=$1", [
+          r,
+        ])
+      ).rows[0].selections,
+      selection,
+    );
+    await db.exec("SAVEPOINT first_post_drift");
+    await assert.rejects(
+      firstPost({ evidence: "sha256:" + "b".repeat(64) }),
+      /evidence replay drift/,
+    );
+    await db.exec("ROLLBACK TO SAVEPOINT first_post_drift");
+    await db.exec("ROLLBACK");
     // Operator closure requires a saved exact-provider absence receipt. It cannot
     // become an ordinary retry path or discard acknowledged/charged work.
     const closeUnknown = (overrides = {}) =>
