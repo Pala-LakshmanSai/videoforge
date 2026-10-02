@@ -32,6 +32,10 @@ const segmentSource = readFileSync(
   new URL("../migrations/0246_hosted_seedance_video_canonical_segment.sql", import.meta.url),
   "utf8",
 );
+const workerInputSource = readFileSync(
+  new URL("../migrations/0247_hosted_video_worker_input_keys.sql", import.meta.url),
+  "utf8",
+);
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const hash = "sha256:" + "a".repeat(64);
 
@@ -1135,6 +1139,105 @@ test("0240 applies to the real prior chain and enforces private immutable video 
     );
     // Reproduce the real persisted relational key versus canonical UUID before
     // 0246; only metadata fixture seeding changes this immutable terminal row.
+    // The real CPU front door registers receipt metadata with a direct INSERT.
+    // Recreate its native runtime table grant (deployment bootstrap, not migration
+    // expansion) and execute that same statement with an actually accepted VIDEO.
+    const inputAttempt = id(247001);
+    const inputPrefix = `tenant/${a}/workspace/${w}/project/${p}/revision/${r}/lane/render/job/${inputAttempt}/artifact/`;
+    await seed(
+      "hosted_cpu_job_attempts",
+      `INSERT INTO hosted_cpu_job_attempts(id,account_id,workspace_id,project_id,project_revision_id,kind,state,request_sha256,job_spec_object_key,job_spec_content_length,job_spec_checksum_sha256,result_object_key,image_digest,callback_token_sha256,deadline_at,execution_backend,execution_bundle_sha256) VALUES($1,$2,$3,$4,$5,'RENDER','PLANNED',$6,$7,100,$6,$8,$6,$6,now()+interval '1 hour','PERSONAL_WORKER',$6)`,
+      [inputAttempt, a, w, p, r, hash, inputPrefix + "job-spec", inputPrefix + "result"],
+    );
+    const videoReceipt = (
+      await db.query(
+        "SELECT receipt.* FROM hosted_video_jobs j JOIN artifact_receipts receipt ON receipt.id=j.output_receipt_id AND receipt.account_id=j.account_id AND receipt.workspace_id=j.workspace_id WHERE j.id=$1",
+        [sibling],
+      )
+    ).rows[0];
+    assert.equal(videoReceipt.content_type, "video/mp4");
+    const registrationSql = `INSERT INTO media_worker_input_objects(id,account_id,workspace_id,attempt_id,uri,object_key,content_type,content_length,checksum_sha256) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`;
+    const registration = [
+      id(247002),
+      a,
+      w,
+      inputAttempt,
+      `vf-local://objects/sha256/aa/${"a".repeat(64)}.mp4`,
+      videoReceipt.object_key,
+      videoReceipt.content_type,
+      Number(videoReceipt.content_length),
+      videoReceipt.checksum_sha256,
+    ];
+    await db.exec(
+      "GRANT SELECT,INSERT ON media_worker_input_objects TO videoforge_v209_runtime_dc9612d6; GRANT SELECT ON workspaces TO videoforge_v209_runtime_dc9612d6; SAVEPOINT worker_input_before; SET LOCAL ROLE videoforge_v209_runtime_dc9612d6",
+    );
+    await assert.rejects(
+      db.query(registrationSql, registration),
+      /media_worker_input_objects_object_key_check/,
+    );
+    await db.exec("ROLLBACK TO SAVEPOINT worker_input_before");
+    const oldInputPredicate = (
+      await db.query(
+        "SELECT pg_get_expr(conbin,conrelid) predicate FROM pg_constraint WHERE conrelid='media_worker_input_objects'::regclass AND conname='media_worker_input_objects_object_key_check'",
+      )
+    ).rows[0].predicate;
+    await executor.execute(workerInputSource);
+    const newInputPredicate = (
+      await db.query(
+        "SELECT pg_get_expr(conbin,conrelid) predicate FROM pg_constraint WHERE conrelid='media_worker_input_objects'::regclass AND conname='media_worker_input_objects_object_key_check'",
+      )
+    ).rows[0].predicate;
+    for (const key of [sourceKey, inputPrefix + "job-spec", legacyAvatarKey]) {
+      const predicates = (
+        await db.query(
+          `SELECT (${oldInputPredicate}) old_allowed,(${newInputPredicate}) new_allowed FROM (SELECT $1::text object_key,$2::uuid account_id,$3::uuid workspace_id,'image/png'::text content_type) legacy`,
+          [key, a, w],
+        )
+      ).rows[0];
+      assert.deepEqual(predicates, { old_allowed: true, new_allowed: true });
+    }
+    await db.exec("SET LOCAL ROLE videoforge_v209_runtime_dc9612d6");
+    await db.query(registrationSql, registration);
+    assert.equal(
+      (
+        await db.query(
+          "SELECT object_key,checksum_sha256,content_type FROM media_worker_input_objects WHERE id=$1",
+          [id(247002)],
+        )
+      ).rows[0].object_key,
+      videoReceipt.object_key,
+    );
+    const badInputs = [
+      { key: videoReceipt.object_key.replace(`tenant/${a}`, `tenant/${IDS.accountB}`) },
+      { key: videoReceipt.object_key.replace(`workspace/${w}`, `workspace/${IDS.workspaceB}`) },
+      { key: videoReceipt.object_key.replace(`project/${p}`, "project/not-a-uuid") },
+      { key: videoReceipt.object_key.replace(`revision/${r}`, "revision/not-a-uuid") },
+      { key: videoReceipt.object_key.replace(`/job/${sibling}`, "/job/not-a-uuid") },
+      { key: videoReceipt.object_key.replace(`/artifact/${sibling}`, "/artifact/not-a-uuid") },
+      { key: videoReceipt.object_key + "/extra" },
+      { key: videoReceipt.object_key.replace("/lane/scene-video/", "/lane/unknown-video/") },
+      { type: "image/png" },
+      { account: IDS.accountB, workspace: IDS.workspaceB },
+      { attempt: id(999) },
+    ];
+    // Distinct local URIs avoid uniqueness as the rejection reason.
+    for (const [index, bad] of badInputs.entries()) {
+      await db.exec("SAVEPOINT worker_input_rejected");
+      const args = [...registration];
+      args[0] = id(247010 + index);
+      args[1] = bad.account ?? a;
+      args[2] = bad.workspace ?? w;
+      args[3] = bad.attempt ?? inputAttempt;
+      args[4] = registration[4] + index;
+      args[5] = bad.key ?? videoReceipt.object_key;
+      args[6] = bad.type ?? "video/mp4";
+      await assert.rejects(
+        db.query(registrationSql, args),
+        /object_key_check|tenant|foreign key|row-level security|no owning account/,
+      );
+      await db.exec("ROLLBACK TO SAVEPOINT worker_input_rejected");
+    }
+    await db.exec("RESET ROLE");
     const canonicalSegment = id(246001);
     await seed("hosted_video_jobs", "UPDATE hosted_video_jobs SET segment_id=$2 WHERE id=$1", [
       sibling,
