@@ -46,6 +46,7 @@ OBJECT_URI_PATTERN = re.compile(
 )
 SHA256_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 IMAGE_CODECS = frozenset({"bmp", "gif", "mjpeg", "png", "tiff", "webp"})
+SEEDANCE_SOURCE_PROFILE = "seedance-pro-fast-1248x704-v1"
 AVATAR_SOURCE_PROFILES = {
     "local-fixture-centered-832x480p25-v1": (832, 480, 25, 1),
     "avatarforcing-centered-832x480p25-v1": (832, 480, 25, 1),
@@ -218,6 +219,8 @@ def _expected_assets(manifest: Mapping[str, Any]) -> dict[str, ExpectedAsset]:
                 bindings = (*bindings, (accepted["source_background"], "IMAGE"))
         elif composition == "IMAGE_FULL":
             bindings = ((accepted["image"], "IMAGE"),)
+            if "video" in accepted:
+                bindings = (*bindings, (accepted["video"], "VIDEO"))
         else:
             bindings = (
                 (accepted["avatar"], "AVATAR_CLIP"),
@@ -231,7 +234,11 @@ def _expected_assets(manifest: Mapping[str, Any]) -> dict[str, ExpectedAsset]:
                 sha256=binding["sha256"],
                 kind=kind,
                 renderer_source_profile=(
-                    render["avatar_source_profile"] if kind == "AVATAR_CLIP" else None
+                    render["avatar_source_profile"]
+                    if kind == "AVATAR_CLIP"
+                    else render["video_source_profile"]
+                    if kind == "VIDEO"
+                    else None
                 ),
             )
             previous = expected.get(candidate.asset_id)
@@ -243,7 +250,7 @@ def _expected_assets(manifest: Mapping[str, Any]) -> dict[str, ExpectedAsset]:
                 ):
                     raise _RenderFailure(
                         "RENDER_INPUT_INVALID",
-                        "Resolved manifest assigns conflicting source profiles to one avatar.",
+                        "Resolved manifest assigns conflicting source profiles to one visual asset.",
                         retryable=False,
                     )
                 raise _RenderFailure(
@@ -256,7 +263,7 @@ def _expected_assets(manifest: Mapping[str, Any]) -> dict[str, ExpectedAsset]:
                 if prior_profile is not None and prior_profile != candidate.renderer_source_profile:
                     raise _RenderFailure(
                         "RENDER_INPUT_INVALID",
-                        "Resolved manifest assigns conflicting source profiles to reused avatar bytes.",
+                        "Resolved manifest assigns conflicting source profiles to reused visual bytes.",
                         retryable=False,
                     )
                 avatar_profiles_by_sha256[candidate.sha256] = candidate.renderer_source_profile
@@ -838,7 +845,7 @@ class RenderJob:
                     if isinstance(stream, dict) and stream.get("codec_type") == "video"
                 ]
                 allowed_stream_types = {"video"}
-                if binding.kind == "AVATAR_CLIP":
+                if binding.kind in {"AVATAR_CLIP", "VIDEO"}:
                     allowed_stream_types.add("audio")
                 other_streams = [
                     stream
@@ -861,6 +868,34 @@ class RenderJob:
                         raise ValueError(
                             "SoulX source background geometry does not match its approval"
                         )
+                elif binding.kind == "VIDEO":
+                    if (
+                        binding.renderer_source_profile != SEEDANCE_SOURCE_PROFILE
+                        or codec != "h264"
+                        or video.get("width") != 1248
+                        or video.get("height") != 704
+                    ):
+                        raise ValueError("Seedance video does not match its native source profile")
+                    fps_num, fps_den = _probe_frame_rate(video)
+                    if not math.isfinite(fps_num / fps_den):
+                        raise ValueError("Seedance video frame rate is not finite")
+                    duration = float(video.get("duration", "nan"))
+                    if not math.isfinite(duration) or duration <= 0:
+                        raise ValueError("Seedance video duration is not finite and positive")
+                    for segment in manifest["segments"]:
+                        if (
+                            segment.get("accepted_assets", {}).get("video", {}).get("sha256")
+                            != binding.sha256
+                        ):
+                            continue
+                        frames = segment["render"].get("video_frame_count")
+                        segment_frames = segment["end_frame_exclusive"] - segment["start_frame"]
+                        if type(frames) is not int or not 1 <= frames <= segment_frames:
+                            raise ValueError("Seedance video frame selection is invalid")
+                        if duration + 1e-6 < frames / 30:
+                            raise ValueError(
+                                "Seedance video does not cover its selected timeline frames"
+                            )
                 else:
                     expected_profile = AVATAR_SOURCE_PROFILES.get(
                         binding.renderer_source_profile or ""
@@ -898,7 +933,7 @@ class RenderJob:
                         raise ValueError(
                             "Avatar input frame rate does not match its source profile"
                         )
-            except (KeyError, TypeError, UnicodeEncodeError, ValueError) as error:
+            except (KeyError, OverflowError, TypeError, UnicodeEncodeError, ValueError) as error:
                 raise _RenderFailure(
                     "RENDER_INPUT_INVALID",
                     "Accepted visual media does not match its declared kind or source profile.",

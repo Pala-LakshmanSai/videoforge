@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://videoforge.local/schemas/render-job-input-v1.json",
-  "title": "VideoForge Render Job Input v1",
+  "title": "VideoForge Render Job Input v1/v2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -15,10 +15,21 @@
     "cancel_token"
   ],
   "properties": {
-    "schema_version": {"const": "render-job-input/v1"},
-    "project_revision_id": {"$ref": "#/$defs/id"},
-    "attempt_id": {"$ref": "#/$defs/id"},
-    "resolved_render_manifest": {"$ref": "#/$defs/documentPointer"},
+    "schema_version": {
+      "enum": [
+        "render-job-input/v1",
+        "render-job-input/v2"
+      ]
+    },
+    "project_revision_id": {
+      "$ref": "#/$defs/id"
+    },
+    "attempt_id": {
+      "$ref": "#/$defs/id"
+    },
+    "resolved_render_manifest": {
+      "$ref": "#/$defs/documentPointer"
+    },
     "assets": {
       "type": "array",
       "minItems": 2,
@@ -26,21 +37,44 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["asset_id", "sha256", "artifact_uri", "kind"],
+        "required": [
+          "asset_id",
+          "sha256",
+          "artifact_uri",
+          "kind"
+        ],
         "properties": {
-          "asset_id": {"$ref": "#/$defs/id"},
-          "sha256": {"$ref": "#/$defs/sha256"},
-          "artifact_uri": {"$ref": "#/$defs/objectUri"},
-          "kind": {"enum": ["VOICEOVER", "AVATAR_CLIP", "IMAGE"]}
+          "asset_id": {
+            "$ref": "#/$defs/id"
+          },
+          "sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "artifact_uri": {
+            "$ref": "#/$defs/objectUri"
+          },
+          "kind": {
+            "enum": [
+              "VOICEOVER",
+              "AVATAR_CLIP",
+              "IMAGE",
+              "VIDEO"
+            ]
+          }
         }
       }
     },
     "output": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["result_uri", "filename"],
+      "required": [
+        "result_uri",
+        "filename"
+      ],
       "properties": {
-        "result_uri": {"$ref": "#/$defs/runMp4Uri"},
+        "result_uri": {
+          "$ref": "#/$defs/runMp4Uri"
+        },
         "filename": {
           "type": "string",
           "minLength": 5,
@@ -52,13 +86,28 @@
     "tools": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["ffmpeg_version", "ffprobe_version"],
+      "required": [
+        "ffmpeg_version",
+        "ffprobe_version"
+      ],
       "properties": {
-        "ffmpeg_version": {"type": "string", "minLength": 1, "maxLength": 80},
-        "ffprobe_version": {"type": "string", "minLength": 1, "maxLength": 80}
+        "ffmpeg_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "ffprobe_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
       }
     },
-    "cancel_token": {"type": "string", "minLength": 32, "maxLength": 512}
+    "cancel_token": {
+      "type": "string",
+      "minLength": 32,
+      "maxLength": 512
+    }
   },
   "$defs": {
     "id": {
@@ -67,7 +116,10 @@
       "maxLength": 160,
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
     },
-    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
     "objectUri": {
       "type": "string",
       "pattern": "^vf-local://objects/sha256/[0-9a-f]{2}/[0-9a-f]{64}\\.[a-z0-9]{1,10}$"
@@ -79,12 +131,72 @@
     "documentPointer": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["asset_id", "sha256", "artifact_uri"],
+      "required": [
+        "asset_id",
+        "sha256",
+        "artifact_uri"
+      ],
       "properties": {
-        "asset_id": {"$ref": "#/$defs/id"},
-        "sha256": {"$ref": "#/$defs/sha256"},
-        "artifact_uri": {"$ref": "#/$defs/objectUri"}
+        "asset_id": {
+          "$ref": "#/$defs/id"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "artifact_uri": {
+          "$ref": "#/$defs/objectUri"
+        }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "schema_version": {
+            "const": "render-job-input/v1"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "assets": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 20000,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "asset_id",
+                "sha256",
+                "artifact_uri",
+                "kind"
+              ],
+              "properties": {
+                "asset_id": {
+                  "$ref": "#/$defs/id"
+                },
+                "sha256": {
+                  "$ref": "#/$defs/sha256"
+                },
+                "artifact_uri": {
+                  "$ref": "#/$defs/objectUri"
+                },
+                "kind": {
+                  "enum": [
+                    "VOICEOVER",
+                    "AVATAR_CLIP",
+                    "IMAGE"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "type": "object"
+      }
+    }
+  ]
 }

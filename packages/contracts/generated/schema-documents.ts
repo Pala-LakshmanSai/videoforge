@@ -7494,7 +7494,7 @@ export const canonicalSchemaDocuments = {
   "resolvedRenderManifest": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://videoforge.local/schemas/resolved-render-manifest-v1.json",
-    "title": "VideoForge Resolved Render Manifest v1",
+    "title": "VideoForge Resolved Render Manifest v1/v2",
     "type": "object",
     "additionalProperties": false,
     "required": [
@@ -7510,7 +7510,10 @@ export const canonicalSchemaDocuments = {
     ],
     "properties": {
       "schema_version": {
-        "const": "resolved-render-manifest/v1"
+        "enum": [
+          "resolved-render-manifest/v1",
+          "resolved-render-manifest/v2"
+        ]
       },
       "project_revision_id": {
         "type": "string",
@@ -7646,7 +7649,8 @@ export const canonicalSchemaDocuments = {
                 ]
               }
             }
-          }
+          },
+          "type": "object"
         },
         "then": {
           "required": [
@@ -7656,7 +7660,66 @@ export const canonicalSchemaDocuments = {
             "soulx_crop_profile_approval": {
               "$ref": "#/$defs/soulxCropProfileApproval"
             }
-          }
+          },
+          "type": "object"
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "schema_version": {
+              "const": "resolved-render-manifest/v1"
+            }
+          },
+          "type": "object"
+        },
+        "then": {
+          "properties": {
+            "segments": {
+              "items": {
+                "properties": {
+                  "accepted_assets": {
+                    "not": {
+                      "required": [
+                        "video"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "video": {}
+                      }
+                    }
+                  },
+                  "render": {
+                    "not": {
+                      "anyOf": [
+                        {
+                          "required": [
+                            "video_source_profile"
+                          ],
+                          "type": "object",
+                          "properties": {
+                            "video_source_profile": {}
+                          }
+                        },
+                        {
+                          "required": [
+                            "video_frame_count"
+                          ],
+                          "type": "object",
+                          "properties": {
+                            "video_frame_count": {}
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
         }
       }
     ],
@@ -7840,7 +7903,8 @@ export const canonicalSchemaDocuments = {
                     "avatar_source_profile": {
                       "const": "local-fixture-centered-832x480p25-v1"
                     }
-                  }
+                  },
+                  "type": "object"
                 },
                 "then": {
                   "required": [
@@ -7850,7 +7914,8 @@ export const canonicalSchemaDocuments = {
                     "avatar_crop": {
                       "const": "832:468:0:6"
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               },
               {
@@ -7859,7 +7924,8 @@ export const canonicalSchemaDocuments = {
                     "avatar_source_profile": {
                       "const": "avatarforcing-centered-832x480p25-v1"
                     }
-                  }
+                  },
+                  "type": "object"
                 },
                 "then": {
                   "required": [
@@ -7869,7 +7935,8 @@ export const canonicalSchemaDocuments = {
                     "avatar_crop": {
                       "const": "832:468:0:6"
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               },
               {
@@ -7878,7 +7945,8 @@ export const canonicalSchemaDocuments = {
                     "avatar_source_profile": {
                       "const": "skyreels-centered-960x960p25-v2"
                     }
-                  }
+                  },
+                  "type": "object"
                 },
                 "then": {
                   "required": [
@@ -7888,7 +7956,8 @@ export const canonicalSchemaDocuments = {
                     "avatar_crop": {
                       "const": "960:540:0:210"
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               },
               {
@@ -7897,7 +7966,8 @@ export const canonicalSchemaDocuments = {
                     "avatar_source_profile": {
                       "const": "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1"
                     }
-                  }
+                  },
+                  "type": "object"
                 },
                 "then": {
                   "required": [
@@ -7907,7 +7977,8 @@ export const canonicalSchemaDocuments = {
                     "avatar_crop": {
                       "const": "992:558:16:0"
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               },
               {
@@ -7916,7 +7987,8 @@ export const canonicalSchemaDocuments = {
                     "avatar_source_profile": {
                       "const": "fal-flashhead-512x512p25-v1"
                     }
-                  }
+                  },
+                  "type": "object"
                 },
                 "then": {
                   "required": [
@@ -7926,7 +7998,8 @@ export const canonicalSchemaDocuments = {
                     "avatar_crop": {
                       "const": "512:288:0:112"
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               },
               {
@@ -7935,7 +8008,8 @@ export const canonicalSchemaDocuments = {
                     "avatar_source_profile": {
                       "const": "fal-flashhead-512x512p25-wide-v2"
                     }
-                  }
+                  },
+                  "type": "object"
                 },
                 "then": {
                   "required": [
@@ -7945,7 +8019,8 @@ export const canonicalSchemaDocuments = {
                     "avatar_crop": {
                       "const": "1920:1080:0:0"
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               },
               {
@@ -7954,7 +8029,8 @@ export const canonicalSchemaDocuments = {
                     "avatar_source_profile": {
                       "const": "soulx-pro-vf924u-approved-v1"
                     }
-                  }
+                  },
+                  "type": "object"
                 },
                 "then": {
                   "required": [
@@ -8001,7 +8077,8 @@ export const canonicalSchemaDocuments = {
                     "horizontal_alpha_feather_pixels_each_edge": {
                       "const": 32
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               }
             ]
@@ -8022,7 +8099,8 @@ export const canonicalSchemaDocuments = {
                     "avatar_source_profile"
                   ]
                 }
-              }
+              },
+              "type": "object"
             },
             "then": {
               "properties": {
@@ -8052,7 +8130,8 @@ export const canonicalSchemaDocuments = {
                     }
                   }
                 }
-              }
+              },
+              "type": "object"
             }
           },
           {
@@ -8069,7 +8148,8 @@ export const canonicalSchemaDocuments = {
                     "avatar_source_profile"
                   ]
                 }
-              }
+              },
+              "type": "object"
             },
             "then": {
               "properties": {
@@ -8084,7 +8164,8 @@ export const canonicalSchemaDocuments = {
                     }
                   }
                 }
-              }
+              },
+              "type": "object"
             }
           }
         ]
@@ -8126,6 +8207,9 @@ export const canonicalSchemaDocuments = {
             "properties": {
               "image": {
                 "$ref": "#/$defs/asset"
+              },
+              "video": {
+                "$ref": "#/$defs/asset"
               }
             }
           },
@@ -8146,10 +8230,95 @@ export const canonicalSchemaDocuments = {
                   "image-full-zoom-v2",
                   "image-full-zoom-v3"
                 ]
+              },
+              "video_source_profile": {
+                "const": "seedance-pro-fast-1248x704-v1"
+              },
+              "video_frame_count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 360
               }
             }
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "accepted_assets": {
+                  "required": [
+                    "video"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "video": {}
+                  }
+                }
+              },
+              "type": "object"
+            },
+            "then": {
+              "properties": {
+                "render": {
+                  "required": [
+                    "video_source_profile",
+                    "video_frame_count"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "video_source_profile": {},
+                    "video_frame_count": {}
+                  }
+                }
+              },
+              "type": "object"
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "render": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "video_source_profile"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "video_source_profile": {}
+                      }
+                    },
+                    {
+                      "required": [
+                        "video_frame_count"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "video_frame_count": {}
+                      }
+                    }
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "then": {
+              "properties": {
+                "accepted_assets": {
+                  "required": [
+                    "video"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "video": {}
+                  }
+                }
+              },
+              "type": "object"
+            }
+          }
+        ]
       },
       "avatarSplitImage": {
         "type": "object",
@@ -8271,14 +8440,16 @@ export const canonicalSchemaDocuments = {
                     "avatar_source_profile": {
                       "const": "local-fixture-centered-832x480p25-v1"
                     }
-                  }
+                  },
+                  "type": "object"
                 },
                 "then": {
                   "properties": {
                     "avatar_crop": {
                       "const": "416:468:208:6"
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               },
               {
@@ -8287,14 +8458,16 @@ export const canonicalSchemaDocuments = {
                     "avatar_source_profile": {
                       "const": "avatarforcing-centered-832x480p25-v1"
                     }
-                  }
+                  },
+                  "type": "object"
                 },
                 "then": {
                   "properties": {
                     "avatar_crop": {
                       "const": "416:468:208:6"
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               },
               {
@@ -8303,14 +8476,16 @@ export const canonicalSchemaDocuments = {
                     "avatar_source_profile": {
                       "const": "skyreels-centered-960x960p25-v2"
                     }
-                  }
+                  },
+                  "type": "object"
                 },
                 "then": {
                   "properties": {
                     "avatar_crop": {
                       "const": "480:540:240:210"
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               },
               {
@@ -8319,14 +8494,16 @@ export const canonicalSchemaDocuments = {
                     "avatar_source_profile": {
                       "const": "echomimic-v3-flash-turbo-fp8-centered-1024x560p25-v1"
                     }
-                  }
+                  },
+                  "type": "object"
                 },
                 "then": {
                   "properties": {
                     "avatar_crop": {
                       "const": "496:558:280:0"
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               },
               {
@@ -8335,14 +8512,16 @@ export const canonicalSchemaDocuments = {
                     "avatar_source_profile": {
                       "const": "fal-flashhead-512x512p25-v1"
                     }
-                  }
+                  },
+                  "type": "object"
                 },
                 "then": {
                   "properties": {
                     "avatar_crop": {
                       "const": "256:288:128:112"
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               },
               {
@@ -8351,14 +8530,16 @@ export const canonicalSchemaDocuments = {
                     "avatar_source_profile": {
                       "const": "fal-flashhead-512x512p25-wide-v2"
                     }
-                  }
+                  },
+                  "type": "object"
                 },
                 "then": {
                   "properties": {
                     "avatar_crop": {
                       "const": "960:1080:480:0"
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               },
               {
@@ -8367,7 +8548,8 @@ export const canonicalSchemaDocuments = {
                     "avatar_source_profile": {
                       "const": "soulx-pro-vf924u-approved-v1"
                     }
-                  }
+                  },
+                  "type": "object"
                 },
                 "then": {
                   "required": [
@@ -8392,7 +8574,8 @@ export const canonicalSchemaDocuments = {
                     "context_transform": {
                       "const": "scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,crop=960:1080,zoompan=z=min(zoom+0.000133333,1.04):d=300:s=960x1080:fps=30"
                     }
-                  }
+                  },
+                  "type": "object"
                 }
               }
             ]
@@ -8413,7 +8596,8 @@ export const canonicalSchemaDocuments = {
                     "avatar_source_profile"
                   ]
                 }
-              }
+              },
+              "type": "object"
             },
             "then": {
               "properties": {
@@ -8428,7 +8612,8 @@ export const canonicalSchemaDocuments = {
                     }
                   }
                 }
-              }
+              },
+              "type": "object"
             }
           }
         ]
@@ -9998,7 +10183,7 @@ export const canonicalSchemaDocuments = {
   "renderJobInput": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://videoforge.local/schemas/render-job-input-v1.json",
-    "title": "VideoForge Render Job Input v1",
+    "title": "VideoForge Render Job Input v1/v2",
     "type": "object",
     "additionalProperties": false,
     "required": [
@@ -10013,7 +10198,10 @@ export const canonicalSchemaDocuments = {
     ],
     "properties": {
       "schema_version": {
-        "const": "render-job-input/v1"
+        "enum": [
+          "render-job-input/v1",
+          "render-job-input/v2"
+        ]
       },
       "project_revision_id": {
         "$ref": "#/$defs/id"
@@ -10051,7 +10239,8 @@ export const canonicalSchemaDocuments = {
               "enum": [
                 "VOICEOVER",
                 "AVATAR_CLIP",
-                "IMAGE"
+                "IMAGE",
+                "VIDEO"
               ]
             }
           }
@@ -10141,7 +10330,57 @@ export const canonicalSchemaDocuments = {
           }
         }
       }
-    }
+    },
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "schema_version": {
+              "const": "render-job-input/v1"
+            }
+          },
+          "type": "object"
+        },
+        "then": {
+          "properties": {
+            "assets": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 20000,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "asset_id",
+                  "sha256",
+                  "artifact_uri",
+                  "kind"
+                ],
+                "properties": {
+                  "asset_id": {
+                    "$ref": "#/$defs/id"
+                  },
+                  "sha256": {
+                    "$ref": "#/$defs/sha256"
+                  },
+                  "artifact_uri": {
+                    "$ref": "#/$defs/objectUri"
+                  },
+                  "kind": {
+                    "enum": [
+                      "VOICEOVER",
+                      "AVATAR_CLIP",
+                      "IMAGE"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "type": "object"
+        }
+      }
+    ]
   },
   "technicalProbe": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",

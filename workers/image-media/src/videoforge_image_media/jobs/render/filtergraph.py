@@ -381,15 +381,41 @@ def compile_render_command(
                     f"trim=end_frame={frame_count},setpts=PTS-STARTPTS[{label}]"
                 )
         elif composition == "IMAGE_FULL":
+            video = accepted.get("video")
+            motion_frames = segment["render"].get("video_frame_count", 0)
+            if video is not None:
+                if (
+                    render.get("video_source_profile") != "seedance-pro-fast-1248x704-v1"
+                    or type(motion_frames) is not int
+                    or not 1 <= motion_frames <= frame_count
+                ):
+                    raise ValueError("invalid Seedance motion selection")
+                video_index = add_input(video["asset_id"], still=False)
+                motion_label = label if motion_frames == frame_count else f"motion{segment_index}"
+                graph.append(
+                    f"[{video_index}:v:0]setpts=PTS-STARTPTS,"
+                    "scale=1920:1080:force_original_aspect_ratio=increase:flags=lanczos,"
+                    "crop=1920:1080,setsar=1,fps=30:round=near,"
+                    f"trim=end_frame={motion_frames},setpts=PTS-STARTPTS,format=yuv420p[{motion_label}]"
+                )
+                if motion_frames == frame_count:
+                    continue
+            elif motion_frames:
+                raise ValueError("motion selection has no accepted video")
+            still_frames = frame_count - motion_frames
             image_index = add_input(accepted["image"]["asset_id"], still=True)
             delta = _zoom_delta(
-                frame_count=frame_count,
+                frame_count=still_frames,
                 split=False,
                 profile_version=profile_version,
             )
+            still_label = label if video is None else f"still{segment_index}"
             graph.append(
-                f"{_image_filter(image_index, 1920, frame_count, delta, profile_version=profile_version)}[{label}]"
+                f"{_image_filter(image_index, 1920, still_frames, delta, profile_version=profile_version)}"
+                f"{',format=yuv420p' if video is not None else ''}[{still_label}]"
             )
+            if video is not None:
+                graph.append(f"[{motion_label}][{still_label}]concat=n=2:v=1:a=0[{label}]")
         elif composition == "AVATAR_SPLIT_IMAGE":
             avatar_index = add_input(accepted["avatar"]["asset_id"], still=False)
             image_index = add_input(accepted["right_image"]["asset_id"], still=True)
