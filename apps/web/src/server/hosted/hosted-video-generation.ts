@@ -95,7 +95,8 @@ export async function advanceHostedVideoGeneration(environment: HostedRuntimeEnv
     try {
       // SUBMITTING/UNKNOWN retain the pre-POST UUID, even if the acknowledgment was lost.
       const observed = await observeRunwareSeedanceJob({ requestId: item.id, apiKey,
-        objectKey: item.outputObjectKey, durationSeconds: item.durationSeconds, bucket,
+        objectKey: item.outputObjectKey, durationSeconds: item.durationSeconds,
+        minimumDurationSeconds: item.videoFrameCount / 30, bucket,
         recordProviderCost: async (cost) => { await call("videoforge_record_hosted_video_cost", [...base, item.id, cost]); } });
       if (item.state !== "SUBMITTED" && observed.state === "PENDING" && !observed.submissionConfirmed) return;
       if (item.state !== "SUBMITTED") {

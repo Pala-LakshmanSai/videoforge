@@ -149,11 +149,15 @@ export async function submitRunwareSeedanceJob(input: {
   return { state: "SUBMITTED", requestId: input.taskUUID };
 }
 
-function inspect(bytes: Uint8Array, requiredSeconds: number): ReturnType<typeof inspectMp4> {
+function inspect(bytes: Uint8Array, requiredSeconds: number, minimumDurationSeconds?: number): ReturnType<typeof inspectMp4> {
   try {
     const metadata = inspectMp4(bytes, GEOMETRY);
-    // Frame quantization can shorten the requested clip by at most one 24 fps frame.
-    if (metadata.durationSeconds + 1 / 24 < requiredSeconds || metadata.durationSeconds > 12.1)
+    // Rendering needs the selected timeline duration; padded provider requests may quantize shorter.
+    // Without a selected-frame bound, retain the original one-frame request-duration tolerance.
+    const tooShort = minimumDurationSeconds === undefined
+      ? metadata.durationSeconds + 1 / 24 < requiredSeconds
+      : metadata.durationSeconds + 0.001 < minimumDurationSeconds;
+    if (tooShort || metadata.durationSeconds > 12.1)
       throw new Error("duration");
     return metadata;
   } catch { throw new RunwareSeedanceJobError("RESULT_MP4_INVALID"); }
@@ -161,6 +165,7 @@ function inspect(bytes: Uint8Array, requiredSeconds: number): ReturnType<typeof 
 
 async function readStored(input: {
   bucket: HostedR2BucketBinding; objectKey: string; requestId: string; durationSeconds: number; costUsd: number;
+  minimumDurationSeconds?: number;
 }): Promise<RunwareSeedanceArtifact | null> {
   const stored = await input.bucket.get(input.objectKey);
   if (!stored) return null;
@@ -173,7 +178,7 @@ async function readStored(input: {
   if (bytes.byteLength !== stored.size || receipt.sha256 !== sha256)
     throw new RunwareSeedanceJobError("RESULT_STORAGE_UNKNOWN");
   return { objectKey: input.objectKey, sha256, byteSize: bytes.byteLength,
-    ...inspect(bytes, input.durationSeconds), videoCodec: "h264", contentType: "video/mp4" };
+    ...inspect(bytes, input.durationSeconds, input.minimumDurationSeconds), videoCodec: "h264", contentType: "video/mp4" };
 }
 
 async function download(urlString: string, fetchPort: FetchPort): Promise<Uint8Array<ArrayBuffer>> {
@@ -223,12 +228,15 @@ export async function observeRunwareSeedanceJob(input: {
   readonly apiKey: string;
   readonly objectKey: string;
   readonly durationSeconds: number;
+  readonly minimumDurationSeconds?: number;
   readonly bucket: HostedR2BucketBinding;
   readonly recordProviderCost?: (costUsd: number) => Promise<void>;
   readonly fetchPort?: FetchPort;
 }): Promise<{ readonly state: "PENDING"; readonly submissionConfirmed: boolean } | { readonly state: "FAILED" } |
   { readonly state: "SUCCEEDED"; readonly artifact: RunwareSeedanceArtifact; readonly costUsd: number }> {
-  if (!UUID.test(input.requestId) || input.apiKey.trim().length < 20 || !validDuration(input.durationSeconds))
+  if (!UUID.test(input.requestId) || input.apiKey.trim().length < 20 || !validDuration(input.durationSeconds) ||
+      (input.minimumDurationSeconds !== undefined && (!Number.isFinite(input.minimumDurationSeconds) ||
+        input.minimumDurationSeconds <= 0 || input.minimumDurationSeconds > input.durationSeconds)))
     throw new RunwareSeedanceJobError("INPUT_INVALID");
   if (!OBJECT_KEY.test(input.objectKey) || input.objectKey.includes(".."))
     throw new RunwareSeedanceJobError("OUTPUT_KEY_INVALID");
@@ -275,7 +283,7 @@ export async function observeRunwareSeedanceJob(input: {
   const previous = await readStored(storedInput);
   if (previous) return { state: "SUCCEEDED", artifact: previous, costUsd };
   const bytes = await download(result.videoURL, input.fetchPort ?? fetch);
-  inspect(bytes, input.durationSeconds);
+  inspect(bytes, input.durationSeconds, input.minimumDurationSeconds);
   const sha256 = await sha256Bytes(bytes);
   try {
     await input.bucket.put(input.objectKey, bytes.buffer as ArrayBuffer, {

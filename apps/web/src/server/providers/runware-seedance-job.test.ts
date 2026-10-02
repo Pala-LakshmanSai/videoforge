@@ -236,6 +236,51 @@ describe("Runware Seedance durable job", () => {
     expect(bucket.get).not.toHaveBeenCalled(); expect(bucket.put).not.toHaveBeenCalled();
   });
 
+  it("requires enough selected frames while accepting a quantized padded clip and rechecking stored media", async () => {
+    // Real 101-frame 24fps H264: 4.208333s covers 124/30s, but not a padded 4.3s request minus one frame.
+    const bytes = Uint8Array.from(await readFile(new URL("./fixtures/h264-seedance-101frames-sample.mp4", import.meta.url)));
+    let stored: Uint8Array | null = null;
+    let receipt: Record<string, string> | undefined;
+    const bucket = { get: async () => stored && { size: stored.byteLength, httpMetadata: { contentType: "video/mp4" },
+      customMetadata: receipt, arrayBuffer: async () => stored!.buffer.slice(0) },
+      put: vi.fn(async (_key: string, value: ArrayBuffer, options: { customMetadata: Record<string, string> }) => {
+        stored = new Uint8Array(value); receipt = options.customMetadata;
+      }) } as unknown as HostedR2BucketBinding;
+    const fetchPort = vi.fn(async (url: string | URL | Request) => String(url).includes("api.runware.ai")
+      ? json({ data: [{ ...completed, cost: 4.3 * 0.01336 }] })
+      : new Response(bytes, { headers: { "content-type": "video/mp4" } }));
+    const input = { requestId: taskUUID, apiKey, objectKey, durationSeconds: 4.3, bucket, fetchPort };
+    await expect(observeRunwareSeedanceJob(input)).rejects.toMatchObject({ code: "RESULT_MP4_INVALID" });
+    expect(bucket.put).not.toHaveBeenCalled();
+    const accepted = await observeRunwareSeedanceJob({ ...input, minimumDurationSeconds: 124 / 30 });
+    expect(accepted).toMatchObject({ state: "SUCCEEDED", artifact: { width: 1248, height: 704, videoCodec: "h264" } });
+    if (accepted.state !== "SUCCEEDED") throw new Error("expected clip acceptance");
+    expect(accepted.artifact.durationSeconds).toBeGreaterThan(4.2);
+    expect(accepted.artifact.durationSeconds).toBeLessThan(4.21);
+    const downloads = fetchPort.mock.calls.filter(([url]) => !String(url).includes("api.runware.ai")).length;
+    expect(await observeRunwareSeedanceJob({ ...input, minimumDurationSeconds: 124 / 30 })).toEqual(accepted);
+    await expect(observeRunwareSeedanceJob({ ...input, minimumDurationSeconds: 4.25 }))
+      .rejects.toMatchObject({ code: "RESULT_MP4_INVALID" });
+    expect(fetchPort.mock.calls.filter(([url]) => !String(url).includes("api.runware.ai"))).toHaveLength(downloads);
+    expect(bucket.put).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects the native short clip below 37 timeline frames and invalid minimum bounds before polling", async () => {
+    const bytes = Uint8Array.from(await readFile(new URL("./fixtures/h264-seedance-sample.mp4", import.meta.url)));
+    const bucket = { get: async () => null, put: vi.fn() } as unknown as HostedR2BucketBinding;
+    const fetchPort = vi.fn(async (url: string | URL | Request) => String(url).includes("api.runware.ai")
+      ? json({ data: [completed] }) : new Response(bytes, { headers: { "content-type": "video/mp4" } }));
+    const input = { requestId: taskUUID, apiKey, objectKey, durationSeconds: 1.3, bucket, fetchPort };
+    for (const minimumDurationSeconds of [NaN, Infinity, 0, -1, 1.301]) {
+      await expect(observeRunwareSeedanceJob({ ...input, minimumDurationSeconds }))
+        .rejects.toMatchObject({ code: "INPUT_INVALID" });
+    }
+    expect(fetchPort).not.toHaveBeenCalled();
+    await expect(observeRunwareSeedanceJob({ ...input, minimumDurationSeconds: 37 / 30 }))
+      .rejects.toMatchObject({ code: "RESULT_MP4_INVALID" });
+    expect(bucket.put).not.toHaveBeenCalled();
+  });
+
   it("persists a validated provider charge before artifact acceptance and preserves receipt errors", async () => {
     const order: string[] = [];
     const input = { requestId: taskUUID, apiKey, objectKey, durationSeconds: 1.2,

@@ -146,6 +146,15 @@ describe("hosted video execution", () => {
     expect(fixture.submit).not.toHaveBeenCalled();
   });
 
+  it("validates the selected scene prefix independently of padded request duration", async () => {
+    fixture.videos = videoJobs("SUBMITTED");
+    fixture.videos[0]!.durationSeconds = 2.1;
+    await run(advanceHostedVideoGeneration(environment, database, scope, true));
+    expect(fixture.observe).toHaveBeenCalledWith(expect.objectContaining({
+      durationSeconds: 2.1, minimumDurationSeconds: 60 / 30,
+    }));
+  });
+
   it("durably claims at most four jobs and preserves the outstanding cap on the next pass", async () => {
     fixture.videos = videoJobs("PREPARED", 6);
     await run(advanceHostedVideoGeneration(environment, database, scope, true));
