@@ -5675,6 +5675,12 @@ async function asrHandoff(
           [scope.account_id,scope.workspace_id,scope.user_id,projectId,latest.latest_asr_attempt_id]);
         const revision=recovered.rows[0]?.revision_id;
         if(!revision || !UUID.test(revision)) throw new Error("HOSTED_ASR_RECOVERY_NOT_ELIGIBLE");
+        // Recovery keeps the owner's pinned coverage choice; legacy revisions stay image-only.
+        await transaction.query(
+          `SELECT public.videoforge_pin_hosted_video_plan($1::uuid,$2::uuid,$3::uuid)
+             WHERE EXISTS(SELECT 1 FROM hosted_video_plans
+               WHERE account_id=$1 AND workspace_id=$2 AND project_revision_id=$4::uuid)`,
+          [scope.account_id,scope.workspace_id,revision,latest.revision_id]);
         result=await load();
         if(result.rows[0]?.revision_id!==revision) throw new Error("HOSTED_ASR_RECOVERY_NOT_ELIGIBLE");
       }

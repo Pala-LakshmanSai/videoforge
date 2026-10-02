@@ -136,6 +136,26 @@ describe("Runware Seedance durable job", () => {
     expect(recordProviderCost).toHaveBeenCalledTimes(3);
   });
 
+  it("records an unexpectedly large charge before terminal price failure without downloading", async () => {
+    const recordProviderCost = vi.fn(async () => undefined);
+    const bucket = { get: vi.fn(), put: vi.fn() } as unknown as HostedR2BucketBinding;
+    const fetchPort = vi.fn(async () => json({ data: [{ ...completed, cost: 1.25 }] }));
+    const input = { requestId: taskUUID, apiKey, objectKey, durationSeconds: 1.2,
+      bucket, recordProviderCost, fetchPort };
+    await expect(observeRunwareSeedanceJob(input)).rejects.toMatchObject({ code: "RESULT_PRICE_CHANGED" });
+    expect(recordProviderCost).toHaveBeenCalledWith(1.25);
+    expect(fetchPort).toHaveBeenCalledTimes(1);
+    expect(bucket.get).not.toHaveBeenCalled(); expect(bucket.put).not.toHaveBeenCalled();
+    fetchPort.mockResolvedValueOnce(json({ data: [{ ...completed, taskUUID: videoUUID, cost: 1.25 }] }));
+    await expect(observeRunwareSeedanceJob(input)).rejects.toMatchObject({ code: "RESPONSE_INVALID" });
+    expect(recordProviderCost).toHaveBeenCalledTimes(1);
+    const costDrift = new Error("video cost replay drift");
+    recordProviderCost.mockRejectedValueOnce(costDrift);
+    fetchPort.mockResolvedValueOnce(json({ data: [{ ...completed, cost: 1.26 }] }));
+    await expect(observeRunwareSeedanceJob(input)).rejects.toBe(costDrift);
+    expect(bucket.get).not.toHaveBeenCalled(); expect(bucket.put).not.toHaveBeenCalled();
+  });
+
   it("refuses arbitrary hosts, redirects, oversized downloads, wrong geometry and short clips", async () => {
     const bytes = Uint8Array.from(await readFile(new URL("./fixtures/h264-square-sample.mp4", import.meta.url)));
     const seedanceBytes = Uint8Array.from(await readFile(new URL("./fixtures/h264-seedance-sample.mp4", import.meta.url)));

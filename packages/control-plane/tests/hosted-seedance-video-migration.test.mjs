@@ -8,6 +8,10 @@ const source = readFileSync(
   new URL("../migrations/0240_hosted_seedance_video.sql", import.meta.url),
   "utf8",
 );
+const costSource = readFileSync(
+  new URL("../migrations/0241_hosted_seedance_video_cost.sql", import.meta.url),
+  "utf8",
+);
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const hash = "sha256:" + "a".repeat(64);
 
@@ -22,6 +26,15 @@ test("0240 applies to the real prior chain and enforces private immutable video 
       name: "hosted_seedance_video",
       filename: "0240_hosted_seedance_video.sql",
       sha256: `sha256:${createHash("sha256").update(source).digest("hex")}`,
+    },
+  );
+  assert.deepEqual(
+    manifest.migrations.find((entry) => entry.version === 241),
+    {
+      version: 241,
+      name: "hosted_seedance_video_cost",
+      filename: "0241_hosted_seedance_video_cost.sql",
+      sha256: `sha256:${createHash("sha256").update(costSource).digest("hex")}`,
     },
   );
   const { database: db, executor, sources } = await createFixtureDatabase();
@@ -56,6 +69,7 @@ test("0240 applies to the real prior chain and enforces private immutable video 
       )
     ).rows[0].predicate;
     await executor.execute(source);
+    await executor.execute(costSource);
     const extendedConstraint = (
       await db.query(
         "SELECT pg_get_expr(conbin,conrelid) AS predicate FROM pg_constraint WHERE conrelid='artifact_reservations'::regclass AND conname='artifact_reservations_object_key_check'",
@@ -132,6 +146,45 @@ test("0240 applies to the real prior chain and enforces private immutable video 
     assert.equal(plan.width, 1248);
     assert.equal(plan.height, 704);
     assert.deepEqual(await call("videoforge_pin_hosted_video_plan", [a, w, r]), plan);
+    // Cloud ASR recovery creates a fresh successor before generation. Its guarded
+    // application pin must retain the saved choice without opting legacy videos in.
+    const successor = id(240030),
+      legacyParent = id(240031),
+      legacySuccessor = id(240032);
+    for (const [revisionId, revisionNumber] of [
+      [successor, 2],
+      [legacyParent, 3],
+      [legacySuccessor, 4],
+    ]) {
+      await db.query(
+        `INSERT INTO project_revisions SELECT (jsonb_populate_record(NULL::project_revisions,to_jsonb(rev)||jsonb_build_object('id',$1::text,'revision_number',$2::integer,'created_at',now(),'locked_at',now()))).* FROM project_revisions rev WHERE rev.id=$3`,
+        [revisionId, revisionNumber, r],
+      );
+    }
+    const recoverPlan = async (revisionId, priorRevisionId) =>
+      db.query(
+        `SELECT public.videoforge_pin_hosted_video_plan($1::uuid,$2::uuid,$3::uuid) AS plan
+           WHERE EXISTS(SELECT 1 FROM hosted_video_plans
+             WHERE account_id=$1 AND workspace_id=$2 AND project_revision_id=$4::uuid)`,
+        [a, w, revisionId, priorRevisionId],
+      );
+    const inherited = (await recoverPlan(successor, r)).rows[0].plan;
+    assert.equal(inherited.project_revision_id, successor);
+    assert.equal(inherited.coverage_percent, 7);
+    assert.equal(inherited.model, plan.model);
+    assert.equal(inherited.selections, null, "fresh canonical timing must select its own scenes");
+    assert.deepEqual((await recoverPlan(successor, r)).rows[0].plan, inherited);
+    assert.equal((await recoverPlan(legacySuccessor, legacyParent)).rows.length, 0);
+    assert.equal((await recoverPlan(legacySuccessor, legacyParent)).rows.length, 0);
+    assert.deepEqual(
+      (
+        await db.query(
+          "SELECT project_revision_id FROM hosted_video_plans WHERE account_id=$1 AND workspace_id=$2 AND project_revision_id=ANY($3::uuid[]) ORDER BY project_revision_id",
+          [a, w, [successor, legacyParent, legacySuccessor]],
+        )
+      ).rows,
+      [{ project_revision_id: successor }],
+    );
     await assert.rejects(
       call("videoforge_pin_hosted_video_plan", [IDS.accountB, IDS.workspaceB, r]),
       /scope invalid/,
@@ -327,6 +380,127 @@ test("0240 applies to the real prior chain and enforces private immutable video 
       /video cost state or price invalid/,
     );
     await db.query("SELECT set_config('videoforge.account_id',$1,false)", [a]);
+    for (const invalidCost of ["NaN", "Infinity", "-Infinity", "-1"])
+      await assert.rejects(
+        call("videoforge_record_hosted_video_cost", [a, w, g, j, invalidCost]),
+        /video cost invalid/,
+      );
+    // An invoice remains durable when price policy rejects it. Existing native gates
+    // stop unpaid siblings and release admission only after paid work is terminal.
+    for (const actualCost of [0.2, 1.25]) {
+      await db.exec("BEGIN; SAVEPOINT unexpected_invoice");
+      const sibling = id(240050),
+        futureTask = id(240051),
+        futureApi = id(240052);
+      await db.query(
+        `INSERT INTO hosted_video_jobs(id,account_id,workspace_id,project_id,project_revision_id,generation_request_id,segment_id,source_task_key,video_frame_count,duration_seconds,output_object_key) VALUES($1,$2,$3,$4,$5,$6,'cost-future','image:scene',60,2,$7)`,
+        [
+          sibling,
+          a,
+          w,
+          p,
+          r,
+          g,
+          `tenant/${a}/workspace/${w}/project/${p}/revision/${r}/lane/scene-video/job/${sibling}/artifact/${sibling}`,
+        ],
+      );
+      await seed(
+        "generation_tasks",
+        `INSERT INTO generation_tasks(id,account_id,workspace_id,owner_type,owner_id,project_revision_id,task_key,lane,state) VALUES($1,$2,$3,'PROJECT_REVISION',$4,$4,'image:cost-future','IMAGE','BLOCKED')`,
+        [futureTask, a, w, r],
+      );
+      await seed(
+        "hosted_api_generation_jobs",
+        `INSERT INTO hosted_api_generation_jobs(id,account_id,workspace_id,project_id,project_revision_id,generation_request_id,generation_task_id,task_key,lane,input_manifest,input_sha256,output_object_key) VALUES($1,$2,$3,$4,$5,$6,$7,'image:cost-future','IMAGE','{"prompt":"Documentary physical demonstration"}',$8,$9)`,
+        [
+          futureApi,
+          a,
+          w,
+          p,
+          r,
+          g,
+          futureTask,
+          hash,
+          `tenant/${a}/workspace/${w}/project/${p}/revision/${r}/lane/mage-image/job/${futureApi}/artifact/${futureTask}`,
+        ],
+      );
+      assert.equal(
+        (await call("videoforge_record_hosted_video_cost", [a, w, g, j, actualCost])).outputCostUsd,
+        actualCost,
+      );
+      assert.equal(
+        (await call("videoforge_claim_hosted_video_job", [a, w, g, sibling, claim])).state,
+        "PREPARED",
+      );
+      assert.equal(
+        (await call("videoforge_claim_hosted_api_job", [a, w, g, futureTask, claim])).state,
+        "PREPARED",
+      );
+      assert.equal(
+        (await call("videoforge_claim_hosted_video_job", [a, w, g, j, claim])).state,
+        "SUBMITTED",
+      );
+      assert.equal(
+        (await call("videoforge_claim_hosted_api_job", [a, w, g, task, claim])).state,
+        "SUCCEEDED",
+      );
+      await db.exec("SAVEPOINT cost_drift");
+      await assert.rejects(
+        call("videoforge_record_hosted_video_cost", [a, w, g, j, actualCost + 0.01]),
+        /cost replay drift/,
+      );
+      await db.exec("ROLLBACK TO SAVEPOINT cost_drift");
+      await db.exec("SAVEPOINT cost_output");
+      await assert.rejects(
+        call("videoforge_commit_hosted_video_output", [
+          a,
+          w,
+          g,
+          j,
+          hash,
+          2000,
+          "video/mp4",
+          JSON.stringify({ width: 1248, height: 704, durationMs: 10000 }),
+          actualCost,
+        ]),
+        actualCost > 1 ? /video output invalid/ : /contract or price/,
+      );
+      await db.exec("ROLLBACK TO SAVEPOINT cost_output");
+      await call("videoforge_fail_hosted_video_job", [a, w, g, j, "SEEDANCE_PRICE_CHANGED"]);
+      assert.equal(
+        (await call("videoforge_record_hosted_video_cost", [a, w, g, j, actualCost])).outputCostUsd,
+        actualCost,
+      );
+      await db.query("UPDATE global_generation_capacity SET active_lease_count=1");
+      assert.equal(
+        (await call("videoforge_settle_hosted_api_failure", [a, w, g])).state,
+        "SETTLED",
+      );
+      assert.equal(
+        (
+          await db.query(
+            "SELECT output_cost_usd::float8 AS cost FROM hosted_video_jobs WHERE id=$1",
+            [j],
+          )
+        ).rows[0].cost,
+        actualCost,
+      );
+      assert.equal(
+        (
+          await db.query(
+            "SELECT state FROM provider_workload_leases WHERE generation_request_id=$1",
+            [g],
+          )
+        ).rows[0].state,
+        "RELEASED",
+      );
+      assert.equal(
+        (await db.query("SELECT state FROM hosted_api_generation_jobs WHERE id=$1", [sourceJob]))
+          .rows[0].state,
+        "SUCCEEDED",
+      );
+      await db.exec("ROLLBACK");
+    }
     await call("videoforge_record_hosted_video_cost", [a, w, g, j, 0.1336]);
     await assert.rejects(
       call("videoforge_record_hosted_video_cost", [a, w, g, j, 0.14]),

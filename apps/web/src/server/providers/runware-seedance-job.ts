@@ -14,7 +14,7 @@ type Row = Record<string, unknown>;
 export class RunwareSeedanceJobError extends Error {
   constructor(readonly code: "INPUT_INVALID" | "SUBMIT_REJECTED" | "SUBMIT_UNKNOWN" |
     "POLL_UNAVAILABLE" | "RESPONSE_INVALID" | "OUTPUT_KEY_INVALID" | "RESULT_DOWNLOAD_FAILED" |
-    "RESULT_MP4_INVALID" | "RESULT_STORAGE_UNKNOWN") {
+    "RESULT_MP4_INVALID" | "RESULT_STORAGE_UNKNOWN" | "RESULT_PRICE_CHANGED") {
     super(code);
     this.name = "RunwareSeedanceJobError";
   }
@@ -227,6 +227,8 @@ export async function observeRunwareSeedanceJob(input: {
   const costUsd = result.cost;
   // A charged generation remains charged even if the artifact cannot be accepted.
   await input.recordProviderCost?.(costUsd);
+  if (costUsd > input.durationSeconds * 0.01336 * 1.10)
+    throw new RunwareSeedanceJobError("RESULT_PRICE_CHANGED");
   if (!UUID.test(String(result.videoUUID)) || typeof result.videoURL !== "string" || result.NSFWContent === true)
     throw new RunwareSeedanceJobError("RESULT_MP4_INVALID");
   const storedInput = { ...input, costUsd };

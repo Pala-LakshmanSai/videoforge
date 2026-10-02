@@ -183,6 +183,22 @@ describe("hosted video execution", () => {
     expect(fixture.submit).not.toHaveBeenCalled();
   });
 
+  it("retains an excessive provider charge and stops new claims after terminal price failure", async () => {
+    fixture.videos = [...videoJobs("SUBMITTED"), ...videoJobs("PREPARED", 2).slice(1)];
+    fixture.observe.mockImplementationOnce(async (input) => {
+      await input.recordProviderCost(1.25); throw new RunwareSeedanceJobError("RESULT_PRICE_CHANGED");
+    });
+    await run(advanceHostedVideoGeneration(environment, database, scope, false));
+    expect(fixture.videos[0]).toMatchObject({ state: "FAILED", outputCostUsd: 1.25, failureCode: "SEEDANCE_PRICE_CHANGED" });
+    expect(fixture.events.indexOf(`videoforge_record_hosted_video_cost:${identity(0)}`))
+      .toBeLessThan(fixture.events.indexOf(`videoforge_fail_hosted_video_job:${identity(0)}`));
+    const result = await run(advanceHostedVideoGeneration(environment, database, scope, true));
+    expect(result.problemCode).toBe("SEEDANCE_PRICE_CHANGED");
+    expect(fixture.submit).not.toHaveBeenCalled();
+    expect(fixture.videos[1]?.state).toBe("PREPARED");
+    expect(fixture.events.some((event) => event.startsWith("videoforge_commit_hosted_video_output"))).toBe(false);
+  });
+
   it("keeps cancelled replay terminal and never admits render or a new POST", async () => {
     fixture.requestState = "CANCELLED"; fixture.videos = videoJobs("FAILED");
     fixture.videos[0]!.failureCode = "OWNER_CANCELLED_BEFORE_SUBMIT";

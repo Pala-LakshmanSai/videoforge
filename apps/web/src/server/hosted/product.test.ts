@@ -2774,6 +2774,11 @@ describe("Cloud ASR immutable successor recovery", () => {
       expect(firstBody.cpu_submission.objects[0]?.artifact_receipt_id).toBe("44444444-4444-4444-8444-444444444444");
       expect(firstBody.cpu_submission.idempotency_key).toContain(`revision-${successor}-asr-v1`);
       expect(testState.query.mock.calls.filter(([statement])=>statement.includes("videoforge_prepare_cloud_media_asr_recovery"))).toHaveLength(1);
+      const inherited=testState.query.mock.calls.filter(([statement])=>statement.includes("videoforge_pin_hosted_video_plan"));
+      expect(inherited).toHaveLength(1);
+      expect(inherited[0]?.[0]).toContain("WHERE EXISTS(SELECT 1 FROM hosted_video_plans");
+      expect(inherited[0]?.[1]).toEqual([testState.scopeRows[0]?.account_id,testState.scopeRows[0]?.workspace_id,
+        successor,"22222222-2222-4222-8222-222222222222"]);
     } finally {testState.projectRows[0]=previous;testState.query.mockImplementation(original);}
   });
   it("maps an unsettled or ineligible Cloud recovery to a bounded response without changing Local", async () => {

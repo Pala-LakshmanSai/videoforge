@@ -104,9 +104,11 @@ export async function advanceHostedVideoGeneration(environment: HostedRuntimeEnv
       progressed = true;
     } catch (error) {
       if (error instanceof RunwareSeedanceJobError && ["POLL_UNAVAILABLE", "RESPONSE_INVALID", "RESULT_STORAGE_UNKNOWN", "RESULT_DOWNLOAD_FAILED"].includes(error.code)) return;
-      if (error instanceof RunwareSeedanceJobError && error.code === "RESULT_MP4_INVALID") {
+      if (error instanceof RunwareSeedanceJobError && ["RESULT_MP4_INVALID", "RESULT_PRICE_CHANGED"].includes(error.code)) {
         if (item.state !== "SUBMITTED") await call("videoforge_record_hosted_video_task", [...base, item.id, string(item.claimId), item.id]);
-        await call("videoforge_fail_hosted_video_job", [...base, item.id, "SEEDANCE_RESULT_INVALID"]); progressed = true; return;
+        stopped = true;
+        await call("videoforge_fail_hosted_video_job", [...base, item.id,
+          error.code === "RESULT_PRICE_CHANGED" ? "SEEDANCE_PRICE_CHANGED" : "SEEDANCE_RESULT_INVALID"]); progressed = true; return;
       }
       throw error;
     }

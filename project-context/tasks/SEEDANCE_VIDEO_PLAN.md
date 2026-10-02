@@ -1,6 +1,6 @@
 # Seedance video layer — authorized 2026-10-02
 
-Checkpoint V2-09; fresh-project 7% motion coverage. Existing projects keep their immutable plans, image/avatar outputs and render identity. User authorizes implementation, production rollout and bounded acceptance without more approval requests; total provider/compute test spend must not exceed USD4.00. No paid actions yet.
+Checkpoint V2-09; fresh-project 7% motion coverage. Existing projects keep their immutable plans, image/avatar outputs and render identity. User authorizes implementation, production rollout and bounded acceptance without more approval requests; total provider/compute test spend must not exceed USD4.00. Current production, validation and spend truth live in CURRENT_STATE.yaml.
 
 ## Rollback baseline
 
@@ -10,12 +10,12 @@ Rollback: disable fresh motion admission, reconcile already-submitted exact Runw
 
 ## Implementation sequence
 
-1. Pin per-revision motion policy at creation. Plan deterministic, spread IMAGE_FULL selections when the canonical timeline is saved. Target round(totalFrames*0.07) playable frames; no avatar replacement. Request only sufficient provider seconds, minimum1.2 maximum12. Preserve source image and its checksum.
+1. Pin per-revision motion policy at creation. Plan deterministic, spread IMAGE_FULL selections when the canonical timeline is saved. Target floor(totalFrames*0.07) playable frames; no avatar replacement. Request only sufficient provider seconds, minimum1.2 maximum12. Preserve source image and its checksum. A guarded Cloud ASR successor inherits an existing pinned choice before new ASR; legacy predecessors do not opt in.
 2. Expand tenant-private SQL with plans and durable video jobs. Claim before paid POST; persist exact UUID and source inputs. Ambiguous submissions are polled by that UUID and never resubmitted. One existing account workload slot covers all three providers. Gate render admission, lease release, cancellation and failure cleanup on paid video settlement.
 3. Generate Seedance1.0ProFast bytedance:2@2 at1248x704 (provider720p16:9 preset), USD0.01336/output-second. Source images are signed private URLs. Bounded concurrent submissions overlap remaining Kie/Fal work; bounded serial artifact acceptance protects Worker memory. Validate native H264/geometry/duration and private R2 readback before acceptance. Record actual provider cost.
 4. Add version2 resolved manifest/render inputs with explicit VIDEO bindings. Keep immutable timeline segment identity and source images. Render selected motion frames, hard-cut to smooth-zoom still for remainder; retain original narration and existing avatar composition. No provider audio, loops, captions, overlays or decorative transitions. Release both shared renderer/Local worker and Cloud source bundle before enabling new-project policy.
 5. Add Progress video stage immediately after images, independent live progress and cost. Preserve wall-clock elapsed timing. Existing projects retain the11-stage layout.
-6. Audit SQL tenant fencing/no replay/settlement and old/new render paths. Run focused meaningful regression, contract parity, typecheck, build and context checks. Then bounded paid API+short whole-pipeline acceptance with exact receipts and cleanup. Publish only after these gates pass; real Chrome acceptance remains distinct from component checks.
+6. Audit SQL tenant fencing/no replay/settlement and old/new render paths. Run focused meaningful regression, contract parity, typecheck, build and context checks. Publish qualified renderers, preserve the previous Cloud authority and create a new authority with matching image/source/runtime pins; verify that match before enabling the app. Then bounded live API+short whole-pipeline acceptance with exact receipts and cleanup. Real Chrome acceptance remains distinct from component and authenticated HTTP checks.
 
 ## Acceptance and spend
 
