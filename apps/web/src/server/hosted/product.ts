@@ -7891,6 +7891,12 @@ async function projectDetail(
         runtime_state: runtimeLane ? String(runtimeLane.state) : null,
         planned_item_count: plannedItems,
         accepted_item_count: acceptedItems,
+        // Durable submission state does not distinguish provider queueing, inference or retrieval.
+        ...(projectApiGeneration ? {
+          provider_pending_item_count: apiJobs.filter((job) => job.state === "SUBMITTED").length,
+          waiting_to_submit_item_count: apiJobs.filter((job) => job.state === "PREPARED").length,
+          submitting_item_count: apiJobs.filter((job) => job.state === "SUBMITTING").length,
+        } : {}),
         attempt_ordinal: numberOrNull(attempt?.attempt_ordinal),
         submitted_at: projectApiGeneration
           ? apiSubmittedAt

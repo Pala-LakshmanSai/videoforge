@@ -1306,6 +1306,36 @@ it.each(["KIE_FAL", "RUNPOD"] as const)(
   },
 );
 
+it.each([
+  ["KIE_FAL", "IN_PROGRESS", "0 of 12 accepted · 4 sent, awaiting results · 8 waiting to send"],
+  ["KIE_FAL", "UNKNOWN_NO_RETRY", "0 of 12 accepted · The API response is uncertain; this request will not be sent again automatically."],
+  ["KIE_FAL", "FAILED", "0 of 12 accepted · The provider run ended without an accepted result."],
+  ["KIE_FAL", "BLOCKED", "0 of 12 accepted · This request stopped before these items were sent to the API provider."],
+  ["RUNPOD", "IN_PROGRESS", "0 of 12 accepted · The provider has not reported any completed items yet."],
+])("shows exact API item counts without changing %s/%s lane semantics", async (provider, avatarState, expected) => {
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+    project: { id: "api-counts", title: "Parallel API generation", created_at: "2026-10-02T10:00:00Z", revision_id: "revision", revision_state: "LOCKED" },
+    attempts: [], generation: null, generation_provider: provider,
+    gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
+    stages: [
+      { id: "image-generation", name: "Generate images", status: "RUNNING" },
+      { id: "avatar-generation", name: "Generate avatar video", status: "RUNNING" },
+    ],
+    gpu_lanes: [
+      { lane: "mage_image", attempt_state: "IN_PROGRESS", runtime_state: "GENERATING", planned_item_count: 20, accepted_item_count: 6,
+        provider_pending_item_count: 4, waiting_to_submit_item_count: 9, submitting_item_count: 1 },
+      { lane: "soulx_avatar", attempt_state: avatarState, runtime_state: "GENERATING", planned_item_count: 12, accepted_item_count: 0,
+        provider_pending_item_count: 4, waiting_to_submit_item_count: 8, submitting_item_count: 0 },
+    ],
+  })));
+  renderHosted(<HostedProjectScreen projectId="api-counts" />);
+  expect((await screen.findAllByText(expected)).length).toBeGreaterThan(0);
+  if (provider === "KIE_FAL") {
+    expect(screen.getAllByText("6 of 20 accepted · 4 sent, awaiting results · 1 sending · 9 waiting to send").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/cold start|Waiting for GPUs/u)).not.toBeInTheDocument();
+  }
+});
+
 it("regenerates images on loaded later pages while image generation is still running", async () => {
   const projectId = "11111111-1111-4111-8111-111111111111";
   const imageTaskId = "33333333-3333-4333-8333-333333333333";
@@ -3247,6 +3277,96 @@ describe("hosted product journey", () => {
       await screen.findByRole("button", { name: "Stop audio preparation" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Stop assembly" })).not.toBeInTheDocument();
+  });
+
+  it("groups twelve audio jobs into one exact-job stop control without hiding other operations", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const spans = Array.from({ length: 12 }, (_, index) => ({
+      id: `33333333-3333-4333-8333-${String(index + 1).padStart(12, "0")}`,
+      kind: "SPAN_AUDIO", state: index === 4 ? "RUNNING" : index === 2 ? "CANCEL_REQUESTED" : "OUTBOXED",
+    }));
+    const attempts = [...spans, { id: "asr", kind: "ASR", state: "RUNNING" },
+      { id: "render", kind: "RENDER", state: "SUCCEEDED" }];
+    const cancelled: string[] = [];
+    let finishCancellation: (() => void) | undefined;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.includes("/api/v2/cpu-attempts/")) {
+        const id = path.split("/").at(-1)!;
+        cancelled.push(id);
+        expect(JSON.parse(String(init?.body))).toEqual({
+          schema_version: "videoforge-hosted-cpu-cancellation/v1", attempt_id: id, confirmation: "STOP",
+        });
+        await new Promise<void>(resolve => { finishCancellation = resolve; });
+        spans.find(span => span.id === id)!.state = "CANCELLED";
+        return Response.json({ id, state: "CANCELLED" }, { status: 202 });
+      }
+      return Response.json({
+        project: { id: projectId, title: "Audio preparation", created_at: "2026-10-02T10:00:00Z",
+          revision_id: "22222222-2222-4222-8222-222222222222", revision_state: "LOCKED" },
+        attempts, generation: null, gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
+      });
+    }));
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={client}><HostedProjectScreen projectId={projectId} /></QueryClientProvider>);
+    const selector = await screen.findByRole("combobox", { name: "Audio preparation job" });
+    expect(selector).toHaveValue(spans[4]!.id);
+    expect(within(selector).getAllByRole("option")).toHaveLength(12);
+    expect(screen.getAllByRole("button", { name: /^Stop /u })).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Stop transcription" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /assembly/u })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Stop selected audio preparation job" }));
+    fireEvent.change(selector, { target: { value: spans[6]!.id } });
+    expect(screen.queryByRole("button", { name: "Confirm stop selected audio preparation job" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Stop selected audio preparation job" }));
+    expect(cancelled).toEqual([]);
+    spans[8]!.state = "RUNNING";
+    await act(async () => { await client.refetchQueries({ queryKey: ["hosted-project", projectId] }); });
+    expect(selector).toHaveValue(spans[6]!.id);
+    const confirm = screen.getByRole("button", { name: "Confirm stop selected audio preparation job" });
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
+    await waitFor(() => expect(cancelled).toEqual([spans[6]!.id]));
+    expect(selector).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Stop transcription" })).toBeDisabled();
+    await act(async () => { finishCancellation!(); });
+    await waitFor(() => expect(selector).not.toBeDisabled());
+    expect(within(selector).getAllByRole("option")).toHaveLength(11);
+    fireEvent.change(selector, { target: { value: spans[2]!.id } });
+    fireEvent.click(screen.getByRole("button", { name: "Finish stopping selected audio preparation job" }));
+    await waitFor(() => expect(cancelled).toEqual([spans[6]!.id, spans[2]!.id]));
+    await act(async () => { finishCancellation!(); });
+  });
+
+  it("releases the cancellation guard after a failed POST and requires fresh confirmation to retry", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const attemptId = "33333333-3333-4333-8333-333333333333";
+    const postedAttempts: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith(`/api/v2/cpu-attempts/${attemptId}`)) {
+        const body = JSON.parse(String(init?.body));
+        expect(body).toEqual({ schema_version: "videoforge-hosted-cpu-cancellation/v1", attempt_id: attemptId, confirmation: "STOP" });
+        postedAttempts.push(body.attempt_id);
+        return postedAttempts.length === 1
+          ? Response.json({ error: { code: "TEMPORARY_FAILURE" } }, { status: 503 })
+          : Response.json({ id: attemptId, state: "CANCEL_REQUESTED" }, { status: 202 });
+      }
+      return Response.json({
+        project: { id: projectId, title: "Retry cancellation", revision_id: "revision", revision_state: "LOCKED" },
+        attempts: [{ id: attemptId, kind: "SPAN_AUDIO", state: "RUNNING" }], generation: null,
+        gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
+      });
+    }));
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Stop audio preparation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm stop audio preparation" }));
+    await waitFor(() => expect(postedAttempts).toEqual([attemptId]));
+    const stopAgain = await screen.findByRole("button", { name: "Stop audio preparation" });
+    await waitFor(() => expect(stopAgain).toBeEnabled());
+    fireEvent.click(stopAgain);
+    expect(postedAttempts).toEqual([attemptId]);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm stop audio preparation" }));
+    await waitFor(() => expect(postedAttempts).toEqual([attemptId, attemptId]));
   });
 
   it("disarms stop confirmation after its bounded timeout", async () => {

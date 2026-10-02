@@ -18,7 +18,7 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { ImageStyleHubVersionResponse } from "@videoforge/contracts/image-style-hub";
 import { PageHeader } from "../components/PageHeader";
 import {
@@ -1236,6 +1236,9 @@ interface HostedGpuLaneActivity {
   readonly runtime_state: string | null;
   readonly planned_item_count: number | null;
   readonly accepted_item_count: number;
+  readonly provider_pending_item_count?: number;
+  readonly waiting_to_submit_item_count?: number;
+  readonly submitting_item_count?: number;
   readonly attempt_ordinal: number | null;
   readonly submitted_at: string | null;
   readonly created_at: string | null;
@@ -1274,7 +1277,7 @@ function hostedGpuLaneDisplayState(lane: HostedGpuLaneActivity): string {
 
 /** Provider phase text for a dispatched lane. The provider queue and the container cold start are
  * both normal multi-minute waits, so name them instead of leaving the stage looking idle. */
-function hostedGpuLanePhase(
+function hostedGpuLaneBasePhase(
   lane: HostedGpuLaneActivity,
   apiGeneration = false,
 ): {
@@ -1371,6 +1374,22 @@ function hostedGpuLanePhase(
       active: true,
     };
   return { label: "Waiting", detail: "This lane has not been dispatched yet.", active: false };
+}
+
+function hostedGpuLanePhase(lane: HostedGpuLaneActivity, apiGeneration = false) {
+  const phase = hostedGpuLaneBasePhase(lane, apiGeneration);
+  if (!apiGeneration || !phase.active) return phase;
+  const pending = lane.provider_pending_item_count;
+  const waiting = lane.waiting_to_submit_item_count;
+  const submitting = lane.submitting_item_count;
+  if (typeof pending !== "number" || typeof waiting !== "number" || typeof submitting !== "number" ||
+      ![pending, waiting, submitting].every(count => Number.isSafeInteger(count) && count >= 0)) return phase;
+  const detail = [
+    pending > 0 ? `${pending} sent, awaiting results` : null,
+    submitting > 0 ? `${submitting} sending` : null,
+    waiting > 0 ? `${waiting} waiting to send` : null,
+  ].filter(Boolean).join(" · ");
+  return detail ? { ...phase, detail } : phase;
 }
 
 /**
@@ -4671,6 +4690,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     readonly attemptId: string;
     readonly attemptState: string;
   } | null>(null);
+  const [selectedCancellationJobs, setSelectedCancellationJobs] = useState<Partial<Record<HostedAttempt["kind"], string>>>({});
+  const cancellationInFlight = useRef(false);
   const asrHandoff = useMutation({
     mutationFn: async () => {
       const handoff = await readJson<{ cpu_submission: unknown }>(
@@ -4919,6 +4940,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         }),
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
+    onSettled: () => { cancellationInFlight.current = false; },
   });
   const armedAttemptCurrentState = armedCancellation
     ? query.data?.attempts.find((attempt) => attempt.id === armedCancellation.attemptId)?.state
@@ -5318,6 +5340,14 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const cancellableAttempts = query.data.attempts.filter((attempt) =>
     ["OUTBOXED", "SUBMITTED", "RUNNING", "RECONCILING", "CANCEL_REQUESTED"].includes(attempt.state),
   );
+  const cancellationGroups = [...new Set(cancellableAttempts.map(attempt => attempt.kind))].map(kind => {
+    const attempts = cancellableAttempts.filter(attempt => attempt.kind === kind);
+    const attempt = attempts.find(candidate => candidate.id === selectedCancellationJobs[kind])
+      ?? attempts.find(candidate => candidate.state === "RUNNING")
+      ?? currentHostedAttempt(attempts)!;
+    const label = cancellableAttemptLabel(kind);
+    return { kind, attempts, attempt, label, scope: attempts.length > 1 ? `selected ${label} job` : label };
+  });
   const queueState = String(query.data.queue?.status ?? "").toUpperCase();
   const generationProviderAttempts = query.data.attempts.filter(
     (attempt) => attempt.kind === "MAGE_IMAGE" || attempt.kind === "SOULX_AVATAR",
@@ -5867,18 +5897,42 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             </div>
             {cancellableAttempts.length > 0 ? (
               <div className="current-run-actions">
-                {cancellableAttempts.map((attempt) => (
+                {cancellationGroups.map(({ kind, attempts, attempt, label, scope }) => (
+                  <Fragment key={kind}>
+                  {attempts.length > 1 ? (
+                    <label className="field">
+                      <span>{label[0]!.toUpperCase() + label.slice(1)} job</span>
+                      <select
+                        className="input"
+                        value={attempt.id}
+                        disabled={cancel.isPending}
+                        onChange={event => {
+                          setSelectedCancellationJobs(previous => ({ ...previous, [kind]: event.target.value }));
+                          setArmedCancellation(null);
+                        }}
+                      >
+                        {attempts.map((job, index) => (
+                          <option key={job.id} value={job.id}>
+                            Job {index + 1} · {job.state.toLowerCase().replaceAll("_", " ")}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
                   <Button
                     key={attempt.id}
                     variant="danger"
+                    disabled={cancel.isPending}
                     busy={cancel.isPending && cancel.variables === attempt.id}
                     onClick={() => {
+                      if (cancellationInFlight.current) return;
                       if (
                         attempt.state === "CANCEL_REQUESTED" ||
                         (armedCancellation?.attemptId === attempt.id &&
                           armedCancellation.attemptState === attempt.state)
                       ) {
                         setArmedCancellation(null);
+                        cancellationInFlight.current = true;
                         cancel.mutate(attempt.id);
                         return;
                       }
@@ -5890,12 +5944,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                   >
                     <X size={15} />
                     {attempt.state === "CANCEL_REQUESTED"
-                      ? `Finish stopping ${cancellableAttemptLabel(attempt.kind)}`
+                      ? `Finish stopping ${scope}`
                       : armedCancellation?.attemptId === attempt.id &&
                           armedCancellation.attemptState === attempt.state
-                        ? `Confirm stop ${cancellableAttemptLabel(attempt.kind)}`
-                        : `Stop ${cancellableAttemptLabel(attempt.kind)}`}
+                        ? `Confirm stop ${scope}`
+                        : `Stop ${scope}`}
                   </Button>
+                  </Fragment>
                 ))}
               </div>
             ) : null}

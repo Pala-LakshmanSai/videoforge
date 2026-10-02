@@ -1086,6 +1086,52 @@ describe("hosted product route contract", () => {
     }
   });
 
+  it("exposes sent and waiting API counts before any avatar output, preserving historical response shape", async () => {
+    const original = testState.query.getMockImplementation()!;
+    const previousProject = testState.projectRows[0]!;
+    const submittedAt = "2026-10-02T16:17:41.534Z";
+    const jobs = [
+      ...Array.from({ length: 34 }, () => ({ lane: "IMAGE", state: "SUCCEEDED", submitted_at: submittedAt })),
+      ...Array.from({ length: 4 }, () => ({ lane: "AVATAR", state: "SUBMITTED", submitted_at: submittedAt })),
+      ...Array.from({ length: 8 }, () => ({ lane: "AVATAR", state: "PREPARED", submitted_at: null })),
+    ];
+    testState.projectRows[0] = { ...previousProject, generation_provider: "KIE_FAL" };
+    testState.query.mockImplementation(async (sql, params) => {
+      if (sql.includes("SELECT lane,state,created_at,submitted_at,completed_at"))
+        return { rows: jobs, affectedRows: jobs.length };
+      return original(sql, params);
+    });
+    const read = async () => {
+      const result = await handleHostedProductRequest(request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"), environment, stagingConfig, executionContext);
+      expect(result?.status).toBe(200);
+      return await result!.json() as { gpu_lanes: Array<Record<string, unknown>> };
+    };
+    try {
+      const pending = await read();
+      expect(pending.gpu_lanes.find((lane) => lane.lane === "soulx_avatar")).toMatchObject({
+        attempt_state: "IN_PROGRESS", accepted_item_count: 0, submitted_at: submittedAt,
+        provider_pending_item_count: 4, waiting_to_submit_item_count: 8, submitting_item_count: 0,
+        provider_status: null,
+      });
+      expect(pending.gpu_lanes.find((lane) => lane.lane === "mage_image")).toMatchObject({
+        provider_pending_item_count: 0, waiting_to_submit_item_count: 0, submitting_item_count: 0,
+      });
+      jobs[38]!.state = "SUBMITTING";
+      expect((await read()).gpu_lanes.find((lane) => lane.lane === "soulx_avatar")).toMatchObject({
+        provider_pending_item_count: 4, waiting_to_submit_item_count: 7, submitting_item_count: 1,
+      });
+      testState.projectRows[0] = { ...previousProject, generation_provider: "RUNPOD" };
+      for (const lane of (await read()).gpu_lanes) {
+        expect(lane).not.toHaveProperty("provider_pending_item_count");
+        expect(lane).not.toHaveProperty("waiting_to_submit_item_count");
+        expect(lane).not.toHaveProperty("submitting_item_count");
+      }
+    } finally {
+      testState.projectRows[0] = previousProject;
+      testState.query.mockImplementation(original);
+    }
+  });
+
   it.each([false, true])("projects waiting admission truthfully and preserves saved spans (cleanup=%s)", async (pending) => {
     const original = testState.query.getMockImplementation()!;
     let saved = false;

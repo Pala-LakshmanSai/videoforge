@@ -1,3 +1,19 @@
+avatar_progress_2026_10_02:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  read_profile: v2_09_short_live_e2e
+  status: VALIDATION_AND_PUBLICATION_PENDING
+  branch: codex/natural-documentary
+  base_source: fc3122577fd8fbc86ce369cf5db713a234eb64d1
+  user_authority: Fix_repeated_controls_and_parallel_generation_without_reliability_regression;continuation_of_authorized_production_release.
+  diagnosis: Per_attempt_buttons_repeated12times;native_first4Fal_submissions_less_than1second_after_firstKie_submission_prove_parallel;accepted_count_was_misread_as_started_count.
+  repair: Group_UI_controls_preserving_exact_job_cancellation;surface_existing_API_pending_prepared_submitting_counts;no_scheduler_or_provider_semantics_changes.
+  validation: UI179_plus_failed_cancel_regression_product111_API_and_span32_PASS;web_and_Worker_types_lint_build_bundle_context_PASS;independent_review_zero_blockers;baseline_query_fixture_failure_reproduced_unchanged.
+  provider_spend: USD0_new_inference_or_compute;read_only_original_Fal_status_GETs_only.
+  paid_compute_shutdown: No_compute_started_or_stopped_by_this_task;existing_active_video_and_cleanup_preserved.
+  remaining_gates: Exact_publication_readback;Chrome_transport_unavailable;historical_provider_queue_or_download_timing_not_exposed.
+  evidence: evidence/acceptance/VF-10-09/2026-10-02-avatar-progress.md
+
 natural_documentary_2026_10_02:
   checkpoint: V2-09
   selected_task: VF-10-09
