@@ -246,7 +246,7 @@ approved_decisions:
   DEC_AVATAR_004: one_native_clip_two_layouts
   DEC_AVATAR_005: tenant_private_reusable_avatar_hub
   DEC_AVATAR_010: superseded_soulx_pro_historical_attempts_only
-  DEC_VIDEO_GENERATION_001: fresh_pinned_seedance_720p_7_percent_motion
+  DEC_VIDEO_GENERATION_001: fresh_pinned_seedance_720p_7_percent_target_with_verified_still_fallback
   DEC_API_GENERATION_001: fresh_kie_z_image_and_fal_flashhead_audio_to_video
   DEC_IMAGE_REGENERATION_001: new_per_image_fal_z_image_turbo_original_media_immutable
   DEC_BUILD_001: hosted_linux_heavy_builds_no_mac_dependency
