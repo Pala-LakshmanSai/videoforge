@@ -6,6 +6,7 @@ import {
   type ValidatedContractDocument,
 } from "@videoforge/contracts";
 import { validateAndHashHostedContractDocument as validateAndHashContractDocument } from "./precompiled-contract-validation";
+import { matchesVideoTimelineSegmentId } from "@videoforge/pipeline";
 
 import { sha256 } from "./crypto";
 import { canonicalJson, exactHostedRenderSubmission } from "./submission";
@@ -606,12 +607,12 @@ export async function materializeHostedRenderPlan(
     const artifact = video.artifact;
     exactScope(artifact, input);
     const source = accepted.get(video.sourceTaskKey);
-    const index = timeline.value.segments.findIndex((segment) => segment.segment_id === video.segmentId);
+    const index = timeline.value.segments.findIndex((segment) => matchesVideoTimelineSegmentId(video.segmentId, segment.segment_id));
     const timelineSegment = timeline.value.segments[index];
     const segment = manifest.value.segments[index];
     if (!segment || !timelineSegment || timelineSegment.timeline_composition !== "IMAGE_FULL" ||
         segment.timeline_composition !== "IMAGE_FULL" || manifest.value.schema_version !== "resolved-render-manifest/v2" ||
-        videoBySegment.has(video.segmentId) || artifact.kind !== "VIDEO" || artifact.lane !== "SCENE_VIDEO" ||
+        videoBySegment.has(segment.segment_id) || artifact.kind !== "VIDEO" || artifact.lane !== "SCENE_VIDEO" ||
         artifact.contentType !== "video/mp4" || artifact.barrierAcceptance !== "ACCEPTED_CANONICAL" ||
         artifact.acceptedAttemptId === null || !UUID.test(artifact.acceptedAttemptId) ||
         artifact.taskKey !== `video:${video.segmentId}` || !source || source.kind !== "IMAGE" ||
@@ -622,7 +623,7 @@ export async function materializeHostedRenderPlan(
         segment.render.video_source_profile !== "seedance-pro-fast-1248x704-v1" || segment.render.video_frame_count !== video.videoFrameCount) {
       reject("HOSTED_RENDER_VIDEO_BINDING_DRIFT");
     }
-    videoBySegment.set(video.segmentId, artifact);
+    videoBySegment.set(segment.segment_id, artifact);
     selectedVideoFrames += video.videoFrameCount;
   }
   if (selectedVideoFrames > Math.floor(timeline.value.total_frames * 7 / 100) ||

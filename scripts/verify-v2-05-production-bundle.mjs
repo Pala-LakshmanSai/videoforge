@@ -61,9 +61,11 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // Seedance7% planning, version2 manifest/materialization and provider drain integration add
 // exactly11,829 production and11,665 staging bytes. Clients/validators stay dynamically
 // loaded; provider/native/quarantine checks and strict no-growth ceilings remain enforced.
+// Exact relational-to-canonical video segment matching adds335 measured bytes in
+// both builds. Malformed prefixes still reject; all quarantine/CPU bounds remain.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_797_944,
-  "wrangler.staging.jsonc": 2_794_867,
+  "wrangler.production.jsonc": 2_798_279,
+  "wrangler.staging.jsonc": 2_795_202,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",

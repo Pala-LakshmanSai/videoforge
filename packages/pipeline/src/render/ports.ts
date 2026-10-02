@@ -39,3 +39,4 @@ export {
   VNEXT_PROVIDER_FREE_AVATAR_SOURCE_PROFILE,
   SUPPORTED_RENDER_PROFILE_VERSION,
 } from "./vnext-boundary.js";
+export { matchesVideoTimelineSegmentId } from "./resolved-manifest.js";

@@ -28,6 +28,10 @@ const readerGrantSource = readFileSync(
   new URL("../migrations/0245_hosted_seedance_video_render_reader_grant.sql", import.meta.url),
   "utf8",
 );
+const segmentSource = readFileSync(
+  new URL("../migrations/0246_hosted_seedance_video_canonical_segment.sql", import.meta.url),
+  "utf8",
+);
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const hash = "sha256:" + "a".repeat(64);
 
@@ -1129,12 +1133,180 @@ test("0240 applies to the real prior chain and enforces private immutable video 
       ]),
       false,
     );
+    // Reproduce the real persisted relational key versus canonical UUID before
+    // 0246; only metadata fixture seeding changes this immutable terminal row.
+    const canonicalSegment = id(246001);
+    await seed("hosted_video_jobs", "UPDATE hosted_video_jobs SET segment_id=$2 WHERE id=$1", [
+      sibling,
+      `segment:${canonicalSegment}`,
+    ]);
+    const canonicalManifest = {
+      ...mixedManifest,
+      segments: [
+        mixedManifest.segments[0],
+        { ...mixedManifest.segments[1], segment_id: canonicalSegment },
+      ],
+    };
+    assert.equal(
+      await call("videoforge_hosted_video_manifest_valid", [
+        a,
+        w,
+        g,
+        JSON.stringify(canonicalManifest),
+      ]),
+      false,
+    );
+    await executor.execute(segmentSource);
+    const durableVideoBefore = (
+      await db.query("SELECT to_jsonb(j) value FROM hosted_video_jobs j WHERE id=$1", [sibling])
+    ).rows[0].value;
+    assert.equal(
+      await call("videoforge_hosted_video_manifest_valid", [
+        a,
+        w,
+        g,
+        JSON.stringify(canonicalManifest),
+      ]),
+      true,
+    );
+    for (const changed of [
+      {
+        ...canonicalManifest,
+        segments: [
+          canonicalManifest.segments[0],
+          { ...canonicalManifest.segments[1], segment_id: id(246002) },
+        ],
+      },
+      {
+        ...canonicalManifest,
+        segments: [
+          canonicalManifest.segments[0],
+          { ...canonicalManifest.segments[1], segment_id: `other:${canonicalSegment}` },
+        ],
+      },
+      {
+        ...canonicalManifest,
+        segments: [
+          canonicalManifest.segments[0],
+          {
+            ...canonicalManifest.segments[1],
+            accepted_assets: {
+              ...canonicalManifest.segments[1].accepted_assets,
+              image: { asset_id: id(999), sha256: hash },
+            },
+          },
+        ],
+      },
+      {
+        ...canonicalManifest,
+        segments: [
+          canonicalManifest.segments[0],
+          {
+            ...canonicalManifest.segments[1],
+            accepted_assets: {
+              ...canonicalManifest.segments[1].accepted_assets,
+              image: { asset_id: sourceAsset, sha256: "sha256:" + "e".repeat(64) },
+            },
+          },
+        ],
+      },
+      {
+        ...canonicalManifest,
+        segments: [
+          canonicalManifest.segments[0],
+          {
+            ...canonicalManifest.segments[1],
+            render: { ...canonicalManifest.segments[1].render, video_frame_count: 59 },
+          },
+        ],
+      },
+      {
+        ...canonicalManifest,
+        segments: [
+          ...canonicalManifest.segments,
+          { ...canonicalManifest.segments[1], segment_id: `segment:${canonicalSegment}` },
+        ],
+      },
+    ])
+      assert.equal(
+        await call("videoforge_hosted_video_manifest_valid", [a, w, g, JSON.stringify(changed)]),
+        false,
+      );
+    assert.equal(
+      await call("videoforge_hosted_video_manifest_valid", [
+        IDS.accountB,
+        w,
+        g,
+        JSON.stringify(canonicalManifest),
+      ]),
+      false,
+    );
+    assert.deepEqual(
+      (await db.query("SELECT to_jsonb(j) value FROM hosted_video_jobs j WHERE id=$1", [sibling]))
+        .rows[0].value,
+      durableVideoBefore,
+    );
+    await db.exec("SAVEPOINT source_key_mapping");
+    await seed(
+      "hosted_video_jobs",
+      "UPDATE hosted_video_jobs SET source_task_key='image:foreign' WHERE id=$1",
+      [sibling],
+    );
+    assert.equal(
+      await call("videoforge_hosted_video_manifest_valid", [
+        a,
+        w,
+        g,
+        JSON.stringify(canonicalManifest),
+      ]),
+      false,
+    );
+    await db.exec("ROLLBACK TO SAVEPOINT source_key_mapping");
+    // The same exact mapping also preserves a failed scene's original image.
+    const canonicalStaticSegment = id(246003);
+    await seed("hosted_video_jobs", "UPDATE hosted_video_jobs SET segment_id=$2 WHERE id=$1", [
+      j,
+      `segment:${canonicalStaticSegment}`,
+    ]);
+    assert.equal(
+      await call("videoforge_hosted_video_manifest_valid", [
+        a,
+        w,
+        g,
+        JSON.stringify({
+          ...canonicalManifest,
+          segments: [
+            { ...canonicalManifest.segments[0], segment_id: canonicalStaticSegment },
+            canonicalManifest.segments[1],
+          ],
+        }),
+      ]),
+      true,
+    );
+    await seed("hosted_video_jobs", "UPDATE hosted_video_jobs SET segment_id='scene' WHERE id=$1", [
+      j,
+    ]);
+    // Neither arbitrary prefix stripping nor repeated segment: prefixes is accepted.
+    await seed("hosted_video_jobs", "UPDATE hosted_video_jobs SET segment_id=$2 WHERE id=$1", [
+      sibling,
+      `segment:segment:${canonicalSegment}`,
+    ]);
+    assert.equal(
+      await call("videoforge_hosted_video_manifest_valid", [
+        a,
+        w,
+        g,
+        JSON.stringify(canonicalManifest),
+      ]),
+      false,
+    );
     assert.equal((await call("videoforge_read_hosted_video_jobs", [a, w, g])).plannedJobCount, 2);
     assert.equal(
       (await db.query("SELECT state FROM generation_requests WHERE id=$1", [g])).rows[0].state,
       "ACTIVE",
     );
     await db.exec("ROLLBACK TO SAVEPOINT fallback_cases");
+    await executor.execute(segmentSource);
     // Last definite failure closes the same native stage/lease barrier as a clip commit.
     for (const [n, lane] of [
       [244010, "mage_image"],

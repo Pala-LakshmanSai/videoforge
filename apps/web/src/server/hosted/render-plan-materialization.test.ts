@@ -3,6 +3,7 @@ import {
   type ResolvedRenderManifestDocument,
 } from "@videoforge/contracts";
 import { describe, expect, it } from "vitest";
+import { collectRequiredAssetTaskKeys, planVNextResolvedRenderManifest, resolveVNextAcceptedAssets } from "@videoforge/pipeline";
 
 import revisionFixture from "../../../../../packages/contracts/generated/fixtures/project_revision_config.valid.json";
 import timelineFixture from "../../../../../packages/contracts/generated/fixtures/timeline_plan.valid.json";
@@ -547,6 +548,61 @@ describe("hosted render-plan materialization", () => {
     expect(database.inserts).toBe(1);
     expect(JSON.stringify(created.payload)).not.toMatch(/caption|overlay|transition|watermark/iu);
     expect(JSON.stringify(input.resolvedManifest.document)).toContain("image-full-zoom-v3");
+  });
+
+  it("materializes two hosted UUID video aliases and retains the third original still", async () => {
+    const base = await validInput();
+    const originalImage = base.timing.timeline.segments[0]!;
+    if (originalImage.timeline_composition !== "IMAGE_FULL") throw new Error("Expected image fixture");
+    const ids = ["6aa52c17-016f-5220-868f-f15582fac4cc", "da4c19fe-2346-5517-952a-6109124a53ad", "1aa52c17-016f-5220-868f-f15582fac4cc"];
+    const timeline = await validateAndHashContractDocument("timelinePlan", {
+      ...base.timing.timeline,
+      segments: ids.map((id, index) => ({ ...originalImage, segment_id: id,
+        start_frame: index * 120, end_frame_exclusive: (index + 1) * 120,
+        source_audio_start_ms: index * 4000, source_audio_end_ms: (index + 1) * 4000,
+        word_start: index * 3, word_end_exclusive: (index + 1) * 3,
+        required_slots: { image: { ...originalImage.required_slots.image, task_key: `image:${id}` } } })),
+    });
+    const visuals = ids.map((id, index) => ({ ...base.acceptedVisuals[0]!, taskKey: `image:${id}`,
+      receiptId: `${index + 3}7777777-7777-4777-8777-777777777777`,
+      assetId: `still-${index}`, checksumSha256: `sha256:${String(index + 3).repeat(64)}`,
+      objectKey: base.acceptedVisuals[0]!.objectKey.replace("mage-image-one", `still-${index}`) }));
+    const candidates = visuals.map((visual) => ({ taskKey: visual.taskKey!, assetId: visual.assetId,
+      sha256: visual.checksumSha256 as `sha256:${string}`, kind: "IMAGE" as const }));
+    const accepted = resolveVNextAcceptedAssets({ timeline, requiredTaskKeys: collectRequiredAssetTaskKeys(timeline.value), candidates });
+    if (!accepted.ok) throw new Error(accepted.error.code);
+    const videos = ids.slice(0, 2).map((id, index) => {
+      const videoArtifact = { ...artifact({ lane: "SCENE_VIDEO", kind: "VIDEO", taskKey: `video:segment:${id}`,
+        assetId: `clip-${index}`, checksumSha256: `sha256:${String(index + 7).repeat(64)}`,
+        contentType: "video/mp4", receiptId: `${index + 8}7777777-7777-4777-8777-777777777777` }), acceptedAttemptId: API_JOB_ID };
+      return { segmentId: `segment:${id}`, sourceTaskKey: `image:${id}`, sourceSha256: visuals[index]!.checksumSha256,
+        videoFrameCount: 12, artifact: { ...videoArtifact, objectKey: videoArtifact.objectKey.replace("/job/render-plan/", `/job/${API_JOB_ID}/`) } };
+    });
+    const revision = await validateAndHashContractDocument("projectRevisionConfig", base.revisionDocument);
+    const planned = await planVNextResolvedRenderManifest({ revision, timeline, acceptedAssets: accepted.value,
+      voiceover: { taskKey: "voiceover", assetId: base.voiceover.assetId, sha256: base.voiceover.checksumSha256 as `sha256:${string}`, kind: "VOICEOVER" },
+      renderProfileVersion: "ffmpeg-render-v3", videoAssets: videos.map((video) => ({ ...video,
+        sourceSha256: video.sourceSha256 as `sha256:${string}`, assetId: video.artifact.assetId,
+        sha256: video.artifact.checksumSha256 as `sha256:${string}`, kind: "VIDEO" })) });
+    if (!planned.ok) throw new Error(planned.error.code);
+    const input = { ...base, acceptedVisuals: visuals, acceptedVideos: videos,
+      timing: { ...base.timing, timeline: timeline.value, timelineSha256: timeline.sha256 },
+      resolvedManifest: { document: planned.value.value, artifact: { ...base.resolvedManifest.artifact, checksumSha256: planned.value.sha256 } } };
+    const result = await materializeHostedRenderPlan(new MemoryDatabase(), input);
+    const renderInput = result.payload.input_document as { schema_version: string; assets: { kind: string }[] };
+    expect(renderInput.schema_version).toBe("render-job-input/v2");
+    expect(renderInput.assets.filter((asset) => asset.kind === "VIDEO")).toHaveLength(2);
+    expect(planned.value.value.segments.map((segment) => segment.segment_id)).toEqual(ids);
+    expect(planned.value.value.segments[2]!.accepted_assets).toEqual({ image: { asset_id: visuals[2]!.assetId, sha256: visuals[2]!.checksumSha256 } });
+    expect(videos[0]!.artifact.taskKey).toBe(`video:segment:${ids[0]}`);
+    for (const invalid of [
+      [...videos, { ...videos[0]!, segmentId: ids[0]! }],
+      [{ ...videos[0]!, segmentId: `segment:segment:${ids[0]}` }, videos[1]!],
+      [{ ...videos[0]!, sourceSha256: VOICEOVER_HASH }, videos[1]!],
+    ]) {
+      await expect(materializeHostedRenderPlan(new MemoryDatabase(), { ...input, acceptedVideos: invalid }))
+        .rejects.toMatchObject({ code: "HOSTED_RENDER_VIDEO_BINDING_DRIFT" });
+    }
   });
 
   it("writes one mixed plan only for the exact approved SoulX full/split profile", async () => {

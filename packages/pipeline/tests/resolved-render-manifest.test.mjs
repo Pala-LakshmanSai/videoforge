@@ -13,6 +13,7 @@ import {
   SUPPORTED_RENDER_PROFILE_VERSION,
 } from "../dist/src/legacy-replay/index.js";
 import {
+  matchesVideoTimelineSegmentId,
   planVNextResolvedRenderManifest,
   resolveVNextProviderAcceptedAssets,
 } from "../dist/src/index.js";
@@ -198,6 +199,37 @@ test("pins Seedance motion to its retained image and caps exact timeline coverag
       videoAssets: [{ ...video, ...invalid }],
     });
     assert.equal(rejected.ok, false, JSON.stringify(invalid));
+    assert.equal(rejected.error.code, "ASSET_KIND_MISMATCH");
+  }
+});
+
+test("maps only exact hosted UUID segment aliases without changing provider identity", async () => {
+  const request = await requestWith(CANDIDATES.map((candidate) => candidate.kind === "AVATAR_CLIP"
+    ? { ...candidate, rendererSourceProfile: "local-fixture-centered-832x480p25-v1" } : candidate));
+  const canonicalId = "6aa52c17-016f-5220-868f-f15582fac4cc";
+  const timelineValue = structuredClone(request.timeline.value);
+  timelineValue.segments[1].segment_id = canonicalId;
+  const timeline = await validateAndHashContractDocument("timelinePlan", timelineValue);
+  const video = { segmentId: `segment:${canonicalId}`, sourceTaskKey: "image:seg_0002",
+    sourceSha256: CANDIDATES[1].sha256, videoFrameCount: 25, assetId: "asset_video_seg_0002",
+    sha256: `sha256:${"8".repeat(64)}`, kind: "VIDEO" };
+  const planned = requireSuccess(await planVNextResolvedRenderManifest({ ...request, timeline, videoAssets: [video] }));
+  assert.equal(planned.value.segments[1].segment_id, canonicalId);
+  assert.equal(planned.value.segments[1].render.video_frame_count, 25);
+  assert.equal(planned.value.segments[1].accepted_assets.image.sha256, video.sourceSha256);
+  assert.equal(video.segmentId, `segment:${canonicalId}`);
+  assert.equal(matchesVideoTimelineSegmentId("seg_0002", "seg_0002"), true);
+  assert.equal(matchesVideoTimelineSegmentId("segment:seg_0002", "seg_0002"), false);
+  assert.equal(matchesVideoTimelineSegmentId(`segment:${canonicalId.toUpperCase()}`, canonicalId.toUpperCase()), false);
+  for (const videoAssets of [
+    [{ ...video, segmentId: `segment:segment:${canonicalId}` }],
+    [{ ...video, segmentId: "segment:da4c19fe-2346-5517-952a-6109124a53ad" }],
+    [{ ...video, sourceTaskKey: "image:foreign" }],
+    [{ ...video, sourceSha256: `sha256:${"9".repeat(64)}` }],
+    [video, { ...video, segmentId: canonicalId }],
+  ]) {
+    const rejected = await planVNextResolvedRenderManifest({ ...request, timeline, videoAssets });
+    assert.equal(rejected.ok, false);
     assert.equal(rejected.error.code, "ASSET_KIND_MISMATCH");
   }
 });
