@@ -47,6 +47,47 @@ describe("Runware Seedance durable job", () => {
     expect(input.markSubmissionUnknown).not.toHaveBeenCalled();
   });
 
+  it("accepts only exact scoped HTTP200 validation refusals as definite rejection", async () => {
+    const refusal = { taskUUID, taskType: "videoInference", status: "error",
+      code: "invalidDuration", parameter: "duration" };
+    const input = submission();
+    await expect(submitRunwareSeedanceJob({ ...input,
+      fetchPort: async () => json({ errors: [refusal] }),
+    })).rejects.toMatchObject({ code: "SUBMIT_REJECTED" });
+    expect(input.markSubmissionFailed).toHaveBeenCalledTimes(1);
+    expect(input.markSubmissionUnknown).not.toHaveBeenCalled();
+    for (const error of [{ ...refusal, taskUUID: videoUUID }, { ...refusal, taskType: "getResponse" },
+      { ...refusal, code: "timeoutProvider" }, { ...refusal, parameter: "response" },
+      { ...refusal, cost: 0.01 }]) {
+      const ambiguous = submission();
+      await expect(submitRunwareSeedanceJob({ ...ambiguous,
+        fetchPort: async () => json({ errors: [error] }),
+      })).rejects.toMatchObject({ code: "SUBMIT_UNKNOWN" });
+      expect(ambiguous.markSubmissionFailed).not.toHaveBeenCalled();
+      expect(ambiguous.markSubmissionUnknown).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("reports bounded submission diagnostics without exposing provider bodies or transport messages", async () => {
+    const privateMessage = "sensitive-provider-body-or-url";
+    const cases = [
+      { fetchPort: async () => { throw new Error(privateMessage); }, diagnostic: { kind: "TRANSPORT_ERROR" } },
+      { fetchPort: async () => new Response(privateMessage, { status: 502 }), diagnostic: { kind: "INVALID_JSON", httpStatus: 502 } },
+      { fetchPort: async () => json([]), diagnostic: { kind: "RESPONSE_SHAPE", httpStatus: 200 } },
+      { fetchPort: async () => json({ errors: [{ message: privateMessage }] }, 429), diagnostic: { kind: "HTTP_ERROR", httpStatus: 429 } },
+      { fetchPort: async () => json({ data: [{ taskType: "getResponse", taskUUID, message: privateMessage }] }), diagnostic: { kind: "ACK_IDENTITY", httpStatus: 200 } },
+    ];
+    for (const test of cases) {
+      const input = submission();
+      const error = await submitRunwareSeedanceJob({ ...input, fetchPort: test.fetchPort }).catch((error: unknown) => error);
+      expect(error).toMatchObject({ code: "SUBMIT_UNKNOWN", submissionDiagnostic: test.diagnostic });
+      expect(JSON.stringify(error)).not.toContain(privateMessage);
+      expect(input.markSubmissionUnknown).toHaveBeenCalledTimes(1);
+      expect(input.markSubmissionFailed).not.toHaveBeenCalled();
+      expect(input.persistRequestId).not.toHaveBeenCalled();
+    }
+  });
+
   it("rejects invalid duration/prompt before claiming or making a paid request", async () => {
     const input = submission();
     const fetchPort = vi.fn();
@@ -67,7 +108,7 @@ describe("Runware Seedance durable job", () => {
         .rejects.toMatchObject({ code: "RESPONSE_INVALID" });
     }
     const fetchPort = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => json({ data: [{ taskType: "videoInference", taskUUID, status: "processing" }] }));
-    expect(await observeRunwareSeedanceJob({ ...input, fetchPort })).toEqual({ state: "PENDING" });
+    expect(await observeRunwareSeedanceJob({ ...input, fetchPort })).toEqual({ state: "PENDING", submissionConfirmed: true });
     expect(JSON.parse(String((fetchPort.mock.calls[0]?.[1] as RequestInit)?.body)))
       .toEqual([{ taskType: "getResponse", taskUUID }]);
     expect(await observeRunwareSeedanceJob({ ...input,
@@ -85,7 +126,7 @@ describe("Runware Seedance durable job", () => {
     const bucket = { get: vi.fn(), put: vi.fn() } as unknown as HostedR2BucketBinding;
     const input = { requestId, apiKey, objectKey, durationSeconds: 1.2, bucket, recordProviderCost };
     const fetchPort = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => json({ data: [processing] }));
-    expect(await observeRunwareSeedanceJob({ ...input, fetchPort })).toEqual({ state: "PENDING" });
+    expect(await observeRunwareSeedanceJob({ ...input, fetchPort })).toEqual({ state: "PENDING", submissionConfirmed: false });
     expect(JSON.parse(String(fetchPort.mock.calls[0]?.[1]?.body))).toEqual([{ taskType: "getResponse", taskUUID: requestId }]);
     for (const result of [{ ...processing, taskUUID }, { ...processing, model: "other:model" },
       { ...processing, taskType: "imageInference" }, { ...completed, taskUUID: requestId, taskType: "getResponse" }]) {
@@ -111,8 +152,10 @@ describe("Runware Seedance durable job", () => {
         stored = new Uint8Array(value); receipt = options.customMetadata;
       }),
     } as unknown as HostedR2BucketBinding;
+    // The official Fast examples return a completed videoInference receipt without status.
+    const { status: _status, ...documentedReceipt } = completed;
     const fetchPort = vi.fn(async (url: string | URL | Request) => String(url).includes("api.runware.ai")
-      ? json({ data: [completed] })
+      ? json({ data: [documentedReceipt] })
       : new Response(bytes, { headers: { "content-type": "video/mp4", "content-length": String(bytes.byteLength) } }));
     const input = { requestId: taskUUID, apiKey, objectKey, durationSeconds: 1.2, bucket, fetchPort };
     const first = await observeRunwareSeedanceJob(input);
@@ -125,6 +168,23 @@ describe("Runware Seedance durable job", () => {
     expect(fetchPort.mock.calls.filter(([url]) => !String(url).includes("api.runware.ai"))).toHaveLength(1);
     receipt!.taskUUID = videoUUID;
     await expect(observeRunwareSeedanceJob(input)).rejects.toMatchObject({ code: "RESULT_STORAGE_UNKNOWN" });
+  });
+
+  it("requires complete media identity and exact scope before accepting an absent-status receipt", async () => {
+    const { status: _status, ...documentedReceipt } = completed;
+    const recordProviderCost = vi.fn(async () => undefined);
+    const bucket = { get: vi.fn(), put: vi.fn() } as unknown as HostedR2BucketBinding;
+    const input = { requestId: taskUUID, apiKey, objectKey, durationSeconds: 1.2, bucket, recordProviderCost };
+    for (const result of [{ ...documentedReceipt, taskUUID: videoUUID },
+      { ...documentedReceipt, model: "other:model" }, { ...documentedReceipt, taskType: "getResponse" },
+      { ...documentedReceipt, status: null }, { ...documentedReceipt, videoUUID: undefined },
+      { ...documentedReceipt, videoURL: undefined }, { ...documentedReceipt, videoURL: "http://vm.runware.ai/video/clip.mp4" },
+      { ...documentedReceipt, cost: undefined }, { ...documentedReceipt, cost: "0.1" }]) {
+      await expect(observeRunwareSeedanceJob({ ...input, fetchPort: async () => json({ data: [result] }) }))
+        .rejects.toMatchObject({ code: "RESPONSE_INVALID" });
+    }
+    expect(recordProviderCost).not.toHaveBeenCalled();
+    expect(bucket.get).not.toHaveBeenCalled(); expect(bucket.put).not.toHaveBeenCalled();
   });
 
   it("persists a validated provider charge before artifact acceptance and preserves receipt errors", async () => {

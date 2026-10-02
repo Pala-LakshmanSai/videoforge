@@ -108,7 +108,7 @@ describe("hosted video execution", () => {
     fixture.plannedJobCount = null;
     fixture.submit.mockReset(); fixture.observe.mockReset(); fixture.observeImage.mockReset();
     vi.stubGlobal("fetch", vi.fn(() => { throw new Error("Live requests forbidden in fixture"); }));
-    fixture.observe.mockResolvedValue({ state: "PENDING" });
+    fixture.observe.mockResolvedValue({ state: "PENDING", submissionConfirmed: false });
     fixture.submit.mockImplementation(async (input: Parameters<typeof import("../providers/runware-seedance-job").submitRunwareSeedanceJob>[0]) => {
       expect(fixture.videos.find((job) => job.id === input.taskUUID)?.state).toBe("SUBMITTING");
       expect(await input.claimSubmission()).toBe(true);
@@ -132,12 +132,23 @@ describe("hosted video execution", () => {
 
   it.each(["SUBMITTING", "UNKNOWN_NO_RETRY"])("polls saved %s UUIDs without another POST", async (state) => {
     fixture.videos = [...videoJobs(state), ...videoJobs("PREPARED", 2).slice(1)];
+    fixture.observe.mockResolvedValue({ state: "PENDING", submissionConfirmed: true });
     const result = await run(advanceHostedVideoGeneration(environment, database, scope, true));
     expect(fixture.submit).not.toHaveBeenCalled();
     expect(fixture.observe).toHaveBeenCalledWith(expect.objectContaining({ requestId: identity(0) }));
     expect(fixture.videos.map((job) => job.state)).toEqual(["SUBMITTED", "PREPARED"]);
     expect(result.progressed).toBe(true);
     expect(fixture.events).not.toContain(`videoforge_claim_hosted_video_job:${identity(1)}`);
+  });
+
+  it.each(["SUBMITTING", "UNKNOWN_NO_RETRY"])("does not promote %s on generic never-submitted-UUID polling envelopes", async (state) => {
+    fixture.videos = [...videoJobs(state), ...videoJobs("PREPARED", 2).slice(1)];
+    const result = await run(advanceHostedVideoGeneration(environment, database, scope, true));
+    expect(fixture.videos.map((job) => job.state)).toEqual([state, "PREPARED"]);
+    expect(result.progressed).toBe(false); expect(result.problemCode).toBe("SEEDANCE_SUBMISSION_UNCERTAIN");
+    expect(fixture.submit).not.toHaveBeenCalled();
+    expect(fixture.events.some((event) => event.startsWith("videoforge_record_hosted_video_task"))).toBe(false);
+    expect(fixture.events.some((event) => event.startsWith("videoforge_claim_hosted_video_job"))).toBe(false);
   });
 
   it("rejects a pinned plan whose materialized jobs are missing before any paid call", async () => {

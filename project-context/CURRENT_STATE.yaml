@@ -2,7 +2,7 @@ seedance_video_2026_10_02:
   checkpoint: V2-09
   selected_task: SEEDANCE_VIDEO_PLAN
   read_profile: v2_09_seedance_video
-  state: PRODUCTION_ACTIVE_SHORT_LIVE_QUALIFICATION_RUNNING
+  state: PRODUCTION_ACTIVE_PROVIDER_ABSENCE_RECONCILIATION
   branch: codex/seedance-video
   rollback_source: f705d6c21bf7b6ab46ba1801fb30eff0b58729f0
   rollback_checkout: 4d5af76c007b76f39cd6a715b26fefd71ee8e40a
@@ -14,11 +14,11 @@ seedance_video_2026_10_02:
   test_spend_cap_usd: 4.00
   test_spend_usd: null
   test_reserved_maximum_usd: 3.81
-  test_cloud_liability_usd: 0.60
+  test_cloud_liability_usd: 1.00
   paid_compute_started: true
-  production_source: c7fa89ea6d7438cb89772f70cd0c4a2294ffa95d
-  production_version: a1467cbd-0dbd-459b-a112-79c47b13d97f
-  migrations: 0240_hosted_seedance_video_and_0241_actual_charge_retention
+  production_source: dcbf41ae242c8e1d8a251cbd83f77131de43ec5d
+  production_version: b983472e-fd88-4669-bff7-10caa858a62f
+  migrations: 0240_video_0241_actual_cost_0242_operator_only_absent_task_closure
   desktop_release: 0.1.46
   cloud_image_digest: sha256:0c6548a3e383f9a36802fbdae2e9a342806febb6ae9ffc142e9a8e6d88d526fe
   canary_project: e924a8ee-7eec-48e5-b8a8-80ac88b28a25

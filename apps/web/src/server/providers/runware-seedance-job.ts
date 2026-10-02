@@ -10,11 +10,16 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{1
 const OBJECT_KEY = /^tenant\/[A-Za-z0-9._:-]+\/workspace\/[A-Za-z0-9._:-]+\/project\/[A-Za-z0-9._:-]+\/revision\/[A-Za-z0-9._:-]+\/lane\/scene-video\/job\/[A-Za-z0-9._:-]+\/artifact\/[A-Za-z0-9._:-]+$/u;
 type FetchPort = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 type Row = Record<string, unknown>;
+export interface RunwareSeedanceSubmissionDiagnostic {
+  readonly kind: "HTTP_ERROR" | "INVALID_JSON" | "RESPONSE_SHAPE" | "ACK_IDENTITY" | "TRANSPORT_ERROR";
+  readonly httpStatus?: number;
+}
 
 export class RunwareSeedanceJobError extends Error {
   constructor(readonly code: "INPUT_INVALID" | "SUBMIT_REJECTED" | "SUBMIT_UNKNOWN" |
     "POLL_UNAVAILABLE" | "RESPONSE_INVALID" | "OUTPUT_KEY_INVALID" | "RESULT_DOWNLOAD_FAILED" |
-    "RESULT_MP4_INVALID" | "RESULT_STORAGE_UNKNOWN" | "RESULT_PRICE_CHANGED") {
+    "RESULT_MP4_INVALID" | "RESULT_STORAGE_UNKNOWN" | "RESULT_PRICE_CHANGED",
+    readonly submissionDiagnostic?: RunwareSeedanceSubmissionDiagnostic) {
     super(code);
     this.name = "RunwareSeedanceJobError";
   }
@@ -54,8 +59,13 @@ async function request(apiKey: string, task: Row, fetchPort: FetchPort): Promise
     redirect: "error",
     signal: AbortSignal.timeout(30_000),
   });
-  const body = row(JSON.parse(await response.text()));
-  if (!body) throw new RunwareSeedanceJobError("RESPONSE_INVALID");
+  let decoded: unknown;
+  try { decoded = JSON.parse(await response.text()); }
+  catch {
+    throw new RunwareSeedanceJobError("RESPONSE_INVALID", { kind: "INVALID_JSON", httpStatus: response.status });
+  }
+  const body = row(decoded);
+  if (!body) throw new RunwareSeedanceJobError("RESPONSE_INVALID", { kind: "RESPONSE_SHAPE", httpStatus: response.status });
   return { response, body };
 }
 
@@ -67,6 +77,16 @@ function resultRows(body: Row, field: "data" | "errors"): Row[] {
     if (!item) throw new RunwareSeedanceJobError("RESPONSE_INVALID");
     return item;
   });
+}
+
+function isExplicitValidationRefusal(error: Row, taskUUID: string): boolean {
+  return error.taskUUID === taskUUID && error.taskType === "videoInference" &&
+    (error.status === undefined || error.status === "error") && (error.cost === undefined || error.cost === 0) &&
+    ["invalidParameter", "invalidDuration", "invalidWidth", "invalidHeight", "invalidModel",
+      "invalidPrompt", "invalidPositivePrompt", "unsupportedParameter", "validationError"].includes(String(error.code)) &&
+    ["duration", "width", "height", "model", "positivePrompt", "inputs", "inputs.frameImages",
+      "numberResults", "outputType", "outputFormat", "deliveryMethod", "taskUUID",
+      "providerSettings.bytedance.cameraFixed"].includes(String(error.parameter));
 }
 
 /** The claim must durably save taskUUID before the single paid POST. */
@@ -94,23 +114,32 @@ export async function submitRunwareSeedanceJob(input: {
       duration: input.durationSeconds, positivePrompt: input.prompt,
       inputs: { frameImages: [input.imageUrl] }, providerSettings: { bytedance: { cameraFixed: true } },
     }, input.fetchPort ?? fetch);
-    const errors = resultRows(body, "errors");
-    const data = resultRows(body, "data");
+    let errors: Row[], data: Row[];
+    try { errors = resultRows(body, "errors"); data = resultRows(body, "data"); }
+    catch {
+      throw new RunwareSeedanceJobError("SUBMIT_UNKNOWN", { kind: "RESPONSE_SHAPE", httpStatus: response.status });
+    }
     // 5xx, rate limits, malformed acknowledgments and lost replies never authorize another POST.
     if (errors.length > 0 && data.length === 0 && [400, 401, 402, 403, 404].includes(response.status) &&
         errors.every((error) => error.taskUUID === input.taskUUID || error.taskType === "authentication"))
       throw new RunwareSeedanceJobError("SUBMIT_REJECTED");
-    if (!response.ok || errors.length || data.length !== 1 || data[0]?.taskUUID !== input.taskUUID ||
+    if (response.status === 200 && data.length === 0 && errors.length === 1 &&
+        isExplicitValidationRefusal(errors[0]!, input.taskUUID))
+      throw new RunwareSeedanceJobError("SUBMIT_REJECTED");
+    if (!response.ok || errors.length)
+      throw new RunwareSeedanceJobError("SUBMIT_UNKNOWN", { kind: "HTTP_ERROR", httpStatus: response.status });
+    if (data.length !== 1 || data[0]?.taskUUID !== input.taskUUID ||
         data[0]?.taskType !== "videoInference" ||
         (data[0]?.model !== undefined && data[0]?.model !== SEEDANCE_MODEL))
-      throw new RunwareSeedanceJobError("SUBMIT_UNKNOWN");
+      throw new RunwareSeedanceJobError("SUBMIT_UNKNOWN", { kind: "ACK_IDENTITY", httpStatus: response.status });
   } catch (error) {
     if (error instanceof RunwareSeedanceJobError && error.code === "SUBMIT_REJECTED") {
       await input.markSubmissionFailed();
       throw error;
     }
     await input.markSubmissionUnknown();
-    throw new RunwareSeedanceJobError("SUBMIT_UNKNOWN");
+    throw new RunwareSeedanceJobError("SUBMIT_UNKNOWN", error instanceof RunwareSeedanceJobError
+      ? error.submissionDiagnostic : { kind: "TRANSPORT_ERROR" });
   }
   // Failed persistence retains SUBMITTING and its known UUID; polling is safe, resubmission is forbidden.
   await input.persistRequestId(input.taskUUID);
@@ -194,7 +223,7 @@ export async function observeRunwareSeedanceJob(input: {
   readonly bucket: HostedR2BucketBinding;
   readonly recordProviderCost?: (costUsd: number) => Promise<void>;
   readonly fetchPort?: FetchPort;
-}): Promise<{ readonly state: "PENDING" | "FAILED" } |
+}): Promise<{ readonly state: "PENDING"; readonly submissionConfirmed: boolean } | { readonly state: "FAILED" } |
   { readonly state: "SUCCEEDED"; readonly artifact: RunwareSeedanceArtifact; readonly costUsd: number }> {
   if (!UUID.test(input.requestId) || input.apiKey.trim().length < 20 || !validDuration(input.durationSeconds))
     throw new RunwareSeedanceJobError("INPUT_INVALID");
@@ -221,12 +250,15 @@ export async function observeRunwareSeedanceJob(input: {
     throw new RunwareSeedanceJobError("RESPONSE_INVALID");
   const result = data[0];
   if (result.status === "processing") {
-    // Runware's live polling acknowledgment uses getResponse while the video task is processing.
+    // getResponse returns this generic envelope even for never-submitted UUIDs: it proves no admission.
     if (reply.response.status !== 200 || !["getResponse", "videoInference"].includes(String(result.taskType)))
       throw new RunwareSeedanceJobError("RESPONSE_INVALID");
-    return { state: "PENDING" };
+    return { state: "PENDING", submissionConfirmed: result.taskType === "videoInference" };
   }
-  if (result.status !== "success" || result.taskType !== "videoInference" || typeof result.cost !== "number" ||
+  // Published videoInference receipts omit status; require the complete media identity in that shape.
+  const completeReceipt = result.status === "success" || (result.status === undefined &&
+    UUID.test(String(result.videoUUID)) && typeof result.videoURL === "string" && validHttps(result.videoURL));
+  if (!completeReceipt || result.taskType !== "videoInference" || typeof result.cost !== "number" ||
       !Number.isFinite(result.cost) || result.cost < 0)
     throw new RunwareSeedanceJobError("RESPONSE_INVALID");
   const costUsd = result.cost;

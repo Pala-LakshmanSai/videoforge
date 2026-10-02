@@ -1224,6 +1224,12 @@
       "name": "hosted_seedance_video_cost",
       "filename": "0241_hosted_seedance_video_cost.sql",
       "sha256": "sha256:8336706e8997e215b4c4c1e58b5e16c06a38674fe86f37834033d44f7d4e3e2a"
+    },
+    {
+      "version": 242,
+      "name": "hosted_seedance_video_unknown_no_task",
+      "filename": "0242_hosted_seedance_video_unknown_no_task.sql",
+      "sha256": "sha256:cec3c8d1dd27697a8a355a6c518c3c08a3b550a8c543342a8f9e4dba7e38a8a4"
     }
   ]
 }

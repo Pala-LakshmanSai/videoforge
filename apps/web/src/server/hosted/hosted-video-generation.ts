@@ -81,7 +81,12 @@ export async function advanceHostedVideoGeneration(environment: HostedRuntimeEnv
     } catch (error) {
       stopped = true;
       if (error instanceof RunwareSeedanceJobError && error.code === "INPUT_INVALID") { await fail("SEEDANCE_INPUT_INVALID"); return; }
-      if (error instanceof RunwareSeedanceJobError && ["SUBMIT_UNKNOWN", "SUBMIT_REJECTED"].includes(error.code)) return;
+      if (error instanceof RunwareSeedanceJobError && ["SUBMIT_UNKNOWN", "SUBMIT_REJECTED"].includes(error.code)) {
+        if (error.submissionDiagnostic) console.warn("SEEDANCE_SUBMISSION_DIAGNOSTIC", {
+          jobId: item.id, kind: error.submissionDiagnostic.kind, httpStatus: error.submissionDiagnostic.httpStatus,
+        });
+        return;
+      }
       throw error;
     }
   }, 250);
@@ -91,6 +96,7 @@ export async function advanceHostedVideoGeneration(environment: HostedRuntimeEnv
       const observed = await observeRunwareSeedanceJob({ requestId: item.id, apiKey,
         objectKey: item.outputObjectKey, durationSeconds: item.durationSeconds, bucket,
         recordProviderCost: async (cost) => { await call("videoforge_record_hosted_video_cost", [...base, item.id, cost]); } });
+      if (item.state !== "SUBMITTED" && observed.state === "PENDING" && !observed.submissionConfirmed) return;
       if (item.state !== "SUBMITTED") {
         await call("videoforge_record_hosted_video_task", [...base, item.id, string(item.claimId), item.id]);
         progressed = true;

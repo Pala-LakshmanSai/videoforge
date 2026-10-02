@@ -12,6 +12,10 @@ const costSource = readFileSync(
   new URL("../migrations/0241_hosted_seedance_video_cost.sql", import.meta.url),
   "utf8",
 );
+const noTaskSource = readFileSync(
+  new URL("../migrations/0242_hosted_seedance_video_unknown_no_task.sql", import.meta.url),
+  "utf8",
+);
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const hash = "sha256:" + "a".repeat(64);
 
@@ -70,6 +74,7 @@ test("0240 applies to the real prior chain and enforces private immutable video 
     ).rows[0].predicate;
     await executor.execute(source);
     await executor.execute(costSource);
+    await executor.execute(noTaskSource);
     const extendedConstraint = (
       await db.query(
         "SELECT pg_get_expr(conbin,conrelid) AS predicate FROM pg_constraint WHERE conrelid='artifact_reservations'::regclass AND conname='artifact_reservations_object_key_check'",
@@ -338,6 +343,109 @@ test("0240 applies to the real prior chain and enforces private immutable video 
       claim,
     );
     await call("videoforge_mark_hosted_video_unknown", [a, w, g, j, claim]);
+    // Operator closure requires a saved exact-provider absence receipt. It cannot
+    // become an ordinary retry path or discard acknowledged/charged work.
+    const closeUnknown = (overrides = {}) =>
+      call("videoforge_reconcile_hosted_video_unknown_no_task", [
+        overrides.account ?? a,
+        overrides.workspace ?? w,
+        overrides.request ?? g,
+        overrides.job ?? j,
+        overrides.claim ?? claim,
+        overrides.state ?? "UNKNOWN_NO_RETRY",
+        overrides.reason ?? "RUNWARE_ARCHIVE_CONFIRMED_NO_TASK",
+        overrides.evidence ?? hash,
+      ]);
+    for (const overrides of [
+      { claim: id(999) },
+      { job: id(999) },
+      { request: id(999) },
+      { workspace: IDS.workspaceB },
+      { state: "SUBMITTED" },
+      { reason: "TASK_NOT_FOUND" },
+      { evidence: "invalid" },
+      { account: IDS.accountB },
+    ])
+      await assert.rejects(closeUnknown(overrides), /reconciliation|scope invalid/);
+    assert.equal(
+      (
+        await db.query(
+          "SELECT has_function_privilege('videoforge_v209_runtime_dc9612d6','videoforge_reconcile_hosted_video_unknown_no_task(uuid,uuid,uuid,uuid,uuid,text,text,text)','EXECUTE') AS allowed",
+        )
+      ).rows[0].allowed,
+      false,
+    );
+    assert.equal(
+      (
+        await db.query(
+          "SELECT has_function_privilege('videoforge_v209_reconciler_dc9612d6','videoforge_reconcile_hosted_video_unknown_no_task(uuid,uuid,uuid,uuid,uuid,text,text,text)','EXECUTE') AS allowed",
+        )
+      ).rows[0].allowed,
+      false,
+    );
+    await db.exec("BEGIN; SAVEPOINT no_task");
+    await db.exec("SET LOCAL ROLE videoforge_v209_runtime_dc9612d6");
+    await db.query("SELECT set_config('videoforge.account_id',$1,true)", [IDS.accountB]);
+    assert.equal(
+      (
+        await db.query("SELECT count(*)::integer AS visible FROM hosted_video_jobs WHERE id=$1", [
+          j,
+        ])
+      ).rows[0].visible,
+      0,
+    );
+    await db.exec("SAVEPOINT denied_operator");
+    await assert.rejects(closeUnknown(), /permission denied/);
+    await db.exec("ROLLBACK TO SAVEPOINT no_task");
+    await call("videoforge_record_hosted_video_cost", [a, w, g, j, 0.01]);
+    await db.exec("SAVEPOINT charged_no_task");
+    await assert.rejects(closeUnknown(), /identity or cost invalid/);
+    await db.exec("ROLLBACK TO SAVEPOINT no_task");
+    await call("videoforge_record_hosted_video_task", [a, w, g, j, claim, j]);
+    await db.exec("SAVEPOINT acknowledged_no_task");
+    await assert.rejects(closeUnknown(), /identity or cost invalid/);
+    await db.exec("ROLLBACK TO SAVEPOINT no_task");
+    await call("videoforge_record_hosted_video_cost", [a, w, g, j, 0]);
+    assert.equal((await closeUnknown()).outputCostUsd, 0);
+    await db.exec("ROLLBACK TO SAVEPOINT no_task");
+    const closed = await closeUnknown();
+    assert.equal(closed.state, "FAILED");
+    assert.equal(closed.failureCode, "RUNWARE_ARCHIVE_CONFIRMED_NO_TASK");
+    assert.equal(closed.claimId, claim);
+    assert.equal(closed.providerTaskId, null);
+    assert.equal(closed.outputCostUsd, null);
+    assert.deepEqual(closed.inputManifest, claimed.inputManifest);
+    assert.deepEqual(await closeUnknown(), closed);
+    const proof = (
+      await db.query(
+        "SELECT result_payload FROM repository_mutation_receipts WHERE workspace_id=$1 AND idempotency_key=$2",
+        [w, `seedance-no-task:${j}`],
+      )
+    ).rows[0].result_payload;
+    assert.equal(proof.evidence_sha256, hash);
+    assert.equal(proof.job_id, j);
+    assert.equal(
+      (
+        await db.query(
+          "SELECT state FROM provider_workload_leases WHERE generation_request_id=$1",
+          [g],
+        )
+      ).rows[0].state,
+      "ACTIVE",
+    );
+    assert.equal(
+      (await db.query("SELECT state FROM generation_requests WHERE id=$1", [g])).rows[0].state,
+      "ACTIVE",
+    );
+    assert.equal(
+      (await db.query("SELECT state FROM hosted_api_generation_jobs WHERE id=$1", [sourceJob]))
+        .rows[0].state,
+      "SUCCEEDED",
+    );
+    await db.exec("SAVEPOINT no_task_drift");
+    await assert.rejects(closeUnknown({ evidence: "sha256:" + "b".repeat(64) }), /replay drift/);
+    await db.exec("ROLLBACK TO SAVEPOINT no_task_drift");
+    await db.exec("ROLLBACK");
     assert.equal(
       (await call("videoforge_claim_hosted_video_job", [a, w, g, j, id(240016)])).state,
       "UNKNOWN_NO_RETRY",
