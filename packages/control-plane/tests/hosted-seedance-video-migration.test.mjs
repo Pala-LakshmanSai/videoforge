@@ -27,8 +27,75 @@ test("0240 applies to the real prior chain and enforces private immutable video 
   const { database: db, executor, sources } = await createFixtureDatabase();
   try {
     await applyMigrationSliceThrough(executor, 239, sources);
-    await executor.execute(source);
     await seedLockedProjects(executor);
+    // Real prior constraint accepts immutable SYSTEM avatar GET references. Preserve a
+    // preexisting key during migration validation; the metadata-only fixture skips the
+    // lineage trigger here, but keeps the original CHECK constraints enabled.
+    await db.query("SELECT set_config('videoforge.account_id',$1,false)", [IDS.accountA]);
+    const legacyAvatarKey = `tenant/ffffffff-ffff-4fff-8fff-000000000001/workspace/ffffffff-ffff-4fff-8fff-000000000011/avatar-profile/${id(240090)}/version/${id(240091)}/canonical/avatar.png`;
+    await db.exec("ALTER TABLE artifact_reservations DISABLE TRIGGER ALL");
+    try {
+      await db.query(
+        `INSERT INTO artifact_reservations(id,account_id,workspace_id,project_id,project_revision_id,lane,job_id,artifact_id,object_key,method,content_type,content_length,checksum_sha256,expires_at,max_uses,retention_class,deletion_owner_account_id) VALUES($1,$2,$3,$4,$5,'INPUT','legacy-avatar','legacy-avatar',$6,'GET','image/png',2000,$7,now()+interval '1 hour',1,'PROJECT',$2)`,
+        [
+          id(240092),
+          IDS.accountA,
+          IDS.workspaceA,
+          IDS.projectA,
+          IDS.revisionA,
+          legacyAvatarKey,
+          hash,
+        ],
+      );
+    } finally {
+      await db.exec("ALTER TABLE artifact_reservations ENABLE TRIGGER ALL");
+    }
+    const priorConstraint = (
+      await db.query(
+        "SELECT pg_get_expr(conbin,conrelid) AS predicate FROM pg_constraint WHERE conrelid='artifact_reservations'::regclass AND conname='artifact_reservations_object_key_check'",
+      )
+    ).rows[0].predicate;
+    await executor.execute(source);
+    const extendedConstraint = (
+      await db.query(
+        "SELECT pg_get_expr(conbin,conrelid) AS predicate FROM pg_constraint WHERE conrelid='artifact_reservations'::regclass AND conname='artifact_reservations_object_key_check'",
+      )
+    ).rows[0].predicate;
+    // PostgreSQL flattens OR parentheses when deparsing; compare native predicate
+    // outcomes, including the established special reference and forbidden PUT.
+    for (const [objectKey, method, lane, priorAllowed, extendedAllowed] of [
+      [legacyAvatarKey, "GET", "INPUT", true, true],
+      [legacyAvatarKey, "PUT", "INPUT", false, false],
+      [
+        `tenant/${IDS.accountA}/workspace/${IDS.workspaceA}/project/${IDS.projectA}/revision/${IDS.revisionA}/lane/mage-image/job/old/artifact/old`,
+        "PUT",
+        "MAGE_IMAGE",
+        true,
+        true,
+      ],
+      [
+        `tenant/${IDS.accountA}/workspace/${IDS.workspaceA}/project/${IDS.projectA}/revision/${IDS.revisionA}/lane/scene-video/job/new/artifact/new`,
+        "PUT",
+        "SCENE_VIDEO",
+        false,
+        true,
+      ],
+      ["tenant/invalid", "PUT", "SCENE_VIDEO", false, false],
+    ]) {
+      const predicates = (
+        await db.query(
+          `SELECT (${priorConstraint}) AS old_allowed, (${extendedConstraint}) AS new_allowed FROM (SELECT $1::text AS object_key,$2::text AS method,$3::text AS lane) candidate`,
+          [objectKey, method, lane],
+        )
+      ).rows[0];
+      assert.equal(predicates.old_allowed, priorAllowed);
+      assert.equal(predicates.new_allowed, extendedAllowed);
+    }
+    assert.equal(
+      (await db.query("SELECT object_key FROM artifact_reservations WHERE id=$1", [id(240092)]))
+        .rows[0].object_key,
+      legacyAvatarKey,
+    );
     const a = IDS.accountA,
       w = IDS.workspaceA,
       p = id(240001),

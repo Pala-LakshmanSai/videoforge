@@ -58,9 +58,12 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // 1,648 production and 1,417 staging bytes. Provider/validator/native quarantine stays enforced.
 // Local-only terminal Cloud cleanup isolation adds 66 measured production bytes for backend-aware
 // readiness. SQL lifecycle policy and the provider controller remain in dynamic chunks.
+// Seedance7% planning, version2 manifest/materialization and provider drain integration add
+// exactly11,792 production and11,628 staging bytes. Clients/validators stay dynamically
+// loaded; provider/native/quarantine checks and strict no-growth ceilings remain enforced.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_786_103,
-  "wrangler.staging.jsonc": 2_783_190,
+  "wrangler.production.jsonc": 2_797_895,
+  "wrangler.staging.jsonc": 2_794_818,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",

@@ -249,13 +249,23 @@ BEGIN
  RETURN public.videoforge_hosted_video_job_json(j);
 END; $$;
 
--- Explicit media kinds and transfer lane; preserve every established kind/key.
-ALTER TABLE public.assets DROP CONSTRAINT assets_kind_check;
-ALTER TABLE public.assets ADD CONSTRAINT assets_kind_check CHECK(kind IN('VOICEOVER','OPTIONAL_SCRIPT','AVATAR_ORIGINAL','AVATAR_RUNTIME','AVATAR_THUMBNAIL','STYLE_REFERENCE_ORIGINAL','STYLE_REFERENCE_NORMALIZED','CANONICAL_DOCUMENT','IMAGE','AVATAR_CLIP','AUDIO_SPAN','RENDER_PREVIEW','FINAL_VIDEO','OTHER','VIDEO_CLIP'));
-ALTER TABLE public.artifact_reservations DROP CONSTRAINT artifact_reservations_lane_check;
-ALTER TABLE public.artifact_reservations ADD CONSTRAINT artifact_reservations_lane_check CHECK(lane IN('INPUT','MAGE_IMAGE','SOULX_AVATAR','RENDER','PROVENANCE','SCENE_VIDEO'));
-ALTER TABLE public.artifact_reservations DROP CONSTRAINT artifact_reservations_object_key_check;
-ALTER TABLE public.artifact_reservations ADD CONSTRAINT artifact_reservations_object_key_check CHECK(object_key ~ '^tenant/[A-Za-z0-9._:-]+/workspace/[A-Za-z0-9._:-]+/project/[A-Za-z0-9._:-]+/revision/[A-Za-z0-9._:-]+/lane/(input|mage-image|soulx-avatar|render|provenance|scene-video)/job/[A-Za-z0-9._:-]+/artifact/[A-Za-z0-9._:-]+$');
+-- Extend the actual installed predicates. Retain immutable SYSTEM avatar GET keys and
+-- every established kind/lane; reconstructing the old allowlist can narrow live data.
+DO $constraints$
+DECLARE target record; old_predicate text;
+BEGIN
+ FOR target IN SELECT * FROM (VALUES
+  ('assets','assets_kind_check',$new$kind='VIDEO_CLIP'$new$),
+  ('artifact_reservations','artifact_reservations_lane_check',$new$lane='SCENE_VIDEO'$new$),
+  ('artifact_reservations','artifact_reservations_object_key_check',$new$lane='SCENE_VIDEO' AND object_key ~ '^tenant/[A-Za-z0-9._:-]+/workspace/[A-Za-z0-9._:-]+/project/[A-Za-z0-9._:-]+/revision/[A-Za-z0-9._:-]+/lane/scene-video/job/[A-Za-z0-9._:-]+/artifact/[A-Za-z0-9._:-]+$'$new$)
+ ) AS additions(table_name,constraint_name,new_predicate) LOOP
+  SELECT pg_get_expr(c.conbin,c.conrelid) INTO old_predicate FROM pg_constraint c
+   WHERE c.conrelid=format('public.%I',target.table_name)::regclass AND c.conname=target.constraint_name AND c.contype='c' AND c.convalidated;
+  IF old_predicate IS NULL THEN RAISE EXCEPTION 'video additive constraint preimage missing: %',target.constraint_name; END IF;
+  EXECUTE format('ALTER TABLE public.%I DROP CONSTRAINT %I',target.table_name,target.constraint_name);
+  EXECUTE format('ALTER TABLE public.%I ADD CONSTRAINT %I CHECK ((%s) OR (%s))',target.table_name,target.constraint_name,old_predicate,target.new_predicate);
+ END LOOP;
+END; $constraints$;
 DO $patch$
 DECLARE definition text; marker text:=$old$WHEN 'PROVENANCE' THEN 'provenance'$old$;
 BEGIN

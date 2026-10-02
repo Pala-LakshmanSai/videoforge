@@ -478,8 +478,9 @@ export function hostedRuntimeConfiguration(
   }
   const desktopRelease = mediaWorkerRelease(required(source, "MEDIA_WORKER_RELEASE_MANIFEST_JSON"));
   const cloudMedia = cloudMediaConfiguration(source);
+  const [workerMajor, workerMinor, workerPatch] = desktopRelease.version.split(/[.\-+]/u).slice(0, 3).map(Number);
   if (source.VIDEO_GENERATION_ENABLED === "true" && (!apiGeneration || !source.RUNWARE_API_KEY?.trim() ||
-      Number(desktopRelease.version.split(".")[0]) === 0 && Number(desktopRelease.version.split(".")[1]) === 1 && Number(desktopRelease.version.split(".")[2]) < 46))
+      workerMajor === 0 && (workerMinor! < 1 || workerMinor === 1 && workerPatch! < 46)))
     throw new Error("HOSTED_VIDEO_RENDERER_UNQUALIFIED");
   if (cloudMedia && cloudMedia.tooling.whisper_model_sha256 !== desktopRelease.whisperModelSha256)
     throw new Error("CLOUD_MEDIA_MODEL_UNQUALIFIED");

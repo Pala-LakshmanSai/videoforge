@@ -419,3 +419,14 @@ describe("durable exact activation verification", () => {
     }
   });
 });
+
+
+it("requires the Seedance renderer and provider bindings before enabling fresh video projects", () => {
+  const env = { ...environment(), VIDEOFORGE_GENERATION_PROVIDER: "KIE_FAL", KIE_API_KEY: "fixture-kie-key", FAL_API_KEY: "fixture-fal-key", RUNWARE_API_KEY: "fixture-runware-key", VIDEO_GENERATION_ENABLED: "true" };
+  expect(() => hostedRuntimeConfiguration(env)).toThrow("HOSTED_VIDEO_RENDERER_UNQUALIFIED");
+  const release = JSON.parse(env.MEDIA_WORKER_RELEASE_MANIFEST_JSON!);
+  env.MEDIA_WORKER_RELEASE_MANIFEST_JSON = JSON.stringify({ ...release, version: "0.1.46" });
+  expect(hostedRuntimeConfiguration(env).videoGenerationEnabled).toBe(true);
+  env.RUNWARE_API_KEY = "";
+  expect(() => hostedRuntimeConfiguration(env)).toThrow("HOSTED_VIDEO_RENDERER_UNQUALIFIED");
+});

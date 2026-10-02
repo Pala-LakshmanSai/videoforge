@@ -173,11 +173,13 @@ jobs:
       - name: Publish qualified content address to the existing private package
         if: inputs.operation == 'qualify-source'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.VIDEOFORGE_CLOUD_PUBLISH_TOKEN || github.token }}
           OWNER: ${{ github.repository_owner }}
           PACKAGE: ${{ inputs.image_package }}
         run: |
           set -euo pipefail
+          # A temporary owner publication token may be needed when Actions has read-only package access.
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$OWNER" --password-stdin
           gh api "users/$OWNER/packages/container/$PACKAGE" > "$RUNNER_TEMP/private-package-before.json"
           python -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/private-package-before.json"))["visibility"]=="private"'
           source_sha="$(python -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"]+"/qualified/release-config.json"))["source_sha256"].removeprefix("sha256:"))')"

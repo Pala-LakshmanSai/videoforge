@@ -145,6 +145,63 @@ test("resolves the golden timeline into the canonical immutable render manifest"
   assert.equal(Object.isFrozen(first.value), true);
 });
 
+test("pins Seedance motion to its retained image and caps exact timeline coverage at seven percent", async () => {
+  const request = await requestWith(
+    CANDIDATES.map((candidate) =>
+      candidate.kind === "AVATAR_CLIP"
+        ? { ...candidate, rendererSourceProfile: "local-fixture-centered-832x480p25-v1" }
+        : candidate,
+    ),
+  );
+  const original = requireSuccess(await planVNextResolvedRenderManifest(request)).value;
+  const video = {
+    segmentId: "seg_0002",
+    sourceTaskKey: "image:seg_0002",
+    sourceSha256: CANDIDATES[1].sha256,
+    videoFrameCount: Math.floor(request.timeline.value.total_frames * 0.07),
+    assetId: "asset_video_seg_0002",
+    sha256: `sha256:${"8".repeat(64)}`,
+    kind: "VIDEO",
+  };
+  const motion = requireSuccess(
+    await planVNextResolvedRenderManifest({ ...request, videoAssets: [video] }),
+  ).value;
+  assert.equal(original.schema_version, "resolved-render-manifest/v1");
+  assert.equal(motion.schema_version, "resolved-render-manifest/v2");
+  assert.equal(motion.total_frames, original.total_frames);
+  assert.deepEqual(motion.voiceover, original.voiceover);
+  assert.deepEqual(
+    motion.segments.map(({ accepted_assets, render, ...timing }) => timing),
+    original.segments.map(({ accepted_assets, render, ...timing }) => timing),
+  );
+  assert.deepEqual(
+    motion.segments[1].accepted_assets.image,
+    original.segments[1].accepted_assets.image,
+  );
+  assert.deepEqual(motion.segments[1].accepted_assets.video, {
+    asset_id: video.assetId,
+    sha256: video.sha256,
+  });
+  assert.deepEqual(motion.segments[1].render, {
+    ...original.segments[1].render,
+    video_source_profile: "seedance-pro-fast-1248x704-v1",
+    video_frame_count: 25,
+  });
+  assert.equal(original.segments[1].accepted_assets.video, undefined);
+  for (const invalid of [
+    { sourceSha256: `sha256:${"a".repeat(64)}` },
+    { segmentId: "seg_0001", sourceTaskKey: "avatar:seg_0001" },
+    { videoFrameCount: video.videoFrameCount + 1 },
+  ]) {
+    const rejected = await planVNextResolvedRenderManifest({
+      ...request,
+      videoAssets: [{ ...video, ...invalid }],
+    });
+    assert.equal(rejected.ok, false, JSON.stringify(invalid));
+    assert.equal(rejected.error.code, "ASSET_KIND_MISMATCH");
+  }
+});
+
 test("locks exact AvatarForcing and SkyReels full/split renderer geometry", async () => {
   const manifest = requireSuccess(await planResolvedRenderManifest(await requestWith())).value;
   const full = manifest.segments.find((segment) => segment.timeline_composition === "AVATAR_FULL");
