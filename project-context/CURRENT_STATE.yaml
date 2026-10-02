@@ -2,7 +2,9 @@ avatar_progress_2026_10_02:
   checkpoint: V2-09
   selected_task: VF-10-09
   read_profile: v2_09_short_live_e2e
-  status: VALIDATION_AND_PUBLICATION_PENDING
+  status: PRODUCTION_ACTIVE_EXACT_ASSETS_AUTHENTICATED_PROGRESS_VERIFIED
+  production_source: d3ca02764ab6afa53de613084fc79a67ded0aa22
+  production_version: b127f9f1-9314-4841-a311-0e96a754e77c
   branch: codex/natural-documentary
   base_source: fc3122577fd8fbc86ce369cf5db713a234eb64d1
   user_authority: Fix_repeated_controls_and_parallel_generation_without_reliability_regression;continuation_of_authorized_production_release.
@@ -11,7 +13,8 @@ avatar_progress_2026_10_02:
   validation: UI179_plus_failed_cancel_regression_product111_API_and_span32_PASS;web_and_Worker_types_lint_build_bundle_context_PASS;independent_review_zero_blockers;baseline_query_fixture_failure_reproduced_unchanged.
   provider_spend: USD0_new_inference_or_compute;read_only_original_Fal_status_GETs_only.
   paid_compute_shutdown: No_compute_started_or_stopped_by_this_task;existing_active_video_and_cleanup_preserved.
-  remaining_gates: Exact_publication_readback;Chrome_transport_unavailable;historical_provider_queue_or_download_timing_not_exposed.
+  publication: Source100percent_50bindings25secrets3WorkflowIdentities_preserved;four_public_assets_exact;two_authenticated_catalogs_preserved;live_progress_counts_present_34images12avatars_accepted_other_tenant_denied.
+  remaining_gates: Chrome_transport_unavailable_real_click_acceptance_unverified;historical_provider_queue_or_download_timing_not_exposed;no_measured_speedup_claim.
   evidence: evidence/acceptance/VF-10-09/2026-10-02-avatar-progress.md
 
 natural_documentary_2026_10_02:
