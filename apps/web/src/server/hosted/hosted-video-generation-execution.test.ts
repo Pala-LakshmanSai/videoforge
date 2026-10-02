@@ -132,10 +132,11 @@ describe("hosted video execution", () => {
 
   it.each(["SUBMITTING", "UNKNOWN_NO_RETRY"])("polls saved %s UUIDs without another POST", async (state) => {
     fixture.videos = [...videoJobs(state), ...videoJobs("PREPARED", 2).slice(1)];
-    await run(advanceHostedVideoGeneration(environment, database, scope, true));
+    const result = await run(advanceHostedVideoGeneration(environment, database, scope, true));
     expect(fixture.submit).not.toHaveBeenCalled();
     expect(fixture.observe).toHaveBeenCalledWith(expect.objectContaining({ requestId: identity(0) }));
     expect(fixture.videos.map((job) => job.state)).toEqual(["SUBMITTED", "PREPARED"]);
+    expect(result.progressed).toBe(true);
     expect(fixture.events).not.toContain(`videoforge_claim_hosted_video_job:${identity(1)}`);
   });
 

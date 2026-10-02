@@ -216,12 +216,17 @@ export async function observeRunwareSeedanceJob(input: {
     throw new RunwareSeedanceJobError("POLL_UNAVAILABLE");
   }
   if (!reply.response.ok) throw new RunwareSeedanceJobError("POLL_UNAVAILABLE");
-  if (data.length !== 1 || data[0]?.taskUUID !== input.requestId || data[0]?.taskType !== "videoInference" ||
+  if (data.length !== 1 || data[0]?.taskUUID !== input.requestId ||
       (data[0]?.model !== undefined && data[0]?.model !== SEEDANCE_MODEL))
     throw new RunwareSeedanceJobError("RESPONSE_INVALID");
   const result = data[0];
-  if (result.status === "processing") return { state: "PENDING" };
-  if (result.status !== "success" || typeof result.cost !== "number" ||
+  if (result.status === "processing") {
+    // Runware's live polling acknowledgment uses getResponse while the video task is processing.
+    if (reply.response.status !== 200 || !["getResponse", "videoInference"].includes(String(result.taskType)))
+      throw new RunwareSeedanceJobError("RESPONSE_INVALID");
+    return { state: "PENDING" };
+  }
+  if (result.status !== "success" || result.taskType !== "videoInference" || typeof result.cost !== "number" ||
       !Number.isFinite(result.cost) || result.cost < 0)
     throw new RunwareSeedanceJobError("RESPONSE_INVALID");
   const costUsd = result.cost;

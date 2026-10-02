@@ -91,7 +91,10 @@ export async function advanceHostedVideoGeneration(environment: HostedRuntimeEnv
       const observed = await observeRunwareSeedanceJob({ requestId: item.id, apiKey,
         objectKey: item.outputObjectKey, durationSeconds: item.durationSeconds, bucket,
         recordProviderCost: async (cost) => { await call("videoforge_record_hosted_video_cost", [...base, item.id, cost]); } });
-      if (item.state !== "SUBMITTED") await call("videoforge_record_hosted_video_task", [...base, item.id, string(item.claimId), item.id]);
+      if (item.state !== "SUBMITTED") {
+        await call("videoforge_record_hosted_video_task", [...base, item.id, string(item.claimId), item.id]);
+        progressed = true;
+      }
       if (observed.state === "PENDING") return;
       if (observed.state === "FAILED") { await call("videoforge_fail_hosted_video_job", [...base, item.id, "SEEDANCE_PROVIDER_FAILED"]); progressed = true; return; }
       if (observed.state !== "SUCCEEDED") return;

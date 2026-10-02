@@ -78,6 +78,28 @@ describe("Runware Seedance durable job", () => {
     })).rejects.toMatchObject({ code: "POLL_UNAVAILABLE" });
   });
 
+  it("accepts the live getResponse processing envelope without weakening successful-video identity", async () => {
+    const requestId = "5b731319-4f67-432b-8953-ee71a19893ed";
+    const processing = { taskUUID: requestId, status: "processing", taskType: "getResponse" };
+    const recordProviderCost = vi.fn(async () => undefined);
+    const bucket = { get: vi.fn(), put: vi.fn() } as unknown as HostedR2BucketBinding;
+    const input = { requestId, apiKey, objectKey, durationSeconds: 1.2, bucket, recordProviderCost };
+    const fetchPort = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => json({ data: [processing] }));
+    expect(await observeRunwareSeedanceJob({ ...input, fetchPort })).toEqual({ state: "PENDING" });
+    expect(JSON.parse(String(fetchPort.mock.calls[0]?.[1]?.body))).toEqual([{ taskType: "getResponse", taskUUID: requestId }]);
+    for (const result of [{ ...processing, taskUUID }, { ...processing, model: "other:model" },
+      { ...processing, taskType: "imageInference" }, { ...completed, taskUUID: requestId, taskType: "getResponse" }]) {
+      await expect(observeRunwareSeedanceJob({ ...input,
+        fetchPort: async () => json({ data: [result] }),
+      })).rejects.toMatchObject({ code: "RESPONSE_INVALID" });
+    }
+    await expect(observeRunwareSeedanceJob({ ...input,
+      fetchPort: async () => json({ data: [processing] }, 202),
+    })).rejects.toMatchObject({ code: "RESPONSE_INVALID" });
+    expect(recordProviderCost).not.toHaveBeenCalled();
+    expect(bucket.get).not.toHaveBeenCalled(); expect(bucket.put).not.toHaveBeenCalled();
+  });
+
   it("accepts a real H264 clip with an immutable exact private receipt and reuses it without downloading", async () => {
     const bytes = Uint8Array.from(await readFile(new URL("./fixtures/h264-seedance-sample.mp4", import.meta.url)));
     let stored: Uint8Array | null = null;
