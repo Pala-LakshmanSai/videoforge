@@ -354,6 +354,20 @@ describe("V2-06 hosted adapters", () => {
       /only to ordinary video GET/u,
     );
   });
+  it("signs accepted scene-video inputs for render and preview while retaining exact artifact scope", async () => {
+    const signer = new HostedR2Signer(hostedRuntimeConfiguration(environment()).r2);
+    const objectKey = "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/scene-video/job/job-a/artifact/artifact-a";
+    const input = { method: "GET" as const, objectKey, contentType: "video/mp4", contentLength: 1024,
+      checksumSha256: `sha256:${"a".repeat(64)}`, lifetimeSeconds: 300 };
+    const port = await signer.sign(input);
+    expect(new URL(port.url).pathname).toContain(objectKey);
+    expect(new URL(port.url).searchParams.get("X-Amz-SignedHeaders")).toBe("host");
+    expect(port.requiredHeaders).toEqual({});
+    for (const invalid of [objectKey + "/extra", objectKey.replace("scene-video", "arbitrary"), objectKey.replace("artifact-a", "../other")])
+      await expect(signer.sign({ ...input, objectKey: invalid })).rejects.toThrow("exact tenant lineage");
+    await expect(deleteHostedR2ObjectsAndVerify({} as never, objectKey.slice(0, objectKey.lastIndexOf("/") + 1), [objectKey]))
+      .rejects.toThrow("exact personal-worker artifact prefix");
+  });
   it("signs only exact tenant R2 paths with bounded methods and expiry", async () => {
     const config = hostedRuntimeConfiguration(environment());
     const port = await new HostedR2Signer(config.r2).sign({

@@ -22,3 +22,9 @@ Rollback: disable fresh motion admission, reconcile already-submitted exact Runw
 Old projects: no added stage/provider calls, unchanged retained outputs. New projects: pinned7% plan, footage accepted and used in final1920x1080 film with original duration/audio; concurrent progress truth; cancellation and uncertain submission cannot replay or declare clean prematurely. Tenant isolation must hold.
 
 Use fixtures first. Paid ledger reserves each canary and GPU uptime before dispatch; unknown liabilities count at their full reserved maximum. Stop new paid work before USD4; poll/reconcile existing liability. No30-minute paid benchmark is authorized by this test budget. Production and renderer publication, browser verification, actual invoice and cleanup are separate evidence.
+
+## Live integration audits
+
+Real signer boundary: scene-video is part of the exact artifact key grammar for signed gallery and Local/Cloud input GETs. Provider output acceptance writes directly to private R2; mocked adapter tests do not prove this later signing boundary. Keep CPU attempt deletion restricted to input/render prefixes. A real signer regression covers accepted video GET and rejects arbitrary lanes, trailing paths and traversal.
+
+Runware polling: generic getResponse processing also appears for a never-submitted UUID and proves no admission. Preserve UNKNOWN until a genuine videoInference acknowledgment/receipt or operator evidence settles it. Completed documented videoInference receipts can omit status; validate exact identity, media and cost. Operator-only 0242 records a canonical evidence hash before no-task closure; account-scoped archive absence, same-key positive archive control and full-window zero model task/result/spend history are required. Never resubmit the closed original UUID.

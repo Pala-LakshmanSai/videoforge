@@ -62,8 +62,8 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // exactly11,829 production and11,665 staging bytes. Clients/validators stay dynamically
 // loaded; provider/native/quarantine checks and strict no-growth ceilings remain enforced.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_797_932,
-  "wrangler.staging.jsonc": 2_794_855,
+  "wrangler.production.jsonc": 2_797_944,
+  "wrangler.staging.jsonc": 2_794_867,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",
