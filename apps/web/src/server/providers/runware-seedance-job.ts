@@ -56,9 +56,12 @@ async function request(apiKey: string, task: Row, fetchPort: FetchPort): Promise
     method: "POST",
     headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
     body: JSON.stringify([task]),
-    redirect: "error",
+    // Workerd supports manual redirects; never follow a redirect carrying the private bearer token.
+    redirect: "manual",
     signal: AbortSignal.timeout(30_000),
   });
+  if (response.status >= 300 && response.status < 400)
+    throw new RunwareSeedanceJobError("RESPONSE_INVALID", { kind: "HTTP_ERROR", httpStatus: response.status });
   let decoded: unknown;
   try { decoded = JSON.parse(await response.text()); }
   catch {

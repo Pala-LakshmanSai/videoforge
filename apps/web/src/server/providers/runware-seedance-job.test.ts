@@ -47,6 +47,55 @@ describe("Runware Seedance durable job", () => {
     expect(input.markSubmissionUnknown).not.toHaveBeenCalled();
   });
 
+  it("constructs both authenticated API requests with the workerd-compatible manual redirect mode", async () => {
+    const input = submission();
+    const fetchPort = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      // Cloudflare rejects redirect:error before network I/O. Exercise the actual adapter request options.
+      if (init?.redirect !== "manual") throw new TypeError("unsupported redirect mode");
+      const request = new Request(url, init);
+      expect(request.url).toBe("https://api.runware.ai/v1");
+      expect(request.method).toBe("POST");
+      expect(request.redirect).toBe("manual");
+      expect(request.headers.get("authorization")).toBe(`Bearer ${apiKey}`);
+      const [task] = await request.json() as { taskType: string; taskUUID: string }[];
+      expect(task?.taskUUID).toBe(taskUUID);
+      return task?.taskType === "videoInference" ? json({ data: [{ taskType: "videoInference", taskUUID }] })
+        : json({ data: [{ taskType: "videoInference", taskUUID, status: "processing" }] });
+    });
+    expect(await submitRunwareSeedanceJob({ ...input, fetchPort })).toMatchObject({ state: "SUBMITTED" });
+    expect(await observeRunwareSeedanceJob({ requestId: taskUUID, apiKey, objectKey, durationSeconds: 1.2,
+      bucket: {} as HostedR2BucketBinding, fetchPort })).toEqual({ state: "PENDING", submissionConfirmed: true });
+    expect(fetchPort).toHaveBeenCalledTimes(2);
+  });
+
+  it("never follows authenticated API redirects or trusts their acknowledgement bodies", async () => {
+    for (const status of [301, 302, 303, 307, 308]) {
+      const input = submission();
+      const recordProviderCost = vi.fn(async () => undefined);
+      const bucket = { get: vi.fn(), put: vi.fn() } as unknown as HostedR2BucketBinding;
+      const response = json({ data: [completed] }, status);
+      response.headers.set("location", "https://untrusted.example/collect-token");
+      const readBody = vi.spyOn(response, "text");
+      const fetchPort = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+        expect(url).toBe("https://api.runware.ai/v1");
+        expect(init?.redirect).toBe("manual");
+        return response;
+      });
+      await expect(submitRunwareSeedanceJob({ ...input, fetchPort })).rejects.toMatchObject({
+        code: "SUBMIT_UNKNOWN", submissionDiagnostic: { kind: "HTTP_ERROR", httpStatus: status },
+      });
+      expect(input.markSubmissionUnknown).toHaveBeenCalledTimes(1);
+      expect(input.markSubmissionFailed).not.toHaveBeenCalled();
+      expect(input.persistRequestId).not.toHaveBeenCalled();
+      await expect(observeRunwareSeedanceJob({ requestId: taskUUID, apiKey, objectKey, durationSeconds: 1.2,
+        bucket, recordProviderCost, fetchPort })).rejects.toMatchObject({ code: "POLL_UNAVAILABLE" });
+      expect(fetchPort).toHaveBeenCalledTimes(2);
+      expect(readBody).not.toHaveBeenCalled();
+      expect(recordProviderCost).not.toHaveBeenCalled();
+      expect(bucket.get).not.toHaveBeenCalled(); expect(bucket.put).not.toHaveBeenCalled();
+    }
+  });
+
   it("accepts only exact scoped HTTP200 validation refusals as definite rejection", async () => {
     const refusal = { taskUUID, taskType: "videoInference", status: "error",
       code: "invalidDuration", parameter: "duration" };

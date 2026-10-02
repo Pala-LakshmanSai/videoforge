@@ -2,7 +2,7 @@ seedance_video_2026_10_02:
   checkpoint: V2-09
   selected_task: SEEDANCE_VIDEO_PLAN
   read_profile: v2_09_seedance_video
-  state: PRODUCTION_ACTIVE_PROVIDER_ABSENCE_RECONCILIATION
+  state: PRODUCTION_ACTIVE_NATIVE_TRANSPORT_FIX_QUALIFIED
   branch: codex/seedance-video
   rollback_source: f705d6c21bf7b6ab46ba1801fb30eff0b58729f0
   rollback_checkout: 4d5af76c007b76f39cd6a715b26fefd71ee8e40a
@@ -13,18 +13,22 @@ seedance_video_2026_10_02:
   output_preset: 720p_16_by_9_1248x704
   test_spend_cap_usd: 4.00
   test_spend_usd: null
-  test_reserved_maximum_usd: 3.81
-  test_cloud_liability_usd: 1.00
+  test_reserved_maximum_usd: 3.77
+  test_cloud_liability_usd: 1.80
   paid_compute_started: true
-  production_source: dcbf41ae242c8e1d8a251cbd83f77131de43ec5d
-  production_version: b983472e-fd88-4669-bff7-10caa858a62f
+  production_source: bcb7fd37eee23d3eda3da21295b33617474de457
+  production_version: 11de1bdc-226b-4128-9fbb-0c174df5639c
   migrations: 0240_video_0241_actual_cost_0242_operator_only_absent_task_closure
   desktop_release: 0.1.46
   cloud_image_digest: sha256:0c6548a3e383f9a36802fbdae2e9a342806febb6ae9ffc142e9a8e6d88d526fe
-  canary_project: e924a8ee-7eec-48e5-b8a8-80ac88b28a25
+  canary_project: a628ac3b-c24e-4ffa-9085-0a60825715fc
   canary_duration_ms: 153098
   rollback: Redeploy_f8b36fdf_with_its_pinned_old_renderers_and_authority_after_drain;keep_additive240_tables_and_feature_artifacts;tag_pre-seedance-video-20261002_pushed.
   acceptance: PENDING
+
+  transport_root_cause: Workerd_rejects_redirect_error_at_Request_construction_before_network;shared_manual_redirect_fix_rejects3xx_without_forwarding_bearer.
+  transport_validation: 36_adapter_tests_web_Worker_types_lint_PASS;actual_workerd_2026_08_08_fixed_adapter_probe_PASS_zero_provider_calls.
+  canary_recovery: Original_claim_UUID_inputs_media_and_lease_retained;no_automatic_UNKNOWN_replay;one_time_operator_pre_network_proof_recovery_pending.
 
 progress_elapsed_2026_10_02:
   checkpoint: V2-09
