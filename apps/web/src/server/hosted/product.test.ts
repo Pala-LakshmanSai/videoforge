@@ -2353,6 +2353,59 @@ describe("hosted product route contract", () => {
     expect(block).toContain('? "FAILED"');
   });
 
+  it.each([
+    { mode: "partial", expectedStatus: "COMPLETE", coverage: 100 / 30, fallbackCount: 1 },
+    { mode: "all", expectedStatus: "COMPLETE", coverage: 0, fallbackCount: 2 },
+    { mode: "unknown", expectedStatus: "ACTION_REQUIRED", coverage: 100 / 30, fallbackCount: 0 },
+    { mode: "price", expectedStatus: "FAILED", coverage: 100 / 30, fallbackCount: 0 },
+    { mode: "missing-source", expectedStatus: "FAILED", coverage: 100 / 30, fallbackCount: 0 },
+    { mode: "tombstoned-source", expectedStatus: "FAILED", coverage: 100 / 30, fallbackCount: 0 },
+  ])("reports $mode scene-video fallback without losing charges or weakening blockers", async ({ mode, expectedStatus, coverage, fallbackCount }) => {
+    const priorQuery = testState.query.getMockImplementation()!;
+    const priorProject = testState.projectRows[0]!;
+    testState.projectRows[0] = { ...priorProject, generation_provider: "KIE_FAL" };
+    const failed = { state: "FAILED", failure_code: "SEEDANCE_RESULT_INVALID", static_fallback: true,
+      output_cost_usd: 0.02, video_frame_count: 100, duration_seconds: 4 };
+    const accepted = { state: "SUCCEEDED", accepted_barrier_valid: true, output_cost_usd: 0.04,
+      video_frame_count: 100, duration_seconds: 4 };
+    const jobs = [mode === "all" ? failed : accepted, mode === "unknown"
+      ? { ...failed, state: "UNKNOWN_NO_RETRY", static_fallback: false }
+      : mode === "price" ? { ...failed, failure_code: "SEEDANCE_PRICE_CHANGED", static_fallback: false }
+      : mode.endsWith("source") ? { ...failed, static_fallback: false } : failed];
+    testState.query.mockImplementation(async (sql, params) => {
+      if (sql.includes("FROM hosted_video_plans")) return { rows: [{ planned_at: "2026-10-03T00:00:00Z", selections: [{ durationSeconds: 4 }, { durationSeconds: 4 }] }], affectedRows: 1 };
+      if (sql.includes("FROM hosted_video_jobs job")) {
+        expect(sql).toContain("videoforge_hosted_video_static_fallback");
+        expect(sql).toContain("source.id=job.source_api_job_id");
+        expect(sql).toContain("source.output_asset_id=job.source_asset_id AND source.output_sha256=job.source_sha256");
+        expect(sql).toContain("original.kind='IMAGE' AND original.state='ACCEPTED'");
+        expect(sql).toContain("original_receipt.deleted_at IS NULL");
+        expect(sql).toContain("original_receipt.checksum_sha256=original.binary_sha256 AND original_receipt.content_length=original.byte_size");
+        return { rows: jobs, affectedRows: jobs.length };
+      }
+      if (sql.includes("SELECT plan.id, plan.canonical_document_hash")) return { rows: [{ final_frame_count: 3000, image_scene_count: 2, avatar_frame_count: 300, planned_tasks: 3, completed_tasks: 3, failed_tasks: 0 }], affectedRows: 1 };
+      return priorQuery(sql, params);
+    });
+    try {
+      const result = await handleHostedProductRequest(request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"), {}, stagingConfig, executionContext);
+      expect(result?.status).toBe(200);
+      const body = await result!.json() as { stages: { id: string; status: string; detail: string; progress_percent: number }[]; cost: { api_estimate: { seedance_actual_coverage_percent: number; seedance_fallback_count: number; seedance_reported_usd: number } } };
+      const stage = body.stages.find((stage) => stage.id === "video-generation")!;
+      expect(stage.status).toBe(expectedStatus);
+      expect(body.cost.api_estimate.seedance_actual_coverage_percent).toBeCloseTo(coverage);
+      expect(body.cost.api_estimate.seedance_fallback_count).toBe(fallbackCount);
+      expect(body.cost.api_estimate.seedance_reported_usd).toBeCloseTo(mode === "all" ? 0.04 : 0.06);
+      if (expectedStatus === "COMPLETE") {
+        expect(stage.progress_percent).toBe(100);
+        expect(stage.detail).toContain("original still");
+        expect(stage.detail).toContain("actual motion (up to 7% target)");
+      }
+    } finally {
+      testState.query.mockImplementation(priorQuery);
+      testState.projectRows[0] = priorProject;
+    }
+  });
+
   it("keeps project progress, prompt rows, and batch progress on one latest revision", () => {
     const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
     const start = source.indexOf("async function projectDetail(");

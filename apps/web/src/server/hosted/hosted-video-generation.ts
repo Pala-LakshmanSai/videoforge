@@ -7,7 +7,7 @@ import { observeRunwareSeedanceJob, submitRunwareSeedanceJob, RunwareSeedanceJob
 const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u;
 const VIDEO_CONCURRENCY = 4;
 type Job = { id: string; state: string; claimId: string | null; inputManifest: Record<string, unknown>;
-  providerTaskId: string | null; outputObjectKey: string; sourceReady: boolean; durationSeconds: number; videoFrameCount: number; failureCode: string | null };
+  providerTaskId: string | null; outputObjectKey: string; sourceReady: boolean; durationSeconds: number; videoFrameCount: number; failureCode: string | null; staticFallback: boolean };
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("HOSTED_VIDEO_RESPONSE_INVALID");
   return value as Record<string, unknown>;
@@ -26,7 +26,8 @@ function job(value: unknown): Job {
     inputManifest: object(row.inputManifest), providerTaskId: row.providerTaskId === null ? null : string(row.providerTaskId),
     outputObjectKey: string(row.outputObjectKey), sourceReady: row.sourceReady === true,
     durationSeconds: Number(row.durationSeconds), videoFrameCount: Number(row.videoFrameCount),
-    failureCode: row.failureCode === null ? null : string(row.failureCode) };
+    failureCode: row.failureCode === null ? null : string(row.failureCode),
+    staticFallback: row.state === "FAILED" && row.staticFallback === true };
 }
 
 /** One existing workload lease owns the footage too. UUID claims precede the single paid POST. */
@@ -56,7 +57,7 @@ export async function advanceHostedVideoGeneration(environment: HostedRuntimeEnv
   let stopped = false;
   const batchClaim = crypto.randomUUID();
   const pending = current.filter((item) => ["SUBMITTING", "SUBMITTED", "UNKNOWN_NO_RETRY"].includes(item.state));
-  const prepared = allowSubmission && result.requestState === "ACTIVE" && !current.some((item) => ["SUBMITTING", "UNKNOWN_NO_RETRY", "FAILED"].includes(item.state))
+  const prepared = allowSubmission && result.requestState === "ACTIVE" && !current.some((item) => (["SUBMITTING", "UNKNOWN_NO_RETRY"].includes(item.state) || (item.state === "FAILED" && !item.staticFallback)))
     ? current.filter((item) => item.state === "PREPARED" && item.sourceReady).slice(0, Math.max(0, VIDEO_CONCURRENCY - pending.length)) : [];
   const submissions = await settleHostedApiJobsBounded(prepared, VIDEO_CONCURRENCY, async (item) => {
     if (stopped) return;
@@ -128,9 +129,9 @@ export async function advanceHostedVideoGeneration(environment: HostedRuntimeEnv
     return { complete: false, active: settled.state !== "SETTLED", jobCount: current.length, progressed,
       problemCode: settled.state === "SETTLED" ? "OWNER_CANCELLED" : undefined };
   }
-  const failed = current.find((item) => item.state === "FAILED");
+  const failed = current.find((item) => item.state === "FAILED" && !item.staticFallback);
   const blocked = current.find((item) => ["SUBMITTING", "UNKNOWN_NO_RETRY"].includes(item.state));
-  return { complete: current.every((item) => item.state === "SUCCEEDED"),
+  return { complete: current.every((item) => item.state === "SUCCEEDED" || item.staticFallback),
     active: pending.length > 0 || prepared.length > 0 || progressed, jobCount: current.length, progressed,
     problemCode: failed?.failureCode ?? (failed ? "SEEDANCE_PROVIDER_FAILED" : blocked ? "SEEDANCE_SUBMISSION_UNCERTAIN" : undefined) };
 }

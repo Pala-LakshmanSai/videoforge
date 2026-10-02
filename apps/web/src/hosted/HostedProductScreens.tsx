@@ -698,6 +698,8 @@ interface HostedCost {
     readonly seedance_usd?: number;
     readonly seedance_reported_usd?: number;
     readonly seedance_coverage_percent?: number;
+    readonly seedance_actual_coverage_percent?: number | null;
+    readonly seedance_fallback_count?: number;
   } | null;
 }
 
@@ -5038,7 +5040,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     detail:
       isCloudMediaStage(stage.id)
         ? cloudMediaPhaseLabel(cloudStageAttempts[stage.id]?.cloud_phase, cloudStageAttempts[stage.id]?.state ?? "WAITING", query.data.queue?.position)
-        : stage.status === "COMPLETE"
+        : stage.status === "COMPLETE" && stage.id !== "video-generation"
         ? "Complete"
         : stage.status === "PENDING" && stage.detail === "Waiting for an authoritative update."
           ? "Waiting"
@@ -5300,11 +5302,14 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       stage.label === "Generate avatar",
   );
   const stageMediaActions = {
-    ...(videoStage && sceneVideos && sceneVideos.length > 0 ? {
-      [videoStage.id]: <ProjectMediaReview launcher="videos" images={generatedImages}
+    ...(videoStage && (videoStage.status === "COMPLETE" || (sceneVideos && sceneVideos.length > 0)) ? {
+      [videoStage.id]: <>
+        {videoStage.status === "COMPLETE" && videoStage.detail ? <p className="helper">{videoStage.detail}</p> : null}
+        {sceneVideos && sceneVideos.length > 0 ? <ProjectMediaReview launcher="videos" images={generatedImages}
         avatarVideos={avatarVideos} sceneVideos={sceneVideos} mediaTotals={mediaTotals}
         mediaHasMore={mediaHasMore} onLoadMore={(section) => void loadMoreMedia(section)}
-        loadingMore={mediaLoadingSection} loadMoreError={mediaLoadError} />,
+        loadingMore={mediaLoadingSection} loadMoreError={mediaLoadError} /> : null}
+      </>,
     } : {}),
     ...(imageStage && generatedImages.length > 0
       ? {

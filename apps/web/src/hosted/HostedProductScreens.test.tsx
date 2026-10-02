@@ -642,6 +642,28 @@ it("keeps approved downloads on the authenticated route when no download URL is 
     .toHaveAttribute("href", `/api/v2/hosted/projects/${projectId}/download`);
 });
 
+it("keeps rendering available after optional scene clips fall back to original stills", async () => {
+  const detail = "1 of 2 clips accepted · 1 scene kept as its original still · 3.33% actual motion (up to 7% target) · 720p 16:9.";
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+    project: { id: "fallback", title: "Retained still fallback", revision_id: "revision", revision_state: "LOCKED" },
+    generation_provider: "KIE_FAL", attempts: [], generation: null,
+    gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
+    stages: [
+      { id: "video-generation", name: "Generate scene videos", status: "COMPLETE", progress_percent: 100, detail },
+      { id: "render", name: "Assemble final video", status: "RUNNING" },
+    ],
+    cost: { api_estimate: { kie_images: 2, kie_usd: 0.008, fal_avatar_seconds: 10, fal_usd: 0.05,
+      seedance_seconds: 8, seedance_usd: 0.10688, seedance_reported_usd: 0.06,
+      seedance_coverage_percent: 7, seedance_actual_coverage_percent: 100 / 30, seedance_fallback_count: 1,
+      pricing_checked_at: "2026-10-03" } },
+  })));
+  renderHosted(<HostedProjectScreen projectId="fallback" />);
+  expect(await screen.findByText(detail)).toBeInTheDocument();
+  expect(stageRow("Generate scene videos")).toHaveTextContent(/complete/i);
+  expect(stageRow("Assemble final video")).toHaveTextContent(/running/i);
+  expect(screen.queryByRole("button", { name: /create a new video/i })).not.toBeInTheDocument();
+});
+
 it.each([
   {
     overrun: false,

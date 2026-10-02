@@ -20,6 +20,10 @@ const firstPostSource = readFileSync(
   new URL("../migrations/0243_hosted_seedance_video_first_post.sql", import.meta.url),
   "utf8",
 );
+const fallbackSource = readFileSync(
+  new URL("../migrations/0244_hosted_seedance_video_static_fallback.sql", import.meta.url),
+  "utf8",
+);
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const hash = "sha256:" + "a".repeat(64);
 
@@ -80,6 +84,7 @@ test("0240 applies to the real prior chain and enforces private immutable video 
     await executor.execute(costSource);
     await executor.execute(noTaskSource);
     await executor.execute(firstPostSource);
+    await executor.execute(fallbackSource);
     const extendedConstraint = (
       await db.query(
         "SELECT pg_get_expr(conbin,conrelid) AS predicate FROM pg_constraint WHERE conrelid='artifact_reservations'::regclass AND conname='artifact_reservations_object_key_check'",
@@ -788,6 +793,318 @@ test("0240 applies to the real prior chain and enforces private immutable video 
       ]),
       /contract or price/,
     );
+    // Definite optional failures retain the original image and actual charge. Unknown,
+    // cancellation, operator closure and unexpected invoices cannot become a fallback.
+    for (const code of [
+      "SEEDANCE_RESULT_INVALID",
+      "SEEDANCE_CLIP_TOO_SHORT",
+      "SEEDANCE_PROVIDER_FAILED",
+      "SEEDANCE_SUBMIT_REJECTED",
+      "SEEDANCE_INPUT_INVALID",
+    ])
+      assert.equal(
+        await call("videoforge_hosted_video_static_fallback", ["FAILED", code, 0.1336, 10]),
+        true,
+      );
+    for (const [state, code, cost, duration] of [
+      ["UNKNOWN_NO_RETRY", "SEEDANCE_RESULT_INVALID", 0.1336, 10],
+      ["SUCCEEDED", "SEEDANCE_RESULT_INVALID", 0.1336, 10],
+      ["FAILED", "SEEDANCE_PRICE_CHANGED", 0.1336, 10],
+      ["FAILED", "OWNER_CANCELLED", 0, 10],
+      ["FAILED", "RUNWARE_ARCHIVE_CONFIRMED_NO_TASK", 0, 10],
+      ["FAILED", "SEEDANCE_RESULT_INVALID", 1.25, 10],
+      ["FAILED", "SEEDANCE_RESULT_INVALID", "NaN", 10],
+      ["FAILED", "SEEDANCE_RESULT_INVALID", "Infinity", 10],
+      ["FAILED", "SEEDANCE_RESULT_INVALID", -1, 10],
+      ["FAILED", "SEEDANCE_RESULT_INVALID", 0, "NaN"],
+    ])
+      assert.equal(
+        await call("videoforge_hosted_video_static_fallback", [state, code, cost, duration]),
+        false,
+      );
+    const staticManifest = {
+      schema_version: "resolved-render-manifest/v1",
+      segments: [
+        {
+          segment_id: "scene",
+          timeline_composition: "IMAGE_FULL",
+          accepted_assets: { image: { asset_id: sourceAsset, sha256: hash } },
+          render: {},
+        },
+      ],
+    };
+    const originalPlan = (
+      await db.query(
+        "SELECT to_jsonb(p) value FROM hosted_video_plans p WHERE project_revision_id=$1",
+        [r],
+      )
+    ).rows[0].value;
+    await db.exec("BEGIN; SAVEPOINT fallback_cases");
+    const failedStatic = await call("videoforge_fail_hosted_video_job", [
+      a,
+      w,
+      g,
+      j,
+      "SEEDANCE_RESULT_INVALID",
+    ]);
+    assert.equal(failedStatic.staticFallback, true);
+    assert.equal(failedStatic.state, "FAILED");
+    assert.equal(failedStatic.outputCostUsd, 0.1336);
+    assert.equal(
+      (await call("videoforge_settle_hosted_api_failure", [a, w, g])).state,
+      "NO_FAILURE",
+    );
+    assert.deepEqual(failedStatic.inputManifest, claimed.inputManifest);
+    assert.equal(await call("videoforge_hosted_videos_ready", [a, w, g]), true);
+    assert.equal(await call("videoforge_hosted_videos_ready", [IDS.accountB, w, g]), false);
+    assert.equal(
+      await call("videoforge_hosted_video_manifest_valid", [
+        a,
+        w,
+        g,
+        JSON.stringify(staticManifest),
+      ]),
+      true,
+    );
+    assert.equal(
+      await call("videoforge_hosted_video_manifest_valid", [
+        a,
+        w,
+        g,
+        JSON.stringify({
+          ...staticManifest,
+          segments: [
+            {
+              ...staticManifest.segments[0],
+              accepted_assets: { image: { asset_id: id(999), sha256: hash } },
+            },
+          ],
+        }),
+      ]),
+      false,
+    );
+    assert.equal(
+      await call("videoforge_hosted_video_manifest_valid", [
+        a,
+        w,
+        g,
+        JSON.stringify({ ...staticManifest, schema_version: "resolved-render-manifest/v2" }),
+      ]),
+      false,
+    );
+    assert.equal(
+      (await db.query("SELECT count(*)::int n FROM assets WHERE kind='VIDEO_CLIP'")).rows[0].n,
+      0,
+    );
+    assert.deepEqual(
+      (
+        await db.query(
+          "SELECT to_jsonb(p) value FROM hosted_video_plans p WHERE project_revision_id=$1",
+          [r],
+        )
+      ).rows[0].value,
+      originalPlan,
+    );
+    assert.equal(
+      (
+        await db.query(
+          "SELECT state FROM provider_workload_leases WHERE generation_request_id=$1",
+          [g],
+        )
+      ).rows[0].state,
+      "ACTIVE",
+      "original lanes must complete before release",
+    );
+    // Minimal committed-manifest metadata lets the native input gate prove the
+    // all-static v1 exception is exact-hash-bound, not a generalized v1 bypass.
+    await seed(
+      "hosted_v209_ordinary_resolved_render_manifests",
+      `INSERT INTO hosted_v209_ordinary_resolved_render_manifests(generation_request_id,account_id,workspace_id,project_id,project_revision_id,asset_id,reservation_id,manifest_sha256,manifest_document,object_key,content_length,receipt_sha256) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,'manifest-fixture',100,$8)`,
+      [g, a, w, p, r, sourceAsset, sourceReservation, hash, JSON.stringify(staticManifest)],
+    );
+    const staticRenderInput = {
+      schema_version: "render-job-input/v1",
+      resolved_render_manifest: { sha256: hash },
+    };
+    assert.equal(
+      await call("videoforge_hosted_video_render_input_valid", [
+        a,
+        w,
+        r,
+        JSON.stringify(staticRenderInput),
+      ]),
+      true,
+    );
+    assert.equal(
+      await call("videoforge_hosted_video_render_input_valid", [
+        a,
+        w,
+        r,
+        JSON.stringify({
+          ...staticRenderInput,
+          resolved_render_manifest: { sha256: "sha256:" + "b".repeat(64) },
+        }),
+      ]),
+      false,
+    );
+    await db.exec("SAVEPOINT missing_static_source");
+    await db.query(
+      "UPDATE artifact_receipts SET deleted_at=now(),deletion_reason='OWNER_DELETE' WHERE id=$1",
+      [sourceReceipt],
+    );
+    assert.equal(await call("videoforge_hosted_videos_ready", [a, w, g]), false);
+    await db.exec("ROLLBACK TO SAVEPOINT missing_static_source");
+    await db.exec("SAVEPOINT immutable_static");
+    await assert.rejects(
+      db.query("UPDATE hosted_video_jobs SET state='PREPARED' WHERE id=$1", [j]),
+      /immutable/,
+    );
+    await db.exec("ROLLBACK TO SAVEPOINT immutable_static");
+    await db.exec("ROLLBACK TO SAVEPOINT fallback_cases");
+    for (const code of [
+      "SEEDANCE_PRICE_CHANGED",
+      "OWNER_CANCELLED",
+      "RUNWARE_ARCHIVE_CONFIRMED_NO_TASK",
+    ]) {
+      await call("videoforge_fail_hosted_video_job", [a, w, g, j, code]);
+      assert.equal(await call("videoforge_hosted_videos_ready", [a, w, g]), false);
+      assert.equal(
+        await call("videoforge_hosted_video_manifest_valid", [
+          a,
+          w,
+          g,
+          JSON.stringify(staticManifest),
+        ]),
+        false,
+      );
+      await db.exec("ROLLBACK TO SAVEPOINT fallback_cases");
+    }
+    // A permitted failed sibling leaves remaining PREPARED jobs eligible for their
+    // first paid claim; a partial accepted subset maps to v2 with the original still.
+    const sibling = id(244001);
+    await seed(
+      "hosted_video_plans",
+      "UPDATE hosted_video_plans SET selections=selections||$2::jsonb WHERE project_revision_id=$1",
+      [
+        r,
+        JSON.stringify([
+          {
+            segmentId: "scene-next",
+            sourceTaskKey: "image:scene",
+            videoFrameCount: 60,
+            durationSeconds: 2,
+          },
+        ]),
+      ],
+    );
+    await db.query(
+      `INSERT INTO hosted_video_jobs(id,account_id,workspace_id,project_id,project_revision_id,generation_request_id,segment_id,source_task_key,video_frame_count,duration_seconds,output_object_key)
+      SELECT $2::uuid,account_id,workspace_id,project_id,project_revision_id,generation_request_id,'scene-next',source_task_key,60,2,
+       'tenant/'||account_id||'/workspace/'||workspace_id||'/project/'||project_id||'/revision/'||project_revision_id||'/lane/scene-video/job/'||$2::uuid||'/artifact/'||$2::uuid FROM hosted_video_jobs WHERE id=$1`,
+      [j, sibling],
+    );
+    await call("videoforge_fail_hosted_video_job", [a, w, g, j, "SEEDANCE_RESULT_INVALID"]);
+    assert.equal(await call("videoforge_hosted_videos_ready", [a, w, g]), false);
+    const nextClaim = await call("videoforge_claim_hosted_video_job", [a, w, g, sibling, claim]);
+    assert.equal(nextClaim.state, "SUBMITTING");
+    await call("videoforge_record_hosted_video_task", [a, w, g, sibling, claim, sibling]);
+    await call("videoforge_record_hosted_video_cost", [a, w, g, sibling, 0.02672]);
+    const acceptedNext = await call("videoforge_commit_hosted_video_output", [
+      a,
+      w,
+      g,
+      sibling,
+      hash,
+      2000,
+      "video/mp4",
+      JSON.stringify({ width: 1248, height: 704, durationMs: 2000 }),
+      0.02672,
+    ]);
+    assert.equal(acceptedNext.state, "SUCCEEDED");
+    assert.equal(await call("videoforge_hosted_videos_ready", [a, w, g]), true);
+    const siblingAsset = (
+      await db.query("SELECT output_asset_id FROM hosted_video_jobs WHERE id=$1", [sibling])
+    ).rows[0].output_asset_id;
+    const mixedManifest = {
+      schema_version: "resolved-render-manifest/v2",
+      segments: [
+        staticManifest.segments[0],
+        {
+          segment_id: "scene-next",
+          timeline_composition: "IMAGE_FULL",
+          accepted_assets: {
+            image: { asset_id: sourceAsset, sha256: hash },
+            video: { asset_id: siblingAsset, sha256: hash },
+          },
+          render: { video_source_profile: "seedance-pro-fast-1248x704-v1", video_frame_count: 60 },
+        },
+      ],
+    };
+    assert.equal(
+      await call("videoforge_hosted_video_manifest_valid", [
+        a,
+        w,
+        g,
+        JSON.stringify(mixedManifest),
+      ]),
+      true,
+    );
+    assert.equal(
+      await call("videoforge_hosted_video_manifest_valid", [
+        a,
+        w,
+        g,
+        JSON.stringify({ ...mixedManifest, segments: [mixedManifest.segments[1]] }),
+      ]),
+      false,
+    );
+    assert.equal((await call("videoforge_read_hosted_video_jobs", [a, w, g])).plannedJobCount, 2);
+    assert.equal(
+      (await db.query("SELECT state FROM generation_requests WHERE id=$1", [g])).rows[0].state,
+      "ACTIVE",
+    );
+    await db.exec("ROLLBACK TO SAVEPOINT fallback_cases");
+    // Last definite failure closes the same native stage/lease barrier as a clip commit.
+    for (const [n, lane] of [
+      [244010, "mage_image"],
+      [244011, "soulx_avatar"],
+    ])
+      await seed(
+        "video_runtime_lane_states",
+        `INSERT INTO video_runtime_lane_states(id,account_id,workspace_id,runtime_id,project_revision_id,lane,state,items_manifest_sha256,planned_item_count,accepted_item_count,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,'SUCCEEDED',$7,0,0,now(),now())`,
+        [id(n), a, w, runtime, r, lane, hash],
+      );
+    await db.query("UPDATE global_generation_capacity SET active_lease_count=1");
+    await call("videoforge_fail_hosted_video_job", [a, w, g, j, "SEEDANCE_CLIP_TOO_SHORT"]);
+    assert.equal(
+      (await db.query("SELECT stage FROM video_runtime_states WHERE id=$1", [runtime])).rows[0]
+        .stage,
+      "RENDERING",
+    );
+    assert.equal(
+      (
+        await db.query(
+          "SELECT state FROM provider_workload_leases WHERE generation_request_id=$1",
+          [g],
+        )
+      ).rows[0].state,
+      "RELEASED",
+    );
+    assert.equal(
+      (await db.query("SELECT state FROM generation_requests WHERE id=$1", [g])).rows[0].state,
+      "ACTIVE",
+    );
+    assert.equal(
+      (await call("videoforge_fail_hosted_video_job", [a, w, g, j, "SEEDANCE_CLIP_TOO_SHORT"]))
+        .staticFallback,
+      true,
+    );
+    assert.equal(
+      (await db.query("SELECT state FROM hosted_api_generation_jobs WHERE id=$1", [sourceJob]))
+        .rows[0].state,
+      "SUCCEEDED",
+    );
+    await db.exec("ROLLBACK");
     await db.exec("BEGIN; SAVEPOINT paid_video");
     const result = await call("videoforge_commit_hosted_video_output", [
       a,

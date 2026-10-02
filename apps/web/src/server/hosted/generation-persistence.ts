@@ -270,6 +270,16 @@ export class HostedCanonicalTimingPersistence implements HostedGenerationPersist
           JSON.stringify(payload),
         ],
       );
+      const videoPlan = await transaction.query<{ selections: unknown }>(
+        "SELECT selections FROM hosted_video_plans WHERE account_id=$1 AND workspace_id=$2 AND project_revision_id=$3",
+        [input.snapshot.accountId, input.snapshot.workspaceId, input.snapshot.projectRevisionId],
+      );
+      if (videoPlan.rows.length > 1 || (videoPlan.rows.length === 1 &&
+          videoPlan.rows[0]!.selections !== null && !Array.isArray(videoPlan.rows[0]!.selections)))
+        fail("HOSTED_VIDEO_PLAN_DATABASE_READBACK_MISMATCH");
+      // Existing selections pin their original duration policy. A legacy revision stays opted out;
+      // an opted-in plan with null selections still finishes after an interrupted canonical append.
+      if (videoPlan.rows.length === 0 || videoPlan.rows[0]!.selections !== null) return saved;
       const timeline = {
         total_frames: input.preparedTimeline.timelinePersistence.totalFrames,
         segments: input.preparedTimeline.timelinePersistence.segments.map((segment) => ({

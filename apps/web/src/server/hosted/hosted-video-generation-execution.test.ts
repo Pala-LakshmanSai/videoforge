@@ -118,6 +118,34 @@ describe("hosted video execution", () => {
   });
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
+  it("keeps a definite short clip as a still while submitting remaining selections once", async () => {
+    fixture.videos = videoJobs("PREPARED", 3);
+    Object.assign(fixture.videos[0]!, { state: "FAILED", failureCode: "SEEDANCE_RESULT_INVALID", staticFallback: true, claimId: identity(100), outputCostUsd: 0.01614842 });
+    Object.assign(fixture.videos[1]!, { state: "SUCCEEDED", claimId: identity(100), providerTaskId: identity(1) });
+    const original = structuredClone(fixture.videos[0]);
+    const result = await run(advanceHostedVideoGeneration(environment, database, scope, true));
+    expect(result.problemCode).toBeUndefined();
+    expect(fixture.submit).toHaveBeenCalledTimes(1);
+    expect(fixture.submit.mock.calls[0]?.[0].taskUUID).toBe(identity(2));
+    expect(fixture.videos[0]).toEqual(original);
+  });
+
+  it("renders original images when every optional clip has an authorized static fallback", async () => {
+    fixture.videos = videoJobs("FAILED", 2).map((item) => ({ ...item, failureCode: "SEEDANCE_CLIP_TOO_SHORT", staticFallback: true, outputCostUsd: 0.02 }));
+    expect((await run(advanceHostedApiGeneration(environment, database, scope))).state).toBe("READY_TO_RENDER");
+    expect(fixture.submit).not.toHaveBeenCalled();
+    expect(fixture.observe).not.toHaveBeenCalled();
+    expect(fixture.events.some((event) => event.startsWith("videoforge_settle_hosted_api_failure"))).toBe(false);
+  });
+
+  it("never treats an uncertain submission as a still fallback", async () => {
+    fixture.videos = videoJobs("UNKNOWN_NO_RETRY").map((item) => ({ ...item, staticFallback: true }));
+    const result = await run(advanceHostedVideoGeneration(environment, database, scope, true));
+    expect(result.complete).toBe(false);
+    expect(result.problemCode).toBe("SEEDANCE_SUBMISSION_UNCERTAIN");
+    expect(fixture.submit).not.toHaveBeenCalled();
+  });
+
   it("durably claims at most four jobs and preserves the outstanding cap on the next pass", async () => {
     fixture.videos = videoJobs("PREPARED", 6);
     await run(advanceHostedVideoGeneration(environment, database, scope, true));

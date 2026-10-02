@@ -7543,7 +7543,21 @@ async function projectDetail(
         "SELECT selections,planned_at,coverage_percent FROM hosted_video_plans WHERE account_id=$1 AND workspace_id=$2 AND project_revision_id=$3",
         [scope.account_id, scope.workspace_id, currentRevisionId]);
       const videoJobs = await transaction.query(
-        `SELECT job.*, EXISTS(SELECT 1 FROM assets asset JOIN artifact_receipts receipt
+        `SELECT job.*, (public.videoforge_hosted_video_static_fallback(job.state,job.failure_code,job.output_cost_usd,job.duration_seconds)
+          AND job.output_asset_id IS NULL AND job.output_receipt_id IS NULL AND job.output_sha256 IS NULL
+          AND job.output_bytes IS NULL AND job.output_probe IS NULL
+          AND EXISTS(SELECT 1 FROM hosted_api_generation_jobs source
+            JOIN assets original ON original.account_id=source.account_id AND original.workspace_id=source.workspace_id AND original.id=source.output_asset_id
+            JOIN artifact_receipts original_receipt ON original_receipt.account_id=source.account_id AND original_receipt.workspace_id=source.workspace_id AND original_receipt.id=source.output_receipt_id
+            WHERE source.account_id=job.account_id AND source.workspace_id=job.workspace_id
+              AND source.generation_request_id=job.generation_request_id AND source.id=job.source_api_job_id
+              AND source.task_key=job.source_task_key AND source.lane='IMAGE' AND source.state='SUCCEEDED'
+              AND source.output_asset_id=job.source_asset_id AND source.output_sha256=job.source_sha256
+              AND original.kind='IMAGE' AND original.state='ACCEPTED' AND original.object_key=source.output_object_key
+              AND original.binary_sha256=source.output_sha256 AND original.byte_size=source.output_bytes
+              AND original_receipt.deleted_at IS NULL AND original_receipt.object_key=original.object_key
+              AND original_receipt.checksum_sha256=original.binary_sha256 AND original_receipt.content_length=original.byte_size)) AS static_fallback,
+          EXISTS(SELECT 1 FROM assets asset JOIN artifact_receipts receipt
            ON receipt.account_id=asset.account_id AND receipt.workspace_id=asset.workspace_id AND receipt.id=job.output_receipt_id
            WHERE asset.account_id=job.account_id AND asset.workspace_id=job.workspace_id AND asset.id=job.output_asset_id
              AND asset.state='ACCEPTED' AND asset.kind='VIDEO_CLIP' AND asset.object_key=job.output_object_key
@@ -7991,10 +8005,18 @@ async function projectDetail(
     const videoPlan = detail.videoPlan as Record<string, unknown> | null;
     const videoJobs = detail.videoJobs as Record<string, unknown>[];
     const videoSelections = Array.isArray(videoPlan?.selections) ? videoPlan.selections as Record<string, unknown>[] : [];
-    const videoAccepted = videoJobs.filter((job) => job.state === "SUCCEEDED" && job.accepted_barrier_valid === true).length;
-    const videoComplete = videoPlan !== null && videoPlan.planned_at !== null && videoAccepted === videoSelections.length;
-    const videoProblem = videoJobs.find((job) => job.state === "FAILED");
+    const acceptedVideoJobs = videoJobs.filter((job) => job.state === "SUCCEEDED" && job.accepted_barrier_valid === true);
+    const videoAccepted = acceptedVideoJobs.length;
+    const videoFallback = videoJobs.filter((job) => job.state === "FAILED" && job.static_fallback === true).length;
+    const videoFinished = videoAccepted + videoFallback;
+    const videoComplete = videoPlan !== null && videoPlan.planned_at !== null && videoJobs.length === videoSelections.length && videoFinished === videoSelections.length;
+    const videoProblem = videoJobs.find((job) => job.state === "FAILED" && job.static_fallback !== true);
     const videoUncertain = videoJobs.some((job) => job.state === "UNKNOWN_NO_RETRY");
+    const apiPlan = detail.generation as Record<string, unknown> | null;
+    const finalFrameCount = numberOrNull(apiPlan?.final_frame_count);
+    const actualVideoCoverage = finalFrameCount !== null && finalFrameCount > 0
+      ? acceptedVideoJobs.reduce((sum, job) => sum + (numberOrNull(job.video_frame_count) ?? 0), 0) * 100 / finalFrameCount
+      : null;
     const videoTimes = (key: string) => videoJobs.map((job) => timestampOrNull(job[key])).filter((value): value is string => value !== null).sort();
     const stages = [
       {
@@ -8148,13 +8170,13 @@ async function projectDetail(
         id: "video-generation", name: "Generate scene videos",
         status: videoComplete ? "COMPLETE" : videoProblem ? "FAILED" : videoUncertain ? "ACTION_REQUIRED" :
           videoJobs.some((job) => ["SUBMITTING", "SUBMITTED", "SUCCEEDED"].includes(String(job.state))) ? "RUNNING" : "WAITING",
-        progress_percent: videoSelections.length ? Math.round(videoAccepted * 100 / videoSelections.length) : videoComplete ? 100 : 0,
+        progress_percent: videoSelections.length ? Math.round(videoFinished * 100 / videoSelections.length) : videoComplete ? 100 : 0,
         started_at: videoTimes("submitted_at")[0] ?? null,
         completed_at: videoComplete || videoProblem ? videoTimes("completed_at").at(-1) ?? null : null,
         detail: videoProblem ? `Scene video generation stopped: ${String(videoProblem.failure_code)}. Accepted images and clips remain saved.` :
           videoUncertain ? "Confirming the saved Runware task. No duplicate generation request is sent." :
           videoComplete && videoSelections.length === 0 ? "No eligible image-only scene requires motion in this short timeline." :
-          `${videoAccepted} of ${videoSelections.length} clips accepted · 7% coverage · 720p 16:9. Runs alongside images and avatars as source images become ready.`,
+          `${videoAccepted} of ${videoSelections.length} clips accepted${videoFallback ? ` · ${videoFallback} ${videoFallback === 1 ? "scene kept as its original still" : "scenes kept as their original stills"}` : ""} · ${actualVideoCoverage === null ? "Up to 7% motion target" : `${actualVideoCoverage.toFixed(2)}% actual motion (up to 7% target)`} · 720p 16:9.${videoComplete ? "" : " Runs alongside images and avatars as source images become ready."}`,
         eta_ms: null,
       }] : []),
       {
@@ -8254,7 +8276,6 @@ async function projectDetail(
     const settledCost = costRow
       ? (numberOrNull(costRow.settled_usd) ?? 0) + (numberOrNull(costRow.prompt_settled_usd) ?? 0)
       : 0;
-    const apiPlan = detail.generation as Record<string, unknown> | null;
     const apiImageCount = numberOrNull(apiPlan?.image_scene_count);
     const apiAvatarFrames = numberOrNull(apiPlan?.avatar_frame_count);
     // Published planning rates checked 2026-09-25; actual Fal audio-route billing is unavailable.
@@ -8270,6 +8291,8 @@ async function projectDetail(
               seedance_usd: videoSelections.reduce((sum, selection) => sum + (numberOrNull(selection.durationSeconds) ?? 0) * 0.01336, 0),
               seedance_reported_usd: videoJobs.reduce((sum, job) => sum + (numberOrNull(job.output_cost_usd) ?? 0), 0),
               seedance_coverage_percent: 7,
+              seedance_actual_coverage_percent: actualVideoCoverage,
+              seedance_fallback_count: videoFallback,
             } : {}),
             pricing_checked_at: videoPlan ? "2026-10-02" : "2026-09-25",
           }
@@ -8281,7 +8304,6 @@ async function projectDetail(
         .map((job) => timestampOrNull(job.submitted_at))
         .filter((value): value is string => value !== null)
         .sort()[0] ?? null;
-    const finalFrameCount = numberOrNull(apiPlan?.final_frame_count);
     const timeEstimate = projectApiGeneration && (!videoPlan || videoComplete) && finalFrameCount !== null && finalFrameCount > 0
       ? hostedApiRemainingTimeEstimate({
           durationMs: (finalFrameCount / 30) * 1000,
