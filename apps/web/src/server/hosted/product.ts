@@ -2,6 +2,11 @@ import { hostedAccountCleanupPending, HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE } fro
 import { localMediaRequiredBytes, qualifiedPersonalWorkers } from "./personal-worker-readiness";
 import type { HostedExecutionContext } from "./auth";
 import type { SqlExecutor, TransactionalSqlExecutor } from "@videoforge/control-plane";
+import {
+  NATURAL_DOCUMENTARY_STYLE_ID,
+  NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH,
+  NATURAL_DOCUMENTARY_STYLE_VERSION_ID,
+} from "@videoforge/pipeline";
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
 import {
   HostedCanonicalTimingPersistence,
@@ -4199,10 +4204,17 @@ async function catalog(
       };
     });
     const gpuReadiness = hostedGpuReadinessForConfiguration(config);
+    const defaultStyle = styleRows.find((style) =>
+      style.style_id === NATURAL_DOCUMENTARY_STYLE_ID &&
+      style.version_id === NATURAL_DOCUMENTARY_STYLE_VERSION_ID &&
+      style.profile_hash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH &&
+      style.scope_kind === "SYSTEM" && style.status === "ACTIVE" && style.state === "PUBLISHED",
+    );
     return response({
       schema_version: "videoforge-hosted-project-catalog/v1",
       avatars: avatarRows,
       styles: styleRows,
+      ...(defaultStyle ? { default_image_style_version_id: defaultStyle.version_id } : {}),
       avatar_drafts: avatarDraftRows,
       style_drafts: styleDraftRows,
       media_worker_state: data.workers > 0 ? "ONLINE" : "WAITING_FOR_YOUR_COMPUTER",

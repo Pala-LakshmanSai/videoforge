@@ -272,7 +272,7 @@ approved_decisions:
   DEC_SCHEDULER_002: approximately_22_percent_avatar_even_full_split
   DEC_SCOPE_001: image_only_broll
   DEC_STYLE_001: tenant_private_immutable_image_styles
-  DEC_STYLE_002: documentary_stock_v1_default
+  DEC_STYLE_002: natural_documentary_v1_explicit_default
   DEC_STYLE_003: one_time_runware_gemini_style_analysis
   DEC_STYLE_004: immutable_style_version_pinned
   DEC_STYLE_005: optional_keywords_explicit_toggle

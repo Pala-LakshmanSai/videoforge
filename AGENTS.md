@@ -50,7 +50,7 @@ Before doing any VideoForge work:
 
 Non-negotiable output rule: VideoForge must never add motion graphics, text overlays, captions, lower-thirds, decorative graphics, borders, watermarks, title cards, or decorative transitions. Hard cuts only. A slow, smooth zoom on an AI image is required and is not considered motion graphics.
 
-Image styles are reusable, immutable published versions. The built-in default is `documentary_stock_v1`. Reference-image vision analysis runs only when a new draft style version is explicitly analyzed—never for each video or generated image. Project revisions pin `image_style_version_id`, `style_profile_hash`, `extra_prompt_keywords`, and `apply_extra_prompt_keywords`.
+Image styles are reusable, immutable published versions. The built-in default for fresh projects is `natural_documentary_v1`; historical `documentary_stock_v1` and existing revision pins remain immutable. Reference-image vision analysis runs only when a new draft style version is explicitly analyzed—never for each video or generated image. Project revisions pin `image_style_version_id`, `style_profile_hash`, `extra_prompt_keywords`, and `apply_extra_prompt_keywords`.
 
 Avatars are reusable workspace presets. Ordinary project creation must select an exact ready `avatar_profile_version_id` from the Avatar Hub; never add a per-project avatar upload bypass. Project revisions pin the resolved Avatar Profile/version/hash, canonical runtime source asset/checksum, and exact compatibility state/evidence snapshot used at preflight.
 

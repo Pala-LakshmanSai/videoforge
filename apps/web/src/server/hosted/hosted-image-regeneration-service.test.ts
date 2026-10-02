@@ -241,7 +241,7 @@ describe("hosted image regeneration service", () => {
     expect(test.calls.some(({ sql }) => sql.includes("videoforge_create_hosted_api_image_regeneration"))).toBe(false);
     expect(test.calls.some(({ sql }) => sql.includes("videoforge_create_hosted_image_regeneration"))).toBe(true);
   });
-  it.each(["KIE_FAL", "RUNPOD"])("creates a new API regeneration from a %s image's pinned style without GPU bindings", async (provider) => {
+  it.each([["KIE_FAL", "prompt-compiler-v3"], ["KIE_FAL", "prompt-compiler-v4"], ["RUNPOD", "prompt-compiler-v3"]])("creates API regeneration from %s/%s pinned style without GPU bindings", async (provider, promptCompilerVersion) => {
     const previousGuard = "Legacy original still; no text or branding";
     const queries: Array<{ sql: string; values: readonly SqlPrimitive[] }> = [];
     const query = vi.fn(async (sql: string, values: readonly SqlPrimitive[] = []) => {
@@ -251,6 +251,7 @@ describe("hosted image regeneration service", () => {
       if (sql.includes("SELECT EXISTS")) return { rows: [{ value: false }] };
       if (sql.includes("videoforge_read_hosted_api_image_regeneration_source"))
         return { rows: [{ value: { sourceInputManifest: { compiledPrompt: {
+          promptCompilerVersion,
           components: { literalContent: originalPrompt, continuityAndShotRole: "original role",
             cropGuidance: "original crop", stylePositiveSuffix: "original style",
             styleNegativeSuffix: "CGI, fake lettering", extraPromptKeywords: null,

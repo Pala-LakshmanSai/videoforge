@@ -1,10 +1,18 @@
+import { NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH } from "./natural-documentary-style.js";
+import {
+  naturalDocumentaryRequiredPrompt,
+  naturalDocumentaryCropGuidance,
+  naturalDocumentaryShotRoleGuidance,
+} from "./natural-documentary-prompt-policy.js";
 import { createHash } from "node:crypto";
 
 import type { Sha256Digest } from "@videoforge/contracts";
 
 import { PipelineDomainError } from "../errors.js";
 import { SCENE_PROMPT_WRITER_VERSION } from "./types.js";
-import type { CompilePromptRequest, CompiledImagePrompt, PromptStyleComponents } from "./types.js";
+import type {
+  CompilePromptRequest, CompiledImagePrompt, PromptStyleComponents, PromptSceneInput,
+} from "./types.js";
 
 export const PERMANENT_POSITIVE_GUARDRAIL =
   "Original scene photo; framing only, no camera gear. Show names, dates, quantities physically. No text or pseudo-text, numbers, labels, signs, branding, logos, watermarks, captions, UI, graphics, borders, overlays, motion graphics or decorative transitions; products unmarked.";
@@ -448,8 +456,14 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
     expected.layout === "IMAGE_FULL" ? style.fullImageGuidance : style.splitImageGuidance;
   const components = Object.freeze({
     literalContent: plainGeometry(literalContent),
-    continuityAndShotRole: plainGeometry(continuityAndShotRole),
-    cropGuidance: compactCropGuidance(plainGeometry(cropGuidance)),
+    continuityAndShotRole:
+      request.styleProfileHash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH
+        ? naturalDocumentaryShotRoleGuidance(expected.inImageShotRole)
+        : plainGeometry(continuityAndShotRole),
+    cropGuidance:
+      request.styleProfileHash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH
+        ? naturalDocumentaryCropGuidance(expected.layout)
+        : compactCropGuidance(plainGeometry(cropGuidance)),
     stylePositiveSuffix: compactBuiltInStylePositive(plainGeometry(style.positiveSuffix)),
     extraPromptKeywords: extra === null ? extra : plainGeometry(extra),
     permanentPositiveGuardrail: PERMANENT_POSITIVE_GUARDRAIL,
@@ -472,8 +486,20 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
     fail("PROMPT_INPUT_INVALID", "Compiled prompt exceeds the bounded image-model prompt budget.", [
       "writerOutput",
     ]);
+  const natural = request.styleProfileHash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH;
+  if (natural) {
+    try {
+      naturalDocumentaryRequiredPrompt(components);
+    } catch (error) {
+      fail(
+        "PROMPT_INPUT_INVALID",
+        error instanceof Error ? error.message : "Image prompt exceeds its provider budget.",
+        ["writerOutput"],
+      );
+    }
+  }
   return Object.freeze({
-    promptCompilerVersion: "prompt-compiler-v3",
+    promptCompilerVersion: natural ? "prompt-compiler-v4" : "prompt-compiler-v3",
     scenePromptWriterVersion: SCENE_PROMPT_WRITER_VERSION,
     sceneId: expected.sceneId,
     components,
@@ -514,4 +540,35 @@ export function verifyCompiledImagePrompt(prompt: CompiledImagePrompt): void {
     hash(positive) !== prompt.positivePromptSha256
   )
     fail("PROMPT_HASH_MISMATCH", "Compiled prompt bytes, components, or hashes do not match.", []);
+}
+
+/** Conservative shared allowance; no paid writer call is needed to detect impossible inputs. */
+export function naturalDocumentaryLiteralCharacterLimit(input: {
+  readonly styleProfileHash: string;
+  readonly style: PromptStyleComponents;
+  readonly extraPromptKeywords: string | null;
+  readonly applyExtraPromptKeywords: boolean;
+  readonly scenes: readonly PromptSceneInput[];
+}): number | undefined {
+  if (input.styleProfileHash !== NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH) return undefined;
+  const normalizedExtra = normalizeExtra(input.extraPromptKeywords, input.applyExtraPromptKeywords);
+  const extra = normalizedExtra === null ? null : plainGeometry(normalizedExtra);
+  const style = validatePromptStyleComponents(input.style);
+  const limits = input.scenes.map((scene) => {
+    const fixed = naturalDocumentaryRequiredPrompt({
+      literalContent: "x",
+      cropGuidance: naturalDocumentaryCropGuidance(scene.layout),
+      stylePositiveSuffix: compactBuiltInStylePositive(plainGeometry(style.positiveSuffix)),
+      continuityAndShotRole: naturalDocumentaryShotRoleGuidance(scene.inImageShotRole),
+      extraPromptKeywords: extra,
+    });
+    // Literal labels/separators remain compiler-owned. Require useful room for all three fields.
+    return 800 - fixed.length + 1 - "subject: , action: , environment: ".length;
+  });
+  const limit = Math.min(...limits);
+  if (!Number.isSafeInteger(limit) || limit < 90)
+    throw new RangeError(
+      "Natural Documentary leaves fewer than 90 scene characters; shorten enabled keywords before generating.",
+    );
+  return limit;
 }

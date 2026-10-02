@@ -1,3 +1,4 @@
+import { naturalDocumentaryRequiredPrompt } from "@videoforge/pipeline/prompts";
 import type { HostedR2BucketBinding } from "../hosted/configuration";
 import { sha256Bytes } from "../hosted/crypto";
 import { KieZImageClient, KieZImageError, type KieAspectRatio } from "./kie-z-image";
@@ -58,6 +59,21 @@ function distinctStyleNegatives(value: string): string[] {
 /** Map compiled prompt parts into Kie's medium target without cutting scene or style text. */
 export function buildKieScenePrompt(compiled: CompiledImagePrompt): string {
   const c = compiled.components;
+  if (compiled.promptCompilerVersion === "prompt-compiler-v4") {
+    try {
+      let prompt = naturalDocumentaryRequiredPrompt(c);
+      let addedNegative = false;
+      for (const term of distinctStyleNegatives(c.styleNegativeSuffix)) {
+        const next = `${prompt}${addedNegative ? ", " : ". Avoid: "}${term}`;
+        if (next.length > KIE_PROMPT_TARGET_LENGTH) break;
+        prompt = next;
+        addedNegative = true;
+      }
+      return prompt;
+    } catch {
+      throw new KieZImageError("INPUT_INVALID");
+    }
+  }
   const positiveStyle =
     c.stylePositiveSuffix === DEFAULT_STYLE_POSITIVE ||
     c.stylePositiveSuffix === COMPACT_DEFAULT_STYLE_POSITIVE

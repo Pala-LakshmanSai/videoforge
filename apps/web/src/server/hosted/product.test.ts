@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import { NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH } from "@videoforge/pipeline";
 
 const testState = vi.hoisted(() => {
   const scopeRows: Record<string, unknown>[] = [
@@ -761,6 +762,7 @@ describe("hosted product route contract", () => {
     );
 
     expect(result?.status).toBe(200);
+    expect(await result!.json()).not.toHaveProperty("default_image_style_version_id");
     expect(testState.query.mock.calls.some(([sql]) => String(sql).includes("image_styles"))).toBe(
       true,
     );
@@ -807,6 +809,42 @@ describe("hosted product route contract", () => {
         String(sql).includes("DELETE FROM avatar_profiles"),
       ),
     ).toBe(false);
+  });
+
+  it.each([
+    ["published system default", {}, true],
+    ["workspace copy", { scope_kind: "WORKSPACE" }, false],
+    ["unpublished version", { state: "DRAFT" }, false],
+    ["archived parent", { status: "ARCHIVED" }, false],
+    ["different parent", { style_id: "11111111-1111-4111-8111-111111111111" }, false],
+    ["different version", { version_id: "22222222-2222-4222-8222-222222222222" }, false],
+    ["different profile hash", { style_profile_hash: "sha256:unexpected" }, false],
+  ])("exposes the explicit catalog default only for the %s", async (_name, overrides, expected) => {
+    const versionId = "ffffffff-ffff-4fff-8fff-000000000032";
+    testState.publishedStyleRows.push({
+      style_id: "ffffffff-ffff-4fff-8fff-000000000031",
+      version_id: versionId,
+      name: "Natural Documentary",
+      version_number: 1,
+      state: "PUBLISHED",
+      status: "ACTIVE",
+      scope_kind: "SYSTEM",
+      style_profile_hash: NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH,
+      ...overrides,
+    });
+    try {
+      const result = await handleHostedProductRequest(
+        request("/api/v2/hosted/project-catalog", "GET"),
+        environment,
+        stagingConfig,
+        executionContext,
+      );
+      expect(result?.status).toBe(200);
+      const body = (await result!.json()) as Record<string, unknown>;
+      expect(body.default_image_style_version_id).toBe(expected ? versionId : undefined);
+    } finally {
+      testState.publishedStyleRows.length = 0;
+    }
   });
 
   it.each([4 * 1024 ** 3, 1024 ** 3, null])("checks capacity before explicit ASR retry: %s", async capacity => {

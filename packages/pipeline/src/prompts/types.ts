@@ -253,6 +253,7 @@ export interface PromptSceneInput {
 }
 
 export interface PromptBatchInput {
+  readonly literalCharacterLimit?: number;
   readonly batchId: string;
   readonly projectTitle: string;
   readonly imageStyleVersionId: string;
@@ -291,6 +292,7 @@ export interface PromptWriterPort {
 }
 
 export interface PromptBatch {
+  readonly literalCharacterLimit?: number;
   readonly scenePromptWriterVersion: typeof SCENE_PROMPT_WRITER_VERSION;
   readonly batchId: string;
   readonly sanitizedProjectTitle: string;
@@ -312,6 +314,7 @@ export interface PromptStyleComponents {
 }
 
 export interface CompilePromptRequest {
+  readonly styleProfileHash?: Sha256Digest;
   readonly writerOutput: PromptWriterSceneOutput;
   readonly expectedScene: PromptSceneInput;
   readonly style: PromptStyleComponents;
@@ -320,7 +323,9 @@ export interface CompilePromptRequest {
 }
 
 export interface CompiledImagePrompt {
-  readonly promptCompilerVersion: "prompt-compiler-v1" | "prompt-compiler-v2" | "prompt-compiler-v3";
+  readonly promptCompilerVersion:
+    | "prompt-compiler-v1" | "prompt-compiler-v2" | "prompt-compiler-v3"
+    | "prompt-compiler-v4";
   readonly scenePromptWriterVersion: typeof SCENE_PROMPT_WRITER_VERSION;
   readonly sceneId: string;
   readonly components: {

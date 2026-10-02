@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH } from "@videoforge/pipeline";
+import { promptStyleTreatmentPositiveSuffix } from "@videoforge/pipeline/prompts";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -248,6 +251,45 @@ function adaptivePlan(batch: PromptBatch) {
 }
 
 describe("hosted prompt authority", () => {
+  it("rejects impossible Natural Documentary fixed budgets as unpaid input failures before planning", () => {
+    const profile = JSON.parse(
+      readFileSync(
+        "../../project-context/evidence/natural_documentary_image_style_v1.json",
+        "utf8",
+      ),
+    );
+    const base = hostedPromptAuthority({ plan: plan(), identity, reservedCostMicroUsd: 8_000_000 });
+    const treatment = derivePromptStyleTreatment(
+      profile.visual_profile,
+      NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH,
+    );
+    const authority = {
+      ...base,
+      styleProfileHash: NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH,
+      styleTreatment: treatment,
+      style: {
+        positiveSuffix: promptStyleTreatmentPositiveSuffix(treatment),
+        negativeSuffix: profile.prompt_profile.negative_suffix,
+        fullImageGuidance: profile.prompt_profile.full_image_guidance,
+        splitImageGuidance: profile.prompt_profile.split_image_guidance,
+      },
+      extraPromptKeywords: "x".repeat(500),
+      applyExtraPromptKeywords: true,
+    };
+    try {
+      hostedPromptBatchPlan(authority);
+      expect.fail("Budget should reject before a request can be claimed");
+    } catch (error) {
+      expect(error).toBeInstanceOf(HostedPromptExecutionError);
+      expect(error).toMatchObject({
+        problemCode: "HOSTED_PROMPT_INPUT_INVALID",
+        terminalState: "FAILED",
+        providerMayHaveCharged: false,
+      });
+    }
+    const planned = hostedPromptBatchPlan({ ...authority, applyExtraPromptKeywords: false });
+    expect(planned.batches[0]?.batch.literalCharacterLimit).toBeGreaterThanOrEqual(90);
+  });
   it("finalizes a long accepted prefix without submitting another provider request", async () => {
     const plannedScenes = scenes(327);
     const authority = hostedPromptAuthority({

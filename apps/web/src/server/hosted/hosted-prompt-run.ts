@@ -10,6 +10,7 @@ import {
 import { type ImageStyleProfileDocument, type Sha256Digest } from "@videoforge/contracts";
 import {
   compileImagePrompt,
+  naturalDocumentaryLiteralCharacterLimit,
   derivePromptStyleTreatment,
   planPromptBatches,
   promptStyleTreatmentPositiveSuffix,
@@ -343,7 +344,15 @@ export const HOSTED_PROMPT_BATCH_MAX_OUTPUT_TOKENS = 14_336 as const;
  * scene order, or the prompt-execution input hash.
  */
 export function hostedPromptBatchPlan(authority: PromptExecutionAuthority): PromptBatchPlan {
+  let literalCharacterLimit: number | undefined;
+  try {
+    literalCharacterLimit = naturalDocumentaryLiteralCharacterLimit(authority);
+  } catch {
+    // This runs before preparing/claiming a paid batch, not after provider submission.
+    throw new HostedPromptExecutionError("HOSTED_PROMPT_INPUT_INVALID", "FAILED", false, null);
+  }
   return planPromptBatches({
+    ...(literalCharacterLimit === undefined ? {} : { literalCharacterLimit }),
     batchIdPrefix: `${authority.taskId}:adaptive`,
     projectTitle: authority.projectTitle,
     imageStyleVersionId: authority.imageStyleVersionId,
@@ -487,6 +496,7 @@ export async function compileAndPersistHostedPromptBatch(
       writerOutput: scene.writerOutput,
       expectedScene,
       style: authority.style,
+      styleProfileHash: authority.styleProfileHash,
       extraPromptKeywords: authority.extraPromptKeywords,
       applyExtraPromptKeywords: authority.applyExtraPromptKeywords,
     });

@@ -1,3 +1,4 @@
+import { NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH } from "./natural-documentary-style.js";
 import { createHash } from "node:crypto";
 
 import {
@@ -31,6 +32,11 @@ import type {
 export const RUNWARE_PROMPT_MODEL = "google:gemini@3.5-flash" as const;
 // v24: compact batch instructions without removing grounding, quality or output constraints.
 // The version feeds the deterministic taskUUID; changed instructions must not reuse a paid v23 task.
+export const NATURAL_DOCUMENTARY_PROMPT_REQUEST_VERSION =
+  "runware-gemini-3.5-flash-prompt-request-v25" as const;
+type PromptRequestVersion =
+  | typeof RUNWARE_PROMPT_REQUEST_VERSION
+  | typeof NATURAL_DOCUMENTARY_PROMPT_REQUEST_VERSION;
 export const RUNWARE_PROMPT_REQUEST_VERSION =
   "runware-gemini-3.5-flash-prompt-request-v24" as const;
 /**
@@ -80,6 +86,28 @@ export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "Never choose duration, layout, shot role, avatar placement, style version, model, GPU, retry or fallback. Return the exact JSON contract.",
 ].join(" ");
 
+/** Exact legacy system text remains available for durable v24 recovery. */
+export function naturalDocumentaryWriterSystemPrompt(literalCharacterLimit: number): string {
+  if (
+    !Number.isSafeInteger(literalCharacterLimit) ||
+    literalCharacterLimit < 90 ||
+    literalCharacterLimit > 720
+  )
+    fail("Natural Documentary scene-character allowance is invalid.", ["literalCharacterLimit"]);
+  return SCENE_PROMPT_WRITER_SYSTEM_PROMPT.replace(
+    "Prefer familiar human behavior, ordinary locations, credible objects, contextual clutter and natural imperfection; no spectacle or advertising poses. For abstractions use direct supported person/object/process/place/consequence, never symbolism or metaphor when literal evidence exists. No vague people/actions/places (a person, someone, something, somewhere, generic/public setting, standing still, doing something) unless narration-critical.",
+    "Use specific supported subjects/actions/places, ordinary behavior; no advertising poses or symbolism. Clarify ambiguous scale, touched part or spatial relation only where needed. Preserve clean/new conditions; invent no objects, dirt or damage. Essential faces/contact/evidence outrank surface detail.",
+  )
+    .replace(
+      "a dominant tight chest-up subject with a large unobstructed face",
+      "a dominant chest-up subject with complete head and unobstructed face",
+    )
+    .replace(
+      "Character ceilings: 240 each",
+      `Combined literal_subject/action/environment ceiling: ${literalCharacterLimit} characters. Character ceilings: 240 each`,
+    );
+}
+
 export interface RunwarePromptUsage {
   readonly inputTokens: number;
   readonly outputTokens: number;
@@ -112,7 +140,7 @@ export interface RunwarePromptApiRequest {
 }
 
 export interface RunwarePromptTransportRequest {
-  readonly requestVersion: typeof RUNWARE_PROMPT_REQUEST_VERSION;
+  readonly requestVersion: PromptRequestVersion;
   readonly attemptIndex: 1 | 2;
   readonly requestedSceneIds: readonly string[];
   readonly request: RunwarePromptApiRequest;
@@ -297,7 +325,7 @@ export function runwarePromptValidationDiagnostic(
 
 export interface RunwarePromptAttemptEvidence {
   readonly schemaVersion: "videoforge.runware-prompt-attempt-evidence/v3";
-  readonly requestVersion: typeof RUNWARE_PROMPT_REQUEST_VERSION;
+  readonly requestVersion: PromptRequestVersion;
   readonly model: typeof RUNWARE_PROMPT_MODEL;
   readonly scenePromptWriterVersion: typeof SCENE_PROMPT_WRITER_VERSION;
   readonly batchId: string;
@@ -577,6 +605,13 @@ export function buildRunwarePromptRequest(
   )
     fail("Prompt attempt must preserve the original batch scene order.", ["scenes"]);
 
+  const natural = batch.styleProfileHash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH;
+  const requestVersion: PromptRequestVersion = natural
+    ? NATURAL_DOCUMENTARY_PROMPT_REQUEST_VERSION
+    : RUNWARE_PROMPT_REQUEST_VERSION;
+  const systemPrompt = natural
+    ? naturalDocumentaryWriterSystemPrompt(batch.literalCharacterLimit ?? 0)
+    : SCENE_PROMPT_WRITER_SYSTEM_PROMPT;
   const payload = Object.freeze({
     batch_id: batch.batchId,
     attempt_index: attemptIndex,
@@ -601,7 +636,7 @@ export function buildRunwarePromptRequest(
     continuity_tags: batch.continuityTags,
   });
   const taskUUID = deterministicUuid({
-    requestVersion: RUNWARE_PROMPT_REQUEST_VERSION,
+    requestVersion,
     batchId: batch.batchId,
     styleProfileHash: batch.styleProfileHash,
     attemptIndex,
@@ -620,7 +655,7 @@ export function buildRunwarePromptRequest(
     includeCost: true,
     includeUsage: true,
     settings: Object.freeze({
-      systemPrompt: `${SCENE_PROMPT_WRITER_SYSTEM_PROMPT}\n${SCENE_PROMPT_WRITER_OUTPUT_CONTRACT}`,
+      systemPrompt: `${systemPrompt}\n${SCENE_PROMPT_WRITER_OUTPUT_CONTRACT}`,
       // Match the exact canonical AIR/settings contract already qualified live
       // and used by the successful Stage 3 DeepSeek transport.
       thinkingLevel: "off",
@@ -634,7 +669,7 @@ export function buildRunwarePromptRequest(
   });
   const requestBytes = canonicalizeJson([request]);
   return Object.freeze({
-    requestVersion: RUNWARE_PROMPT_REQUEST_VERSION,
+    requestVersion,
     attemptIndex,
     requestedSceneIds: Object.freeze(requestedSceneIds),
     request,
@@ -1809,7 +1844,7 @@ const evidence = (
 ): RunwarePromptAttemptEvidence =>
   Object.freeze({
     schemaVersion: "videoforge.runware-prompt-attempt-evidence/v3",
-    requestVersion: RUNWARE_PROMPT_REQUEST_VERSION,
+    requestVersion: request.requestVersion,
     model: RUNWARE_PROMPT_MODEL,
     scenePromptWriterVersion: batch.scenePromptWriterVersion,
     batchId: batch.batchId,

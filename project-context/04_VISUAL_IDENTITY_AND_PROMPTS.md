@@ -218,7 +218,28 @@ no-text/output rules once in the positive channel. Its negative channel is a sho
 not an exhaustive synonym list. Already accepted `prompt-compiler-v1` prompts retain their exact
 stored bytes and hashes; mixed-version runs use those stored prompts at final acceptance.
 
-## Built-in style: Authentic Documentary Stock
+## Default built-in: Natural Documentary — 2026-10-02
+
+Style key: `natural_documentary_v1`. Profile: `evidence/natural_documentary_image_style_v1.json`.
+The complete 282-character derived treatment preserves documentary/editorial photography,
+physically believable texture, ordinary working viewpoints and available practical light.
+Every delivered field fits the existing 112-character bound. No universal dirt, wear, noise,
+blur or golden-hour treatment is added. One continuous photograph is requested; center-safe
+geometry protects the existing full/split crop and slow zoom without asking the model to paint a panel.
+
+Only this immutable profile hash selects the new writer/provider prompt policy. Existing/custom
+profiles retain exact historical request assembly; accepted and ambiguous provider jobs keep their
+saved bytes and task identities. Essential subject/action/role and enabled keywords must survive
+within the current 800-character Kie bound; impossible fixed budgets fail before new writer work.
+No extra analysis, model call, retry, image count, avatar, scheduling or render work is introduced.
+
+The user authorized best-effort improvements and production despite unproven consistent reference
+parity. The 162-image research and failed F/N qualification remain evidence in `realism-plan/EXPERIMENTS.md`.
+Physical-detail expansion is selective because it helped cart scale but worsened fish-cut identity.
+No significant universal quality gain is asserted. Functional compatibility and cost settings remain
+release requirements. Historical profile/version bytes and revision pins are not rewritten.
+
+## Historical built-in style: Authentic Documentary Stock
 
 Style key: `documentary_stock_v1`  
 Machine profile: `evidence/default_image_style_v1.json`

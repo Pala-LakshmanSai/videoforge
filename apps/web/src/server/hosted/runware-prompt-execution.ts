@@ -516,6 +516,9 @@ async function validatePlanBeforeDispatch(
       projectTitle: batch.sanitizedProjectTitle,
       imageStyleVersionId: batch.imageStyleVersionId,
       styleProfileHash: batch.styleProfileHash,
+      ...(batch.literalCharacterLimit === undefined
+        ? {}
+        : { literalCharacterLimit: batch.literalCharacterLimit }),
       styleTreatment: batch.styleTreatment,
       plannerGuidance: batch.plannerGuidance,
       storyContext: batch.storyContext,

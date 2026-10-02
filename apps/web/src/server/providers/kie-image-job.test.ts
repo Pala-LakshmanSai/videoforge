@@ -142,6 +142,40 @@ describe("Kie image job", () => {
     }
   });
 
+  it("keeps v4 required roles and enabled keywords at 800 while preserving legacy assembly", () => {
+    const components = {
+      literalContent: "x",
+      cropGuidance: "continuous photo",
+      stylePositiveSuffix: "documentary",
+      continuityAndShotRole: "viewpoint: hands action",
+      extraPromptKeywords: "natural light",
+      styleNegativeSuffix: "",
+    };
+    const fixed =
+      buildKieScenePrompt({ promptCompilerVersion: "prompt-compiler-v4", components } as never)
+        .length - 1;
+    const full = { ...components, literalContent: "x".repeat(800 - fixed) };
+    const prompt = buildKieScenePrompt({
+      promptCompilerVersion: "prompt-compiler-v4",
+      components: full,
+    } as never);
+    expect(prompt).toHaveLength(800);
+    expect(prompt).toContain("viewpoint: hands action");
+    expect(prompt).toContain("natural light");
+    expect(() =>
+      buildKieScenePrompt({
+        promptCompilerVersion: "prompt-compiler-v4",
+        components: { ...full, literalContent: `${full.literalContent}x` },
+      } as never),
+    ).toThrow("INPUT_INVALID");
+    expect(
+      buildKieScenePrompt({
+        promptCompilerVersion: "prompt-compiler-v3",
+        components: full,
+      } as never),
+    ).not.toContain("viewpoint: hands action");
+  });
+
   it("maps style negatives and mandatory exclusions into Kie's single prompt", () => {
     const prompt = buildKieScenePrompt({
       components: {

@@ -1,0 +1,90 @@
+{
+  "schema_version": "image-style-profile/v1",
+  "summary": "An observational documentary treatment with ordinary working viewpoints, useful surroundings, available light and material-specific detail. Preserve the narrated setting and condition: clean subjects stay clean, reflective materials keep their local highlights, and wear is never added by default. Candidate awaiting visual qualification.",
+  "visual_profile": {
+    "medium_family": "ordinary documentary video frame",
+    "realism": "unretouched, natural material variation",
+    "subject_treatment": "Observe the narrated subject and action without staging a display or adding a performance. Preserve necessary participants, physical contacts and the original setting.",
+    "camera_language": "working-angle view, useful context, natural spacing",
+    "image_framing": "Honor the assigned shot role and full or split layout. Keep essential evidence large and center-safe for the existing slow zoom, with enough relevant surroundings to understand the action.",
+    "shot_scale_preferences": [
+      "environmental establishing wide",
+      "observational human medium",
+      "hands and action demonstration",
+      "close object evidence",
+      "extreme physical detail",
+      "reaction or visible result"
+    ],
+    "lighting": "available light, scene-appropriate color, localized reflections",
+    "color": {
+      "descriptors": [
+        "scene-appropriate white balance",
+        "credible material colors",
+        "restrained processing"
+      ],
+      "approximate_hex": []
+    },
+    "contrast_and_exposure": "Plausible shadow density and material-specific highlights under actual light. No universal lifted shadows, dramatic contrast, warm grading or even exposure.",
+    "depth_of_field": "Keep required evidence and useful nearby context legible. Natural focus falloff may follow the shot scale; avoid isolated product blur on every subject.",
+    "texture_and_grain": "Material-specific surface structure and local reflections; useful detail without sharpening halos, added grain, blur or compression damage.",
+    "human_rendering": "When people are present, retain natural skin variation, ordinary expressions, plausible anatomy and clear necessary contacts. Do not add people to object shots or force age, blemishes or worn clothing.",
+    "environment_and_material_detail": "Use concrete properties of the supported subject and setting instead of generic beauty adjectives. Preserve narrated era, geography, materials, cleanliness and condition. Never invent dirt, damage, extra objects or events to make a scene look authentic.",
+    "imperfection_profile": [
+      "natural spacing and asymmetry when plausible",
+      "surface variation appropriate to the material",
+      "wear only when supported by condition",
+      "exposure variation appropriate to available light",
+      "skin variation only where people are present"
+    ],
+    "mood": ["observational", "ordinary", "credible", "practical"],
+    "continuity_rules": [
+      "Preserve the narrated subject, action, participants and physical state.",
+      "Preserve era, place, weather, time and recurring details across related scenes.",
+      "Honor the existing assigned shot role, composition and crop geometry."
+    ],
+    "must_include": [
+      "literal narration-relevant evidence",
+      "physically plausible contact and scale",
+      "scene-appropriate material and light behavior",
+      "clear required evidence within the assigned crop"
+    ],
+    "must_avoid": [
+      "glossy advertising treatment or staged product displays",
+      "waxy or beautified human rendering",
+      "uniform shine across different materials",
+      "excessive HDR or universal golden-hour grading",
+      "invented dirt, wear, damage or contextual objects",
+      "forced noise, blur or compression damage",
+      "illustration, CGI or painterly rendering",
+      "visible text, branding, graphics or decorative transitions"
+    ],
+    "flexible_properties": [
+      "natural focus falloff appropriate to shot scale",
+      "light color appropriate to the supported setting",
+      "minor surface variation consistent with condition",
+      "ordinary framing asymmetry within the safe crop"
+    ]
+  },
+  "prompt_profile": {
+    "planner_guidance": "Preserve the exact narration, participants, action, era and assigned shot role. Replace generic descriptive padding with one or two concrete properties of the supported subject or setting, without adding objects or events. Distinguish material behavior and condition; clean or new subjects remain clean or new. Keep required evidence clear within the existing layout and zoom-safe crop.",
+    "positive_suffix": "medium: ordinary documentary video frame; realism: unretouched, natural material variation; viewpoint: working-angle view, useful context, natural spacing; lighting: available light, scene-appropriate color, localized reflections",
+    "negative_suffix": "illustration, cartoon, anime, CGI, 3D render, digital painting, fantasy, surrealism, plastic skin, waxy face, perfect symmetry, excessive HDR, glamour lighting, studio advertising, staged pose, impossible anatomy, duplicate people, duplicate limbs, malformed hands, unrealistic perfection",
+    "full_image_guidance": "Compose for 16:9 with the primary evidence inside the center-safe 80 percent so the required slow zoom does not crop it; retain useful environmental context.",
+    "split_image_guidance": "Compose for an 8:9 right panel with the primary evidence centered, readable at half-frame size, and clear of extreme edges."
+  },
+  "analysis": {
+    "analysis_kind": "MANUAL",
+    "overall_confidence": null,
+    "trait_evidence": [],
+    "uncertain_fields": [
+      "The four compiled treatment fields match the round-two experiment; remaining profile traits are an unqualified candidate.",
+      "No universal treatment winner or reliable fish-anatomy correction has been established.",
+      "Reference appearance does not establish source authenticity, capture hardware or a generation model."
+    ],
+    "outlier_reference_aliases": [],
+    "content_leakage_warnings": [
+      "Do not reproduce source identities, rooms, brands, exact frames or settings absent from the narration.",
+      "Do not reproduce reference text, logos, price signs, watermarks, graphics or presenter composites."
+    ]
+  }
+}

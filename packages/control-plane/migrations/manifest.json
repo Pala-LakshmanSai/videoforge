@@ -1206,6 +1206,12 @@
       "name": "hosted_team_access",
       "filename": "0238_hosted_team_access.sql",
       "sha256": "sha256:f554ce40b823dec5c12c0c8380f700e95fcc3eda776b5c7139bc3c438244bf2d"
+    },
+    {
+      "version": 239,
+      "name": "natural_documentary_builtin",
+      "filename": "0239_natural_documentary_builtin.sql",
+      "sha256": "sha256:1fb44c034cf8695d0de89e6eff0d98b46b03c440dbd2c9a10fc7cafde4bb817b"
     }
   ]
 }

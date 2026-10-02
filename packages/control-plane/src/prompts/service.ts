@@ -1,6 +1,7 @@
 import { canonicalizeJson, type Sha256Digest } from "@videoforge/contracts";
 import {
   buildPromptBatch,
+  naturalDocumentaryLiteralCharacterLimit,
   compileImagePrompt,
   validatePromptWriterOutput,
   verifyCompiledImagePrompt,
@@ -148,7 +149,9 @@ const assertAuthority = (
 };
 
 const buildBatch = (authority: PromptExecutionAuthority): PromptBatch => {
+  const literalCharacterLimit = naturalDocumentaryLiteralCharacterLimit(authority);
   const input = {
+    ...(literalCharacterLimit === undefined ? {} : { literalCharacterLimit }),
     batchId: `${authority.taskId}:batch:${authority.attemptOrdinal}`,
     projectTitle: authority.projectTitle,
     imageStyleVersionId: authority.imageStyleVersionId,
@@ -387,6 +390,7 @@ export class DurablePromptExecutionService {
             writerOutput: writerOutputRow,
             expectedScene,
             style: authority.style,
+            styleProfileHash: authority.styleProfileHash,
             extraPromptKeywords: authority.extraPromptKeywords,
             applyExtraPromptKeywords: authority.applyExtraPromptKeywords,
           });

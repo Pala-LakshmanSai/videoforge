@@ -345,6 +345,9 @@ export function buildPromptBatch(input: PromptBatchInput): PromptBatch {
     ]);
 
   return Object.freeze({
+    ...(input.literalCharacterLimit === undefined
+      ? {}
+      : { literalCharacterLimit: input.literalCharacterLimit }),
     scenePromptWriterVersion: SCENE_PROMPT_WRITER_VERSION,
     batchId: input.batchId,
     sanitizedProjectTitle: normalized(input.projectTitle, 240, "Project title", ["projectTitle"]),

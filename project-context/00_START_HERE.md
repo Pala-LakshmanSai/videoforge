@@ -1,3 +1,5 @@
+Natural Documentary default implementation and production are explicitly authorized (2026-10-02). Read `natural_documentary_2026_10_02` in CURRENT_STATE.yaml first for current release proof and limitations. Historical style versions and existing project pins are preserved.
+
 Ordinary Cloud follows DEC_CLOUD_BILLING_001: pay for temporary RunPod uptime as videos are created, without an account spend cap, expiry or rental quota.
 Published source3932c982 / Cloudflare252dedc0 completes a fresh159.2s video with all media execution remote, exact R2 checksum/full decode and real Chrome playback. All five Pods terminated; zero owned VideoForge Pods remain. Read `cloud_pay_per_use_2026_10_01` in CURRENT_STATE.yaml.
 The historical UNKNOWN launch remains independently reconciled; additive237 permits fresh Local and Cloud VIDEO admission past strictly fenced terminal cleanup while retaining global resource accounting and no replay.

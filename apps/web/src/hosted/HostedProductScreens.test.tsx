@@ -2917,6 +2917,108 @@ describe("hosted product journey", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("selects the explicit image style default and preserves a custom choice on catalog refresh", async () => {
+    const data = {
+      avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
+      styles: [
+        { style_id: "custom", version_id: "custom-v1", name: "A custom style", version_number: 1 },
+        {
+          style_id: "natural",
+          version_id: "natural-v1",
+          name: "Natural Documentary",
+          version_number: 1,
+        },
+      ],
+      default_image_style_version_id: "natural-v1",
+      media_worker_state: "ONLINE",
+      gpu_transport: "DISABLED_UNQUALIFIED",
+      gpu_readiness: gpuReadiness,
+    };
+    let catalogLoads = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          ...data,
+          styles: ++catalogLoads === 1 ? data.styles : [...data.styles].reverse(),
+        }),
+      ),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <HostedCreateProjectScreen />
+      </QueryClientProvider>,
+    );
+    const natural = await screen.findByRole("radio", {
+      name: /Natural Documentary/u,
+      hidden: true,
+    });
+    await waitFor(() => expect(natural).toHaveAttribute("aria-checked", "true"));
+    expect(natural).toHaveTextContent("Default");
+    const custom = screen.getByRole("radio", { name: /A custom style/u, hidden: true });
+    fireEvent.click(custom);
+    expect(custom).toHaveAttribute("aria-checked", "true");
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ["hosted-project-catalog"] });
+    });
+    expect(catalogLoads).toBe(2);
+    expect(custom).toHaveAttribute("aria-checked", "true");
+    expect(natural).toHaveAttribute("aria-checked", "false");
+  });
+
+  it.each([undefined, "missing-version"])(
+    "does not select an arbitrary image style when default is %s",
+    async (defaultId) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          Response.json({
+            avatars: [],
+            styles: [
+              { style_id: "s1", version_id: "sv1", name: "First style", version_number: 1 },
+              { style_id: "s2", version_id: "sv2", name: "Second style", version_number: 1 },
+            ],
+            default_image_style_version_id: defaultId,
+            media_worker_state: "ONLINE",
+            gpu_transport: "DISABLED_UNQUALIFIED",
+            gpu_readiness: gpuReadiness,
+          }),
+        ),
+      );
+      renderHosted(<HostedCreateProjectScreen />);
+      await screen.findByText("Select image style");
+      for (const option of screen.getAllByRole("radio", { name: /style/u, hidden: true })) {
+        expect(option).toHaveAttribute("aria-checked", "false");
+      }
+    },
+  );
+
+  it("retains the single-style fallback when the explicit default is unavailable", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          avatars: [],
+          styles: [
+            { style_id: "s1", version_id: "sv1", name: "Only custom style", version_number: 1 },
+          ],
+          default_image_style_version_id: "missing-version",
+          media_worker_state: "ONLINE",
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+        }),
+      ),
+    );
+    renderHosted(<HostedCreateProjectScreen />);
+    await waitFor(() =>
+      expect(
+        document.querySelector("#hosted-style-select .visual-preset-summary-static"),
+      ).toHaveTextContent("Only custom style"),
+    );
+    expect(document.querySelector("#hosted-style-select")).not.toHaveTextContent("Default");
+  });
+
   it("reuses project creation identity after a failure and rotates it when inputs change", async () => {
     const projectRequests: { readonly body: string; readonly key: string }[] = [];
     const bytes = new ArrayBuffer(44 + 640_000);

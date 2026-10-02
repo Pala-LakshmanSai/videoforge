@@ -96,6 +96,7 @@ const SHA256_ROUND_CONSTANTS = new Uint32Array([
 ]);
 
 export interface CatalogResponse {
+  readonly default_image_style_version_id?: string;
   readonly avatars: readonly {
     profile_id: string;
     version_id: string;
@@ -2657,8 +2658,12 @@ export function HostedCreateProjectScreen() {
     if (!avatarVersionId && catalog.data.avatars.length === 1) {
       setAvatarVersionId(catalog.data.avatars[0]!.version_id);
     }
-    if (!styleVersionId && catalog.data.styles.length === 1) {
-      setStyleVersionId(catalog.data.styles[0]!.version_id);
+    if (!styleVersionId) {
+      const defaultStyle = catalog.data.styles.find(
+        (style) => style.version_id === catalog.data.default_image_style_version_id,
+      );
+      if (defaultStyle) setStyleVersionId(defaultStyle.version_id);
+      else if (catalog.data.styles.length === 1) setStyleVersionId(catalog.data.styles[0]!.version_id);
     }
   }, [avatarVersionId, catalog.data, styleVersionId]);
   const canPreflight = Boolean(
@@ -2930,7 +2935,7 @@ export function HostedCreateProjectScreen() {
                   options={catalog.data.styles.map((style) => ({
                     id: style.version_id,
                     imageUrl: style.cover_url ?? "",
-                    meta: `Version ${style.version_number}`,
+                    meta: `${style.version_id === catalog.data.default_image_style_version_id ? "Default · " : ""}Version ${style.version_number}`,
                     name: style.name,
                   }))}
                   selectedId={styleVersionId}

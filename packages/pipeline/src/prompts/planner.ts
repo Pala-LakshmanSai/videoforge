@@ -112,6 +112,9 @@ const normalizedGlobalInput = (
     projectTitle: input.projectTitle,
     imageStyleVersionId: input.imageStyleVersionId,
     styleProfileHash: input.styleProfileHash,
+    ...(input.literalCharacterLimit === undefined
+      ? {}
+      : { literalCharacterLimit: input.literalCharacterLimit }),
     styleTreatment: input.styleTreatment,
     plannerGuidance: input.plannerGuidance,
     storyContext: input.storyContext,
@@ -122,6 +125,9 @@ const normalizedGlobalInput = (
     projectTitle: first.sanitizedProjectTitle,
     imageStyleVersionId: first.imageStyleVersionId,
     styleProfileHash: first.styleProfileHash,
+    ...(first.literalCharacterLimit === undefined
+      ? {}
+      : { literalCharacterLimit: first.literalCharacterLimit }),
     styleTreatment: first.styleTreatment,
     plannerGuidance: first.plannerGuidance,
     storyContext: first.storyContext,

@@ -10,15 +10,17 @@ Each authenticated account has a private Image Styles Hub in its default workspa
 styles, references, analysis, previews, drafts, and audit details are visible and mutable only inside
 that account/workspace. A client-supplied tenant ID never changes scope.
 
-The explicit system built-in **Authentic Documentary Stock** (`documentary_stock_v1`) is visible to
-all accounts, read-only, and the default for new projects. It contains no Ranga frame or private user
+The explicit system built-in **Natural Documentary** (`natural_documentary_v1`) is visible to
+all accounts, read-only, and the default for fresh projects. It uses Kie z-image with complete compact
+documentary treatment; consistent reference parity remains unproven. Historical **Authentic
+Documentary Stock** (`documentary_stock_v1`) and saved project pins remain immutable. It contains no Ranga frame or private user
 media. An account may duplicate it into its private Hub and customize that copy.
 
 Every project revision pins one exact published `image_style_version_id` and
 `style_profile_hash`. Later editing, publishing, archiving, or deletion cannot change an existing
 revision. There is no per-project style-reference upload bypass.
 
-Image Style affects Mage appearance only. It never changes the selected Avatar Profile, avatar
+Image Style affects AI still-image appearance only. Fresh ordinary generation uses Kie z-image. It never changes the selected Avatar Profile, avatar
 runtime, deterministic timing/layout, three allowed compositions, hard cuts, forbidden graphics, or
 required slow image zoom.
 
@@ -143,8 +145,14 @@ without rewriting their immutable bytes.
 
 ## Default built-in style
 
-`documentary_stock_v1` is a manually authored `SYSTEM` style. Trusted migration/seed code owns its
-identity/version/default envelope; `evidence/default_image_style_v1.json` owns its immutable profile.
+`natural_documentary_v1` is a manually authored `SYSTEM` style. Additive migration 0239 owns its
+identity/version; `evidence/natural_documentary_image_style_v1.json` owns its immutable profile.
+The catalog names its exact default version only when its SYSTEM scope, published/active state
+and canonical hash match. Create fills only an empty selection and preserves an explicit custom
+choice across refresh. No analyzer or paid preview runs on selection. The historical
+`documentary_stock_v1` profile remains in `evidence/default_image_style_v1.json` unchanged.
+A SYSTEM parent may have a null active pointer: catalog/resolution selects its exact published
+version directly, preserving immutable parent protections.
 Pinned Ranga frames are research evidence only: they are not runtime assets, analyzer inputs, public
 thumbnails, or style references.
 

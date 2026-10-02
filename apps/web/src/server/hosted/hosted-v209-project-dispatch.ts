@@ -171,9 +171,11 @@ async function resumeHostedApiDispatch(
     .filter((job) => !submissionsBlocked && job.lane === "IMAGE" && job.state === "PREPARED")
     .map((job) => ({
       generationTaskId: job.generationTaskId,
-      prompt: buildKieScenePrompt(
-        job.inputManifest.compiledPrompt as Parameters<typeof buildKieScenePrompt>[0],
-      ),
+      prompt: typeof job.inputManifest.prompt === "string"
+        ? job.inputManifest.prompt
+        : buildKieScenePrompt(
+          job.inputManifest.compiledPrompt as Parameters<typeof buildKieScenePrompt>[0],
+        ),
     }));
   if (prompts.length > 0) {
     await database.transaction(async (transaction) => {

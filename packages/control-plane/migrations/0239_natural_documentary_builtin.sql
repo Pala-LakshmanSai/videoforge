@@ -1,0 +1,128 @@
+-- Add an immutable shared preset. Existing presets and revision pins remain unchanged.
+-- SYSTEM parents cannot be updated, so resolve this published version by its exact ID;
+-- the catalog joins PUBLISHED versions and does not require an active-version pointer.
+INSERT INTO public.image_styles (
+  id, account_id, workspace_id, scope_kind, name, normalized_name,
+  status, active_version_id, created_by_user_id
+) VALUES (
+  'ffffffff-ffff-4fff-8fff-000000000031',
+  'ffffffff-ffff-4fff-8fff-000000000001',
+  'ffffffff-ffff-4fff-8fff-000000000011',
+  'SYSTEM', 'Natural Documentary', 'natural documentary', 'ACTIVE', NULL,
+  'ffffffff-ffff-4fff-8fff-000000000021'
+);
+
+INSERT INTO public.image_style_versions (
+  id, account_id, workspace_id, style_id, scope_kind, version_number, state,
+  profile_contract_name, profile_contract_version, profile_payload, style_profile_hash,
+  disclosure_attested_by_user_id, published_at
+) VALUES (
+  'ffffffff-ffff-4fff-8fff-000000000032',
+  'ffffffff-ffff-4fff-8fff-000000000001',
+  'ffffffff-ffff-4fff-8fff-000000000011',
+  'ffffffff-ffff-4fff-8fff-000000000031',
+  'SYSTEM', 1, 'PUBLISHED', 'image-style-profile', 'v1',
+  $profile${
+  "schema_version": "image-style-profile/v1",
+  "summary": "Natural documentary photography with ordinary working viewpoints, useful surroundings, available practical light, truthful material texture and restrained processing. A best-effort default based on the strongest tested documentary baseline; consistent reference parity is not established.",
+  "visual_profile": {
+    "medium_family": "authentic documentary and editorial photography",
+    "realism": "physically believable, unretouched texture, no commercial polish",
+    "subject_treatment": "Candid, unposed, spontaneous people engaged in ordinary real activity; use concrete physical evidence instead of symbolic poses or spectacle.",
+    "camera_language": "eye-level or practical working angle, useful surroundings",
+    "image_framing": "Useful rather than perfect framing, grounded spatial context, key evidence inside a crop-safe center area, and natural clutter where it supports credibility.",
+    "shot_scale_preferences": [
+      "environmental establishing wide",
+      "observational human medium",
+      "hands and action demonstration",
+      "close object evidence",
+      "extreme physical detail",
+      "reaction or visible result"
+    ],
+    "lighting": "daylight or practical interior light, natural color, local reflections",
+    "color": {
+      "descriptors": [
+        "true-to-life",
+        "earthy",
+        "restrained saturation",
+        "neutral-to-warm practical white balance",
+        "soft contrast"
+      ],
+      "approximate_hex": [
+        "#6F5A43",
+        "#90765A",
+        "#A6977E",
+        "#52604A",
+        "#C0AA84"
+      ]
+    },
+    "contrast_and_exposure": "Soft natural contrast with recoverable highlights and believable shadow detail; avoid extreme HDR, crushed blacks, glowing highlights, or commercial-grade polish.",
+    "depth_of_field": "Natural lens depth appropriate to the shot; enough environmental context to understand the action, with shallow focus reserved for real close evidence rather than every frame.",
+    "texture_and_grain": "Material-specific surface structure and localized reflections. Preserve natural detail without added grain, blur, sharpening halos or compression damage.",
+    "human_rendering": "Natural skin variation and ordinary expressions when people are present. Keep necessary faces, participants and contacts visible without adding people or forcing blemishes.",
+    "environment_and_material_detail": "Preserve supported materials, ordinary scale and physical relationships. Clean or new subjects remain clean or new. No invented wear, dirt, damage or additional objects.",
+    "imperfection_profile": [
+      "natural material variation",
+      "ordinary spacing when plausible",
+      "wear only when supported by narrated condition",
+      "exposure variation appropriate to available light"
+    ],
+    "mood": [
+      "observational",
+      "grounded",
+      "credible",
+      "practical",
+      "human"
+    ],
+    "continuity_rules": [
+      "Preserve era, geography, season, weather and time-of-day across adjacent scenes.",
+      "Preserve recurring clothing, tools, people and materials when narration implies the same setting.",
+      "Vary shot scale while keeping the same factual world.",
+      "Prefer literal visible evidence over metaphor."
+    ],
+    "must_include": [
+      "literal narration-relevant subject or action",
+      "believable practical lighting",
+      "realistic textures and natural imperfections",
+      "useful observational framing"
+    ],
+    "must_avoid": [
+      "glossy commercial polish",
+      "studio advertising pose",
+      "fantasy or surreal treatment",
+      "waxy skin or unrealistic perfection",
+      "excessive HDR or universal golden-hour grading",
+      "painterly or CGI appearance"
+    ],
+    "flexible_properties": [
+      "weather and time of day when narration permits",
+      "lens focal impression appropriate to shot scale",
+      "minor grain and exposure variation",
+      "ordinary environmental clutter"
+    ]
+  },
+  "prompt_profile": {
+    "planner_guidance": "Preserve narration, action, participants, era and assigned role. Use supported physical detail only where needed to clarify ordinary scale or contact; essential evidence outranks clothing and surface detail.",
+    "positive_suffix": "medium: authentic documentary and editorial photography; realism: physically believable, unretouched texture, no commercial polish; viewpoint: eye-level or practical working angle, useful surroundings; lighting: daylight or practical interior light, natural color, local reflections",
+    "negative_suffix": "illustration, cartoon, anime, CGI, 3D render, digital painting, fantasy, surrealism, plastic skin, waxy face, perfect symmetry, excessive HDR, glamour lighting, studio advertising, staged pose, impossible anatomy, duplicate people, duplicate limbs, malformed hands, unrealistic perfection",
+    "full_image_guidance": "Compose for 16:9 with important evidence center-safe inside the central 80 percent, preserving useful surroundings during slow zoom.",
+    "split_image_guidance": "Compose for the existing 8:9 right panel with essential evidence centered, readable at half-frame size and clear of extreme edges."
+  },
+  "analysis": {
+    "analysis_kind": "MANUAL",
+    "overall_confidence": null,
+    "trait_evidence": [],
+    "uncertain_fields": [
+      "The strongest historical documentary treatment anchors this best-effort preset; its complete compact wording is a new candidate, not proven reference parity.",
+      "Isolated tests show mixed anatomy, contact and scale fidelity; extra physical detail can also worsen subject identity."
+    ],
+    "outlier_reference_aliases": [],
+    "content_leakage_warnings": [
+      "Do not reproduce source identities, rooms, brands, exact frames or unsupported objects.",
+      "No reference text, labels, logos, graphics, borders or presenter composites."
+    ]
+  }
+}$profile$::jsonb,
+  'sha256:dbd99d0857bc5021998683b43ac0191439e3396b55e3656101904e8f1412d9b7',
+  'ffffffff-ffff-4fff-8fff-000000000021', now()
+);

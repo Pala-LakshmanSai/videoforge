@@ -1,3 +1,19 @@
+natural_documentary_2026_10_02:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  read_profile: v2_09_short_live_e2e
+  status: IMPLEMENTED_VERIFIED_USER_AUTHORIZED_PRODUCTION_PENDING
+  branch: codex/natural-documentary
+  production_base: 0e1a9cba1ef93e9c19aef09ac6a001dab22fe215
+  decision: DEC_STYLE_002
+  user_authority: Implement_and_push_to_production_best_effort_no_consistent_reference_parity_gate;isolated_same_model_API_testing_authorized.
+  implementation: Immutable_global_Natural_Documentary_default_new_hash_only_writer25_compiler4;old_versions_and_saved_requests_preserved;avatars_zoom_layout_model_callcount_unchanged.
+  validation: 112pipeline75web18controlplane283catalogUI_PASS;types_build_lint_context_PASS;native239_savepoint_rollback_exact_preservation_two_runtime_tenants_PASS.
+  provider_spend: One_Runware_writer_USD0_033438;eight_zimage_probe_calls_reconciled6_4credits_prior162research129_6credits;no_pending_tasks.
+  paid_compute_shutdown: No_Pods_endpoints_GPU_or_Workflow_instances_created;existing_cleanup_unchanged.
+  remaining_gates: Exact_bundle_publication_migration_runtime_readback;Chrome_transport_unavailable_live_Create_acceptance_and_full_video_unverified;reference_parity_unproven_user_waived_as_release_gate.
+  evidence: evidence/acceptance/VF-10-09/2026-10-02-natural-documentary.md
+
 team_access_2026_10_01:
   checkpoint: V2-09
   selected_task: VF-10-09
@@ -6432,17 +6448,17 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/team-access
-  branch_upstream: origin/codex/team-access
-  branch_published: true
-  current_source_head: "c809c697209ea0aa1565cd86b081a6cc6b34afd9"
-  current_source_head_semantics: published_application_base_for_isolated_team_access_PR
+  branch: codex/natural-documentary
+  branch_upstream: null
+  branch_published: false
+  current_source_head: "0e1a9cba1ef93e9c19aef09ac6a001dab22fe215"
+  current_source_head_semantics: verified_production_base_for_isolated_natural_documentary_release
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Resolve Git HEAD for the Team access implementation commit; no production rollout occurs in this PR task. Main unrelated work is preserved."
+  current_source_head_note: "Resolve Git HEAD for Natural Documentary implementation. User explicitly authorized production; main unrelated work is preserved."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
-  working_tree_expected: clean_tracked_after_team_access_handoff_commit
+  working_tree_expected: clean_tracked_after_natural_documentary_handoff_commit
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
 live_development:

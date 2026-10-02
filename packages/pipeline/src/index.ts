@@ -4,6 +4,7 @@ export * from "./documents.js";
 export * from "./errors.js";
 export * from "./local/artifact-store.js";
 export * from "./prompts/index.js";
+export * from "./prompts/natural-documentary-style.js";
 export * from "./styles/index.js";
 export * from "./render/ports.js";
 export * from "./scheduler/ports.js";

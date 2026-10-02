@@ -318,6 +318,19 @@ describe("API prompt binding before scheduling", () => {
     expect(f.create).toHaveBeenCalledOnce();
   });
 
+  it("reuses exact bound PREPARED prompt bytes without rebuilding the compiled prompt", async () => {
+    const f = await fixture("compile");
+    for (const job of f.jobs.filter((row) => row.lane === "IMAGE" && row.state === "PREPARED")) {
+      Object.defineProperty(job.inputManifest, "prompt", {
+        value: "Previously bound v4 image. viewpoint: human medium",
+      });
+    }
+    expect((await f.run()).status).toBe(202);
+    expect(f.events.filter((event) => event.startsWith("compile:"))).toEqual([]);
+    expect(f.bindings.map((binding) => binding.args.at(-1))).toEqual(
+      Array(3).fill("Previously bound v4 image. viewpoint: human medium"),);
+  });
+
   it("resumes submitted results without compiling or rebinding blocked queued work", async () => {
     const f = await fixture("compile");
     f.jobs[0]!.state = "UNKNOWN_NO_RETRY";
