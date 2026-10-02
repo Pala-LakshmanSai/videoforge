@@ -10,21 +10,24 @@ export interface ProjectMediaReviewItem {
   readonly prompt?: string | null;
 }
 
-type MediaSection = "images" | "avatar";
+type MediaSection = "images" | "avatar" | "videos";
 
 export interface ProjectMediaReviewTotals {
   readonly images: number;
   readonly avatar: number;
+  readonly videos?: number;
 }
 
 export interface ProjectMediaReviewHasMore {
   readonly images: boolean;
   readonly avatar: boolean;
+  readonly videos?: boolean;
 }
 
 export interface ProjectMediaReviewProps {
   readonly images: readonly ProjectMediaReviewItem[];
   readonly avatarVideos: readonly ProjectMediaReviewItem[];
+  readonly sceneVideos?: readonly ProjectMediaReviewItem[];
   readonly mediaTotals?: ProjectMediaReviewTotals;
   readonly mediaHasMore?: ProjectMediaReviewHasMore;
   readonly onLoadMore?: (section: MediaSection) => void;
@@ -50,11 +53,15 @@ function countLabel(count: number, singular: string, plural: string): string {
 }
 
 function sectionTitle(section: MediaSection): string {
-  return section === "images" ? "Generated images" : "Avatar videos/footage";
+  return section === "images"
+    ? "Generated images"
+    : section === "videos"
+      ? "Generated videos"
+      : "Avatar videos/footage";
 }
 
 function sectionNoun(section: MediaSection): string {
-  return section === "images" ? "image" : "avatar footage";
+  return section === "images" ? "image" : section === "videos" ? "video" : "avatar footage";
 }
 
 function MediaReviewEmpty({ section }: { readonly section: MediaSection }) {
@@ -65,11 +72,21 @@ function MediaReviewEmpty({ section }: { readonly section: MediaSection }) {
       ) : (
         <Video size={34} aria-hidden="true" />
       )}
-      <h3>No {section === "images" ? "generated images" : "avatar footage"} yet</h3>
+      <h3>
+        No{" "}
+        {section === "images"
+          ? "generated images"
+          : section === "videos"
+            ? "generated videos"
+            : "avatar footage"}{" "}
+        yet
+      </h3>
       <p>
         {section === "images"
           ? "Accepted images appear here when ready."
-          : "Accepted avatar clips appear here when ready."}
+          : section === "videos"
+            ? "Accepted generated videos appear here when ready."
+            : "Accepted avatar clips appear here when ready."}
       </p>
     </div>
   );
@@ -101,6 +118,7 @@ function MediaReviewError({
 export function ProjectMediaReview({
   images,
   avatarVideos,
+  sceneVideos,
   mediaTotals,
   mediaHasMore,
   onLoadMore,
@@ -127,8 +145,15 @@ export function ProjectMediaReview({
   const [failedAssetUrl, setFailedAssetUrl] = useState<string | null>(null);
   const imageTriggerRef = useRef<HTMLButtonElement | null>(null);
   const avatarTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const videoTriggerRef = useRef<HTMLButtonElement | null>(null);
   const activeItems =
-    activeSection === "images" ? images : activeSection === "avatar" ? avatarVideos : [];
+    activeSection === "images"
+      ? images
+      : activeSection === "avatar"
+        ? avatarVideos
+        : activeSection === "videos"
+          ? (sceneVideos ?? [])
+          : [];
   const activeTotal = activeSection ? (mediaTotals?.[activeSection] ?? activeItems.length) : 0;
   const activeHasMore = activeSection ? (mediaHasMore?.[activeSection] ?? false) : false;
   const selectedItem = activeItems[selectedIndex] ?? null;
@@ -236,6 +261,7 @@ export function ProjectMediaReview({
     window.requestAnimationFrame(() => {
       if (previousSection === "images") imageTriggerRef.current?.focus();
       if (previousSection === "avatar") avatarTriggerRef.current?.focus();
+      if (previousSection === "videos") videoTriggerRef.current?.focus();
     });
   }
 
@@ -300,6 +326,34 @@ export function ProjectMediaReview({
           <ArrowRight size={19} aria-hidden="true" />
         </button>
       ) : null}
+      {launcher === "videos" && sceneVideos !== undefined ? (
+        <button
+          ref={videoTriggerRef}
+          className="button button-secondary stage-media-review-button"
+          type="button"
+          aria-haspopup="dialog"
+          aria-label="View generated videos"
+          onClick={() => openViewer("videos")}
+        >
+          <span
+            className="media-review-launch-icon media-review-launch-icon-avatar"
+            aria-hidden="true"
+          >
+            <Video size={21} />
+          </span>
+          <span className="media-review-launch-copy">
+            <strong>View generated videos</strong>
+            <small>
+              {loading
+                ? "Loading media…"
+                : error
+                  ? "Unavailable"
+                  : countLabel(mediaTotals?.videos ?? sceneVideos.length, "clip", "clips")}
+            </small>
+          </span>
+          <ArrowRight size={19} aria-hidden="true" />
+        </button>
+      ) : null}
 
       <Dialog.Root open={activeSection !== null} onOpenChange={(open) => !open && closeViewer()}>
         <Dialog.Portal>
@@ -338,11 +392,16 @@ export function ProjectMediaReview({
             </header>
 
             <div className="media-review-dialog-tabs" role="tablist" aria-label="Media type">
-              {(["images", "avatar"] as const).map((section) => {
+              {(sceneVideos === undefined
+                ? (["images", "avatar"] as const)
+                : (["images", "avatar", "videos"] as const)
+              ).map((section) => {
                 const count =
                   section === "images"
                     ? (mediaTotals?.images ?? images.length)
-                    : (mediaTotals?.avatar ?? avatarVideos.length);
+                    : section === "avatar"
+                      ? (mediaTotals?.avatar ?? avatarVideos.length)
+                      : (mediaTotals?.videos ?? sceneVideos?.length ?? 0);
                 const selected = activeSection === section;
                 return (
                   <button

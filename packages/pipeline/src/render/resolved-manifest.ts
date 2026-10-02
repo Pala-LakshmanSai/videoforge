@@ -715,8 +715,34 @@ export async function planResolvedRenderManifest(
     segments.push(resolved);
   }
 
+  const videoAssets = request.videoAssets ?? [];
+  const videoSegments = new Set<string>();
+  let videoFrames = 0;
+  for (const video of videoAssets) {
+    const index = segments.findIndex((segment) => segment.segment_id === video.segmentId);
+    const segment = segments[index];
+    const timelineSegment = request.timeline.value.segments[index];
+    if (!segment || !timelineSegment || segment.timeline_composition !== "IMAGE_FULL" ||
+        timelineSegment.timeline_composition !== "IMAGE_FULL" || video.kind !== "VIDEO" ||
+        videoSegments.has(video.segmentId) || video.sourceTaskKey !== timelineSegment.required_slots.image.task_key ||
+        video.sourceSha256 !== segment.accepted_assets.image.sha256 ||
+        video.assetId === segment.accepted_assets.image.asset_id || video.sha256 === segment.accepted_assets.image.sha256 ||
+        video.sha256 === request.voiceover.sha256 || !SHA256_PATTERN.test(video.sha256) || !video.assetId ||
+        !Number.isSafeInteger(video.videoFrameCount) || video.videoFrameCount < 1 || video.videoFrameCount > 360 ||
+        video.videoFrameCount > segment.end_frame_exclusive - segment.start_frame) {
+      return pipelineFailure(fail("ASSET_KIND_MISMATCH", "Video replacement does not match its pinned image scene.", ["videoAssets"]));
+    }
+    videoSegments.add(video.segmentId);
+    videoFrames += video.videoFrameCount;
+    segments[index] = { ...segment,
+      accepted_assets: { ...segment.accepted_assets, video: { asset_id: video.assetId, sha256: video.sha256 } },
+      render: { ...segment.render, video_source_profile: "seedance-pro-fast-1248x704-v1", video_frame_count: video.videoFrameCount } };
+  }
+  if (videoFrames > Math.floor(request.timeline.value.total_frames * 7 / 100)) {
+    return pipelineFailure(fail("ASSET_KIND_MISMATCH", "Video coverage exceeds the pinned seven-percent budget.", ["videoAssets"]));
+  }
   const manifest: ResolvedRenderManifestDocument = {
-    schema_version: "resolved-render-manifest/v1",
+    schema_version: videoAssets.length ? "resolved-render-manifest/v2" : "resolved-render-manifest/v1",
     project_revision_id: request.revision.value.project_revision_id,
     revision_config_hash: request.revision.sha256,
     timeline_plan_hash: request.timeline.sha256,

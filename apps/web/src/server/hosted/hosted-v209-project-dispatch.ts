@@ -189,6 +189,11 @@ async function resumeHostedApiDispatch(
       }
     });
   }
+  await database.transaction(async (transaction) => {
+    await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", identity.accountId]);
+    await transaction.query("SELECT public.videoforge_materialize_hosted_video_jobs($1,$2,$3)",
+      [identity.accountId, identity.workspaceId, generationRequestId]);
+  });
   const scheduled = await ensureHostedApiGenerationWorkflow(environment, database, {
     accountId: identity.accountId,
     workspaceId: identity.workspaceId,

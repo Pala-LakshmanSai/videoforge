@@ -97,6 +97,7 @@ const SHA256_ROUND_CONSTANTS = new Uint32Array([
 
 export interface CatalogResponse {
   readonly default_image_style_version_id?: string;
+  readonly video_generation?: { readonly coverage_percent: number; readonly usd_per_second: number; readonly resolution: string; readonly aspect_ratio: string };
   readonly avatars: readonly {
     profile_id: string;
     version_id: string;
@@ -693,6 +694,10 @@ interface HostedCost {
     readonly fal_avatar_seconds: number;
     readonly fal_usd: number;
     readonly pricing_checked_at: string;
+    readonly seedance_seconds?: number;
+    readonly seedance_usd?: number;
+    readonly seedance_reported_usd?: number;
+    readonly seedance_coverage_percent?: number;
   } | null;
 }
 
@@ -1006,11 +1011,13 @@ interface HostedMediaPagination {
 interface HostedMediaPaginationResponse {
   readonly images: HostedMediaPagination;
   readonly avatar: HostedMediaPagination;
+  readonly videos?: HostedMediaPagination;
 }
 
 interface HostedReviewSnapshot {
   readonly contact_sheet?: readonly HostedContactSheetItem[];
   readonly avatar_footage?: readonly HostedAvatarFootageItem[];
+  readonly scene_footage?: readonly HostedAvatarFootageItem[];
   readonly media_pagination?: HostedMediaPaginationResponse;
   readonly quality_flags?: readonly HostedQualityFlag[];
   readonly manifest_url?: string | null;
@@ -1047,6 +1054,7 @@ interface ProjectDetailResponse {
     readonly stage:
       | "WAITING_FOR_GPU_QUALIFICATION"
       | "READY_FOR_GPU_DISPATCH"
+      | "GENERATING_VIDEO"
       | "READY_FOR_RENDER"
       | "FAILED";
   };
@@ -1094,12 +1102,13 @@ interface ProjectDetailResponse {
   readonly review?: HostedReviewSnapshot | null;
   readonly contact_sheet?: readonly HostedContactSheetItem[];
   readonly avatar_footage?: readonly HostedAvatarFootageItem[];
+  readonly scene_footage?: readonly HostedAvatarFootageItem[];
   readonly media_pagination?: HostedMediaPaginationResponse;
   readonly quality_flags?: readonly HostedQualityFlag[];
   readonly manifest_url?: string | null;
 }
 
-type HostedMediaSection = "images" | "avatar";
+type HostedMediaSection = "images" | "avatar" | "videos";
 const HOSTED_MEDIA_PAGE_SIZE = 96;
 const HOSTED_MEDIA_URL_REFRESH_SKEW_MS = 30_000;
 
@@ -3101,6 +3110,9 @@ export function HostedCreateProjectScreen() {
               Extra prompt keywords must be at most 500 characters.
             </p>
           ) : null}
+          {catalog.data.video_generation ? (
+            <p className="helper">Includes {catalog.data.video_generation.coverage_percent}% generated video · 720p · 16:9 · ${catalog.data.video_generation.usd_per_second.toFixed(5)}/generated second.</p>
+          ) : null}
           {voiceoverMeta ? (
             <p className="helper">Voiceover · {formatMilliseconds(voiceoverMeta.durationMs)}</p>
           ) : null}
@@ -4463,10 +4475,12 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const [additionalMedia, setAdditionalMedia] = useState<{
     readonly images: readonly HostedContactSheetItem[];
     readonly avatar: readonly HostedAvatarFootageItem[];
-  }>({ images: [], avatar: [] });
+    readonly videos: readonly HostedAvatarFootageItem[];
+  }>({ images: [], avatar: [], videos: [] });
   const [mediaPage, setMediaPage] = useState<Record<HostedMediaSection, number>>({
     images: 1,
     avatar: 1,
+    videos: 1,
   });
   const [mediaLoadingSection, setMediaLoadingSection] = useState<HostedMediaSection | null>(null);
   const [mediaLoadError, setMediaLoadError] = useState<string | null>(null);
@@ -4479,8 +4493,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     if (mediaContext === resetMediaContext.current) return;
     resetMediaContext.current = mediaContext;
     mediaUrlCacheRef.current.clear();
-    setAdditionalMedia({ images: [], avatar: [] });
-    setMediaPage({ images: 1, avatar: 1 });
+    setAdditionalMedia({ images: [], avatar: [], videos: [] });
+    setMediaPage({ images: 1, avatar: 1, videos: 1 });
     setMediaLoadingSection(null);
     setMediaLoadError(null);
   }, [mediaContext]);
@@ -4499,11 +4513,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       if (!isCurrentRequest()) return;
       const nextImages = page.review?.contact_sheet ?? page.contact_sheet ?? [];
       const nextAvatar = page.review?.avatar_footage ?? page.avatar_footage ?? [];
+      const nextVideos = page.review?.scene_footage ?? page.scene_footage ?? [];
       setAdditionalMedia((current) => ({
         images:
           section === "images" ? mergeHostedMedia(current.images, nextImages) : current.images,
         avatar:
           section === "avatar" ? mergeHostedMedia(current.avatar, nextAvatar) : current.avatar,
+        videos: section === "videos" ? mergeHostedMedia(current.videos, nextVideos) : current.videos,
       }));
       setMediaPage((current) => ({ ...current, [section]: nextPage }));
     } catch (error) {
@@ -5208,6 +5224,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     : null;
   const firstContactSheet = query.data.review?.contact_sheet ?? query.data.contact_sheet ?? [];
   const firstAvatarFootage = query.data.review?.avatar_footage ?? query.data.avatar_footage ?? [];
+  const firstSceneFootage = query.data.review?.scene_footage ?? query.data.scene_footage;
+  const sceneFootage = mergeHostedMedia(firstSceneFootage ?? [], additionalMedia.videos);
   const latestContactSheetItem = firstContactSheet.at(-1);
   const latestArtifact =
     stableRenderPreviewUrl ??
@@ -5218,6 +5236,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const avatarFootage = mergeHostedMedia(firstAvatarFootage, additionalMedia.avatar);
   const mediaPagination = query.data.media_pagination ?? query.data.review?.media_pagination;
   const mediaTotals: ProjectMediaReviewTotals = {
+    ...(firstSceneFootage ? { videos: Math.max(sceneFootage.length, Number(mediaPagination?.videos?.total_accepted ?? 0)) } : {}),
     images: Math.max(
       contactSheet.length,
       Number.isSafeInteger(Number(mediaPagination?.images.total_accepted))
@@ -5234,6 +5253,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const mediaHasMore: ProjectMediaReviewHasMore = {
     images: mediaPage.images * HOSTED_MEDIA_PAGE_SIZE < mediaTotals.images,
     avatar: mediaPage.avatar * HOSTED_MEDIA_PAGE_SIZE < mediaTotals.avatar,
+    videos: mediaPage.videos * HOSTED_MEDIA_PAGE_SIZE < (mediaTotals.videos ?? 0),
   };
   const projectRevisionId = query.data?.project.revision_id ?? null;
   const generatedImages: ProjectMediaReviewItem[] = contactSheet.map((item, index) => {
@@ -5263,6 +5283,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     label: item.label ?? `Avatar clip ${index + 1}`,
     detail: "Accepted Stage 7 avatar footage",
   }));
+  const sceneVideos: ProjectMediaReviewItem[] | undefined = firstSceneFootage === undefined ? undefined : sceneFootage.map((item, index) => ({
+    id: item.id,
+    url: stableHostedMediaUrl(mediaUrlCacheRef.current, mediaContext, "videos", item),
+    label: item.label ?? `Generated video ${index + 1}`,
+    detail: "Seedance · 720p · 16:9",
+  }));
+  const videoStage = uiStages.find((stage) => stage.id === "video-generation");
   const imageStage = uiStages.find(
     (stage) => stage.id === "image-generation" || stage.label === "Generate images",
   );
@@ -5273,6 +5300,12 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       stage.label === "Generate avatar",
   );
   const stageMediaActions = {
+    ...(videoStage && sceneVideos && sceneVideos.length > 0 ? {
+      [videoStage.id]: <ProjectMediaReview launcher="videos" images={generatedImages}
+        avatarVideos={avatarVideos} sceneVideos={sceneVideos} mediaTotals={mediaTotals}
+        mediaHasMore={mediaHasMore} onLoadMore={(section) => void loadMoreMedia(section)}
+        loadingMore={mediaLoadingSection} loadMoreError={mediaLoadError} />,
+    } : {}),
     ...(imageStage && generatedImages.length > 0
       ? {
           [imageStage.id]: (
@@ -5280,6 +5313,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               launcher="images"
               images={generatedImages}
               avatarVideos={avatarVideos}
+              sceneVideos={sceneVideos}
               mediaTotals={mediaTotals}
               mediaHasMore={mediaHasMore}
               onLoadMore={(section) => void loadMoreMedia(section)}
@@ -5303,6 +5337,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               launcher="avatar"
               images={generatedImages}
               avatarVideos={avatarVideos}
+              sceneVideos={sceneVideos}
               mediaTotals={mediaTotals}
               mediaHasMore={mediaHasMore}
               onLoadMore={(section) => void loadMoreMedia(section)}
@@ -5543,7 +5578,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     query.data.api_recovery?.can_resume_saved_work === true;
   const stageRetries: Record<string, ReturnType<typeof stageRetryButton>> = {
     ...(apiRetrievalRetryEligible
-      ? Object.fromEntries(["image-generation","avatar-generation"].filter(id=>failedStageIds.has(id))
+      ? Object.fromEntries(["image-generation","video-generation","avatar-generation"].filter(id=>failedStageIds.has(id))
         .map(id=>[id,stageRetryButton(gpuDispatch.isPending,()=>gpuDispatch.mutate())]))
       : {}),
     ...(failedStageIds.has("planning") && planningFailed && asr
@@ -5738,7 +5773,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               detail={
                 query.data.generation_provider === "KIE_FAL"
                   ? cost?.api_estimate
-                    ? `${cost.api_estimate.kie_images} Kie images + ${cost.api_estimate.fal_avatar_seconds.toFixed(1)}s Fal avatar · published-rate estimate`
+                    ? `${cost.api_estimate.kie_images} Kie images + ${cost.api_estimate.fal_avatar_seconds.toFixed(1)}s Fal avatar${cost.api_estimate.seedance_seconds === undefined ? "" : ` + ${cost.api_estimate.seedance_seconds.toFixed(1)}s Seedance (7%)`} · published-rate estimate`
                     : "Calculated when planning finishes"
                   : cost?.cap_usd == null
                     ? undefined

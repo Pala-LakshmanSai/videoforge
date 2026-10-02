@@ -92,7 +92,7 @@ function validateCandidate(
     plan.kind !== "RENDER" ||
     plan.project_id !== candidate.projectId ||
     plan.project_revision_id !== candidate.projectRevisionId ||
-    input.schema_version !== "render-job-input/v1" ||
+    !["render-job-input/v1", "render-job-input/v2"].includes(String(input.schema_version)) ||
     input.project_revision_id !== candidate.projectRevisionId ||
     manifest.sha256 !== candidate.renderManifestSha256
   )

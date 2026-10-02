@@ -7,6 +7,8 @@ import type { HostedGenerationPersistence } from "./generation-coordinator";
 import type { HostedNeonPool, HostedR2BucketBinding } from "./configuration";
 import { sha256Bytes } from "./crypto";
 import { createNeonExecutor } from "./neon";
+import { planHostedVideoSelections } from "./hosted-video-plan";
+import type { TimelinePlanDocument } from "@videoforge/contracts";
 
 export class HostedCanonicalTimingPersistenceError extends Error {
   constructor(readonly code: string) {
@@ -256,7 +258,7 @@ export class HostedCanonicalTimingPersistence implements HostedGenerationPersist
         "videoforge.account_id",
         input.snapshot.accountId,
       ]);
-      return transaction.query<{ replayed: boolean }>(
+      const saved = await transaction.query<{ replayed: boolean }>(
         `SELECT replayed FROM public.videoforge_append_hosted_canonical_timing($1,$2,$3,$4,$5,$6,$7::jsonb)`,
         [
           input.snapshot.accountId,
@@ -268,6 +270,18 @@ export class HostedCanonicalTimingPersistence implements HostedGenerationPersist
           JSON.stringify(payload),
         ],
       );
+      const timeline = {
+        total_frames: input.preparedTimeline.timelinePersistence.totalFrames,
+        segments: input.preparedTimeline.timelinePersistence.segments.map((segment) => ({
+          segment_id: segment.segmentKey, start_frame: segment.startFrame,
+          end_frame_exclusive: segment.endFrameExclusive, timeline_composition: segment.timelineComposition,
+          required_slots: segment.requiredSlots,
+        })) as unknown as TimelinePlanDocument["segments"],
+      };
+      await transaction.query("SELECT public.videoforge_plan_hosted_video_selections($1,$2,$3,$4::jsonb)",
+        [input.snapshot.accountId, input.snapshot.workspaceId, input.snapshot.projectRevisionId,
+          JSON.stringify(planHostedVideoSelections(timeline))]);
+      return saved;
     });
     const replayed = result.rows[0]?.replayed;
     if (typeof replayed !== "boolean" || result.rows.length !== 1)

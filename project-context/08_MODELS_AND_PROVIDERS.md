@@ -230,3 +230,7 @@ or provider because an alternative appears faster/cheaper. A change requires:
    evidence on the exact lane;
 5. immutable publication/manifest evidence and updated decision/context/contracts/tests;
 6. zero-worker/cleanup proof and a separately disclosed retained-storage effect.
+
+## DEC_VIDEO_GENERATION_001 — 2026-10-02
+
+Fresh projects pin 7% Seedance1.0ProFast motion coverage at Runware720p16:9 (bytedance:2@2,1248x704). Deterministic selection occurs with the canonical timeline, uses IMAGE_FULL scenes only, retains each source image, and preserves original narration/avatar timing. Clips start after their exact images accept and overlap remaining image/avatar work. Source/provider identities, accepted clips, costs and barriers are tenant-private and durable; uncertain inference is never resubmitted. Video rendering uses explicit version2 contracts with native geometry/duration checks and hard cuts; old projects remain version1. See tasks/SEEDANCE_VIDEO_PLAN.md for gates and rollback. This is authorized implementation, not a claim of completed publication or paid acceptance.

@@ -1,3 +1,21 @@
+seedance_video_2026_10_02:
+  checkpoint: V2-09
+  selected_task: SEEDANCE_VIDEO_PLAN
+  read_profile: v2_09_seedance_video
+  state: IMPLEMENTING_PROVIDER_FREE
+  branch: codex/seedance-video
+  rollback_source: f705d6c21bf7b6ab46ba1801fb30eff0b58729f0
+  rollback_checkout: 4d5af76c007b76f39cd6a715b26fefd71ee8e40a
+  rollback_worker_version: f8b36fdf-b445-4485-94a6-53f706bfc454
+  rollback_tag: pre-seedance-video-20261002
+  requested_coverage_percent: 7
+  provider_model: bytedance:2@2
+  output_preset: 720p_16_by_9_1248x704
+  test_spend_cap_usd: 4.00
+  test_spend_usd: 0
+  paid_compute_started: false
+  acceptance: PENDING
+
 progress_elapsed_2026_10_02:
   checkpoint: V2-09
   selected_task: VF-10-09
@@ -1955,18 +1973,18 @@ updated_at: "2026-09-19T04:41:41Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: team_access_review
+current_milestone: seedance_video_7_percent
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 task_stage: bounded_mutation
 application_code_changes_authorized: true
-provider_calls_authorized: false
+provider_calls_authorized: true
 read_only_provider_calls_authorized: false
-remote_or_cloud_mutations_authorized: false
-credential_access_authorized: false
-gpu_use_authorized: false
-maximum_external_spend_usd: 0
+remote_or_cloud_mutations_authorized: true
+credential_access_authorized: true
+gpu_use_authorized: true
+maximum_external_spend_usd: 4
 
 v2_09_stage6_7_autonomous_mvp_repair_2026_09_13:
   status: "ACCEPTED_DEPLOYED_ZERO_COMPUTE"
@@ -6463,8 +6481,8 @@ historical_v2_06_final_live_closure_authority:
 
 credential_value_read_authorized: true
 model_downloads_authorized: false
-worker_image_publication_authorized: false
-sample_output_publication_authorized: false
+worker_image_publication_authorized: true
+sample_output_publication_authorized: true
 retained_volume_mutation_authorized: false
 
 runpod_account_scope:
@@ -6488,8 +6506,8 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/progress-elapsed
-  branch_upstream: origin/codex/progress-elapsed
+  branch: codex/seedance-video
+  branch_upstream: origin/codex/seedance-video
   branch_published: true
   current_source_head: "f705d6c21bf7b6ab46ba1801fb30eff0b58729f0"
   current_source_head_semantics: published_application_source_elapsed_fix_handoff_follows
@@ -6510,10 +6528,10 @@ live_development:
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: team_access_local_verification_and_PR_only
+  provider_mode: production
+  provider_calls_authorized: true
+  authorized_spend_usd: 4
+  provider_authority_scope: seedance_feature_qualification_and_production_within_user_cap
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -8733,48 +8751,49 @@ v2_09_historical_consumed_native_authority:
   note: "Continuing user authorization permits source repairs and fresh exact successor records; it does not replay this consumed click. Retained qualified deployment remains present and idle."
 
 provider_authority: &v2_09_provider_authority_current
-  mode: none
-  provider: null
-  cap_usd: 0
+  mode: paid
+  provider: Runware_Kie_Fal_RunPod
+  model_id: Seedance_1_0_Pro_Fast_bytdance_2_2_and_existing_Kie_Fal_Cloud_media
+  cap_usd: 4
   non_transferable: true
-  resources: []
-  authorized_operations: []
-  allowed_operations: []
-  provider_calls_authorized: false
-  provider_mutations_authorized: false
-  credential_access_authorized: false
-  gpu_use_authorized: false
-  note: Team_access_implementation_and_PR_only;historical_provider_authorities_are_not_transferred.
+  authorized_by_user_at: "2026-10-02"
+  resources: [runware_bytedance_2_2_1248x704, kie_z_image, fal_flashhead_audio_to_video, videoforge_qualified_cloud_media_runtime, videoforge_production_worker]
+  authorized_operations: [bounded_qualification, additive_migration, worker_release, production_deploy]
+  allowed_operations: [bounded_qualification, additive_migration, worker_release, production_deploy]
+  rate_snapshot:
+    - resource_id: runware_bytedance_2_2_1248x704
+      billing_unit: generated_second
+      usd_per_unit: 0.01336
+      checked_at: "2026-10-02"
 
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: team_access_review
-  status: PR_REVIEW_PENDING
-  dependency_status: current_published_application_base_3932c982
-  authorization_status: implement_and_open_PR_only_merge_requires_user_approval
-  task_stage: provider_free_review
+  milestone: seedance_video_7_percent
+  status: IMPLEMENTING_PROVIDER_FREE
+  dependency_status: production_baseline_f705d6c2_retained
+  authorization_status: user_authorized_implementation_and_production_cap_4_usd
+  task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current
-  read_profile: v2_09_team_access
-  task_brief: tasks/VF-10-09.md
-  goal: Review_Team_access_PR_then_approve_merge_before_production_rollout
+  read_profile: v2_09_seedance_video
+  task_brief: tasks/SEEDANCE_VIDEO_PLAN.md
+  goal: Integrate_7_percent_Seedance_video_and_verify_safe_production_release
   provider_mode: fixture
-  provider_calls_authorized: false
+  provider_calls_authorized: true
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
-  credential_access_authorized: false
-  credential_value_read_authorized: false
+  maximum_external_spend_usd: 4
+  remote_or_cloud_mutations_authorized: true
+  credential_access_authorized: true
+  credential_value_read_authorized: true
   model_downloads_authorized: false
-  worker_image_publication_authorized: false
-  sample_output_publication_authorized: false
-  gpu_use_authorized: false
+  sample_output_publication_authorized: true
+  worker_image_publication_authorized: true
+  gpu_use_authorized: true
   retained_volume_mutation_authorized: false
   application_code_changes_authorized: true
   spend_usd: 0
   resources: []
-  authorized_operations: []
-  allowed_operations: []
+  authorized_operations: [bounded_qualification, additive_migration, worker_release, production_deploy]
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_and_v2_08_live_qualified_pass_clean

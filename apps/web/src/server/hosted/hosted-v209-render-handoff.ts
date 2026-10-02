@@ -458,6 +458,17 @@ export function createHostedV209RenderHandoff(input: {
           } satisfies AcceptedAssetBinding,
         ]),
       );
+      const rawVideos = ready.acceptedVideos ?? [];
+      if (!Array.isArray(rawVideos) || (rawVideos.length > 0 && !ready.videoPlan)) throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
+      const acceptedVideos = rawVideos.map((value) => {
+        const row = record(value);
+        if (row.lane !== "seedance_video" || row.kind !== "VIDEO" || !Number.isSafeInteger(row.videoFrameCount))
+          throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
+        return { segmentId: text(row.segmentId), sourceTaskKey: text(row.sourceTaskKey),
+          sourceSha256: text(row.sourceSha256, SHA256), videoFrameCount: row.videoFrameCount as number,
+          artifact: artifact(row, artifactScope, { lane: "SCENE_VIDEO", kind: "VIDEO", taskKey: text(row.taskKey),
+            generationTaskId: text(row.taskId, UUID), acceptedAttemptId: text(row.acceptedAttemptId, UUID), barrierAcceptance: "ACCEPTED_CANONICAL" }) };
+      });
       const planned = await planVNextResolvedRenderManifest({
         contractDocumentAuthority: { validateAndHash: validateAndHashContractDocument },
         revision: revisionDocument,
@@ -469,6 +480,8 @@ export function createHostedV209RenderHandoff(input: {
           kind: "VOICEOVER",
         },
         acceptedAssets: { byTaskKey: acceptedBindings },
+        videoAssets: acceptedVideos.map((video) => ({ ...video, assetId: video.artifact.assetId,
+          sha256: video.artifact.checksumSha256 as AcceptedAssetBinding["sha256"], kind: "VIDEO" as const })),
         renderProfileVersion: "ffmpeg-render-v3",
       });
       if (!planned.ok) throw new Error("HOSTED_V209_RENDER_PLAN_INVALID");
@@ -584,6 +597,7 @@ export function createHostedV209RenderHandoff(input: {
         voiceover,
         ...(avatarSource ? { avatarSource } : {}),
         acceptedVisuals,
+        acceptedVideos,
         resolvedManifest: { document: planned.value.value, artifact: manifestArtifact },
         tools: record(ready.tools) as HostedRenderPlanMaterializationInput["tools"],
       };

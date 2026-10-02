@@ -157,7 +157,7 @@ elsif recommended_task["task_id"] || current_task
   errors << "an active or recommended task requires a selected task brief"
 end
 
-expected_task_files = ["README.md", "VF-10-00.md", "VF-10-00A.md"] +
+expected_task_files = ["README.md", "SEEDANCE_VIDEO_PLAN.md", "VF-10-00.md", "VF-10-00A.md"] +
   (1..13).map { |number| format("VF-10-%02d.md", number) }
 tasks_dir = root.join("tasks")
 actual_task_entries = tasks_dir.directory? ? tasks_dir.children.map { |path| path.basename.to_s }.sort : []

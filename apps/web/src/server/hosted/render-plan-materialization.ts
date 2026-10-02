@@ -14,7 +14,7 @@ import { canonicalJson, exactHostedRenderSubmission } from "./submission";
 const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u;
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const OBJECT_KEY =
-  /^tenant\/([^/]+)\/workspace\/([^/]+)\/project\/([^/]+)\/revision\/([^/]+)\/lane\/(input|mage-image|soulx-avatar|render)\/job\/([^/]+)\/artifact\/([^/]+)$/u;
+  /^tenant\/([^/]+)\/workspace\/([^/]+)\/project\/([^/]+)\/revision\/([^/]+)\/lane\/(input|mage-image|soulx-avatar|scene-video|render)\/job\/([^/]+)\/artifact\/([^/]+)$/u;
 const AVATAR_SOURCE_OBJECT_KEY =
   /^tenant\/([^/]+)\/workspace\/([^/]+)\/avatar-profile\/([^/]+)\/version\/([^/]+)\/canonical\/avatar\.(png|jpg)$/u;
 const AVATAR_ORIGINAL_SOURCE_OBJECT_KEY =
@@ -32,8 +32,8 @@ const SOULX_CANDIDATE_SHA256 =
 const SOULX_APPROVAL_SHA256 =
   "sha256:c3aae03da3f0134e12c2f432951189bd205dcbb7ab26a65d44061cec82984c45";
 
-type Lane = "INPUT" | "MAGE_IMAGE" | "SOULX_AVATAR" | "RENDER";
-type MediaKind = "VOICEOVER" | "IMAGE" | "AVATAR_CLIP" | "RESOLVED_RENDER_MANIFEST";
+type Lane = "INPUT" | "MAGE_IMAGE" | "SOULX_AVATAR" | "SCENE_VIDEO" | "RENDER";
+type MediaKind = "VOICEOVER" | "IMAGE" | "AVATAR_CLIP" | "VIDEO" | "RESOLVED_RENDER_MANIFEST";
 
 export interface HostedRenderPlanSql {
   query<Row extends Record<string, unknown>>(
@@ -112,6 +112,13 @@ export interface HostedRenderPlanMaterializationInput {
   readonly voiceover: HostedCommittedArtifact;
   readonly avatarSource?: HostedCommittedArtifact;
   readonly acceptedVisuals: readonly HostedCommittedArtifact[];
+  readonly acceptedVideos?: readonly {
+    readonly artifact: HostedCommittedArtifact;
+    readonly segmentId: string;
+    readonly sourceTaskKey: string;
+    readonly sourceSha256: string;
+    readonly videoFrameCount: number;
+  }[];
   readonly resolvedManifest: HostedResolvedManifestSnapshot;
   readonly tools: {
     readonly ffmpegVersion: string;
@@ -177,7 +184,7 @@ function exactScope(
   // is derived from the API job UUID. The render-ready database read verifies that
   // job, task, asset, receipt, and accepted unit belong to the same result.
   const apiVisual =
-    (artifact.kind === "IMAGE" || artifact.kind === "AVATAR_CLIP") &&
+    (artifact.kind === "IMAGE" || artifact.kind === "AVATAR_CLIP" || artifact.kind === "VIDEO") &&
     artifact.generationTaskId !== undefined &&
     UUID.test(artifact.generationTaskId) &&
     UUID.test(artifact.assetId) &&
@@ -593,6 +600,36 @@ export async function materializeHostedRenderPlan(
     reject("HOSTED_RENDER_ARTIFACT_BARRIER_PARTIAL");
   }
   validateManifestSegments(timeline.value, manifest.value, accepted, input.avatarSource);
+  const videoBySegment = new Map<string, HostedCommittedArtifact>();
+  let selectedVideoFrames = 0;
+  for (const video of input.acceptedVideos ?? []) {
+    const artifact = video.artifact;
+    exactScope(artifact, input);
+    const source = accepted.get(video.sourceTaskKey);
+    const index = timeline.value.segments.findIndex((segment) => segment.segment_id === video.segmentId);
+    const timelineSegment = timeline.value.segments[index];
+    const segment = manifest.value.segments[index];
+    if (!segment || !timelineSegment || timelineSegment.timeline_composition !== "IMAGE_FULL" ||
+        segment.timeline_composition !== "IMAGE_FULL" || manifest.value.schema_version !== "resolved-render-manifest/v2" ||
+        videoBySegment.has(video.segmentId) || artifact.kind !== "VIDEO" || artifact.lane !== "SCENE_VIDEO" ||
+        artifact.contentType !== "video/mp4" || artifact.barrierAcceptance !== "ACCEPTED_CANONICAL" ||
+        artifact.acceptedAttemptId === null || !UUID.test(artifact.acceptedAttemptId) ||
+        artifact.taskKey !== `video:${video.segmentId}` || !source || source.kind !== "IMAGE" ||
+        source.checksumSha256 !== video.sourceSha256 || video.sourceTaskKey !== timelineSegment.required_slots.image.task_key ||
+        !Number.isSafeInteger(video.videoFrameCount) || video.videoFrameCount < 1 || video.videoFrameCount > 360 ||
+        video.videoFrameCount > segment.end_frame_exclusive - segment.start_frame ||
+        segment.accepted_assets.video?.asset_id !== artifact.assetId || segment.accepted_assets.video?.sha256 !== artifact.checksumSha256 ||
+        segment.render.video_source_profile !== "seedance-pro-fast-1248x704-v1" || segment.render.video_frame_count !== video.videoFrameCount) {
+      reject("HOSTED_RENDER_VIDEO_BINDING_DRIFT");
+    }
+    videoBySegment.set(video.segmentId, artifact);
+    selectedVideoFrames += video.videoFrameCount;
+  }
+  if (selectedVideoFrames > Math.floor(timeline.value.total_frames * 7 / 100) ||
+      manifest.value.segments.some((segment) => segment.timeline_composition === "IMAGE_FULL" &&
+        segment.accepted_assets.video !== undefined && !videoBySegment.has(segment.segment_id))) {
+    reject("HOSTED_RENDER_VIDEO_COVERAGE_DRIFT");
+  }
 
   exactScope(input.resolvedManifest.artifact, input);
   if (
@@ -612,6 +649,7 @@ export async function materializeHostedRenderPlan(
     input.voiceover,
     ...(input.avatarSource === undefined ? [] : [input.avatarSource]),
     ...input.acceptedVisuals,
+    ...(input.acceptedVideos ?? []).map((video) => video.artifact),
   ]) {
     const uri = objectUri(artifact);
     const existing = uniqueMedia.get(uri);
@@ -629,7 +667,7 @@ export async function materializeHostedRenderPlan(
     project_revision_id: input.revision.projectRevisionId,
     kind: "RENDER",
     input_document: {
-      schema_version: "render-job-input/v1",
+      schema_version: videoBySegment.size ? "render-job-input/v2" : "render-job-input/v1",
       project_revision_id: input.revision.projectRevisionId,
       attempt_id: input.revision.projectRevisionId,
       resolved_render_manifest: {

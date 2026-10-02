@@ -78,7 +78,10 @@ function boxes(bytes: Uint8Array, begin: number, end: number): Box[] {
   return result;
 }
 
-function inspectMp4(bytes: Uint8Array): { durationSeconds: number; width: number; height: number } {
+export function inspectMp4(
+  bytes: Uint8Array,
+  expectedGeometry: { readonly width: number; readonly height: number } = { width: 512, height: 512 },
+): { durationSeconds: number; width: number; height: number } {
   if (bytes.byteLength < 1024 || bytes.byteLength > MAX_VIDEO_BYTES)
     throw new FalAvatarJobError("RESULT_MP4_INVALID");
   const top = boxes(bytes, 0, bytes.byteLength);
@@ -113,7 +116,8 @@ function inspectMp4(bytes: Uint8Array): { durationSeconds: number; width: number
     height = view.getUint16(at + 30);
     if (width && height) break;
   }
-  if (width !== 512 || height !== 512) throw new FalAvatarJobError("RESULT_MP4_INVALID");
+  if (width !== expectedGeometry.width || height !== expectedGeometry.height)
+    throw new FalAvatarJobError("RESULT_MP4_INVALID");
   return { durationSeconds, width, height };
 }
 

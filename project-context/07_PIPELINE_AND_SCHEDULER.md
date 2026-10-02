@@ -326,3 +326,7 @@ RunPod owns temporary media scratch. GPU-preferred, qualified Secure CPU fallbac
 pinned media runtime and quality gates under the existing admission, launch, cost and cleanup fences.
 CPU fallback is locally implemented but remains disabled until live qualification. An OUTBOXED job
 behind an earlier admitted project is queue waiting, not evidence of RunPod placement shortage.
+
+## DEC_VIDEO_GENERATION_001 — 2026-10-02
+
+Fresh projects pin 7% Seedance1.0ProFast motion coverage at Runware720p16:9 (bytedance:2@2,1248x704). Deterministic selection occurs with the canonical timeline, uses IMAGE_FULL scenes only, retains each source image, and preserves original narration/avatar timing. Clips start after their exact images accept and overlap remaining image/avatar work. Source/provider identities, accepted clips, costs and barriers are tenant-private and durable; uncertain inference is never resubmitted. Video rendering uses explicit version2 contracts with native geometry/duration checks and hard cuts; old projects remain version1. See tasks/SEEDANCE_VIDEO_PLAN.md for gates and rollback. This is authorized implementation, not a claim of completed publication or paid acceptance.

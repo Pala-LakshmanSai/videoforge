@@ -4,8 +4,8 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-09-06"
 source_of_truth: project-context
 
-current_selected_profile: v2_09_team_access
-current_selected_brief: tasks/VF-10-09.md
+current_selected_profile: v2_09_seedance_video
+current_selected_brief: tasks/SEEDANCE_VIDEO_PLAN.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -25,6 +25,12 @@ conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
 target_profile_word_budget: 15000
 
 read_profiles:
+  v2_09_seedance_video:
+    - tasks/SEEDANCE_VIDEO_PLAN.md
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - 08_MODELS_AND_PROVIDERS.md
+    - 10_DATA_AND_API_CONTRACTS.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
   v2_09_team_access:
     - tasks/VF-10-09.md
     - 05_UI_UX_SPEC.md
@@ -240,6 +246,7 @@ approved_decisions:
   DEC_AVATAR_004: one_native_clip_two_layouts
   DEC_AVATAR_005: tenant_private_reusable_avatar_hub
   DEC_AVATAR_010: superseded_soulx_pro_historical_attempts_only
+  DEC_VIDEO_GENERATION_001: fresh_pinned_seedance_720p_7_percent_motion
   DEC_API_GENERATION_001: fresh_kie_z_image_and_fal_flashhead_audio_to_video
   DEC_IMAGE_REGENERATION_001: new_per_image_fal_z_image_turbo_original_media_immutable
   DEC_BUILD_001: hosted_linux_heavy_builds_no_mac_dependency

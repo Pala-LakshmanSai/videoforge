@@ -80,6 +80,7 @@ export interface HostedRuntimeEnvironment {
   readonly MEDIA_WORKER_TOKEN_SECRET?: string;
   /** Runware credential for bounded Gemini style analysis and the existing prompt writer. */
   readonly RUNWARE_API_KEY?: string;
+  readonly VIDEO_GENERATION_ENABLED?: string;
   readonly VIDEOFORGE_V207_AUTHORITY_NONCE?: string;
   /** Paid pair bindings remain optional while production is DISABLED_UNQUALIFIED. They must be
    * configured as secret bindings, never Wrangler vars, before the qualified composition exists. */
@@ -165,6 +166,7 @@ export interface HostedRuntimeConfiguration {
     readonly model: "google:gemini@3.1-flash-lite";
     readonly baseUrl: "https://api.runware.ai/v1";
   } | null;
+  readonly videoGenerationEnabled?: boolean;
   readonly apiGeneration?: Readonly<{
     readonly kieApiKey: string;
     readonly falApiKey: string;
@@ -476,6 +478,9 @@ export function hostedRuntimeConfiguration(
   }
   const desktopRelease = mediaWorkerRelease(required(source, "MEDIA_WORKER_RELEASE_MANIFEST_JSON"));
   const cloudMedia = cloudMediaConfiguration(source);
+  if (source.VIDEO_GENERATION_ENABLED === "true" && (!apiGeneration || !source.RUNWARE_API_KEY?.trim() ||
+      Number(desktopRelease.version.split(".")[0]) === 0 && Number(desktopRelease.version.split(".")[1]) === 1 && Number(desktopRelease.version.split(".")[2]) < 46))
+    throw new Error("HOSTED_VIDEO_RENDERER_UNQUALIFIED");
   if (cloudMedia && cloudMedia.tooling.whisper_model_sha256 !== desktopRelease.whisperModelSha256)
     throw new Error("CLOUD_MEDIA_MODEL_UNQUALIFIED");
   const redacted = Object.freeze({
@@ -518,6 +523,7 @@ export function hostedRuntimeConfiguration(
             baseUrl: "https://api.runware.ai/v1" as const,
           })
         : null,
+    videoGenerationEnabled: source.VIDEO_GENERATION_ENABLED === "true",
     ...(apiGeneration ? { apiGeneration } : {}),
     cloudMedia,
     toJSON: () => redacted,

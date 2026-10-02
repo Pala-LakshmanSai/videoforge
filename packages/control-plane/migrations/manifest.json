@@ -1212,6 +1212,12 @@
       "name": "natural_documentary_builtin",
       "filename": "0239_natural_documentary_builtin.sql",
       "sha256": "sha256:1fb44c034cf8695d0de89e6eff0d98b46b03c440dbd2c9a10fc7cafde4bb817b"
+    },
+    {
+      "version": 240,
+      "name": "hosted_seedance_video",
+      "filename": "0240_hosted_seedance_video.sql",
+      "sha256": "sha256:ccb7009f8cfb602f25c4ddd5bd819638936d050833d83181b3df32bde814cc09"
     }
   ]
 }

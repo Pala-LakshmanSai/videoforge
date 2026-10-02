@@ -275,6 +275,7 @@ describe("API prompt binding before scheduling", () => {
             if (sql.includes("videoforge_read_hosted_api_jobs")) return {
               rows: [{ jobs: { generationRequestId: prepared.generationRequestId, jobs } }],
             };
+            if (sql.includes("videoforge_materialize_hosted_video_jobs")) return { rows: [{ value: [] }] };
             if (!sql.includes("videoforge_bind_hosted_api_image_prompt")) throw new Error(sql);
             events.push(`bind:${bindings.length}`);
             bindings.push({ transactionId: current, args });
@@ -311,7 +312,7 @@ describe("API prompt binding before scheduling", () => {
     const f = await fixture();
     expect((await f.run()).status).toBe(202);
     expect(f.events).toEqual(["commit:1", "compile:0", "compile:1", "compile:2",
-      "bind:0", "bind:1", "bind:2", "commit:2", "schedule"]);
+      "bind:0", "bind:1", "bind:2", "commit:2", "commit:3", "schedule"]);
     expect(f.bindings.map((binding) => binding.transactionId)).toEqual([2, 2, 2]);
     expect(f.committed).toEqual(f.expected.map((prompt, index) => [scope.account_id,
       scope.workspace_id, f.prepared.generationRequestId, id(String(index + 5)), prompt]));
@@ -335,7 +336,7 @@ describe("API prompt binding before scheduling", () => {
     const f = await fixture("compile");
     f.jobs[0]!.state = "UNKNOWN_NO_RETRY";
     expect((await f.run()).status).toBe(202);
-    expect(f.events).toEqual(["commit:1", "schedule"]);
+    expect(f.events).toEqual(["commit:1", "commit:2", "schedule"]);
     expect(f.bindings).toEqual([]);
     expect(f.create).toHaveBeenCalledOnce();
   });

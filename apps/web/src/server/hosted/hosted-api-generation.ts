@@ -2,6 +2,7 @@ import type { SqlPrimitive, TransactionalSqlExecutor } from "@videoforge/control
 
 import { hostedRuntimeConfiguration, type HostedRuntimeEnvironment } from "./configuration";
 import { HostedR2Signer } from "./r2";
+import { advanceHostedVideoGeneration } from "./hosted-video-generation";
 import { KieZImageClient, KieZImageError } from "../providers/kie-z-image";
 import {
   submitKieImageJob,
@@ -96,7 +97,7 @@ export async function settleHostedApiJobsBounded<T, R>(
   return results as PromiseSettledResult<R>[];
 }
 
-async function call(
+export async function callHostedApiGeneration(
   database: TransactionalSqlExecutor,
   accountId: string,
   functionName: string,
@@ -214,7 +215,7 @@ export async function advanceHostedApiGeneration(
     throw new Error("HOSTED_API_GENERATION_BINDING_MISSING");
   const base = [scope.accountId, scope.workspaceId, scope.generationRequestId] as const;
   const current = jobs(
-    await call(database, scope.accountId, "videoforge_read_hosted_api_jobs", base),
+    await callHostedApiGeneration(database, scope.accountId, "videoforge_read_hosted_api_jobs", base),
     scope,
   );
   const outcome = (
@@ -222,7 +223,17 @@ export async function advanceHostedApiGeneration(
     code?: string,
   ) => ({ state, jobCount: current.length, ...(code ? { code } : {}) });
   if (current.length === 0) return outcome("ACTION_REQUIRED", "HOSTED_API_JOBS_MISSING");
-  if (current.every((job) => job.state === "SUCCEEDED")) return outcome("READY_TO_RENDER");
+  const video = await advanceHostedVideoGeneration(environment, database, scope,
+    !current.some((job) => ["SUBMITTING", "UNKNOWN_NO_RETRY", "FAILED"].includes(job.state)));
+  if (current.every((job) => job.state === "SUCCEEDED")) {
+    if (video.complete) return outcome("READY_TO_RENDER");
+    if (!video.active && video.problemCode) {
+      if (video.problemCode === "OWNER_CANCELLED") return outcome("ACTION_REQUIRED", video.problemCode);
+      const settlement = object(await callHostedApiGeneration(database, scope.accountId, "videoforge_settle_hosted_api_failure", base));
+      return outcome(settlement.state === "SETTLED" ? "ACTION_REQUIRED" : "WAITING", video.problemCode);
+    }
+    return outcome(video.progressed ? "PROGRESSED" : "WAITING");
+  }
   const blocked = current.find((job) => ["SUBMITTING", "UNKNOWN_NO_RETRY"].includes(job.state));
   const failed = current.find((job) => job.state === "FAILED");
   const bucket = environment.PRIVATE_ARTIFACTS;
@@ -241,7 +252,7 @@ export async function advanceHostedApiGeneration(
         return false;
       }
       const claimed = object(
-        await call(database, scope.accountId, "videoforge_claim_hosted_api_job", [
+        await callHostedApiGeneration(database, scope.accountId, "videoforge_claim_hosted_api_job", [
           ...jobArgs,
           claimId,
         ]),
@@ -256,7 +267,7 @@ export async function advanceHostedApiGeneration(
       return selected;
     };
     const persistTaskId = async (taskId: string) => {
-      await call(database, scope.accountId, "videoforge_record_hosted_api_task", [
+      await callHostedApiGeneration(database, scope.accountId, "videoforge_record_hosted_api_task", [
         ...jobArgs,
         claimId,
         taskId,
@@ -266,14 +277,14 @@ export async function advanceHostedApiGeneration(
       // Stop sibling dispatch before awaiting the durable terminal write. The write can be slow
       // while the other lane is already between its claim and provider call.
       submissionStopped.value = true;
-      await call(database, scope.accountId, "videoforge_mark_hosted_api_unknown", [
+      await callHostedApiGeneration(database, scope.accountId, "videoforge_mark_hosted_api_unknown", [
         ...jobArgs,
         claimId,
       ]);
     };
     const markSubmissionFailed = async () => {
       submissionStopped.value = true;
-      await call(database, scope.accountId, "videoforge_fail_hosted_api_job", [
+      await callHostedApiGeneration(database, scope.accountId, "videoforge_fail_hosted_api_job", [
         ...jobArgs,
         "PROVIDER_REQUEST_REJECTED",
       ]);
@@ -359,7 +370,7 @@ export async function advanceHostedApiGeneration(
         (error instanceof FalFlashheadError && error.code === "RESULT_INVALID") ||
         (error instanceof FalAvatarJobError && error.code === "RESULT_MP4_INVALID")
       ) {
-        await call(database, scope.accountId, "videoforge_fail_hosted_api_job", [
+        await callHostedApiGeneration(database, scope.accountId, "videoforge_fail_hosted_api_job", [
           ...jobArgs,
           "PROVIDER_OUTPUT_INVALID",
         ]);
@@ -368,7 +379,7 @@ export async function advanceHostedApiGeneration(
       throw error;
     }
     if (result.state === "FAILED") {
-      await call(database, scope.accountId, "videoforge_fail_hosted_api_job", [
+      await callHostedApiGeneration(database, scope.accountId, "videoforge_fail_hosted_api_job", [
         ...jobArgs,
         "PROVIDER_TASK_FAILED",
       ]);
@@ -386,7 +397,7 @@ export async function advanceHostedApiGeneration(
               (artifact as { durationSeconds: number }).durationSeconds * 1000,
             ),
           };
-    await call(database, scope.accountId, "videoforge_commit_hosted_api_output", [
+    await callHostedApiGeneration(database, scope.accountId, "videoforge_commit_hosted_api_output", [
       ...jobArgs,
       artifact.sha256,
       artifact.byteSize,
@@ -396,7 +407,8 @@ export async function advanceHostedApiGeneration(
     return "PROGRESSED";
   };
   // A blocked sibling stops new paid submissions, but cannot strand other paid results.
-  const indices = failed || blocked ? [] : selectHostedApiGenerationJobIndices(current, observation);
+  if (video.problemCode === "OWNER_CANCELLED") return outcome("ACTION_REQUIRED", "OWNER_CANCELLED");
+  const indices = failed || blocked || video.problemCode ? [] : selectHostedApiGenerationJobIndices(current, observation);
   if (indices.length > 0) {
     const imageIndices = indices.filter((index) => current[index]!.lane === "IMAGE");
     const avatarIndices = indices.filter((index) => current[index]!.lane === "AVATAR");
@@ -420,14 +432,16 @@ export async function advanceHostedApiGeneration(
   }
   const submittedJobs = current.filter((job) => job.state === "SUBMITTED");
   if (submittedJobs.length === 0 && blocked)
-    return outcome("ACTION_REQUIRED", blocked.failureCode ?? blocked.state);
-  if (submittedJobs.length === 0 && failed) {
+    return outcome(video.active ? "WAITING" : "ACTION_REQUIRED", blocked.failureCode ?? blocked.state);
+  if (submittedJobs.length === 0 && (failed || (video.problemCode && video.problemCode !== "SEEDANCE_SUBMISSION_UNCERTAIN"))) {
     const settlement = object(
-      await call(database, scope.accountId, "videoforge_settle_hosted_api_failure", base),
+      await callHostedApiGeneration(database, scope.accountId, "videoforge_settle_hosted_api_failure", base),
     );
+    if (settlement.state === "WAITING") return outcome("WAITING");
     if (settlement.state !== "SETTLED") throw new Error("HOSTED_API_FAILURE_SETTLEMENT_INVALID");
-    return outcome("ACTION_REQUIRED", failed.failureCode ?? "PROVIDER_TASK_FAILED");
+    return outcome("ACTION_REQUIRED", failed?.failureCode ?? video.problemCode ?? "PROVIDER_TASK_FAILED");
   }
+  if (submittedJobs.length === 0 && !video.complete) return outcome(video.progressed ? "PROGRESSED" : "WAITING");
   if (submittedJobs.length === 0) return outcome("ACTION_REQUIRED", "HOSTED_API_JOB_STATE_INVALID");
   const observations = await settleHostedApiJobsBounded(
     submittedJobs,
@@ -483,7 +497,7 @@ export async function ensureHostedApiGenerationWorkflow(
         : null;
     if (["complete", "errored", "terminated"].includes(String(state))) {
       const current = jobs(
-        await call(database, input.accountId, "videoforge_read_hosted_api_jobs", [
+        await callHostedApiGeneration(database, input.accountId, "videoforge_read_hosted_api_jobs", [
           input.accountId,
           input.workspaceId,
           input.generationRequestId,

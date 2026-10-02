@@ -65,6 +65,8 @@ describe("hosted project detail generation query", () => {
           workspace_id uuid NOT NULL,
           project_revision_id uuid NOT NULL,
           timeline_plan_id uuid NOT NULL,
+          start_frame integer NOT NULL DEFAULT 0,
+          end_frame_exclusive integer NOT NULL DEFAULT 150,
           timeline_composition text NOT NULL
         );
         CREATE TABLE generation_tasks (

@@ -2618,7 +2618,8 @@ describe("hosted product route contract", () => {
     const end = source.indexOf("async function projectDetail(", start);
     const block = source.slice(start, end);
     expect(start).toBeGreaterThanOrEqual(0);
-    expect(block).toContain('hostedMediaCandidates(outputs, "avatar", page)');
+    expect(block).toContain('kind: "avatar" | "videos" = "avatar"');
+    expect(block).toContain('hostedMediaCandidates(outputs, kind, page)');
     expect(block).toContain('contentType !== "video/mp4"');
     expect(block).toContain("object.size !== contentLength");
     expect(block).toContain(

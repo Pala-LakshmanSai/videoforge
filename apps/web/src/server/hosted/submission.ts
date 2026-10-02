@@ -29,7 +29,7 @@ const isStringWithLength = (value: unknown, minimum: number, maximum: number): v
   Array.from(value).length >= minimum &&
   Array.from(value).length <= maximum;
 
-/** Exact structural equivalent of the generated render-job-input/v1 schema. */
+/** Exact structural equivalent of the generated versioned render input schema. */
 const isRenderJobInputDocument = (value: unknown): value is RenderJobInputDocument => {
   if (
     !isRecord(value) ||
@@ -43,7 +43,7 @@ const isRenderJobInputDocument = (value: unknown): value is RenderJobInputDocume
       "tools",
       "cancel_token",
     ]) ||
-    value.schema_version !== "render-job-input/v1" ||
+    !["render-job-input/v1", "render-job-input/v2"].includes(String(value.schema_version)) ||
     !isBoundedId(value.project_revision_id) ||
     !isBoundedId(value.attempt_id) ||
     !isRecord(value.resolved_render_manifest) ||
@@ -76,7 +76,7 @@ const isRenderJobInputDocument = (value: unknown): value is RenderJobInputDocume
       !isSha256(asset.sha256) ||
       !isObjectUri(asset.artifact_uri) ||
       typeof asset.kind !== "string" ||
-      !["VOICEOVER", "AVATAR_CLIP", "IMAGE"].includes(asset.kind)
+      !(value.schema_version === "render-job-input/v2" ? ["VOICEOVER", "AVATAR_CLIP", "IMAGE", "VIDEO"] : ["VOICEOVER", "AVATAR_CLIP", "IMAGE"]).includes(asset.kind)
     ) {
       return false;
     }
@@ -355,7 +355,7 @@ export function bindHostedCpuInputDocument(
       : kind === "SPAN_AUDIO"
         ? "selected-span-audio-job/v1"
         : "render-job-input/v1";
-  if (document.schema_version !== expectedSchema) {
+  if (document.schema_version !== expectedSchema && !(kind === "RENDER" && document.schema_version === "render-job-input/v2")) {
     throw new TypeError("Hosted CPU input document does not match its exact job kind.");
   }
   const bound = structuredClone(document);

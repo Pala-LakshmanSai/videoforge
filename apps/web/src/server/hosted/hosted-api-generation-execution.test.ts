@@ -38,6 +38,9 @@ const database = {
         if (sql.includes("set_config")) return { rows: [] };
         const name = sql.match(/public\.(\w+)\(/)?.[1];
         fixture.events.push(String(name));
+        if (name === "videoforge_read_hosted_video_jobs")
+          return { rows: [{ value: { generationRequestId: scope.generationRequestId,
+            hasPlan: false, jobs: [] } }] };
         if (name === "videoforge_read_hosted_api_jobs")
           return {
             rows: [

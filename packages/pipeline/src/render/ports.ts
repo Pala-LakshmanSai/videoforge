@@ -14,6 +14,15 @@ export interface RenderPlanRequest {
   readonly voiceover: AcceptedAssetBinding;
   readonly acceptedAssets: AcceptedAssetResolution;
   readonly renderProfileVersion: string;
+  readonly videoAssets?: readonly {
+    readonly segmentId: string;
+    readonly sourceTaskKey: string;
+    readonly sourceSha256: string;
+    readonly videoFrameCount: number;
+    readonly assetId: string;
+    readonly sha256: AcceptedAssetBinding["sha256"];
+    readonly kind: "VIDEO";
+  }[];
 }
 
 /** Pure render-manifest planning boundary; it never invokes a media process. */

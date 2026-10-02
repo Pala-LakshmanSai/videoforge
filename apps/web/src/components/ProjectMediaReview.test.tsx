@@ -47,6 +47,8 @@ describe("ProjectMediaReview", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "View generated images" }));
     expect(screen.getByRole("dialog")).toHaveTextContent("Generated images");
+    expect(screen.queryByRole("tab", { name: /Generated videos/u })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("tab")).toHaveLength(2);
     expect(screen.getByRole("img", { name: "Scene 1" })).toHaveAttribute(
       "src",
       "https://media.test/scene.png",
@@ -58,6 +60,41 @@ describe("ProjectMediaReview", () => {
       "https://media.test/avatar.mp4",
     );
   });
+});
+
+it("opens optional generated videos with playback and pagination while preserving original tabs", () => {
+  const onLoadMore = vi.fn();
+  render(
+    <ProjectMediaReview
+      launcher="videos"
+      images={[{ id: "image-1", url: "/image.png", label: "Scene image 1" }]}
+      avatarVideos={[{ id: "avatar-1", url: "/avatar.mp4", label: "Avatar clip 1" }]}
+      sceneVideos={[{ id: "video-1", url: "/scene.mp4", label: "Scene video 1" }]}
+      mediaTotals={{ images: 1, avatar: 1, videos: 3 }}
+      mediaHasMore={{ images: false, avatar: false, videos: true }}
+      onLoadMore={onLoadMore}
+    />,
+  );
+  expect(screen.getByRole("button", { name: "View generated videos" })).toHaveTextContent(
+    "3 clips",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "View generated videos" }));
+  expect(screen.getByRole("dialog")).toHaveAccessibleName("Generated videos");
+  expect(screen.getByRole("tab", { name: "Generated videos 3" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  const video = screen.getByLabelText("Scene video 1");
+  expect(video).toHaveAttribute("controls");
+  expect(video).toHaveAttribute("playsinline");
+  expect(video).toHaveAttribute("src", "/scene.mp4");
+  expect(screen.queryByRole("button", { name: /Regenerate/u })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Load more video" }));
+  expect(onLoadMore).toHaveBeenCalledWith("videos");
+  fireEvent.click(screen.getByRole("tab", { name: "Generated images 1" }));
+  expect(screen.getByRole("img", { name: "Scene image 1" })).toHaveAttribute("src", "/image.png");
+  fireEvent.click(screen.getByRole("tab", { name: "Avatar videos/footage 1" }));
+  expect(screen.getByLabelText("Avatar clip 1")).toHaveAttribute("src", "/avatar.mp4");
 });
 
 it("shows the saved prompt and explains unavailable regeneration without exposing IDs", () => {
