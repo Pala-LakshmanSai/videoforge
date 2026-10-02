@@ -233,3 +233,7 @@ rank1 RTX PRO4500 Blackwell Server32GB at USD0.72/h GPU/LOW availability, plus e
 temporary disk USD0.013889/h (USD0.733889/h all-in). Actual returned CPU/RAM/resources and charge
 must pass approved bounds before execution. VideoForge speed,45-minute scratch peaks and settled
 billing remain unmeasured; no reliability/capacity guarantee follows from the listing.
+
+## Seedance7% integration (2026-10-03)
+
+Seedance1.0ProFast bytedance:2@2,720p16:9: published Runware rate verified2026-10-02 is USD0.01336/generated second. Seven percent of30minutes is126motion seconds, nominalUSD1.68336; API minimum1.2seconds and0.1second rounding can generate a small unused tail. Planning uses generated duration for projected cost; exact task cost is recorded before media acceptance, including charged invalid outputs. Implementation qualification cap isUSD4 provider/compute, with no30minute paid benchmark. Four inference jobs may be outstanding; result acceptance is serial to fit Worker memory. Parallel stage durations are not added to wall-clock elapsed time.

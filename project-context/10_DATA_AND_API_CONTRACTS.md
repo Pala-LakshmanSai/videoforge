@@ -537,3 +537,7 @@ readiness. Fresh qualified-device queries retain the existing 90-second bound. L
 read exact input sizes before allocating leases, leaving insufficient-capacity attempts OUTBOXED.
 The worker repeats its unchanged runtime disk check because other processes can consume storage
 between observations. Cloud admission and budgets do not depend on Local disk capacity.
+
+## Seedance7% integration (2026-10-03)
+
+Fresh Seedance projects use resolved-render-manifest/v2 and render-job-input/v2 when motion clips exist. The retained IMAGE_FULL still is mandatory; optional VIDEO binds its exact segment, source image SHA, frame count and Seedance profile. Native H2641248x704 clips cover at most floor(total_frames*7/100), with original narration and timing retained. Version1 rejects VIDEO and preserves existing projects. Tenant-private hosted_video_plans/jobs pin selection and source/provider identities before submission; native ready and materialization gates independently verify accepted VIDEO_CLIP assets/receipts. See DEC_VIDEO_GENERATION_001 and tasks/SEEDANCE_VIDEO_PLAN.md.

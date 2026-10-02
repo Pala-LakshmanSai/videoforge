@@ -313,3 +313,7 @@ bound. Each can monitor truthful automatic worker and media stages, recover/canc
 duplicate submission, review the three-composition hard-cut output, approve, and privately download.
 No manual Pod/GPU control or foreign data appears; cost and worker readiness/scale-down are truthful;
 all existing visual/accessibility/responsive gates remain green in real Chrome.
+
+## Seedance7% integration (2026-10-03)
+
+Fresh pinned Seedance projects show Generate scene videos immediately after Generate images in the numbered Progress list. Clips start after their own source image accepts and may overlap remaining image/avatar generation. Progress exposes accepted clip counts, saved uncertainty/failure and private paginated Generated videos playback. Legacy projects keep the existing stage count and two media tabs. New Project states7% generated coverage,720p16:9 and per-second cost; projected totals include footage and actual Runware task cost remains separate from unverified Kie/Fal invoices. Local requires the qualified0.1.46 release; Cloud uses the separately qualified Linux image.
