@@ -1,10 +1,15 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { KieImageJobError } from "../providers/kie-image-job";
-import { advanceHostedApiGeneration, ensureHostedApiGenerationWorkflow } from "./hosted-api-generation";
+import {
+  advanceHostedApiGeneration,
+  ensureHostedApiGenerationWorkflow,
+} from "./hosted-api-generation";
 
 const fixture = vi.hoisted(() => ({
   jobs: [] as Record<string, unknown>[],
+  videoSnapshot: null as Record<string, unknown> | null,
+  renderPending: false,
   events: [] as string[],
   observeImage: vi.fn(),
   observeAvatar: vi.fn(),
@@ -36,11 +41,22 @@ const database = {
     operation({
       query: async (sql: string, args: unknown[]) => {
         if (sql.includes("set_config")) return { rows: [] };
+        if (sql.includes("SELECT EXISTS(SELECT 1 FROM video_runtime_states runtime"))
+          return { rows: [{ pending: fixture.renderPending }] };
         const name = sql.match(/public\.(\w+)\(/)?.[1];
         fixture.events.push(String(name));
         if (name === "videoforge_read_hosted_video_jobs")
-          return { rows: [{ value: { generationRequestId: scope.generationRequestId,
-            hasPlan: false, jobs: [] } }] };
+          return {
+            rows: [
+              {
+                value: fixture.videoSnapshot ?? {
+                  generationRequestId: scope.generationRequestId,
+                  hasPlan: false,
+                  jobs: [],
+                },
+              },
+            ],
+          };
         if (name === "videoforge_read_hosted_api_jobs")
           return {
             rows: [
@@ -87,6 +103,8 @@ describe("hosted API batch execution", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     fixture.jobs = jobs("PREPARED");
+    fixture.videoSnapshot = null;
+    fixture.renderPending = false;
     fixture.events = [];
     fixture.observeImage.mockReset();
     fixture.observeAvatar.mockReset();
@@ -124,24 +142,44 @@ describe("hosted API batch execution", () => {
     },
   );
 
-  it.each(["UNKNOWN_NO_RETRY","FAILED"])(
-    "saves submitted sibling outputs after %s without replaying accepted work", async(blockedState)=>{
-      fixture.jobs=jobs("SUBMITTED");
-      fixture.jobs[0]!.state=blockedState;
-      fixture.jobs[0]!.providerTaskId=null;
-      fixture.jobs[1]!.state="SUCCEEDED";
-      const accepted=structuredClone(fixture.jobs[1]);
-      fixture.jobs.push({...jobs("PREPARED")[0],id:"job-3",generationTaskId:"task-3"});
-      const post=vi.fn();vi.stubGlobal("fetch",post);
-      fixture.observeImage.mockResolvedValue({state:"SUCCEEDED",artifact:{sha256:"sha256:fixture",
-        byteSize:1024,contentType:"image/png",width:1920,height:1080}});
-      const pending=advanceHostedApiGeneration(environment,database,scope);
-      await vi.runAllTimersAsync();expect((await pending).state).toBe("PROGRESSED");
+  it.each(["UNKNOWN_NO_RETRY", "FAILED"])(
+    "saves submitted sibling outputs after %s without replaying accepted work",
+    async (blockedState) => {
+      fixture.jobs = jobs("SUBMITTED");
+      fixture.jobs[0]!.state = blockedState;
+      fixture.jobs[0]!.providerTaskId = null;
+      fixture.jobs[1]!.state = "SUCCEEDED";
+      const accepted = structuredClone(fixture.jobs[1]);
+      fixture.jobs.push({ ...jobs("PREPARED")[0], id: "job-3", generationTaskId: "task-3" });
+      const post = vi.fn();
+      vi.stubGlobal("fetch", post);
+      fixture.observeImage.mockResolvedValue({
+        state: "SUCCEEDED",
+        artifact: {
+          sha256: "sha256:fixture",
+          byteSize: 1024,
+          contentType: "image/png",
+          width: 1920,
+          height: 1080,
+        },
+      });
+      const pending = advanceHostedApiGeneration(environment, database, scope);
+      await vi.runAllTimersAsync();
+      expect((await pending).state).toBe("PROGRESSED");
       expect(fixture.observeImage).toHaveBeenCalledTimes(1);
-      expect(fixture.observeImage).toHaveBeenCalledWith(expect.objectContaining({taskId:"provider-2"}));
+      expect(fixture.observeImage).toHaveBeenCalledWith(
+        expect.objectContaining({ taskId: "provider-2" }),
+      );
       expect(fixture.jobs[1]).toEqual(accepted);
-      expect(fixture.jobs.map(row=>row.state)).toEqual([blockedState,"SUCCEEDED","SUCCEEDED","PREPARED"]);
-      expect((await advanceHostedApiGeneration(environment,database,scope)).state).toBe("ACTION_REQUIRED");
+      expect(fixture.jobs.map((row) => row.state)).toEqual([
+        blockedState,
+        "SUCCEEDED",
+        "SUCCEEDED",
+        "PREPARED",
+      ]);
+      expect((await advanceHostedApiGeneration(environment, database, scope)).state).toBe(
+        "ACTION_REQUIRED",
+      );
       expect(post).not.toHaveBeenCalled();
       expect(fixture.events).not.toContain("videoforge_claim_hosted_api_job");
     },
@@ -153,9 +191,18 @@ describe("hosted API batch execution", () => {
     fixture.jobs[2]!.state = "SUCCEEDED";
     const post = vi.fn();
     vi.stubGlobal("fetch", post);
-    fixture.observeImage.mockRejectedValueOnce(new KieImageJobError("RESULT_DOWNLOAD_FAILED"))
-      .mockResolvedValueOnce({ state: "SUCCEEDED", artifact: { sha256: "sha256:fixture",
-        byteSize: 1024, contentType: "image/png", width: 1920, height: 1080 } });
+    fixture.observeImage
+      .mockRejectedValueOnce(new KieImageJobError("RESULT_DOWNLOAD_FAILED"))
+      .mockResolvedValueOnce({
+        state: "SUCCEEDED",
+        artifact: {
+          sha256: "sha256:fixture",
+          byteSize: 1024,
+          contentType: "image/png",
+          width: 1920,
+          height: 1080,
+        },
+      });
     const first = advanceHostedApiGeneration(environment, database, scope);
     await vi.runAllTimersAsync();
     expect((await first).state).toBe("WAITING");
@@ -163,21 +210,158 @@ describe("hosted API batch execution", () => {
     const second = advanceHostedApiGeneration(environment, database, scope);
     await vi.runAllTimersAsync();
     expect((await second).state).toBe("PROGRESSED");
-    expect(fixture.observeImage.mock.calls.map(([input]) => input.taskId))
-      .toEqual(["provider-0", "provider-0"]);
+    expect(fixture.observeImage.mock.calls.map(([input]) => input.taskId)).toEqual([
+      "provider-0",
+      "provider-0",
+    ]);
     expect(post).not.toHaveBeenCalled();
     expect(fixture.events).not.toContain("videoforge_claim_hosted_api_job");
   });
 
-  it.each([true,false])("restarts stopped workflows only when submitted results remain: %s",async(submitted)=>{
-    fixture.jobs=jobs("PREPARED");fixture.jobs[0]!.state="UNKNOWN_NO_RETRY";
-    if(submitted){fixture.jobs[1]!.state="SUBMITTED";fixture.jobs[1]!.providerTaskId="persisted-provider-id";}
-    const restart=vi.fn();
-    const workflow={create:vi.fn().mockRejectedValue(new Error("existing")),
-      get:vi.fn().mockResolvedValue({status:async()=>({status:"complete"}),restart})};
-    const result=await ensureHostedApiGenerationWorkflow({HOSTED_PAIR_WORKFLOW:workflow,PRIVATE_ARTIFACTS:{}} as never,database,scope);
-    expect(result.recovered).toBe(true);expect(restart).toHaveBeenCalledTimes(submitted?1:0);
-    expect(fixture.events).toEqual(["videoforge_read_hosted_api_jobs"]);
+  it.each([true, false])(
+    "restarts stopped workflows only when submitted results remain: %s",
+    async (submitted) => {
+      fixture.jobs = jobs("PREPARED");
+      fixture.jobs[0]!.state = "UNKNOWN_NO_RETRY";
+      if (submitted) {
+        fixture.jobs[1]!.state = "SUBMITTED";
+        fixture.jobs[1]!.providerTaskId = "persisted-provider-id";
+      }
+      const restart = vi.fn();
+      const workflow = {
+        create: vi.fn().mockRejectedValue(new Error("existing")),
+        get: vi.fn().mockResolvedValue({ status: async () => ({ status: "complete" }), restart }),
+      };
+      const result = await ensureHostedApiGenerationWorkflow(
+        { HOSTED_PAIR_WORKFLOW: workflow, PRIVATE_ARTIFACTS: {} } as never,
+        database,
+        scope,
+      );
+      expect(result.recovered).toBe(true);
+      expect(restart).toHaveBeenCalledTimes(submitted ? 1 : 0);
+      expect(fixture.events).toEqual([
+        "videoforge_read_hosted_api_jobs",
+        "videoforge_read_hosted_video_jobs",
+      ]);
+    },
+  );
+
+  it.each(["PREPARED", "SUBMITTED", "SUBMITTING", "UNKNOWN_NO_RETRY"])(
+    "restarts stopped workflow for saved %s footage after image/avatar acceptance",
+    async (state) => {
+      fixture.jobs = jobs("SUCCEEDED");
+      fixture.videoSnapshot = {
+        generationRequestId: scope.generationRequestId,
+        hasPlan: true,
+        requestState: "ACTIVE",
+        plannedJobCount: 1,
+        jobs: [{ state }],
+      };
+      const restart = vi.fn();
+      const post = vi.fn();
+      vi.stubGlobal("fetch", post);
+      const workflow = {
+        create: vi.fn().mockRejectedValue(new Error("existing")),
+        get: vi.fn().mockResolvedValue({ status: async () => ({ status: "complete" }), restart }),
+      };
+      await ensureHostedApiGenerationWorkflow(
+        { HOSTED_PAIR_WORKFLOW: workflow, VIDEO_GENERATION_ENABLED: "false" } as never,
+        database,
+        scope,
+      );
+      expect(restart).toHaveBeenCalledOnce();
+      expect(post).not.toHaveBeenCalled();
+      expect(fixture.events).toEqual([
+        "videoforge_read_hosted_api_jobs",
+        "videoforge_read_hosted_video_jobs",
+      ]);
+    },
+  );
+
+  it.each([
+    { requestState: "CANCELLED", states: ["SUBMITTED"], restart: false },
+    { requestState: "CANCELLING", states: ["PREPARED"], restart: false },
+    { requestState: "CANCELLING", states: ["SUBMITTED"], restart: true },
+    { requestState: "ACTIVE", states: [], restart: false },
+    { requestState: "ACTIVE", states: ["SUCCEEDED"], restart: false },
+    { requestState: "ACTIVE", states: ["FAILED"], restart: false },
+    { requestState: "ACTIVE", states: ["FAILED", "PREPARED"], restart: false },
+    { requestState: "ACTIVE", states: ["UNKNOWN_NO_RETRY", "PREPARED"], restart: true },
+  ])("preserves safe footage recovery $requestState/$states", async (scenario) => {
+    fixture.jobs = jobs("SUCCEEDED");
+    fixture.videoSnapshot = {
+      generationRequestId: scope.generationRequestId,
+      hasPlan: true,
+      requestState: scenario.requestState,
+      plannedJobCount: scenario.states.length,
+      jobs: scenario.states.map((state) => ({ state })),
+    };
+    const restart = vi.fn();
+    const post = vi.fn();
+    vi.stubGlobal("fetch", post);
+    const workflow = {
+      create: vi.fn().mockRejectedValue(new Error("existing")),
+      get: vi.fn().mockResolvedValue({ status: async () => ({ status: "terminated" }), restart }),
+    };
+    await ensureHostedApiGenerationWorkflow(
+      { HOSTED_PAIR_WORKFLOW: workflow } as never,
+      database,
+      scope,
+    );
+    expect(restart).toHaveBeenCalledTimes(scenario.restart ? 1 : 0);
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("does not restart a completed all-fallback footage plan", async () => {
+    fixture.jobs = jobs("SUCCEEDED");
+    fixture.videoSnapshot = {
+      generationRequestId: scope.generationRequestId,
+      hasPlan: true,
+      requestState: "ACTIVE",
+      plannedJobCount: 1,
+      jobs: [{ state: "FAILED", staticFallback: true }],
+    };
+    const restart = vi.fn();
+    const workflow = {
+      create: vi.fn().mockRejectedValue(new Error("existing")),
+      get: vi.fn().mockResolvedValue({ status: async () => ({ status: "errored" }), restart }),
+    };
+    await ensureHostedApiGenerationWorkflow(
+      { HOSTED_PAIR_WORKFLOW: workflow } as never,
+      database,
+      scope,
+    );
+    expect(restart).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { apiState: "UNKNOWN_NO_RETRY", videoState: "SUBMITTED", restart: true },
+    { apiState: "UNKNOWN_NO_RETRY", videoState: "PREPARED", restart: false },
+    { apiState: "FAILED", videoState: "SUBMITTING", restart: true },
+    { apiState: "FAILED", videoState: "PREPARED", restart: false },
+  ])("drains footage but preserves API fences $apiState/$videoState", async (scenario) => {
+    fixture.jobs = jobs(scenario.apiState);
+    fixture.videoSnapshot = {
+      generationRequestId: scope.generationRequestId,
+      hasPlan: true,
+      requestState: "ACTIVE",
+      plannedJobCount: 1,
+      jobs: [{ state: scenario.videoState }],
+    };
+    const restart = vi.fn();
+    const post = vi.fn();
+    vi.stubGlobal("fetch", post);
+    const workflow = {
+      create: vi.fn().mockRejectedValue(new Error("existing")),
+      get: vi.fn().mockResolvedValue({ status: async () => ({ status: "errored" }), restart }),
+    };
+    await ensureHostedApiGenerationWorkflow(
+      { HOSTED_PAIR_WORKFLOW: workflow } as never,
+      database,
+      scope,
+    );
+    expect(restart).toHaveBeenCalledTimes(scenario.restart ? 1 : 0);
+    expect(post).not.toHaveBeenCalled();
   });
 
   it("visits every outstanding result once and advances immediately after acceptance", async () => {

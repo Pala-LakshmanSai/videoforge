@@ -215,7 +215,12 @@ export async function advanceHostedApiGeneration(
     throw new Error("HOSTED_API_GENERATION_BINDING_MISSING");
   const base = [scope.accountId, scope.workspaceId, scope.generationRequestId] as const;
   const current = jobs(
-    await callHostedApiGeneration(database, scope.accountId, "videoforge_read_hosted_api_jobs", base),
+    await callHostedApiGeneration(
+      database,
+      scope.accountId,
+      "videoforge_read_hosted_api_jobs",
+      base,
+    ),
     scope,
   );
   const outcome = (
@@ -223,14 +228,29 @@ export async function advanceHostedApiGeneration(
     code?: string,
   ) => ({ state, jobCount: current.length, ...(code ? { code } : {}) });
   if (current.length === 0) return outcome("ACTION_REQUIRED", "HOSTED_API_JOBS_MISSING");
-  const video = await advanceHostedVideoGeneration(environment, database, scope,
-    !current.some((job) => ["SUBMITTING", "UNKNOWN_NO_RETRY", "FAILED"].includes(job.state)));
+  const video = await advanceHostedVideoGeneration(
+    environment,
+    database,
+    scope,
+    !current.some((job) => ["SUBMITTING", "UNKNOWN_NO_RETRY", "FAILED"].includes(job.state)),
+  );
   if (current.every((job) => job.state === "SUCCEEDED")) {
     if (video.complete) return outcome("READY_TO_RENDER");
     if (!video.active && video.problemCode) {
-      if (video.problemCode === "OWNER_CANCELLED") return outcome("ACTION_REQUIRED", video.problemCode);
-      const settlement = object(await callHostedApiGeneration(database, scope.accountId, "videoforge_settle_hosted_api_failure", base));
-      return outcome(settlement.state === "SETTLED" ? "ACTION_REQUIRED" : "WAITING", video.problemCode);
+      if (video.problemCode === "OWNER_CANCELLED")
+        return outcome("ACTION_REQUIRED", video.problemCode);
+      const settlement = object(
+        await callHostedApiGeneration(
+          database,
+          scope.accountId,
+          "videoforge_settle_hosted_api_failure",
+          base,
+        ),
+      );
+      return outcome(
+        settlement.state === "SETTLED" ? "ACTION_REQUIRED" : "WAITING",
+        video.problemCode,
+      );
     }
     return outcome(video.progressed ? "PROGRESSED" : "WAITING");
   }
@@ -252,10 +272,12 @@ export async function advanceHostedApiGeneration(
         return false;
       }
       const claimed = object(
-        await callHostedApiGeneration(database, scope.accountId, "videoforge_claim_hosted_api_job", [
-          ...jobArgs,
-          claimId,
-        ]),
+        await callHostedApiGeneration(
+          database,
+          scope.accountId,
+          "videoforge_claim_hosted_api_job",
+          [...jobArgs, claimId],
+        ),
       );
       const selected = claimed.state === "SUBMITTING" && claimed.claimId === claimId;
       if (!selected) {
@@ -267,20 +289,23 @@ export async function advanceHostedApiGeneration(
       return selected;
     };
     const persistTaskId = async (taskId: string) => {
-      await callHostedApiGeneration(database, scope.accountId, "videoforge_record_hosted_api_task", [
-        ...jobArgs,
-        claimId,
-        taskId,
-      ]);
+      await callHostedApiGeneration(
+        database,
+        scope.accountId,
+        "videoforge_record_hosted_api_task",
+        [...jobArgs, claimId, taskId],
+      );
     };
     const markSubmissionUnknown = async () => {
       // Stop sibling dispatch before awaiting the durable terminal write. The write can be slow
       // while the other lane is already between its claim and provider call.
       submissionStopped.value = true;
-      await callHostedApiGeneration(database, scope.accountId, "videoforge_mark_hosted_api_unknown", [
-        ...jobArgs,
-        claimId,
-      ]);
+      await callHostedApiGeneration(
+        database,
+        scope.accountId,
+        "videoforge_mark_hosted_api_unknown",
+        [...jobArgs, claimId],
+      );
     };
     const markSubmissionFailed = async () => {
       submissionStopped.value = true;
@@ -397,18 +422,20 @@ export async function advanceHostedApiGeneration(
               (artifact as { durationSeconds: number }).durationSeconds * 1000,
             ),
           };
-    await callHostedApiGeneration(database, scope.accountId, "videoforge_commit_hosted_api_output", [
-      ...jobArgs,
-      artifact.sha256,
-      artifact.byteSize,
-      artifact.contentType,
-      JSON.stringify(probe),
-    ]);
+    await callHostedApiGeneration(
+      database,
+      scope.accountId,
+      "videoforge_commit_hosted_api_output",
+      [...jobArgs, artifact.sha256, artifact.byteSize, artifact.contentType, JSON.stringify(probe)],
+    );
     return "PROGRESSED";
   };
   // A blocked sibling stops new paid submissions, but cannot strand other paid results.
   if (video.problemCode === "OWNER_CANCELLED") return outcome("ACTION_REQUIRED", "OWNER_CANCELLED");
-  const indices = failed || blocked || video.problemCode ? [] : selectHostedApiGenerationJobIndices(current, observation);
+  const indices =
+    failed || blocked || video.problemCode
+      ? []
+      : selectHostedApiGenerationJobIndices(current, observation);
   if (indices.length > 0) {
     const imageIndices = indices.filter((index) => current[index]!.lane === "IMAGE");
     const avatarIndices = indices.filter((index) => current[index]!.lane === "AVATAR");
@@ -432,16 +459,31 @@ export async function advanceHostedApiGeneration(
   }
   const submittedJobs = current.filter((job) => job.state === "SUBMITTED");
   if (submittedJobs.length === 0 && blocked)
-    return outcome(video.active ? "WAITING" : "ACTION_REQUIRED", blocked.failureCode ?? blocked.state);
-  if (submittedJobs.length === 0 && (failed || (video.problemCode && video.problemCode !== "SEEDANCE_SUBMISSION_UNCERTAIN"))) {
+    return outcome(
+      video.active ? "WAITING" : "ACTION_REQUIRED",
+      blocked.failureCode ?? blocked.state,
+    );
+  if (
+    submittedJobs.length === 0 &&
+    (failed || (video.problemCode && video.problemCode !== "SEEDANCE_SUBMISSION_UNCERTAIN"))
+  ) {
     const settlement = object(
-      await callHostedApiGeneration(database, scope.accountId, "videoforge_settle_hosted_api_failure", base),
+      await callHostedApiGeneration(
+        database,
+        scope.accountId,
+        "videoforge_settle_hosted_api_failure",
+        base,
+      ),
     );
     if (settlement.state === "WAITING") return outcome("WAITING");
     if (settlement.state !== "SETTLED") throw new Error("HOSTED_API_FAILURE_SETTLEMENT_INVALID");
-    return outcome("ACTION_REQUIRED", failed?.failureCode ?? video.problemCode ?? "PROVIDER_TASK_FAILED");
+    return outcome(
+      "ACTION_REQUIRED",
+      failed?.failureCode ?? video.problemCode ?? "PROVIDER_TASK_FAILED",
+    );
   }
-  if (submittedJobs.length === 0 && !video.complete) return outcome(video.progressed ? "PROGRESSED" : "WAITING");
+  if (submittedJobs.length === 0 && !video.complete)
+    return outcome(video.progressed ? "PROGRESSED" : "WAITING");
   if (submittedJobs.length === 0) return outcome("ACTION_REQUIRED", "HOSTED_API_JOB_STATE_INVALID");
   const observations = await settleHostedApiJobsBounded(
     submittedJobs,
@@ -497,13 +539,59 @@ export async function ensureHostedApiGenerationWorkflow(
         : null;
     if (["complete", "errored", "terminated"].includes(String(state))) {
       const current = jobs(
-        await callHostedApiGeneration(database, input.accountId, "videoforge_read_hosted_api_jobs", [
+        await callHostedApiGeneration(
+          database,
           input.accountId,
-          input.workspaceId,
-          input.generationRequestId,
-        ]),
+          "videoforge_read_hosted_api_jobs",
+          [input.accountId, input.workspaceId, input.generationRequestId],
+        ),
         input,
       );
+      // The footage lane may outlive all image/avatar jobs. Restart from its
+      // durable states too; no current feature flag or default changes its plan.
+      const rawVideo = await callHostedApiGeneration(
+        database,
+        input.accountId,
+        "videoforge_read_hosted_video_jobs",
+        [input.accountId, input.workspaceId, input.generationRequestId],
+      );
+      const video = rawVideo === null ? null : object(rawVideo);
+      if (
+        video !== null &&
+        (video.generationRequestId !== input.generationRequestId || !Array.isArray(video.jobs))
+      )
+        throw new Error("HOSTED_VIDEO_RESPONSE_INVALID");
+      const videoJobs = video === null ? [] : (video.jobs as unknown[]).map(object);
+      if (
+        videoJobs.some(
+          (job) =>
+            ![
+              "PREPARED",
+              "SUBMITTING",
+              "SUBMITTED",
+              "UNKNOWN_NO_RETRY",
+              "SUCCEEDED",
+              "FAILED",
+            ].includes(String(job.state)),
+        ) ||
+        (video?.hasPlan !== true && videoJobs.length > 0)
+      )
+        throw new Error("HOSTED_VIDEO_RESPONSE_INVALID");
+      const videoRetrievalPending =
+        video?.hasPlan === true &&
+        ["ACTIVE", "CANCELLING"].includes(String(video.requestState)) &&
+        videoJobs.some((job) =>
+          ["SUBMITTING", "SUBMITTED", "UNKNOWN_NO_RETRY"].includes(String(job.state)),
+        );
+      const videoPreparedPending =
+        video?.hasPlan === true &&
+        video.requestState === "ACTIVE" &&
+        videoJobs.some((job) => job.state === "PREPARED") &&
+        videoJobs.every(
+          (job) =>
+            ["PREPARED", "SUBMITTED", "SUCCEEDED"].includes(String(job.state)) ||
+            (job.state === "FAILED" && job.staticFallback === true),
+        );
       const pendingJobs = current.some((job) => ["PREPARED", "SUBMITTED"].includes(job.state));
       const renderPending =
         current.length > 0 && current.every((job) => job.state === "SUCCEEDED")
@@ -528,9 +616,12 @@ export async function ensureHostedApiGenerationWorkflow(
           : false;
       const retrievalPending = current.some((job) => job.state === "SUBMITTED");
       if (
-        retrievalPending || (current.length > 0 &&
-        current.every((job) => ["PREPARED", "SUBMITTED", "SUCCEEDED"].includes(job.state)) &&
-        (pendingJobs || renderPending))
+        video?.requestState !== "CANCELLED" &&
+        (retrievalPending ||
+          videoRetrievalPending ||
+          (current.length > 0 &&
+            current.every((job) => ["PREPARED", "SUBMITTED", "SUCCEEDED"].includes(job.state)) &&
+            (pendingJobs || renderPending || videoPreparedPending)))
       ) {
         if (!existing.restart)
           throw new Error("HOSTED_API_GENERATION_WORKFLOW_RESTART_UNAVAILABLE");
