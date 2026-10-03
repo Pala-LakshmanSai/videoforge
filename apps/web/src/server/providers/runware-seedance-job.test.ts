@@ -168,6 +168,35 @@ describe("Runware Seedance durable job", () => {
     })).rejects.toMatchObject({ code: "POLL_UNAVAILABLE" });
   });
 
+  it("settles exact HTTP400 upstream video failure without another inference or media write", async () => {
+    const failure = { taskUUID, taskType: "videoInference", status: "error", code: "providerError",
+      responseStatusCode: "N/A", responseContent: "Failed to download video from provider" };
+    const bucket = { get: vi.fn(), put: vi.fn() } as unknown as HostedR2BucketBinding;
+    const fetchPort = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => json({ errors: [failure] }, 400));
+    const input = { requestId: taskUUID, apiKey, objectKey, durationSeconds: 1.2, bucket };
+    expect(await observeRunwareSeedanceJob({ ...input, fetchPort })).toEqual({ state: "FAILED" });
+    expect(fetchPort).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(fetchPort.mock.calls[0]?.[1]?.body)))
+      .toEqual([{ taskType: "getResponse", taskUUID }]);
+    expect(bucket.get).not.toHaveBeenCalled(); expect(bucket.put).not.toHaveBeenCalled();
+    for (const [status, error] of [
+      [500, failure], [429, failure], [401, failure],
+      [400, { ...failure, taskType: "getResponse" }],
+      [400, { ...failure, code: "taskNotFound" }],
+      [400, { ...failure, status: "processing" }],
+    ] as const) {
+      await expect(observeRunwareSeedanceJob({ ...input,
+        fetchPort: async () => json({ errors: [error] }, status),
+      })).rejects.toMatchObject({ code: "POLL_UNAVAILABLE" });
+    }
+    await expect(observeRunwareSeedanceJob({ ...input,
+      fetchPort: async () => json({ errors: [{ ...failure, taskUUID: videoUUID }] }, 400),
+    })).rejects.toMatchObject({ code: "RESPONSE_INVALID" });
+    await expect(observeRunwareSeedanceJob({ ...input,
+      fetchPort: async () => json({ errors: [failure], data: [completed] }, 400),
+    })).rejects.toMatchObject({ code: "RESPONSE_INVALID" });
+  });
+
   it("accepts the live getResponse processing envelope without weakening successful-video identity", async () => {
     const requestId = "5b731319-4f67-432b-8953-ee71a19893ed";
     const processing = { taskUUID: requestId, status: "processing", taskType: "getResponse" };

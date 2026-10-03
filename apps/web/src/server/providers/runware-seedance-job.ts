@@ -249,7 +249,11 @@ export async function observeRunwareSeedanceJob(input: {
     if (errors.length !== 1 || errors[0]?.taskUUID !== input.requestId || data.length)
       throw new RunwareSeedanceJobError("RESPONSE_INVALID");
     // An explicit processing-task failure is terminal. Missing records/auth/transport are reconcilable.
-    if (reply.response.ok && errors[0]?.status === "error" && typeof errors[0]?.code === "string" &&
+    // Runware also returns terminal upstream video failures as HTTP400 providerError.
+    // Only that exact task-scoped envelope is terminal; HTTP/auth/lookup failures stay reconcilable.
+    const terminalProviderError = reply.response.status === 400 &&
+      errors[0]?.taskType === "videoInference" && errors[0]?.code === "providerError";
+    if ((reply.response.ok || terminalProviderError) && errors[0]?.status === "error" && typeof errors[0]?.code === "string" &&
         !/invalid|notfound|notready|notavailable|unauthor|auth|balance/iu.test(errors[0].code) &&
         (errors[0]?.taskType === undefined || errors[0].taskType === "videoInference"))
       return { state: "FAILED" };

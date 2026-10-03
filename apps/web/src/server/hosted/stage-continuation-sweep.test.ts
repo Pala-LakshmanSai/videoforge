@@ -97,7 +97,11 @@ async function seededDatabase(context: {
       id uuid PRIMARY KEY, project_revision_id uuid NOT NULL, state text NOT NULL
     );
     CREATE TABLE public.hosted_api_generation_jobs (
-      id uuid PRIMARY KEY, project_revision_id uuid NOT NULL
+      id uuid PRIMARY KEY, project_revision_id uuid NOT NULL,
+      state text NOT NULL DEFAULT 'SUCCEEDED'
+    );
+    CREATE TABLE public.hosted_video_jobs (
+      id uuid PRIMARY KEY, project_revision_id uuid NOT NULL, state text NOT NULL
     );
 
     INSERT INTO public.projects VALUES
@@ -227,6 +231,41 @@ it("retries one queued or admitted API generation only before any span or provid
   } finally {
     await database.close();
   }
+});
+
+it("recovers unfinished saved footage after all image/avatar jobs finish, without admitting settled work", async () => {
+  const database = await seededDatabase({ state: "SUCCEEDED", hash: "accepted", problemCode: null, redispatchCount: 0 });
+  try {
+    await database.exec(`
+      INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}');
+      INSERT INTO public.hosted_prompt_runs VALUES
+        ('55555555-5555-4555-8555-555555555555','${revisionId}','SUCCEEDED','accepted',now(),now(),NULL,0,1);
+      INSERT INTO public.generation_requests VALUES
+        ('66666666-6666-4666-8666-666666666666','${revisionId}','ACTIVE');
+      INSERT INTO public.hosted_cpu_job_attempts VALUES
+        ('88888888-8888-4888-8888-888888888888','${revisionId}','SPAN_AUDIO','SUCCEEDED',now());
+      INSERT INTO public.hosted_api_generation_jobs VALUES
+        ('77777777-7777-4777-8777-777777777777','${revisionId}','SUCCEEDED');
+      INSERT INTO public.hosted_video_jobs VALUES
+        ('99999999-9999-4999-8999-999999999999','${revisionId}','SUBMITTED');
+    `);
+    for (const state of ["SUBMITTED", "SUBMITTING", "UNKNOWN_NO_RETRY"]) {
+      await database.exec(`UPDATE public.hosted_video_jobs SET state='${state}'`);
+      expect(await nextSteps(database)).toEqual(["dispatch"]);
+    }
+    for (const state of ["SUCCEEDED", "FAILED", "PREPARED"]) {
+      await database.exec(`UPDATE public.hosted_video_jobs SET state='${state}'`);
+      expect(await nextSteps(database)).toEqual([]);
+    }
+    await database.exec("UPDATE public.hosted_video_jobs SET state='SUBMITTED'; UPDATE public.generation_requests SET state='SUCCEEDED'");
+    expect(await nextSteps(database)).toEqual([]);
+    await database.exec("UPDATE public.generation_requests SET state='ACTIVE'; UPDATE public.hosted_api_generation_jobs SET state='FAILED'");
+    expect(await nextSteps(database)).toEqual([]);
+    await database.exec("UPDATE public.hosted_api_generation_jobs SET state='SUCCEEDED'; UPDATE public.projects SET status='ARCHIVED'");
+    expect(await nextSteps(database)).toEqual([]);
+    await database.exec("UPDATE public.projects SET status='ACTIVE'");
+    expect((await database.query(DUE_QUERY, ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', null, null, null])).rows).toEqual([]);
+  } finally { await database.close(); }
 });
 
 describe("hosted continuation sweep stage-3 recovery", () => {

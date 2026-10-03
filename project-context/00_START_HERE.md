@@ -1,4 +1,4 @@
-Single-action Create is published at `4ed85859` / Worker `93e05688` (100%). No readiness button; checks run automatically. Create/shared coverage copy is concise.222 screen tests, build/types/assets/Chrome controls pass. Read `concise_one_action_create_2026_10_03` in CURRENT_STATE.yaml; prior exact-job handoff and filename-title autofill remain. Fresh first-submission timing remains unmeasured.
+Scene-video stall repair is locally prepared. Exact Runware HTTP400 terminal failure was being polled as temporary; the Workflow then exhausted5000 observations. Read `scene_video_stall_repair_2026_10_03` in CURRENT_STATE.yaml. Prior single-action Create and native pins remain.
 
 Cloud audio save recovery retains bounded uploads and truthful failures. Read `cloud_audio_save_repair_2026_10_03` in CURRENT_STATE.yaml.
 

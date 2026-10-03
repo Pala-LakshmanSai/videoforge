@@ -220,6 +220,16 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
              WHEN prompt_accepted_set IS NOT NULL AND generation_provider = 'KIE_FAL'
                AND generation_requests = 1 AND (active_generation_requests = 1 OR waiting_generation_requests = 1)
                AND span_jobs = 0 AND api_jobs = 0 THEN 'dispatch'
+             -- A stopped generation Workflow can outlive every image/avatar result.
+             -- Dispatch only ensures the exact saved Workflow; it never reclaims paid clips.
+             WHEN prompt_accepted_set IS NOT NULL AND generation_provider = 'KIE_FAL'
+               AND active_generation_requests = 1 AND api_jobs > 0
+               AND NOT EXISTS (SELECT 1 FROM public.hosted_api_generation_jobs job
+                 WHERE job.project_revision_id = revision_id AND job.state <> 'SUCCEEDED')
+               AND EXISTS (SELECT 1 FROM public.hosted_video_jobs job
+                 WHERE job.project_revision_id = revision_id
+                   AND job.state IN ('SUBMITTING','SUBMITTED','UNKNOWN_NO_RETRY'))
+               THEN 'dispatch'
              ELSE NULL
            END AS next_step
       FROM state

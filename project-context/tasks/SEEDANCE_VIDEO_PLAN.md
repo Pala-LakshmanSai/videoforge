@@ -1,3 +1,7 @@
+# Scene-video stall repair — 2026-10-03
+
+The user authorizes exact-cause diagnosis, durable recovery and production repair. Runware returned an exact videoInference HTTP400 providerError (upstream failed to download the video); the adapter required HTTP2xx for terminal failures and kept polling. The original Workflow exhausted5000 observations with RECONCILIATION_REQUIRED. Preserve233 images,71 avatar clips,17 accepted motion clips and all original UUIDs. Recognize only the exact terminal400 providerError envelope; automatic continuation ensures the saved Workflow when all image/avatar outputs are accepted and footage remains unsettled. Definite failure uses the verified original still; unknown/auth/transport/lookup outcomes stay fenced. No paid inference replay or fresh benchmark. Current recovery/publication truth is scene_video_stall_repair_2026_10_03 in CURRENT_STATE.yaml.
+
 # Ordinary Cloud admission follow-up — 2026-10-03
 
 The user supersedes the earlier single-workspace access repair: every current or future admitted VideoForge account must receive ordinary Cloud access automatically, with no separate account list or second enablement step. Update the two SQL account readers under DEC_CLOUD_BILLING_001; preserve tenant/project ownership, exact finite approvals, accounting, fair admission, runtime identities and shutdown/cleanup fences. This access change starts no project, provider request or compute. See cloud_access_follows_admission_2026_10_03 in CURRENT_STATE.yaml for current proof. The earlier scoped repair below is historical evidence.

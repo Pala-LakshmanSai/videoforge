@@ -69,8 +69,10 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // All quarantine, CPU bounds and exact no-growth checks remain enabled.
 // Browser CPU admission moves the shared driver check to the request's background lifetime.
 // Exact measured production/staging closures add211 bytes each; imports/quarantine are unchanged.
+// Saved-footage continuation adds751 production bytes (SQL due predicate); staging unchanged.
+// No new imports/dependencies or quarantine exceptions.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_806_738,
+  "wrangler.production.jsonc": 2_807_489,
   "wrangler.staging.jsonc": 2_803_663,
 })[wranglerConfig];
 const workerForbidden = [
