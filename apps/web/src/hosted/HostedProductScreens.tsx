@@ -582,7 +582,7 @@ export function currentHostedAttempt<T extends Pick<HostedAttempt, "state" | "cl
 
 export function hostedMachineLabel(
   backend: "PERSONAL_WORKER" | "RUNPOD_POD" | undefined,
-  attempts: readonly Pick<HostedAttempt, "kind" | "state" | "execution_backend" | "cloud_gpu" | "cloud_cpu" | "cloud_machine_active" | "local_machine_name" | "local_machine_active">[],
+  attempts: readonly Pick<HostedAttempt, "kind" | "state" | "execution_backend" | "cloud_gpu" | "cloud_cpu" | "cloud_phase" | "cloud_machine_active" | "local_machine_name" | "local_machine_active">[],
   apiActive = false,
   queuePosition?: number | null,
   localWorker?: { readonly state: "ONLINE" | "BUSY" | "WAITING_FOR_YOUR_COMPUTER" } | null,
@@ -596,12 +596,23 @@ export function hostedMachineLabel(
   if (render?.state === "SUCCEEDED") return cloud
     ? render.cloud_cpu ? `Cloud · ${render.cloud_cpu} · Compute released` : `Cloud · ${render.cloud_gpu ?? "GPU not recorded"} · GPU released`
     : `Local · ${render.local_machine_name ?? "Computer not recorded"} · Finished`;
+  const released = cloud ? [...attempts].reverse().find(attempt =>
+    attempt.execution_backend === "RUNPOD_POD" &&
+    ["CLEAN", "COMPLETE"].includes(attempt.cloud_phase ?? "") &&
+    (attempt.cloud_gpu || attempt.cloud_cpu),
+  ) : undefined;
+  const releasedMachine = released
+    ? `Cloud · RunPod · ${released.cloud_gpu ?? released.cloud_cpu} · Compute released`
+    : null;
   if (apiActive) {
-    if (cloud) return "Cloud · Kie / Fal APIs · No active RunPod GPU";
+    if (cloud) return releasedMachine
+      ? `${releasedMachine} · Media APIs running`
+      : "Cloud · Media APIs · No active RunPod compute";
     const connection = localWorker?.state === "ONLINE" ? "Computer online"
       : localWorker?.state === "BUSY" ? "Computer connected · Busy" : "Waiting for computer";
     return `Local render · ${connection} · Kie / Fal APIs generating media`;
   }
+  if (releasedMachine) return releasedMachine;
   if (!cloud && localWorker?.state === "ONLINE") return queuePosition && queuePosition > 1
     ? "Local · Computer online · Waiting for earlier project"
     : "Local · Computer online · Waiting for assignment";
@@ -5046,6 +5057,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           ? "Waiting"
           : stage.detail,
   }));
+  // Preparation and final validation remain authoritative internal work, not numbered steps.
+  const pipelineStages = uiStages.filter((stage) =>
+    !["prepare", "technical-check"].includes(stage.id) &&
+    !["Prepare", "Prepare project", "Technical check"].includes(stage.label),
+  );
   const promptStage = uiStages.find((stage) => stage.id === "prompt-writing");
   const contextStage = uiStages.find(
     (stage) =>
@@ -5106,16 +5122,16 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const timing = query.data.timing;
   const cost = query.data.cost;
   const queue = query.data.queue;
-  const firstIncompleteStageIndex = uiStages.findIndex((stage) => stage.status !== "COMPLETE");
+  const firstIncompleteStageIndex = pipelineStages.findIndex((stage) => stage.status !== "COMPLETE");
   const activeStageIndex =
-    firstIncompleteStageIndex < 0 ? Math.max(0, uiStages.length - 1) : firstIncompleteStageIndex;
-  const activeStage = uiStages[activeStageIndex];
+    firstIncompleteStageIndex < 0 ? Math.max(0, pipelineStages.length - 1) : firstIncompleteStageIndex;
+  const activeStage = pipelineStages[activeStageIndex];
   const overallProgress = Math.round(
-    uiStages.reduce(
+    pipelineStages.reduce(
       (total, stage) =>
         total + Math.min(100, Math.round((stage.completed / Math.max(1, stage.total)) * 100)),
       0,
-    ) / Math.max(1, uiStages.length),
+    ) / Math.max(1, pipelineStages.length),
   );
   const generationStages = uiStages.filter(
     (stage) => stage.id === "image-generation" || stage.id === "avatar-generation",
@@ -5179,7 +5195,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const estimateStopped = hasFailed || hasActionRequired || terminalBlocked || terminalCancelled;
   const estimatedTimeValue =
     query.data.generation_provider !== "KIE_FAL"
-      ? formatMilliseconds(stages[activeStageIndex]?.eta_ms ?? queue?.estimated_wait_ms)
+      ? formatMilliseconds(stages.find((stage, index) => (stage.id ?? `stage-${index + 1}`) === activeStage?.id)?.eta_ms ?? queue?.estimated_wait_ms)
       : estimateStopped
         ? "Unavailable"
         : render?.state === "SUCCEEDED"
@@ -5421,7 +5437,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   // must agree instead of reporting the previous "not started" status.
   const planningFailed = asr?.state === "SUCCEEDED" && contextComplete &&
     !render && !query.data.generation && renderHandoff.isError;
-  const displayedStages = uiStages.map((stage) =>
+  const displayedStages = pipelineStages.map((stage) =>
     stage.id === "planning" && planningFailed
       ? { ...stage, status: "FAILED" as const, detail: renderHandoff.error.message }
       : stage.id === "planning" && renderHandoff.isPending && !query.data.generation
@@ -5441,7 +5457,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const stageTimings = stages.map((stage, index) => {
     const id = stage.id ?? `stage-${index + 1}`;
     const running = !["COMPLETE", "FAILED", "CANCELLED", "PENDING", "QUEUED"].includes(
-      displayedStages[index]?.status ?? "PENDING",
+      displayedStages.find(item => item.id === id)?.status ?? uiStages.find(item => item.id === id)?.status ?? "PENDING",
     );
     const apiLane =
       query.data.generation_provider === "KIE_FAL" &&
@@ -5756,7 +5772,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           <div className="progress-metrics">
             <Metric
               label="Stage"
-              value={`${String(activeStageIndex + 1).padStart(2, "0")}/${String(uiStages.length).padStart(2, "0")}`}
+              value={`${String(activeStageIndex + 1).padStart(2, "0")}/${String(pipelineStages.length).padStart(2, "0")}`}
               tone="info"
             />
             <Metric
@@ -5801,7 +5817,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           </div>
           <p className="muted" aria-label="Rendering machine">
             <strong>Machine: </strong>{hostedMachineLabel(query.data.project.media_execution_backend, query.data.attempts,
-              uiStages.some(stage => ["image-generation", "avatar-generation"].includes(stage.id) && stage.status === "RUNNING"), queue?.position, query.data.local_worker)}
+              uiStages.some(stage => ["image-generation", "avatar-generation", "video-generation"].includes(stage.id) && stage.status === "RUNNING"), queue?.position, query.data.local_worker)}
           </p>
           {cloudFinalPhasePending ? null : <ProgressBar value={overallProgress} label="Overall video progress" />}
         </div>
@@ -5986,7 +6002,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           {contextComplete && contextDocument ? (
             <Panel
               className="extracted-context-panel"
-              eyebrow="Stage 3 result"
+              eyebrow="Stage 2 result"
               heading="Extracted context"
             >
               {contextText ? <p className="extracted-context-summary">{contextText}</p> : null}
@@ -5999,7 +6015,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             >
               <div className="generation-plan-summary-heading">
                 <div>
-                  <p className="eyebrow">Stage 4 · deterministic timeline</p>
+                  <p className="eyebrow">Stage 3 · deterministic timeline</p>
                   <h3 id="generation-plan-summary-heading">Plan scenes detail</h3>
                 </div>
                 <Badge tone="success">Saved</Badge>
@@ -6021,7 +6037,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             </section>
           ) : null}
           {showPromptFeed ? (
-            <Panel className="live-prompt-panel" eyebrow="Stage 5 · Live" heading="Image prompts">
+            <Panel className="live-prompt-panel" eyebrow="Stage 4 · Live" heading="Image prompts">
               <div className="live-prompt-status" aria-live="polite">
                 <span
                   className={`live-prompt-status-dot${

@@ -293,6 +293,7 @@ approved_decisions:
   DEC_UX_004: visible_layered_surface_spacing
   DEC_UX_005: preserve_ui_remove_manual_compute_controls
   DEC_UX_006: progress_dashboard_presentation_only_pull_request_review
+  DEC_UX_007: hide_internal_pipeline_steps_preserve_status_time_and_released_machine_truth
 
 open_gates:
   GATE_CONCURRENCY_001: v2_multi_user_load_and_recovery

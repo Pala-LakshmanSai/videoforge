@@ -6,6 +6,21 @@ Read when: changing product surfaces, queue/progress behavior, or Chrome accepta
 
 ## Design objective
 
+### Visible pipeline simplification — 2026-10-03
+
+Hide Prepare project and Technical check from the numbered Progress timeline. Keep preparation,
+final file/duration/audio/checksum validation, and their authoritative status internally. Fresh
+motion projects display ten stages; legacy projects display nine. Transcription is stage1; context,
+planning and image prompts are stages2–4. Header numbering, progress and side-panel labels use the
+visible sequence. Elapsed wall time still includes preparation and waiting; row timing and legacy
+ETA bind by stage identity rather than a filtered array position.
+
+Machine status shows the actual active assigned GPU/CPU first. Once durable Cloud metadata reports
+CLEAN or COMPLETE, retain the last recorded machine marked Compute released, with Media APIs
+running when image, avatar or scene video generation is active. A missing GPU must never be
+invented. Temporary Pods run transcription, batched audio spans and final assembly; provider API
+work does not require a retained Pod. This adds startup latency but avoids idle compute charges.
+
 ### Progress page redesign — 2026-10-01
 
 The user authorizes rearranging and resizing the Progress page while preserving all functionality

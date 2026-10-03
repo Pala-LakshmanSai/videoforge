@@ -99,7 +99,7 @@ it("shows the actual assigned machine and distinguishes released GPU and API wor
   expect(hostedMachineLabel("RUNPOD_POD",[cloud])).toBe("Cloud · RunPod · NVIDIA RTX PRO 4500");
   expect(hostedMachineLabel("PERSONAL_WORKER",[local])).toBe("Local · Editing Mac");
   expect(hostedMachineLabel("RUNPOD_POD",[{...cloud,state:"SUCCEEDED",cloud_machine_active:false}])).toBe("Cloud · NVIDIA RTX PRO 4500 · GPU released");
-  expect(hostedMachineLabel("RUNPOD_POD",[{...cloud,kind:"SPAN_AUDIO",state:"SUCCEEDED",cloud_machine_active:false}],true)).toBe("Cloud · Kie / Fal APIs · No active RunPod GPU");
+  expect(hostedMachineLabel("RUNPOD_POD",[{...cloud,kind:"SPAN_AUDIO",state:"SUCCEEDED",cloud_machine_active:false}],true)).toBe("Cloud · Media APIs · No active RunPod compute");
   expect(hostedMachineLabel("RUNPOD_POD",[])).toBe("Cloud · Waiting for RunPod compute");
   const cpu = {...cloud,cloud_gpu:null,cloud_cpu:"16 vCPU / 64 GB RAM"};
   expect(hostedMachineLabel("RUNPOD_POD",[cpu])).toBe("Cloud · RunPod · 16 vCPU / 64 GB RAM");
@@ -626,11 +626,55 @@ function stageList(overrides: Readonly<Record<string, string>> = {}) {
     name,
     status: overrides[id] ?? "PENDING",
     progress_percent: null,
-    started_at: null,
-    completed_at: null,
+    started_at: null as string | null,
+    completed_at: null as string | null,
     detail: null,
   }));
 }
+
+it.each([
+  { motion: false, stageIds: true, count: 9 },
+  { motion: true, stageIds: true, count: 10 },
+  { motion: false, stageIds: false, count: 9 },
+])("hides internal stages but preserves numbering and timing ($motion, $stageIds)", async ({ motion, stageIds, count }) => {
+  vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-03T03:32:03Z"));
+  const stages = stageList({ prepare: "COMPLETE", transcription: "RUNNING" });
+  stages[0] = { ...stages[0]!, started_at: "2026-10-03T03:30:00Z", completed_at: "2026-10-03T03:30:03Z" };
+  stages[1] = { ...stages[1]!, started_at: "2026-10-03T03:30:03Z" };
+  if (motion) stages.splice(7, 0, { ...stages[6]!, id: "video-generation", name: "Generate scene videos" });
+  const fetchMock = vi.fn(async () => Response.json({
+    project: { id: "visible-pipeline", revision_id: "revision", revision_state: "LOCKED", title: "Visible pipeline", created_at: "2026-10-03T03:30:00Z" },
+    generation_provider: "KIE_FAL", attempts: [{ id: "asr", kind: "ASR", state: "RUNNING" }],
+    generation: null, gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
+    stages: stageIds ? stages : stages.map(({ id: _id, ...stage }) => stage),
+  }));
+  vi.stubGlobal("fetch", fetchMock);
+  renderHosted(<HostedProjectScreen projectId="visible-pipeline" />);
+  const list = await screen.findByRole("list", { name: "Project stages" });
+  const rows = within(list).getAllByRole("listitem");
+  expect(rows).toHaveLength(count);
+  expect(within(list).queryByText("Prepare project")).not.toBeInTheDocument();
+  expect(within(list).queryByText("Technical check")).not.toBeInTheDocument();
+  expect(within(rows[0]!).getByText("Transcribe voiceover")).toBeInTheDocument();
+  expect(rows.map(row => row.querySelector(".stage-index")?.textContent)).toEqual(
+    Array.from({ length: count }, (_, i) => String(i + 1).padStart(2, "0")),
+  );
+  const hero = screen.getByRole("region", { name: "Live video progress" });
+  expect(within(hero).getByText(`01/${String(count).padStart(2, "0")}`)).toBeInTheDocument();
+  expect(screen.getByLabelText("Transcribe voiceover elapsed time")).toHaveTextContent("2m 00s");
+  expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent("2m 03s");
+});
+
+it.each(["CLEAN", "COMPLETE"])("retains the recorded GPU after %s cleanup and identifies current API work", phase => {
+  const asr = { kind: "ASR" as const, state: "SUCCEEDED", execution_backend: "RUNPOD_POD" as const,
+    cloud_gpu: "NVIDIA RTX PRO 4500", cloud_phase: phase, cloud_machine_active: false };
+  expect(hostedMachineLabel("RUNPOD_POD", [asr])).toBe("Cloud · RunPod · NVIDIA RTX PRO 4500 · Compute released");
+  expect(hostedMachineLabel("RUNPOD_POD", [asr], true)).toBe("Cloud · RunPod · NVIDIA RTX PRO 4500 · Compute released · Media APIs running");
+  expect(hostedMachineLabel("RUNPOD_POD", [{ ...asr, cloud_phase: "AMBIGUOUS" }], true))
+    .toBe("Cloud · Media APIs · No active RunPod compute");
+  const active = { ...asr, kind: "RENDER" as const, state: "RUNNING", cloud_phase: "RENDERING", cloud_machine_active: true };
+  expect(hostedMachineLabel("RUNPOD_POD", [asr, active], true)).toBe("Cloud · RunPod · NVIDIA RTX PRO 4500");
+});
 
 it("keeps approved downloads on the authenticated route when no download URL is reported", async () => {
   const projectId = "11111111-1111-4111-8111-111111111111";
@@ -822,7 +866,7 @@ it("shows a reasoned disabled Retry for every failed stage without a safe recove
   renderHosted(<HostedProjectScreen projectId={projectId} />);
   const list = await screen.findByRole("list", { name: "Project stages" });
   const rows = within(list).getAllByRole("listitem");
-  expect(rows).toHaveLength(11);
+  expect(rows).toHaveLength(9);
   for (const row of rows) {
     expect(within(row).getByRole("button", { name: "Retry" })).toBeDisabled();
     expect(within(row).getByRole("alert")).toHaveTextContent(/no safe retry|cannot be sent|not authorized|exhausted|outside the verified|No safe retry/i);
@@ -3912,7 +3956,7 @@ describe("hosted product journey", () => {
     // Still the only stage with the control, and still no invented fraction on a stopped stage.
     expect(within(transcription).queryByText("50/100")).not.toBeInTheDocument();
     expect(
-      within(stageRow("Prepare project")).queryByRole("button", { name: "Retry" }),
+      screen.queryByText("Prepare project"),
     ).not.toBeInTheDocument();
   });
 
@@ -3961,7 +4005,7 @@ describe("hosted product journey", () => {
     expect(within(badge.nextElementSibling as HTMLElement).getByRole("button")).toBe(retry);
 
     // A complete stage and a stage that has not run yet carry no retry control.
-    expect(within(stageRow("Prepare project")).queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.queryByText("Prepare project")).not.toBeInTheDocument();
     expect(within(stageRow("Understand voiceover context")).queryByRole("button")).not.toBeInTheDocument();
     expect(within(stageRow("Plan scenes")).queryByRole("button")).not.toBeInTheDocument();
   });

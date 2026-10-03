@@ -1,3 +1,5 @@
+Progress stage simplification (2026-10-03) is locally verified, pending publication: hide Prepare project and Technical check, retain internal validation and elapsed time, and show the recorded GPU as released during API work. Read `progress_stage_simplification_2026_10_03` in CURRENT_STATE.yaml. Chrome control remains unavailable.
+
 Seedance Cloud worker acceptance (2026-10-03) passes a fresh180-second production video:35 images,11 avatars,3 motion clips, exactly7% motion, original narration/full1080p30fps decode and all5 test Pods deleted. Published Cloud worker source matches all39 packaged files; production remains `390daad69` / Worker `4498a464` at100%. Read `seedance_cloud_worker_acceptance_2026_10_03` in CURRENT_STATE.yaml and `evidence/acceptance/VF-10-09/2026-10-03-seedance-cloud-workers.md`. User excludes Local rendering tests; Chrome control, long performance/editorial and invoices remain unverified.
 
 Progress elapsed fix is published from `f705d6c2` / Worker `f8b36fdf` on `codex/progress-elapsed`: wall-clock time counts parallel work once and includes waits. Read `progress_elapsed_2026_10_02` in CURRENT_STATE.yaml.
