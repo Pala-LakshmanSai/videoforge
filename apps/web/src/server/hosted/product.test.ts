@@ -48,7 +48,10 @@ const testState = vi.hoisted(() => {
   const runtimeSourceRows: Record<string, unknown>[] = [];
   const workerDeviceRows: Record<string, unknown>[] = [];
   const cleanup = { pending: false };
+  const cloudReadiness = { allowed: true };
   const query = vi.fn(async (sql: string, params?: readonly unknown[]) => {
+    if (sql.includes("videoforge_cloud_media_new_project_ready"))
+      return { rows: [cloudReadiness], affectedRows: 1 };
     if (sql.includes("FROM cloud_media_reservations r") && sql.includes("AS pending"))
       return { rows: [cleanup], affectedRows: 1 };
     void params;
@@ -165,6 +168,7 @@ const testState = vi.hoisted(() => {
   const executor = { execute: vi.fn(), query, transaction };
   return {
     cleanup,
+    cloudReadiness,
     scopeRows,
     projectRows,
     projectDetailAttemptRows,
@@ -3300,6 +3304,7 @@ describe("adjustable scene footage router contract", () => {
   const createEnvironment = { PRIVATE_ARTIFACTS: {} } as HostedRuntimeEnvironment;
   const installReadyPresets = () => {
     const runtime = {
+      version_id: PRESET_ID,
       source_preparation_profile: "soulx-pro-vf924u-approved-v1",
       object_key: runtimeKey,
     };
@@ -3308,6 +3313,10 @@ describe("adjustable scene footage router contract", () => {
       version_id: styleVersionId,
       style_profile_hash: `sha256:${"c".repeat(64)}`,
       scope_kind: "WORKSPACE",
+      name: "Ready style",
+      version_number: 1,
+      state: "PUBLISHED",
+      status: "ACTIVE",
     });
     testState.presetAvatarRows.push({
       profile_id: PRESET_ID,
@@ -3337,6 +3346,187 @@ describe("adjustable scene footage router contract", () => {
     testState.createReplayRows.length = 0;
     testState.query.mockClear();
   };
+
+  const cloudConfig = {
+    ...coverageConfig,
+    cloudMedia: {
+      enabled: true,
+      budgetAuthorityId: "99999999-9999-4999-8999-999999999999",
+    },
+  } as HostedRuntimeConfiguration;
+  const cloudBody = { ...baseBody, execution_backend: "RUNPOD_POD", video_coverage_percent: 0 };
+  const cloudCreate = (configuration = cloudConfig) =>
+    handleHostedProductRequest(
+      request(
+        "/api/v2/hosted/projects",
+        "POST",
+        {
+          ...cloudBody,
+          schema_version: "videoforge-hosted-project-create/v3",
+        },
+        true,
+        { "idempotency-key": "cloud-reader-00000000000000000001" },
+      ),
+      createEnvironment,
+      configuration,
+      executionContext,
+    );
+
+  it.each([false, true])(
+    "agrees on account-scoped Cloud eligibility across catalog/preflight/Create ready=%s",
+    async (allowed) => {
+      installReadyPresets();
+      testState.cloudReadiness.allowed = allowed;
+      try {
+        const catalog = await handleHostedProductRequest(
+          request("/api/v2/hosted/project-catalog", "GET"),
+          createEnvironment,
+          cloudConfig,
+          executionContext,
+        );
+        const data = (await catalog!.json()) as {
+          cloud_media: { available: boolean; message: string | null };
+        };
+        expect(data.cloud_media.available).toBe(allowed);
+        const preflight = await handleHostedProductRequest(
+          request("/api/v2/hosted/projects/preflight", "POST", {
+            ...cloudBody,
+            schema_version: "videoforge-hosted-project-preflight/v2",
+          }),
+          createEnvironment,
+          cloudConfig,
+          executionContext,
+        );
+        const preflightData = (await preflight!.json()) as { ready: boolean; blockers: unknown[] };
+        expect(preflightData.ready).toBe(allowed);
+        if (!allowed)
+          expect(preflightData.blockers).toContainEqual({
+            code: "CLOUD_MEDIA_NOT_READY",
+            message: data.cloud_media.message,
+            severity: "BLOCKING",
+          });
+        testState.query.mockClear();
+        const created = await cloudCreate();
+        expect(created?.status).toBe(allowed ? 201 : 409);
+        const calls = testState.query.mock.calls;
+        const readinessIndex = calls.findIndex(([sql]) =>
+          sql.includes("videoforge_cloud_media_new_project_ready"),
+        );
+        expect(readinessIndex).toBeGreaterThan(0);
+        expect(calls[readinessIndex]![1]).toEqual([cloudConfig.cloudMedia!.budgetAuthorityId]);
+        expect(
+          calls
+            .slice(0, readinessIndex)
+            .some(
+              ([sql, params]) =>
+                sql.includes("set_config") && params?.[1] === testState.scopeRows[0]!.account_id,
+            ),
+        ).toBe(true);
+        if (!allowed) {
+          expect(await created!.json()).toMatchObject({
+            error: { code: "CLOUD_MEDIA_NOT_READY", message: data.cloud_media.message },
+          });
+          expect(
+            calls.some(
+              ([sql]) =>
+                sql.includes("INSERT INTO") || sql.includes("videoforge_pin_hosted_video_plan"),
+            ),
+          ).toBe(false);
+        }
+      } finally {
+        testState.cloudReadiness.allowed = true;
+        clearReadyPresets();
+      }
+    },
+  );
+
+  it("reports cleanup separately from neutral Cloud readiness refusal", async () => {
+    installReadyPresets();
+    testState.cleanup.pending = true;
+    testState.cloudReadiness.allowed = false;
+    try {
+      const catalog = await handleHostedProductRequest(
+        request("/api/v2/hosted/project-catalog", "GET"),
+        createEnvironment,
+        cloudConfig,
+        executionContext,
+      );
+      expect(await catalog!.json()).toMatchObject({
+        cloud_media: {
+          available: false,
+          message:
+            "An earlier project's Cloud cleanup is unconfirmed. New work is paused until cleanup is verified.",
+        },
+      });
+      const preflight = await handleHostedProductRequest(
+        request("/api/v2/hosted/projects/preflight", "POST", {
+          ...cloudBody,
+          schema_version: "videoforge-hosted-project-preflight/v2",
+        }),
+        createEnvironment,
+        cloudConfig,
+        executionContext,
+      );
+      const data = (await preflight!.json()) as {
+        ready: boolean;
+        blockers: { code: string; severity: string }[];
+      };
+      expect(data.ready).toBe(false);
+      expect(
+        data.blockers
+          .filter((blocker) => blocker.severity === "BLOCKING")
+          .map((blocker) => blocker.code),
+      ).toEqual(["HOSTED_CLOUD_CLEANUP_PENDING"]);
+      expect(await errorCode(await cloudCreate())).toBe("HOSTED_CLOUD_CLEANUP_PENDING");
+    } finally {
+      testState.cleanup.pending = false;
+      testState.cloudReadiness.allowed = true;
+      clearReadyPresets();
+    }
+  });
+
+  it.each([false, true])(
+    "replays saved Cloud requests before new readiness when release disabled=%s",
+    async (disabled) => {
+      installReadyPresets();
+      testState.cloudReadiness.allowed = false;
+      testState.createReplayRows.push({
+        state: "UPLOAD_PENDING",
+        project_id: PROJECT_ID,
+        project_revision_id: PRESET_ID,
+        upload_reservation_id: "55555555-5555-4555-8555-555555555555",
+        object_key:
+          "tenant/owned/workspace/owned/project/owned/revision/owned/lane/input/job/browser-upload/artifact/voiceover",
+        content_type: "audio/mpeg",
+        content_length: 320_000,
+        checksum_sha256: baseBody.voiceover.checksum_sha256,
+        expires_at: new Date(Date.now() + 15 * 60_000).toISOString(),
+      });
+      testState.query.mockClear();
+      try {
+        const result = await cloudCreate({
+          ...cloudConfig,
+          ...(disabled ? { cloudMedia: undefined } : {}),
+        });
+        expect(result?.status).toBe(201);
+        expect(await result!.json()).toMatchObject({
+          project_id: PROJECT_ID,
+          project_revision_id: PRESET_ID,
+          state: "UPLOAD_PENDING",
+        });
+        expect(
+          testState.query.mock.calls.some(
+            ([sql]) =>
+              sql.includes("videoforge_cloud_media_new_project_ready") ||
+              sql.includes("INSERT INTO"),
+          ),
+        ).toBe(false);
+      } finally {
+        testState.cloudReadiness.allowed = true;
+        clearReadyPresets();
+      }
+    },
+  );
 
   it.each([0, 7, 15, 25, 50, 75, 100, 23])(
     "preflight/v2 reports finished-video target and base estimate at %s percent",

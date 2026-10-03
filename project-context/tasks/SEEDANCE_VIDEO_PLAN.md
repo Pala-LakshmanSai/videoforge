@@ -1,5 +1,11 @@
 # Seedance video layer — authorized 2026-10-02
 
+## Cloud readiness repair — 2026-10-03
+
+The user reports Cloud unavailable while Create says Ready to create, and authorizes fixing and publishing the cause. The affected workspace lacked Cloud authority membership; preflight checked only the release flag, while catalog and the Create button independently checked account availability. Add only that workspace to the existing ongoing pay-per-use scope under DEC_CLOUD_BILLING_001, preserving previous access, rates, shutdown deadlines and cleanup records. This starts no provider or compute work.
+
+Catalog, preflight and fresh Create now use the same account-scoped readiness reader. First creation refreshes catalog and preflight; availability changes invalidate stale proof, actual blockers remain visible, and uncertain requests replay their original identity even if fresh eligibility changes. Only typed Cloud 409 rejections before project acceptance unlock the form; ambiguous conflicts and accepted projects keep their original request identity. UI219 and API154 checks pass. Production publication and affected-workspace Chrome voiceover readiness remain pending; current truth is cloud_readiness_repair_2026_10_03 in CURRENT_STATE.yaml.
+
 Checkpoint V2-09; fresh-project 7% motion coverage. Existing projects keep their immutable plans, image/avatar outputs and render identity. User authorizes implementation, production rollout and bounded acceptance without more approval requests; total provider/compute test spend must not exceed USD4.00. Current production, validation and spend truth live in CURRENT_STATE.yaml.
 
 ## Rollback baseline

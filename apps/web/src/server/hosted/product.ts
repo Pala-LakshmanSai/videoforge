@@ -3985,6 +3985,37 @@ function hostedTiming(input: {
   };
 }
 
+const HOSTED_CLOUD_NOT_READY_MESSAGE =
+  "Cloud execution is currently unavailable. Try again after availability is restored.";
+const HOSTED_CLOUD_RELEASE_DISABLED_MESSAGE =
+  "Cloud media execution is not enabled for this release.";
+
+interface HostedCloudProjectReadiness {
+  readonly available: boolean;
+  readonly code: "CLOUD_MEDIA_UNAVAILABLE" | "CLOUD_MEDIA_NOT_READY" | null;
+  readonly message: string | null;
+}
+
+// Call inside an account-scoped transaction: the reader owns authority, budget and cleanup fences.
+async function hostedCloudProjectReadiness(
+  transaction: SqlExecutor,
+  config: HostedRuntimeConfiguration,
+): Promise<HostedCloudProjectReadiness> {
+  if (!config.cloudMedia?.enabled)
+    return {
+      available: false,
+      code: "CLOUD_MEDIA_UNAVAILABLE",
+      message: HOSTED_CLOUD_RELEASE_DISABLED_MESSAGE,
+    };
+  const result = await transaction.query<{ allowed: boolean }>(
+    "SELECT public.videoforge_cloud_media_new_project_ready($1::uuid) AS allowed",
+    [config.cloudMedia.budgetAuthorityId],
+  );
+  return result.rows[0]?.allowed === true
+    ? { available: true, code: null, message: null }
+    : { available: false, code: "CLOUD_MEDIA_NOT_READY", message: HOSTED_CLOUD_NOT_READY_MESSAGE };
+}
+
 async function catalog(
   request: Request,
   config: HostedRuntimeConfiguration,
@@ -4155,18 +4186,15 @@ async function catalog(
         scope.account_id,
         scope.workspace_id,
       );
-      const cloudReady = config.cloudMedia?.enabled
-        ? await transaction.query<{ allowed: boolean }>(
-            "SELECT public.videoforge_cloud_media_new_project_ready($1::uuid) AS allowed",
-            [config.cloudMedia.budgetAuthorityId],
-          )
-        : null;
+      const cloudReady = await hostedCloudProjectReadiness(transaction, config);
       const cloudCleanupPending =
         config.cloudMedia?.enabled &&
         (await hostedAccountCleanupPending(transaction, scope.account_id, scope.workspace_id));
       return {
-        cloudAvailable: cloudReady?.rows[0]?.allowed === true,
-        cloudMessage: cloudCleanupPending ? HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE : null,
+        cloudAvailable: cloudReady.available,
+        cloudMessage: cloudCleanupPending
+          ? HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE
+          : cloudReady.message,
         avatars: avatars.rows,
         styles: styles.rows,
         avatar_drafts: avatarDrafts.rows,
@@ -4950,6 +4978,10 @@ async function projectPreflight(
           null,
           input.executionBackend,
         ),
+        cloudReadiness:
+          input.executionBackend === "RUNPOD_POD"
+            ? await hostedCloudProjectReadiness(transaction, config)
+            : null,
         avatarReady: avatar.rows.length > 0,
         avatarRuntimeSourceQualified: runtimeSourceQualified,
         qualifiedAvatarName: qualifiedAvatarName === null ? null : String(qualifiedAvatarName),
@@ -5017,10 +5049,10 @@ async function projectPreflight(
         severity: "BLOCKING",
       });
     }
-    if (input.executionBackend === "RUNPOD_POD" && !config.cloudMedia?.enabled) {
+    if (facts.cloudReadiness && !facts.cloudReadiness.available && !facts.cleanupPending) {
       blockers.push({
-        code: "CLOUD_MEDIA_UNAVAILABLE",
-        message: "Cloud media execution is not enabled for this release.",
+        code: facts.cloudReadiness.code!,
+        message: facts.cloudReadiness.message!,
         severity: "BLOCKING",
       });
     }
@@ -5100,8 +5132,6 @@ async function createProject(
     if (!input) return response({ error: { code: "PROJECT_CREATE_REJECTED" } }, 400);
     const videoCoveragePercent =
       input.videoCoveragePercent ?? (config.videoGenerationEnabled ? 7 : 0);
-    if (input.executionBackend === "RUNPOD_POD" && !config.cloudMedia?.enabled)
-      return response({ error: { code: "CLOUD_MEDIA_UNAVAILABLE" } }, 409);
     requestedTitle = input.title;
     const requestSha256 = await sha256(canonicalJson(raw));
     const prepared = await createNeonExecutor(pool).transaction(async (transaction) => {
@@ -5167,6 +5197,10 @@ async function createProject(
         )
       )
         throw new Error("HOSTED_CLOUD_CLEANUP_PENDING");
+      if (input.executionBackend === "RUNPOD_POD") {
+        const cloudReadiness = await hostedCloudProjectReadiness(transaction, config);
+        if (!cloudReadiness.available) throw new Error(cloudReadiness.code!);
+      }
       const resolved = await resolveProjectPresets(
         transaction,
         scope,
@@ -5411,6 +5445,22 @@ async function createProject(
       201,
     );
   } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "CLOUD_MEDIA_UNAVAILABLE" || error.message === "CLOUD_MEDIA_NOT_READY")
+    )
+      return response(
+        {
+          error: {
+            code: error.message,
+            message:
+              error.message === "CLOUD_MEDIA_UNAVAILABLE"
+                ? HOSTED_CLOUD_RELEASE_DISABLED_MESSAGE
+                : HOSTED_CLOUD_NOT_READY_MESSAGE,
+          },
+        },
+        409,
+      );
     if (error instanceof Error && error.message === "SCENE_VIDEO_UNAVAILABLE")
       return response(
         {

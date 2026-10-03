@@ -7361,6 +7361,344 @@ it("invalidates completed readiness and rejects a late response after coverage e
   expect(preflights[1]).toMatchObject({ video_coverage_percent: 75 });
 });
 
+it("refreshes stale Cloud availability before readiness and never claims account eligibility", async () => {
+  let enabled = false;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/project-catalog"))
+        return Response.json(coverageCatalog({ cloud_media: { available: enabled } }));
+      if (String(input).endsWith("/preflight")) return Response.json({ ok: true, ready: true });
+      throw new Error("Unexpected create");
+    }),
+  );
+  renderHosted(<HostedCreateProjectScreen />);
+  await fillCoverageCreateForm();
+  fireEvent.click(screen.getByRole("radio", { name: "Cloud" }));
+  expect(
+    screen.getByText("Cloud media is currently unavailable. Check readiness again."),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/not enabled for your account/u)).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Check readiness" }));
+  await screen.findByText("Not ready yet");
+  expect(screen.queryByText("Ready to create")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Create project & start" })).toBeDisabled();
+  enabled = true;
+  fireEvent.click(screen.getByRole("button", { name: "Check readiness" }));
+  await screen.findByText("Ready to create");
+  expect(screen.getByText("Cloud execution is enabled")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Create project & start" })).toBeEnabled();
+});
+
+it("invalidates readiness when Cloud availability changes and rejects an old pending result", async () => {
+  let resolvePreflight: ((response: Response) => void) | undefined;
+  let enabled = true;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/project-catalog"))
+        return Response.json(coverageCatalog({ cloud_media: { available: enabled } }));
+      if (String(input).endsWith("/preflight"))
+        return new Promise<Response>((resolve) => {
+          resolvePreflight = resolve;
+        });
+      throw new Error("Unexpected create");
+    }),
+  );
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}>
+      <HostedCreateProjectScreen />
+    </QueryClientProvider>,
+  );
+  await fillCoverageCreateForm();
+  fireEvent.click(screen.getByRole("radio", { name: "Cloud" }));
+  fireEvent.click(screen.getByRole("button", { name: "Check readiness" }));
+  await waitFor(() => expect(resolvePreflight).toBeDefined());
+  await act(async () => {
+    resolvePreflight!(Response.json({ ok: true, ready: true }));
+  });
+  await screen.findByText("Ready to create");
+  enabled = false;
+  await act(async () => {
+    await client.refetchQueries({ queryKey: ["hosted-project-catalog"] });
+  });
+  await screen.findByText("Cloud execution is unavailable");
+  expect(screen.queryByText("Ready to create")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Create project & start" })).toBeDisabled();
+  enabled = true;
+  await act(async () => {
+    await client.refetchQueries({ queryKey: ["hosted-project-catalog"] });
+  });
+  await screen.findByText("Cloud execution is enabled");
+  expect(screen.queryByText("Ready to create")).not.toBeInTheDocument();
+  resolvePreflight = undefined;
+  fireEvent.click(screen.getByRole("button", { name: "Check readiness" }));
+  await waitFor(() => expect(resolvePreflight).toBeDefined());
+  enabled = false;
+  await act(async () => {
+    await client.refetchQueries({ queryKey: ["hosted-project-catalog"] });
+  });
+  await screen.findByText("Cloud execution is unavailable");
+  await act(async () => {
+    resolvePreflight!(Response.json({ ok: true, ready: true }));
+  });
+  expect(await screen.findByRole("alert")).toHaveTextContent("Media availability changed");
+  expect(screen.queryByText("Ready to create")).not.toBeInTheDocument();
+});
+
+it("rechecks first creation after a successful preflight and reports its actual blocker", async () => {
+  let checks = 0;
+  let creates = 0;
+  const message = "Cloud work is paused until the earlier project's cleanup is confirmed.";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/project-catalog")) return Response.json(coverageCatalog());
+      if (String(input).endsWith("/preflight"))
+        return Response.json(
+          ++checks === 1
+            ? { ok: true, ready: true }
+            : { ok: true, ready: false, blockers: [{ severity: "BLOCKING", message }] },
+        );
+      if (String(input).endsWith("/hosted/projects")) creates++;
+      throw new Error("Unexpected create");
+    }),
+  );
+  renderHosted(<HostedCreateProjectScreen />);
+  await fillCoverageCreateForm();
+  fireEvent.click(screen.getByRole("button", { name: "Check readiness" }));
+  await screen.findByText("Ready to create");
+  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(message);
+  expect(checks).toBe(2);
+  expect(creates).toBe(0);
+  expect(screen.queryByText("Ready to create")).not.toBeInTheDocument();
+  expect(screen.queryByText(/Project inputs are not ready/u)).not.toBeInTheDocument();
+});
+
+it("replays an uncertain Cloud creation with its original identity after eligibility changes", async () => {
+  let enabled = true;
+  let checks = 0;
+  const creates: { body: string; key: string | null }[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith("/project-catalog"))
+        return Response.json(
+          coverageCatalog({
+            cloud_media: { available: enabled },
+            video_generation: {
+              ...coverageCatalog().video_generation,
+              adjustable_coverage_supported: enabled,
+            },
+          }),
+        );
+      if (path.endsWith("/preflight")) {
+        checks++;
+        return Response.json({ ok: true, ready: true });
+      }
+      if (path.endsWith("/hosted/projects")) {
+        creates.push({
+          body: String(init?.body),
+          key: new Headers(init?.headers).get("idempotency-key"),
+        });
+        throw new TypeError("network connection lost");
+      }
+      throw new Error("Unexpected request");
+    }),
+  );
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}>
+      <HostedCreateProjectScreen />
+    </QueryClientProvider>,
+  );
+  await fillCoverageCreateForm();
+  fireEvent.click(screen.getByRole("radio", { name: "Cloud" }));
+  fireEvent.click(screen.getByRole("button", { name: "75%" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  await screen.findByText("network connection lost");
+  enabled = false;
+  await act(async () => {
+    await client.refetchQueries({ queryKey: ["hosted-project-catalog"] });
+  });
+  expect(screen.getByRole("button", { name: "Create project & start" })).toBeEnabled();
+  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  await waitFor(() => expect(creates).toHaveLength(2));
+  expect(creates[1]).toEqual(creates[0]);
+  expect(checks).toBe(1);
+});
+
+it("explains a rejected readiness response even when the server omits blocker details", () => {
+  expect(preflightBlockers({ ok: true, ready: false, blockers: [] })).toEqual([
+    "Readiness could not be confirmed. Check readiness again.",
+  ]);
+});
+
+it.each(["CLOUD_MEDIA_NOT_READY", "CLOUD_MEDIA_UNAVAILABLE"])(
+  "unlocks inputs after definite pre-creation Cloud rejection %s and allows fresh Local admission",
+  async (code) => {
+    const preflights: Record<string, unknown>[] = [];
+    const creates: { body: string; key: string | null }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const path = String(input);
+        if (path.endsWith("/project-catalog"))
+          return Response.json(coverageCatalog({ cloud_media: { available: true } }));
+        if (path.endsWith("/preflight")) {
+          preflights.push(JSON.parse(String(init?.body)));
+          return Response.json({ ok: true, ready: true });
+        }
+        if (path.endsWith("/hosted/projects")) {
+          creates.push({
+            body: String(init?.body),
+            key: new Headers(init?.headers).get("idempotency-key"),
+          });
+          if (creates.length === 1)
+            return Response.json(
+              { error: { code, message: "Cloud access changed before creation." } },
+              { status: 409 },
+            );
+          throw new TypeError("Local create is awaiting confirmation");
+        }
+        throw new Error("Unexpected request");
+      }),
+    );
+    renderHosted(<HostedCreateProjectScreen />);
+    await fillCoverageCreateForm();
+    fireEvent.click(screen.getByRole("radio", { name: "Cloud" }));
+    fireEvent.click(screen.getByRole("button", { name: "75%" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+    await screen.findByText("Cloud access changed before creation.");
+    expect(screen.getByLabelText("Coverage percent")).toBeEnabled();
+    expect(screen.getByRole("radio", { name: "Local" })).toBeEnabled();
+    expect(screen.getByLabelText("Video title")).toBeEnabled();
+    expect(screen.queryByText("Ready to create")).not.toBeInTheDocument();
+    expect(screen.getByText("coverage.wav")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Local" }));
+    fireEvent.click(screen.getByRole("button", { name: "Off" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+    await screen.findByText("Local create is awaiting confirmation");
+    expect(preflights).toHaveLength(2);
+    expect(preflights[1]).toMatchObject({
+      execution_backend: "PERSONAL_WORKER",
+      video_coverage_percent: 0,
+    });
+    expect(JSON.parse(creates[1]!.body)).toMatchObject({
+      execution_backend: "PERSONAL_WORKER",
+      video_coverage_percent: 0,
+    });
+    expect(creates[1]!.key).not.toBe(creates[0]!.key);
+  },
+);
+
+it.each(["PROJECT_CREATE_REPLAY_CONFLICT", undefined])(
+  "preserves the locked identical retry for an uncertain 409 code %s",
+  async (code) => {
+    let checks = 0;
+    const creates: { body: string; key: string | null }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const path = String(input);
+        if (path.endsWith("/project-catalog"))
+          return Response.json(coverageCatalog({ cloud_media: { available: true } }));
+        if (path.endsWith("/preflight")) {
+          checks++;
+          return Response.json({ ok: true, ready: true });
+        }
+        if (path.endsWith("/hosted/projects")) {
+          creates.push({
+            body: String(init?.body),
+            key: new Headers(init?.headers).get("idempotency-key"),
+          });
+          return Response.json(
+            { error: { code, message: "Creation needs reconciliation." } },
+            { status: 409 },
+          );
+        }
+        throw new Error("Unexpected request");
+      }),
+    );
+    renderHosted(<HostedCreateProjectScreen />);
+    await fillCoverageCreateForm();
+    fireEvent.click(screen.getByRole("radio", { name: "Cloud" }));
+    fireEvent.click(screen.getByRole("button", { name: "75%" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+    await screen.findByText("Creation needs reconciliation.");
+    expect(screen.getByLabelText("Coverage percent")).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Local" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+    await waitFor(() => expect(creates).toHaveLength(2));
+    expect(creates[1]).toEqual(creates[0]);
+    expect(checks).toBe(1);
+  },
+);
+
+it("retains an accepted project identity when a later step returns a typed Cloud 409", async () => {
+  const creates: { body: string; key: string | null }[] = [];
+  let checks = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith("/project-catalog"))
+        return Response.json(coverageCatalog({ cloud_media: { available: true } }));
+      if (path.endsWith("/preflight")) {
+        checks++;
+        return Response.json({ ok: true, ready: true });
+      }
+      if (path.endsWith("/hosted/projects")) {
+        creates.push({
+          body: String(init?.body),
+          key: new Headers(init?.headers).get("idempotency-key"),
+        });
+        if (creates.length === 1)
+          return Response.json({
+            project_id: "accepted-project",
+            state: "UPLOAD_PENDING",
+            upload: null,
+          });
+        return Response.json(
+          {
+            error: {
+              code: "CLOUD_MEDIA_NOT_READY",
+              message: "Accepted creation needs reconciliation.",
+            },
+          },
+          { status: 409 },
+        );
+      }
+      if (path.endsWith("/accepted-project/commit"))
+        return Response.json(
+          {
+            error: {
+              code: "CLOUD_MEDIA_NOT_READY",
+              message: "Cloud changed after project acceptance.",
+            },
+          },
+          { status: 409 },
+        );
+      throw new Error("Unexpected request");
+    }),
+  );
+  renderHosted(<HostedCreateProjectScreen />);
+  await fillCoverageCreateForm();
+  fireEvent.click(screen.getByRole("radio", { name: "Cloud" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  await screen.findByText("Cloud changed after project acceptance.");
+  expect(screen.getByLabelText("Video title")).toBeDisabled();
+  expect(screen.getByRole("radio", { name: "Local" })).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  await screen.findByText("Accepted creation needs reconciliation.");
+  expect(screen.getByRole("radio", { name: "Local" })).toBeDisabled();
+  expect(creates[1]).toEqual(creates[0]);
+  expect(checks).toBe(1);
+});
+
 it("blocks positive coverage when unavailable and allows Off without scene-video readiness", async () => {
   vi.stubGlobal(
     "fetch",

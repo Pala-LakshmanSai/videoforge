@@ -2465,9 +2465,12 @@ function preflightReady(value: HostedPreflightResponse | null): boolean {
 }
 
 export function preflightBlockers(value: HostedPreflightResponse | null): readonly string[] {
-  return (value?.blockers ?? [])
+  const blockers = (value?.blockers ?? [])
     .filter((blocker) => blocker.severity !== "ADVISORY")
     .map((blocker) => blocker.message);
+  return blockers.length === 0 && (value?.ready === false || value?.ok === false)
+    ? ["Readiness could not be confirmed. Check readiness again."]
+    : blockers;
 }
 
 async function imageDimensions(file: File): Promise<{ width: number; height: number }> {
@@ -2867,6 +2870,39 @@ export function HostedCreateProjectScreen() {
     executionBackend === "RUNPOD_POD"
       ? catalog.data?.cloud_media?.available === true
       : workerOnline && localDiskReady;
+  const executionUnavailableMessage =
+    executionBackend === "RUNPOD_POD"
+      ? (catalog.data?.cloud_media?.message ??
+        "Cloud media is currently unavailable. Check readiness again.")
+      : workerOnline
+        ? diskSpaceMessage
+        : "Connect your media worker in Settings.";
+  const executionFingerprint = (value: CatalogResponse | undefined) =>
+    JSON.stringify(
+      executionBackend === "RUNPOD_POD"
+        ? value?.cloud_media
+        : [value?.media_worker_state, value?.local_media_free_bytes],
+    );
+  const currentExecution = useRef({
+    ready: executionReady,
+    message: executionUnavailableMessage,
+    fingerprint: executionFingerprint(catalog.data),
+  });
+  currentExecution.current = {
+    ready: executionReady,
+    message: executionUnavailableMessage,
+    fingerprint: executionFingerprint(catalog.data),
+  };
+  useEffect(() => {
+    setPreflightResult(null);
+  }, [executionBackend, executionReady]);
+  const projectReady = preflightReady(preflightResult) && executionReady;
+  const readinessBlockers = [
+    ...new Set([
+      ...preflightBlockers(preflightResult),
+      ...(preflightResult && !executionReady ? [executionUnavailableMessage] : []),
+    ]),
+  ];
   const inputChecklist = [
     { label: "Video title", complete: Boolean(title.trim()) },
     { label: "Voiceover", complete: Boolean(voiceover) },
@@ -2924,6 +2960,10 @@ export function HostedCreateProjectScreen() {
       coverageSupported,
   );
   const preflightMutation = useMutation({
+    onMutate: () => {
+      setPreflightResult(null);
+      setError(null);
+    },
     mutationFn: async () => {
       const snapshot = { fingerprint, voiceover };
       if (!coverageValid) throw new Error("Use a whole percentage from 0 through 100.");
@@ -2932,6 +2972,11 @@ export function HostedCreateProjectScreen() {
           "Scene video generation is currently unavailable. Choose Off or retry later.",
         );
       if (!voiceover) throw new Error("Choose a voiceover first.");
+      const refreshedCatalog = await bounded(
+        catalog.refetch({ throwOnError: true }),
+        "Media availability check timed out. Retry the readiness check.",
+      );
+      const checkedExecution = executionFingerprint(refreshedCatalog.data);
       const contentType = contentTypeForVoiceover(voiceover);
       if (!VOICEOVER_TYPES.has(contentType))
         throw new Error("Use a WAV or MP3 voiceover for hosted generation.");
@@ -2971,10 +3016,29 @@ export function HostedCreateProjectScreen() {
       );
       if (!inputMatches(snapshot))
         throw new Error("Project inputs changed. Check readiness again.");
-      return { result, filename, contentType, checksumSha256, durationMs, snapshot };
+      if (currentExecution.current.fingerprint !== checkedExecution)
+        throw new Error("Media availability changed. Check readiness again.");
+      return {
+        result,
+        filename,
+        contentType,
+        checksumSha256,
+        durationMs,
+        snapshot,
+        checkedExecution,
+      };
     },
-    onSuccess: ({ result, filename, contentType, checksumSha256, durationMs, snapshot }) => {
-      if (!inputMatches(snapshot)) return;
+    onSuccess: ({
+      result,
+      filename,
+      contentType,
+      checksumSha256,
+      durationMs,
+      snapshot,
+      checkedExecution,
+    }) => {
+      if (!inputMatches(snapshot) || currentExecution.current.fingerprint !== checkedExecution)
+        return;
       setVoiceoverMeta({ filename, contentType, checksumSha256, durationMs });
       setPreflightResult(result);
       setError(null);
@@ -2987,14 +3051,18 @@ export function HostedCreateProjectScreen() {
   const submit = useMutation({
     mutationFn: async () => {
       const snapshot = { fingerprint, voiceover };
-      if (!coverageValid || !coverageSupported)
+      if (!creationLocked && (!coverageValid || !coverageSupported))
         throw new Error("Choose an available whole percentage from 0 through 100.");
       if (!voiceover) throw new Error("Choose a voiceover first.");
-      const checked = preflightReady(preflightResult)
-        ? null
-        : await preflightMutation.mutateAsync();
-      if (!preflightReady(checked?.result ?? preflightResult))
-        throw new Error("Project inputs are not ready. Fix the blockers below.");
+      // A new request checks current admission. An uncertain dispatched request
+      // retains its original body and may be reconciled after eligibility changes.
+      const checked = creationLocked ? null : await preflightMutation.mutateAsync();
+      if (!creationLocked) {
+        const result = checked?.result ?? preflightResult;
+        if (!preflightReady(result))
+          throw new Error(preflightBlockers(result).join(" ") || "Check readiness again.");
+        if (!currentExecution.current.ready) throw new Error(currentExecution.current.message);
+      }
       if (!inputMatches(snapshot))
         throw new Error("Project inputs changed. Check readiness again.");
       setError(null);
@@ -3069,11 +3137,18 @@ export function HostedCreateProjectScreen() {
     },
     onSuccess: (projectId) => window.location.assign(`/projects/${projectId}`),
     onError: (value) => {
-      // Definite input/auth rejections create no project. Network, timeout, 5xx and
-      // upload/commit failures retain the original request for an identical retry.
-      const status = (value as Error & { status?: number }).status;
-      if (!creationAccepted.current && [400, 401, 403, 422].includes(status ?? 0))
+      // Definite input/auth and typed Cloud admission rejections create no project.
+      // Other conflicts and upload/commit failures retain the original request.
+      const { status, code } = value as Error & { status?: number; code?: string };
+      const cloudAdmissionRejected =
+        status === 409 && ["CLOUD_MEDIA_NOT_READY", "CLOUD_MEDIA_UNAVAILABLE"].includes(code ?? "");
+      if (
+        !creationAccepted.current &&
+        ([400, 401, 403, 422].includes(status ?? 0) || cloudAdmissionRejected)
+      ) {
         setCreationLocked(false);
+        if (cloudAdmissionRejected) setPreflightResult(null);
+      }
       setError(value instanceof Error ? value.message : "Project could not be created.");
     },
   });
@@ -3347,8 +3422,7 @@ export function HostedCreateProjectScreen() {
                 {executionBackend === "RUNPOD_POD"
                   ? executionReady
                     ? "No connected computer is required. Capacity is checked when your video is admitted."
-                    : (catalog.data.cloud_media?.message ??
-                      "Cloud access is not enabled for your account.")
+                    : executionUnavailableMessage
                   : workerOnline && !localDiskReady
                     ? diskSpaceMessage
                     : workerOnline
@@ -3375,14 +3449,10 @@ export function HostedCreateProjectScreen() {
           {preflightResult ? (
             <div
               className={
-                preflightReady(preflightResult)
-                  ? "validation validation-success"
-                  : "validation validation-danger"
+                projectReady ? "validation validation-success" : "validation validation-danger"
               }
             >
-              <strong>
-                {preflightReady(preflightResult) ? "Ready to create" : "Not ready yet"}
-              </strong>
+              <strong>{projectReady ? "Ready to create" : "Not ready yet"}</strong>
               <span>
                 {" "}
                 {catalog.data.generation_provider === "KIE_FAL"
@@ -3394,11 +3464,11 @@ export function HostedCreateProjectScreen() {
               </span>
             </div>
           ) : null}
-          {preflightBlockers(preflightResult).length > 0 ? (
+          {readinessBlockers.length > 0 ? (
             <div className="validation validation-danger">
               <strong>Fix these blockers:</strong>
               <ul>
-                {preflightBlockers(preflightResult).map((blocker) => (
+                {readinessBlockers.map((blocker) => (
                   <li key={blocker}>{blocker}</li>
                 ))}
               </ul>
@@ -3513,13 +3583,10 @@ export function HostedCreateProjectScreen() {
           <Button
             busy={preflightMutation.isPending || submit.isPending}
             disabled={
-              !coverageValid ||
-              !coverageSupported ||
-              (!canPreflight && !preflightReady(preflightResult)) ||
+              (!creationLocked && (!coverageValid || !coverageSupported || !canPreflight)) ||
               preflightMutation.isPending ||
               submit.isPending ||
-              (executionBackend === "RUNPOD_POD" && !executionReady) ||
-              (preflightReady(preflightResult) && !executionReady)
+              (!creationLocked && !executionReady)
             }
             onClick={() => submit.mutate()}
           >
