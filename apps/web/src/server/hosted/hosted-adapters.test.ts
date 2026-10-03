@@ -409,6 +409,22 @@ describe("V2-06 hosted adapters", () => {
     expect(new URL(longInput.url).searchParams.get("response-content-disposition")).toBe(
       'attachment; filename="owned-render.mp4"',
     );
+    const download = {
+      method: "GET" as const,
+      objectKey: "tenant/account-a/workspace/workspace-a/project/project-a/revision/revision-a/lane/render/job/job-a/artifact/artifact-a",
+      contentType: "video/mp4", contentLength: 1024,
+      checksumSha256: `sha256:${"b".repeat(64)}`, lifetimeSeconds: 300,
+    };
+    for (const filename of ["UK's Boat.mp4", "Café – 你好.mp4", "🎥.mp4"]) {
+      const signed = await new HostedR2Signer(config.r2).sign({ ...download, downloadFilename: filename });
+      const disposition = new URL(signed.url).searchParams.get("response-content-disposition")!;
+      if (filename === "UK's Boat.mp4") expect(disposition).toBe(`attachment; filename="${filename}"`);
+      else expect(decodeURIComponent(disposition.split("filename*=UTF-8''")[1]!)).toBe(filename);
+    }
+    for (const filename of ["../output.mp4", "bad\r\nheader.mp4", "x".repeat(165)]) {
+      await expect(new HostedR2Signer(config.r2).sign({ ...download, downloadFilename: filename }))
+        .rejects.toThrow("R2 download filename is invalid.");
+    }
     await expect(
       new HostedR2Signer(config.r2).sign({
         method: "PUT",

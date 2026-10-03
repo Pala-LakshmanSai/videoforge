@@ -71,9 +71,12 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // Exact measured production/staging closures add211 bytes each; imports/quarantine are unchanged.
 // Saved-footage continuation adds751 production bytes (SQL due predicate); staging unchanged.
 // No new imports/dependencies or quarantine exceptions.
+// Voiceover download naming adds1,766 measured bytes to each static closure for
+// the exact revision/asset Library lookup and shared safe UTF-8 disposition helper.
+// No dependency additions or provider/native quarantine exceptions.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_807_489,
-  "wrangler.staging.jsonc": 2_803_663,
+  "wrangler.production.jsonc": 2_809_255,
+  "wrangler.staging.jsonc": 2_805_429,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",

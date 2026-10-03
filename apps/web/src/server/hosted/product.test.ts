@@ -202,11 +202,18 @@ describe("approved final MP4 download", () => {
   const checksum = `sha256:${"a".repeat(64)}`;
   const key = `tenant/owned/workspace/owned/project/${PROJECT_ID}/revision/owned/lane/render/job/owned/artifact/final-mp4`;
 
-  it("streams an approved, matched R2 output on the authenticated origin", async () => {
+  it.each([
+    [null, "videoforge-output.mp4"],
+    ["UK's Boat.MP3", "UK's Boat.mp4"],
+    ["episode.final.wav", "episode.final.mp4"],
+    ["Café – 你好.mp3", "Café – 你好.mp4"],
+    ["na\r\nme.mp3", "na__me.mp4"],
+  ])("downloads the approved MP4 using saved voiceover filename %s", async (sourceFilename, filename) => {
     testState.approvedDownloadRows.push({
       object_key: key,
       content_length: bytes.length,
       checksum_sha256: checksum,
+      voiceover_filename: sourceFilename,
     });
     const digest = Uint8Array.from(Buffer.from("a".repeat(64), "hex")).buffer;
     const head = vi.fn(async () => ({
@@ -232,9 +239,12 @@ describe("approved final MP4 download", () => {
         executionContext,
       );
       expect(result?.status).toBe(200);
-      expect(result?.headers.get("content-disposition")).toBe(
-        'attachment; filename="videoforge-output.mp4"',
-      );
+      const disposition = result?.headers.get("content-disposition");
+      if (sourceFilename === "Café – 你好.mp3") {
+        expect(disposition).toContain(`filename*=UTF-8''${encodeURIComponent(filename!)}`);
+      } else {
+        expect(disposition).toBe(`attachment; filename="${filename}"`);
+      }
       expect(result?.headers.get("content-length")).toBe(String(bytes.length));
       expect(result?.headers.get("x-videoforge-artifact-sha256")).toBe(checksum);
       expect(Array.from(new Uint8Array(await result!.arrayBuffer()))).toEqual(Array.from(bytes));
@@ -249,6 +259,10 @@ describe("approved final MP4 download", () => {
         "review.output_checksum_sha256 = authority.issued_checksum_sha256",
       );
       expect(String(query?.[0])).toContain("attempt.project_revision_id = revision.id");
+      expect(String(query?.[0])).toContain("voiceover.metadata->>'filename' AS voiceover_filename");
+      expect(String(query?.[0])).toContain("voiceover.id = revision.voiceover_asset_id");
+      expect(String(query?.[0])).toContain("voiceover.account_id = revision.account_id");
+      expect(String(query?.[0])).toContain("voiceover.workspace_id = revision.workspace_id");
       expect(String(query?.[0])).toContain("attempt.state = 'SUCCEEDED'");
       expect(String(query?.[0])).toContain(
         "attempt.result_object_key = result_document.object_key",

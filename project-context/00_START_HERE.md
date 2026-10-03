@@ -1,4 +1,4 @@
-Scene-video stall repair is published at `171f9ca2` / Worker `aa97d6b3` (100%). Exact terminal Runware400 failure now settles to the saved image; stopped footage recovers automatically. Existing233 images/71 avatars/17 clips are intact; final Cloud assembly is running. Read `scene_video_stall_repair_2026_10_03` in CURRENT_STATE.yaml for proof and remaining cleanup.
+Voiceover-based MP4 download naming is locally validated; see `voiceover_download_filename_2026_10_03` in CURRENT_STATE.yaml. Prior scene-video recovery and native pins remain.
 
 Cloud audio save recovery retains bounded uploads and truthful failures. Read `cloud_audio_save_repair_2026_10_03` in CURRENT_STATE.yaml.
 

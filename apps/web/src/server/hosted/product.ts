@@ -1,3 +1,4 @@
+import { hostedDownloadDisposition, voiceoverVideoDownloadFilename } from "./download-filename";
 import {
   hostedAccountCleanupPending,
   HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE,
@@ -8993,14 +8994,22 @@ async function downloadApprovedRender(
         object_key: string;
         content_length: string | number;
         checksum_sha256: string;
+        voiceover_filename: string | null;
       }>(
         `SELECT authority.object_key, authority.issued_content_length AS content_length,
-                authority.issued_checksum_sha256 AS checksum_sha256
+                authority.issued_checksum_sha256 AS checksum_sha256,
+                voiceover.metadata->>'filename' AS voiceover_filename
            FROM projects AS project
            JOIN project_revisions AS revision
              ON revision.account_id = project.account_id
             AND revision.workspace_id = project.workspace_id
             AND revision.project_id = project.id
+           LEFT JOIN assets AS voiceover
+             ON voiceover.account_id = revision.account_id
+            AND voiceover.workspace_id = revision.workspace_id
+            AND voiceover.project_id = revision.project_id
+            AND voiceover.id = revision.voiceover_asset_id
+            AND voiceover.kind = 'VOICEOVER'
            JOIN hosted_cpu_job_attempts AS attempt
              ON attempt.account_id = project.account_id
             AND attempt.workspace_id = project.workspace_id
@@ -9117,7 +9126,9 @@ async function downloadApprovedRender(
           : {}),
         "content-type": "video/mp4",
         "content-length": String(range?.length ?? size),
-        "content-disposition": `${previewAttemptId ? "inline" : "attachment"}; filename="videoforge-output.mp4"`,
+        "content-disposition": previewAttemptId
+          ? 'inline; filename="videoforge-output.mp4"'
+          : hostedDownloadDisposition(voiceoverVideoDownloadFilename(artifact.voiceover_filename)),
         "cache-control": "private, no-store",
         "x-content-type-options": "nosniff",
         "x-videoforge-artifact-sha256": artifact.checksum_sha256,

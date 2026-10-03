@@ -52,6 +52,7 @@ describe("hosted Library", () => {
 
       const download = await screen.findByRole("link", { name: /Download MP4/u });
       expect(download).toHaveAttribute("href", "https://private.example.test/signed-output");
+      expect(download).toHaveAttribute("download", "");
       fireEvent.click(screen.getByRole("button", { name: "Delete" }));
       await waitFor(() =>
         expect(fetchMock).toHaveBeenCalledWith(

@@ -204,7 +204,8 @@ the only persistent applied-state indicator.
   Repeated clicks and lost-response recovery must not create duplicate paid attempts.
 
 - Final render is `Ready for review`. Explicit **Approve final** records reviewer/revision. Approved
-  **Download MP4** and **Manifest** are direct private actions.
+  **Download MP4** and **Manifest** are direct private actions. MP4 downloads use the pinned
+  voiceover filename, replacing its MP3/WAV suffix with `.mp4`, independently of project title.
 
 ### 6. Avatar Hub
 

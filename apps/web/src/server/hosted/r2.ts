@@ -1,3 +1,4 @@
+import { hostedDownloadDisposition } from "./download-filename";
 import { AwsClient } from "aws4fetch";
 import { quoteOrdinaryVideoBudget } from "../runtime/ordinary-video-budget";
 import { SINGLE_PUT_MAX_BYTES } from "./cloud-media-configuration";
@@ -200,7 +201,10 @@ export class HostedR2Signer {
     if (
       input.downloadFilename !== undefined &&
       (input.method !== "GET" ||
-        !/^[A-Za-z0-9][A-Za-z0-9._ -]{0,119}$/u.test(input.downloadFilename))
+        input.downloadFilename.length < 1 || input.downloadFilename.length > 164 ||
+        !Array.from(input.downloadFilename).every((character) =>
+          character.charCodeAt(0) >= 32 && character.charCodeAt(0) !== 127 &&
+          !/[/\\\uD800-\uDFFF]/u.test(character)))
     ) {
       throw new TypeError("R2 download filename is invalid.");
     }
@@ -234,7 +238,7 @@ export class HostedR2Signer {
     if (input.downloadFilename) {
       target.searchParams.set(
         "response-content-disposition",
-        `attachment; filename="${input.downloadFilename}"`,
+        hostedDownloadDisposition(input.downloadFilename),
       );
     }
     // Hosted CPU uploads are not browser uploads. Bind length, type, and checksum into the query

@@ -1,3 +1,4 @@
+import { voiceoverVideoDownloadFilename } from "./download-filename";
 import { hostedAccountCleanupPending, HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE } from "./hosted-v209-queue-admission";
 import { SharedAdmissionRepository } from "@videoforge/control-plane";
 
@@ -75,6 +76,7 @@ interface HostedLibraryRow extends Record<string, unknown> {
   readonly content_type: string;
   readonly content_length: string | number;
   readonly checksum_sha256: string;
+  readonly voiceover_filename: string | null;
 }
 
 export function hostedCpuPrimaryOutput(kind: "ASR" | "SPAN_AUDIO" | "RENDER") {
@@ -145,13 +147,25 @@ async function handleHostedLibrary(
         `SELECT attempt.id AS attempt_id, attempt.project_id, project.name AS title,
                 attempt.created_at, authority.object_key, authority.content_type,
                 authority.issued_content_length AS content_length,
-                authority.issued_checksum_sha256 AS checksum_sha256
+                authority.issued_checksum_sha256 AS checksum_sha256,
+                voiceover.metadata->>'filename' AS voiceover_filename
            FROM hosted_cpu_job_attempts AS attempt
            JOIN projects AS project
              ON project.account_id = attempt.account_id
             AND project.workspace_id = attempt.workspace_id
             AND project.id = attempt.project_id
             AND project.project_kind = 'USER'
+           LEFT JOIN project_revisions AS revision
+             ON revision.account_id = attempt.account_id
+            AND revision.workspace_id = attempt.workspace_id
+            AND revision.project_id = attempt.project_id
+            AND revision.id = attempt.project_revision_id
+           LEFT JOIN assets AS voiceover
+             ON voiceover.account_id = revision.account_id
+            AND voiceover.workspace_id = revision.workspace_id
+            AND voiceover.project_id = revision.project_id
+            AND voiceover.id = revision.voiceover_asset_id
+            AND voiceover.kind = 'VOICEOVER'
            JOIN hosted_cpu_upload_authorities AS authority
              ON authority.account_id = attempt.account_id
             AND authority.workspace_id = attempt.workspace_id
@@ -199,7 +213,7 @@ async function handleHostedLibrary(
         contentLength,
         checksumSha256: output.checksum_sha256,
         lifetimeSeconds: 300,
-        downloadFilename: `${output.title.replace(/[^A-Za-z0-9._ -]+/gu, "_").slice(0, 110) || "videoforge-video"}.mp4`,
+        downloadFilename: voiceoverVideoDownloadFilename(output.voiceover_filename),
       });
       signed.push({
         attempt_id: output.attempt_id,

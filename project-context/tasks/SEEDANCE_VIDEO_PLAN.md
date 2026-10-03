@@ -1,3 +1,7 @@
+# Voiceover-based download name — 2026-10-03
+
+Downloaded final MP4 uses the exact revision's saved voiceover filename, with MP3/WAV replaced by MP4. Preserve title independence, Unicode, private approval/checksum/range gates and unchanged output bytes. Missing historical metadata retains the generic filename. No new paid work. Current proof lives in voiceover_download_filename_2026_10_03 in CURRENT_STATE.yaml.
+
 # Scene-video stall repair — 2026-10-03
 
 The user authorizes exact-cause diagnosis, durable recovery and production repair. Runware returned an exact videoInference HTTP400 providerError (upstream failed to download the video); the adapter required HTTP2xx for terminal failures and kept polling. The original Workflow exhausted5000 observations with RECONCILIATION_REQUIRED. Preserve233 images,71 avatar clips,17 accepted motion clips and all original UUIDs. Recognize only the exact terminal400 providerError envelope; automatic continuation ensures the saved Workflow when all image/avatar outputs are accepted and footage remains unsettled. Definite failure uses the verified original still; unknown/auth/transport/lookup outcomes stay fenced. No paid inference replay or fresh benchmark. Current recovery/publication truth is scene_video_stall_repair_2026_10_03 in CURRENT_STATE.yaml.

@@ -1063,6 +1063,7 @@ it("keeps approved downloads on the authenticated route when no download URL is 
     "href",
     `/api/v2/hosted/projects/${projectId}/download`,
   );
+  expect(screen.getByRole("link", { name: "Download MP4" })).toHaveAttribute("download", "");
 });
 
 it("keeps rendering available after optional scene clips fall back to original stills", async () => {

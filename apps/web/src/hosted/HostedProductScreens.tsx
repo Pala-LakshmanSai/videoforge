@@ -7019,7 +7019,7 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
             <a
               className="button button-secondary"
               href={downloadUrl}
-              download="videoforge-output.mp4"
+              download
             >
               <Download size={16} /> Download MP4
             </a>

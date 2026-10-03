@@ -108,7 +108,7 @@ function HostedLibraryScreen() {
                   <a
                     className="button button-secondary"
                     href={output.download_url}
-                    download={`${output.title}.mp4`}
+                    download
                   >
                     <Download size={15} />
                     Download MP4
