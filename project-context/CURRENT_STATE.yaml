@@ -1,3 +1,12 @@
+concise_one_action_create_2026_10_03:
+  checkpoint: V2-09
+  branch: codex/seedance-video
+  state: LOCAL_GREEN_PUBLICATION_PENDING
+  user_decision: Remove_manual_readiness_step;short_direct_copy_throughout_app.
+  behavior: Single_Create_video_action_keeps_existing_automatic_fresh_preflight;catalog_availability_refreshes_every15s_while_open;concise_Create_and_shared_Progress_Review_coverage_copy;automatic_checks_fence_stale_inputs_availability_and_paid_request_identity.
+  validation: 222_screen_tests_web_types_changed_lint_build_firewall_context_secret_diff_checks_PASS;automatic_check_blocker_stale_input_and_availability_no_create_regressions_retained.
+  provider_spend: No_project_submitted_or_paid_compute;native_and_backend_unchanged.
+
 voiceover_title_autofill_2026_10_03:
   checkpoint: V2-09
   branch: codex/seedance-video

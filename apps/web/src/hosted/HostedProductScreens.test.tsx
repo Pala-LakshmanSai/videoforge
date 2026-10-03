@@ -3030,9 +3030,9 @@ describe("hosted product journey", () => {
       ),
     );
     renderHosted(<HostedCreateProjectScreen />);
-    await screen.findByText("Free disk space before starting");
+    await screen.findByText("Free disk space");
     expect(screen.getByText(/Local media needs 2.00 GiB free/)).toBeVisible();
-    expect(screen.getByRole("button", { name: "Create project & start" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create video" })).toBeDisabled();
   });
 
   it("flags a custom avatar that cannot produce avatar video, and leaves a qualified one unmarked", async () => {
@@ -3820,7 +3820,7 @@ describe("hosted product journey", () => {
 
     expect(await screen.findByText("Connect your computer")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Settings" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create project & start" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create video" })).toBeDisabled();
     expect(screen.getByLabelText("Video title")).toHaveClass("input");
     expect(screen.getByLabelText("Final voiceover")).toHaveAttribute(
       "accept",
@@ -3836,7 +3836,7 @@ describe("hosted product journey", () => {
     expect(screen.getByText("Owner")).toBeInTheDocument();
     expect(screen.getByText("Documentary")).toBeInTheDocument();
     expect(screen.queryByLabelText("Maximum spend")).not.toBeInTheDocument();
-    expect(screen.getByText(/no paid GPU work will start/u)).toBeInTheDocument();
+    expect(screen.getByText(/Prompt writing only/u)).toBeInTheDocument();
     expect(
       screen.queryByText(
         /Tenant-private Neon|GPU transport|DISABLED_UNQUALIFIED|V2-07|V2-08|MAGE_IMAGE|SOULX_AVATAR|Missing gates|APPROVED_EXACT|identity_output|cancellation_timeout|sha256:/u,
@@ -3867,7 +3867,7 @@ describe("hosted product journey", () => {
     expect(cloud).not.toBeChecked();
     fireEvent.click(cloud);
     expect(cloud).toBeChecked();
-    expect(screen.getByText("Cloud execution is enabled")).toBeInTheDocument();
+    expect(await screen.findByText("Cloud ready")).toBeInTheDocument();
     expect(screen.queryByText("Connect your computer")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Open Settings" })).not.toBeInTheDocument();
     fireEvent.click(local);
@@ -3891,15 +3891,15 @@ describe("hosted product journey", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     renderHosted(<HostedCreateProjectScreen />);
-    await screen.findByText("Your computer is connected");
+    await screen.findByText("Computer connected");
     fireEvent.change(screen.getByLabelText("Video title"), { target: { value: "Cloud video" } });
     fireEvent.change(screen.getByLabelText("Final voiceover"), {
       target: { files: [new File(["audio"], "voice.mp3", { type: "audio/mpeg" })] },
     });
-    expect(screen.getByRole("button", { name: "Create project & start" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Create video" })).toBeEnabled();
     fireEvent.click(screen.getByRole("radio", { name: "Cloud" }));
     expect(screen.getByText(message)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create project & start" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create video" })).toBeDisabled();
     expect(
       screen.queryByText(
         "No connected computer is required. Capacity is checked when your video is admitted.",
@@ -3909,7 +3909,7 @@ describe("hosted product journey", () => {
     fireEvent.click(screen.getByRole("radio", { name: "Local" }));
     expect(screen.getByLabelText("Video title")).toHaveValue("Cloud video");
     expect(screen.getByText("voice.mp3")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create project & start" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Create video" })).toBeEnabled();
   });
 
   it("imports a dropped voiceover through the hosted picker", async () => {
@@ -4130,22 +4130,22 @@ describe("hosted product journey", () => {
     fireEvent.change(await screen.findByLabelText("Final voiceover"), {
       target: { files: [voiceover] },
     });
-    const action = screen.getByRole("button", { name: "Create project & start" });
+    const action = screen.getByRole("button", { name: "Create video" });
     fireEvent.click(action);
     await waitFor(() => expect(projectRequests).toHaveLength(1));
     expect(screen.getByRole("alert")).toHaveTextContent("network connection lost");
 
-    fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create video" }));
     await waitFor(() => expect(projectRequests).toHaveLength(2));
     expect(projectRequests[1]).toEqual(projectRequests[0]);
 
     expect(title).toBeDisabled();
     fireEvent.change(title, { target: { value: "Second title" } });
     expect(title).toHaveValue("First title");
-    fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create video" }));
     await waitFor(() => expect(projectRequests).toHaveLength(3));
     expect(projectRequests[2]).toEqual(projectRequests[0]);
-    expect(screen.getByText(/Your original creation request is saved/u)).toBeInTheDocument();
+    expect(screen.getByText(/Request saved/u)).toBeInTheDocument();
   });
 
   it("fails closed when authenticated catalog readiness is absent", async () => {
@@ -7355,7 +7355,7 @@ it.each([0, 7, 15, 25, 50, 75, 100, 23])(
         `${((20 * coverage) / 100).toFixed(2)}s`,
       ),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create video" }));
     await waitFor(() => expect(creates).toHaveLength(1));
     expect(preflights[0]).toMatchObject({
       schema_version: "videoforge-hosted-project-preflight/v2",
@@ -7368,7 +7368,7 @@ it.each([0, 7, 15, 25, 50, 75, 100, 23])(
     expect(screen.getByLabelText("Coverage percent")).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "100%" }));
     expect(screen.getByLabelText("Coverage percent")).toHaveValue(coverage);
-    fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create video" }));
     await waitFor(() => expect(creates).toHaveLength(2));
     expect(creates[1]).toEqual(creates[0]);
   },
@@ -7383,8 +7383,8 @@ it.each(["", "-1", "101", "7.5"])(
     await fillCoverageCreateForm();
     fireEvent.change(screen.getByLabelText("Coverage percent"), { target: { value } });
     expect(screen.getByLabelText("Coverage percent")).toHaveAttribute("aria-invalid", "true");
-    expect(screen.getByRole("button", { name: "Create project & start" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Check readiness" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create video" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Check readiness" })).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   },
 );
@@ -7427,9 +7427,10 @@ it("synchronizes keyboard slider changes and preserves custom coverage across ca
   expect(numeric).toHaveValue(23);
 });
 
-it("invalidates completed readiness and rejects a late response after coverage edits", async () => {
+it("rejects a late automatic check after coverage changes without creating a project", async () => {
   let resolvePreflight: ((response: Response) => void) | undefined;
   const preflights: Record<string, unknown>[] = [];
+  let creates = 0;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -7440,72 +7441,44 @@ it("invalidates completed readiness and rejects a late response after coverage e
           resolvePreflight = resolve;
         });
       }
+      creates++;
       throw new Error("Unexpected create");
     }),
   );
   renderHosted(<HostedCreateProjectScreen />);
   await fillCoverageCreateForm();
-  fireEvent.click(screen.getByRole("button", { name: "Check readiness" }));
+  expect(screen.queryByRole("button", { name: "Check readiness" })).not.toBeInTheDocument();
+  const create = screen.getByRole("button", { name: "Create video" });
+  expect(create).toBeEnabled();
+  fireEvent.click(create);
   await waitFor(() => expect(preflights).toHaveLength(1));
-  fireEvent.click(screen.getByRole("button", { name: "75%" }));
+  expect(create).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Coverage percent"), { target: { value: "75" } });
   await act(async () => {
     resolvePreflight!(Response.json({ ok: true, ready: true }));
   });
-  expect(screen.queryByText("Ready to create")).not.toBeInTheDocument();
-  expect(await screen.findByRole("alert")).toHaveTextContent("Project inputs changed");
+  expect(await screen.findByRole("alert")).toHaveTextContent("Inputs changed");
   expect(screen.getByLabelText("Coverage percent")).toHaveValue(75);
-  fireEvent.click(screen.getByRole("button", { name: "Check readiness" }));
-  await waitFor(() => expect(preflights).toHaveLength(2));
-  await act(async () => {
-    resolvePreflight!(Response.json({ ok: true, ready: true }));
-  });
-  await screen.findByText("Ready to create");
-  fireEvent.click(screen.getByRole("button", { name: "100%" }));
+  expect(creates).toBe(0);
   expect(screen.queryByText("Ready to create")).not.toBeInTheDocument();
-  expect(preflights[1]).toMatchObject({ video_coverage_percent: 75 });
 });
 
-it("refreshes stale Cloud availability before readiness and never claims account eligibility", async () => {
+it("refreshes Cloud availability automatically without a separate readiness step", async () => {
   let enabled = false;
+  let checks = 0;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
       if (String(input).endsWith("/project-catalog"))
         return Response.json(coverageCatalog({ cloud_media: { available: enabled } }));
-      if (String(input).endsWith("/preflight")) return Response.json({ ok: true, ready: true });
-      throw new Error("Unexpected create");
-    }),
-  );
-  renderHosted(<HostedCreateProjectScreen />);
-  await fillCoverageCreateForm();
-  fireEvent.click(screen.getByRole("radio", { name: "Cloud" }));
-  expect(
-    screen.getByText("Cloud media is currently unavailable. Check readiness again."),
-  ).toBeInTheDocument();
-  expect(screen.queryByText(/not enabled for your account/u)).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Check readiness" }));
-  await screen.findByText("Not ready yet");
-  expect(screen.queryByText("Ready to create")).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Create project & start" })).toBeDisabled();
-  enabled = true;
-  fireEvent.click(screen.getByRole("button", { name: "Check readiness" }));
-  await screen.findByText("Ready to create");
-  expect(screen.getByText("Cloud execution is enabled")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Create project & start" })).toBeEnabled();
-});
-
-it("invalidates readiness when Cloud availability changes and rejects an old pending result", async () => {
-  let resolvePreflight: ((response: Response) => void) | undefined;
-  let enabled = true;
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (input: RequestInfo | URL) => {
-      if (String(input).endsWith("/project-catalog"))
-        return Response.json(coverageCatalog({ cloud_media: { available: enabled } }));
-      if (String(input).endsWith("/preflight"))
-        return new Promise<Response>((resolve) => {
-          resolvePreflight = resolve;
+      if (String(input).endsWith("/preflight")) {
+        checks++;
+        return Response.json({
+          ok: true,
+          ready: false,
+          blockers: [{ severity: "BLOCKING", message: "Capacity unavailable. Try later." }],
         });
+      }
       throw new Error("Unexpected create");
     }),
   );
@@ -7517,68 +7490,90 @@ it("invalidates readiness when Cloud availability changes and rejects an old pen
   );
   await fillCoverageCreateForm();
   fireEvent.click(screen.getByRole("radio", { name: "Cloud" }));
-  fireEvent.click(screen.getByRole("button", { name: "Check readiness" }));
-  await waitFor(() => expect(resolvePreflight).toBeDefined());
-  await act(async () => {
-    resolvePreflight!(Response.json({ ok: true, ready: true }));
-  });
-  await screen.findByText("Ready to create");
-  enabled = false;
-  await act(async () => {
-    await client.refetchQueries({ queryKey: ["hosted-project-catalog"] });
-  });
-  await screen.findByText("Cloud execution is unavailable");
-  expect(screen.queryByText("Ready to create")).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Create project & start" })).toBeDisabled();
+  expect(screen.getByText("Cloud unavailable. Try again later.")).toBeInTheDocument();
+  expect(screen.queryByText(/not enabled for your account/u)).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Check readiness" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Create video" })).toBeDisabled();
   enabled = true;
   await act(async () => {
     await client.refetchQueries({ queryKey: ["hosted-project-catalog"] });
   });
-  await screen.findByText("Cloud execution is enabled");
-  expect(screen.queryByText("Ready to create")).not.toBeInTheDocument();
-  resolvePreflight = undefined;
-  fireEvent.click(screen.getByRole("button", { name: "Check readiness" }));
+  expect(await screen.findByText("Cloud ready")).toBeInTheDocument();
+  const create = screen.getByRole("button", { name: "Create video" });
+  expect(create).toBeEnabled();
+  fireEvent.click(create);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Capacity unavailable");
+  expect(checks).toBe(1);
+});
+
+it("rejects an automatic check if Cloud availability changes while it is pending", async () => {
+  let resolvePreflight: ((response: Response) => void) | undefined;
+  let enabled = true;
+  let creates = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/project-catalog"))
+        return Response.json(coverageCatalog({ cloud_media: { available: enabled } }));
+      if (String(input).endsWith("/preflight"))
+        return new Promise<Response>((resolve) => {
+          resolvePreflight = resolve;
+        });
+      creates++;
+      throw new Error("Unexpected create");
+    }),
+  );
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}>
+      <HostedCreateProjectScreen />
+    </QueryClientProvider>,
+  );
+  await fillCoverageCreateForm();
+  fireEvent.click(screen.getByRole("radio", { name: "Cloud" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
   await waitFor(() => expect(resolvePreflight).toBeDefined());
   enabled = false;
   await act(async () => {
     await client.refetchQueries({ queryKey: ["hosted-project-catalog"] });
   });
-  await screen.findByText("Cloud execution is unavailable");
+  await screen.findByText("Cloud unavailable");
   await act(async () => {
     resolvePreflight!(Response.json({ ok: true, ready: true }));
   });
-  expect(await screen.findByRole("alert")).toHaveTextContent("Media availability changed");
+  expect(await screen.findByRole("alert")).toHaveTextContent("Availability changed");
+  expect(screen.getByRole("button", { name: "Create video" })).toBeDisabled();
+  expect(creates).toBe(0);
   expect(screen.queryByText("Ready to create")).not.toBeInTheDocument();
 });
 
-it("rechecks first creation after a successful preflight and reports its actual blocker", async () => {
+it("checks first creation automatically and reports its actual blocker before upload", async () => {
   let checks = 0;
   let creates = 0;
-  const message = "Cloud work is paused until the earlier project's cleanup is confirmed.";
+  const message = "Previous project cleanup pending.";
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
       if (String(input).endsWith("/project-catalog")) return Response.json(coverageCatalog());
-      if (String(input).endsWith("/preflight"))
-        return Response.json(
-          ++checks === 1
-            ? { ok: true, ready: true }
-            : { ok: true, ready: false, blockers: [{ severity: "BLOCKING", message }] },
-        );
-      if (String(input).endsWith("/hosted/projects")) creates++;
+      if (String(input).endsWith("/preflight")) {
+        checks++;
+        return Response.json({
+          ok: true,
+          ready: false,
+          blockers: [{ severity: "BLOCKING", message }],
+        });
+      }
+      creates++;
       throw new Error("Unexpected create");
     }),
   );
   renderHosted(<HostedCreateProjectScreen />);
   await fillCoverageCreateForm();
-  fireEvent.click(screen.getByRole("button", { name: "Check readiness" }));
-  await screen.findByText("Ready to create");
-  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
   expect(await screen.findByRole("alert")).toHaveTextContent(message);
-  expect(checks).toBe(2);
+  expect(checks).toBe(1);
   expect(creates).toBe(0);
   expect(screen.queryByText("Ready to create")).not.toBeInTheDocument();
-  expect(screen.queryByText(/Project inputs are not ready/u)).not.toBeInTheDocument();
 });
 
 it("replays an uncertain Cloud creation with its original identity after eligibility changes", async () => {
@@ -7622,14 +7617,14 @@ it("replays an uncertain Cloud creation with its original identity after eligibi
   await fillCoverageCreateForm();
   fireEvent.click(screen.getByRole("radio", { name: "Cloud" }));
   fireEvent.click(screen.getByRole("button", { name: "75%" }));
-  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
   await screen.findByText("network connection lost");
   enabled = false;
   await act(async () => {
     await client.refetchQueries({ queryKey: ["hosted-project-catalog"] });
   });
-  expect(screen.getByRole("button", { name: "Create project & start" })).toBeEnabled();
-  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  expect(screen.getByRole("button", { name: "Create video" })).toBeEnabled();
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
   await waitFor(() => expect(creates).toHaveLength(2));
   expect(creates[1]).toEqual(creates[0]);
   expect(checks).toBe(1);
@@ -7637,7 +7632,7 @@ it("replays an uncertain Cloud creation with its original identity after eligibi
 
 it("explains a rejected readiness response even when the server omits blocker details", () => {
   expect(preflightBlockers({ ok: true, ready: false, blockers: [] })).toEqual([
-    "Readiness could not be confirmed. Check readiness again.",
+    "Unable to start. Try again.",
   ]);
 });
 
@@ -7675,7 +7670,7 @@ it.each(["CLOUD_MEDIA_NOT_READY", "CLOUD_MEDIA_UNAVAILABLE"])(
     await fillCoverageCreateForm();
     fireEvent.click(screen.getByRole("radio", { name: "Cloud" }));
     fireEvent.click(screen.getByRole("button", { name: "75%" }));
-    fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create video" }));
     await screen.findByText("Cloud access changed before creation.");
     expect(screen.getByLabelText("Coverage percent")).toBeEnabled();
     expect(screen.getByRole("radio", { name: "Local" })).toBeEnabled();
@@ -7684,7 +7679,7 @@ it.each(["CLOUD_MEDIA_NOT_READY", "CLOUD_MEDIA_UNAVAILABLE"])(
     expect(screen.getByText("coverage.wav")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: "Local" }));
     fireEvent.click(screen.getByRole("button", { name: "Off" }));
-    fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create video" }));
     await screen.findByText("Local create is awaiting confirmation");
     expect(preflights).toHaveLength(2);
     expect(preflights[1]).toMatchObject({
@@ -7731,11 +7726,11 @@ it.each(["PROJECT_CREATE_REPLAY_CONFLICT", undefined])(
     await fillCoverageCreateForm();
     fireEvent.click(screen.getByRole("radio", { name: "Cloud" }));
     fireEvent.click(screen.getByRole("button", { name: "75%" }));
-    fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create video" }));
     await screen.findByText("Creation needs reconciliation.");
     expect(screen.getByLabelText("Coverage percent")).toBeDisabled();
     expect(screen.getByRole("radio", { name: "Local" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create video" }));
     await waitFor(() => expect(creates).toHaveLength(2));
     expect(creates[1]).toEqual(creates[0]);
     expect(checks).toBe(1);
@@ -7792,11 +7787,11 @@ it("retains an accepted project identity when a later step returns a typed Cloud
   renderHosted(<HostedCreateProjectScreen />);
   await fillCoverageCreateForm();
   fireEvent.click(screen.getByRole("radio", { name: "Cloud" }));
-  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
   await screen.findByText("Cloud changed after project acceptance.");
   expect(screen.getByLabelText("Video title")).toBeDisabled();
   expect(screen.getByRole("radio", { name: "Local" })).toBeDisabled();
-  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
   await screen.findByText("Accepted creation needs reconciliation.");
   expect(screen.getByRole("radio", { name: "Local" })).toBeDisabled();
   expect(creates[1]).toEqual(creates[0]);
@@ -7822,14 +7817,14 @@ it("shows active queue submission before an uncertain result without suggesting 
   );
   renderHosted(<HostedCreateProjectScreen />);
   await fillCoverageCreateForm();
-  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
   await waitFor(() => expect(creates).toHaveBeenCalledTimes(1));
-  expect(screen.getByText("Saving your project and adding it to the queue…")).toBeInTheDocument();
-  expect(screen.queryByText(/Your original creation request is saved/u)).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Create project & start" })).toBeDisabled();
+  expect(screen.getByText("Adding to queue…")).toBeInTheDocument();
+  expect(screen.queryByText(/Request saved/u)).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Create video" })).toBeDisabled();
   rejectCreate(new Error("connection lost"));
   await screen.findByText("connection lost");
-  expect(screen.getByText(/Your original creation request is saved/u)).toBeInTheDocument();
+  expect(screen.getByText(/Request saved/u)).toBeInTheDocument();
   expect(creates).toHaveBeenCalledTimes(1);
 });
 
@@ -7852,12 +7847,12 @@ it("blocks positive coverage when unavailable and allows Off without scene-video
   expect(
     screen.getByText("Scene video generation is currently unavailable. Choose Off or retry later."),
   ).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Create project & start" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Create video" })).toBeDisabled();
   fireEvent.click(screen.getByRole("button", { name: "Off" }));
-  expect(screen.getByRole("button", { name: "Create project & start" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Create video" })).toBeEnabled();
   await waitFor(() =>
     expect(screen.getByLabelText("Preliminary scene footage estimate")).toHaveTextContent(
-      "$0 scene-video estimate",
+      "$0",
     ),
   );
 });
@@ -7889,11 +7884,11 @@ it("preserves coverage and project identity after an upload rejection", async ()
   renderHosted(<HostedCreateProjectScreen />);
   await fillCoverageCreateForm();
   fireEvent.click(screen.getByRole("button", { name: "75%" }));
-  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
   await screen.findByRole("alert");
   expect(screen.getByLabelText("Coverage percent")).toHaveValue(75);
   expect(screen.getByLabelText("Coverage percent")).toBeDisabled();
-  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
   await waitFor(() => expect(requests).toHaveLength(2));
   expect(requests[1]).toEqual(requests[0]);
 });
@@ -7918,11 +7913,11 @@ it("allows a corrected coverage choice and new identity after a definite rejecte
   );
   renderHosted(<HostedCreateProjectScreen />);
   await fillCoverageCreateForm();
-  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
   await screen.findByText("Create input rejected");
   expect(screen.getByLabelText("Coverage percent")).toBeEnabled();
   fireEvent.click(screen.getByRole("button", { name: "100%" }));
-  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
   await waitFor(() => expect(requests).toHaveLength(2));
   expect(requests[0]!.key).not.toBe(requests[1]!.key);
   expect(JSON.parse(requests[1]!.body)).toMatchObject({ video_coverage_percent: 100 });
@@ -7953,8 +7948,8 @@ it("shows saved requested, planned and completed scene footage and fallbacks in 
   expect(await screen.findByLabelText("Scene footage coverage")).toHaveTextContent(
     "Requested up to 100% · Planned 62.5% · Completed 50%",
   );
-  expect(screen.getByText(/1 scene uses the original image throughout/u)).toBeInTheDocument();
-  expect(screen.getByText(/Whole-scene lengths, avatar time/u)).toBeInTheDocument();
+  expect(screen.getByText(/1 scene: original image used/u)).toBeInTheDocument();
+  expect(screen.getByText("Full scenes only. Actual coverage may be lower.")).toBeInTheDocument();
 });
 
 it.each([0, 75])(
@@ -8005,13 +8000,13 @@ it.each([0, 75])(
     renderHosted(<HostedProjectScreen projectId="zero-coverage" />);
     const coverage = await screen.findByLabelText("Scene footage coverage");
     if (target === 0) {
-      expect(coverage).toHaveTextContent("Scene footage Off");
+      expect(coverage).toHaveTextContent("Scene footage off");
       expect(screen.queryByLabelText("Generate scene videos elapsed time")).not.toBeInTheDocument();
     } else {
       expect(coverage).toHaveTextContent("Requested up to 75% · Planned 0% · Completed 0%");
       expect(
         screen.getByText(
-          "No complete eligible scene fits this coverage. Scene footage is skipped.",
+          "No full scene fits. Scene footage skipped.",
         ),
       ).toBeInTheDocument();
     }

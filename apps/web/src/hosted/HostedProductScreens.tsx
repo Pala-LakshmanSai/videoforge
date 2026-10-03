@@ -1123,7 +1123,7 @@ function SceneFootageCoverage({ coverage }: { coverage: HostedSceneFootageCovera
   if (coverage.requested_coverage_percent === 0)
     return (
       <p className="helper" aria-label="Scene footage coverage">
-        Scene footage Off · no generated scene-video cost.
+        Scene footage off · $0.
       </p>
     );
   return (
@@ -1139,20 +1139,18 @@ function SceneFootageCoverage({ coverage }: { coverage: HostedSceneFootageCovera
       </p>
       {coverage.planned_coverage_percent === 0 ? (
         <p className="helper">
-          No complete eligible scene fits this coverage. Scene footage is skipped.
+          No full scene fits. Scene footage skipped.
         </p>
       ) : coverage.planned_coverage_percent !== null &&
         coverage.planned_coverage_percent < coverage.requested_coverage_percent ? (
         <p className="helper">
-          Whole-scene lengths, avatar time and scenes too long to animate reduce the available
-          coverage.
+          Full scenes only. Actual coverage may be lower.
         </p>
       ) : null}
       {(coverage.fallback_count ?? 0) > 0 ? (
         <p className="helper">
-          {coverage.fallback_count} scene{coverage.fallback_count === 1 ? "" : "s"} use
-          {coverage.fallback_count === 1 ? "s" : ""} the original image throughout after a definite
-          video failure. Any charged generation remains in the cost.
+          {coverage.fallback_count} scene{coverage.fallback_count === 1 ? "" : "s"}: original image
+          used. Video generation failed; charges may apply.
         </p>
       ) : null}
     </div>
@@ -2471,7 +2469,7 @@ export function preflightBlockers(value: HostedPreflightResponse | null): readon
     .filter((blocker) => blocker.severity !== "ADVISORY")
     .map((blocker) => blocker.message);
   return blockers.length === 0 && (value?.ready === false || value?.ok === false)
-    ? ["Readiness could not be confirmed. Check readiness again."]
+    ? ["Unable to start. Try again."]
     : blockers;
 }
 
@@ -2784,6 +2782,7 @@ export function HostedCreateProjectScreen() {
   const catalog = useQuery({
     queryKey: ["hosted-project-catalog"],
     queryFn: readHostedCatalog,
+    refetchInterval: 15_000,
   });
   const [title, setTitle] = useState("");
   const [executionBackend, setExecutionBackend] = useState<"PERSONAL_WORKER" | "RUNPOD_POD">(
@@ -2884,8 +2883,7 @@ export function HostedCreateProjectScreen() {
       : workerOnline && localDiskReady;
   const executionUnavailableMessage =
     executionBackend === "RUNPOD_POD"
-      ? (catalog.data?.cloud_media?.message ??
-        "Cloud media is currently unavailable. Check readiness again.")
+      ? (catalog.data?.cloud_media?.message ?? "Cloud unavailable. Try again later.")
       : workerOnline
         ? diskSpaceMessage
         : "Connect your media worker in Settings.";
@@ -2908,13 +2906,6 @@ export function HostedCreateProjectScreen() {
   useEffect(() => {
     setPreflightResult(null);
   }, [executionBackend, executionReady]);
-  const projectReady = preflightReady(preflightResult) && executionReady;
-  const readinessBlockers = [
-    ...new Set([
-      ...preflightBlockers(preflightResult),
-      ...(preflightResult && !executionReady ? [executionUnavailableMessage] : []),
-    ]),
-  ];
   const inputChecklist = [
     { label: "Video title", complete: Boolean(title.trim()) },
     { label: "Voiceover", complete: Boolean(voiceover) },
@@ -2986,7 +2977,7 @@ export function HostedCreateProjectScreen() {
       if (!voiceover) throw new Error("Choose a voiceover first.");
       const refreshedCatalog = await bounded(
         catalog.refetch({ throwOnError: true }),
-        "Media availability check timed out. Retry the readiness check.",
+        "Availability check timed out. Try again.",
       );
       const checkedExecution = executionFingerprint(refreshedCatalog.data);
       const contentType = contentTypeForVoiceover(voiceover);
@@ -3000,8 +2991,7 @@ export function HostedCreateProjectScreen() {
         "Voiceover duration timed out. Choose a valid WAV or MP3 file and retry.",
         15_000,
       );
-      if (!inputMatches(snapshot))
-        throw new Error("Project inputs changed. Check readiness again.");
+      if (!inputMatches(snapshot)) throw new Error("Inputs changed. Press Create again.");
       const result = await bounded(
         readJson<HostedPreflightResponse>("/api/v2/hosted/projects/preflight", {
           method: "POST",
@@ -3024,12 +3014,11 @@ export function HostedCreateProjectScreen() {
             },
           }),
         }),
-        "Hosted preflight timed out. Retry the readiness check.",
+        "Checks timed out. Try again.",
       );
-      if (!inputMatches(snapshot))
-        throw new Error("Project inputs changed. Check readiness again.");
+      if (!inputMatches(snapshot)) throw new Error("Inputs changed. Press Create again.");
       if (currentExecution.current.fingerprint !== checkedExecution)
-        throw new Error("Media availability changed. Check readiness again.");
+        throw new Error("Availability changed. Press Create again.");
       return {
         result,
         filename,
@@ -3072,17 +3061,16 @@ export function HostedCreateProjectScreen() {
       if (!creationLocked) {
         const result = checked?.result ?? preflightResult;
         if (!preflightReady(result))
-          throw new Error(preflightBlockers(result).join(" ") || "Check readiness again.");
+          throw new Error(preflightBlockers(result).join(" ") || "Unable to start. Try again.");
         if (!currentExecution.current.ready) throw new Error(currentExecution.current.message);
       }
-      if (!inputMatches(snapshot))
-        throw new Error("Project inputs changed. Check readiness again.");
+      if (!inputMatches(snapshot)) throw new Error("Inputs changed. Press Create again.");
       setError(null);
       const metadata =
         checked ??
         voiceoverMeta ??
         (() => {
-          throw new Error("Run the readiness check again before generating.");
+          throw new Error("Press Create again.");
         })();
       const body = {
         schema_version: HOSTED_CREATE_SCHEMA,
@@ -3104,9 +3092,7 @@ export function HostedCreateProjectScreen() {
       };
       const serializedBody = JSON.stringify(body);
       if (creationLocked && createRequest.current?.body !== serializedBody)
-        throw new Error(
-          "Creation is awaiting confirmation. Retry with the original inputs or check Projects before changing this request.",
-        );
+        throw new Error("Request pending. Retry with original inputs or check Queue.");
       if (createRequest.current?.body !== serializedBody) {
         createRequest.current = {
           body: serializedBody,
@@ -3383,7 +3369,7 @@ export function HostedCreateProjectScreen() {
           </fieldset>
         </Panel>
 
-        <Panel className="create-run-panel hosted-project-summary" heading="Cost & readiness">
+        <Panel className="create-run-panel hosted-project-summary" heading="Production">
           <fieldset
             className="field media-execution-field"
             aria-describedby="media-execution-help"
@@ -3412,9 +3398,7 @@ export function HostedCreateProjectScreen() {
                 </label>
               ))}
             </div>
-            <small id="media-execution-help">
-              Local uses your connected computer. Cloud adds compute cost.
-            </small>
+            <small id="media-execution-help">Local: your computer. Cloud: paid compute.</small>
           </fieldset>
           <div className={`run-readiness ${executionReady ? "ready" : "blocked"}`} role="status">
             {executionReady ? <Check size={18} /> : <AlertTriangle size={18} />}
@@ -3422,24 +3406,24 @@ export function HostedCreateProjectScreen() {
               <strong>
                 {executionBackend === "RUNPOD_POD"
                   ? executionReady
-                    ? "Cloud execution is enabled"
-                    : "Cloud execution is unavailable"
+                    ? "Cloud ready"
+                    : "Cloud unavailable"
                   : workerOnline
                     ? localDiskReady
-                      ? "Your computer is connected"
-                      : "Free disk space before starting"
+                      ? "Computer connected"
+                      : "Free disk space"
                     : "Connect your computer"}
               </strong>
               <small>
                 {executionBackend === "RUNPOD_POD"
                   ? executionReady
-                    ? "No connected computer is required. Capacity is checked when your video is admitted."
+                    ? "No computer needed."
                     : executionUnavailableMessage
                   : workerOnline && !localDiskReady
                     ? diskSpaceMessage
                     : workerOnline
-                      ? "Ready when inputs are complete."
-                      : "Connect your media worker in Settings."}
+                      ? "Ready to start."
+                      : "Connect in Settings."}
               </small>
             </span>
           </div>
@@ -3458,34 +3442,6 @@ export function HostedCreateProjectScreen() {
             ))}
           </div>
 
-          {preflightResult ? (
-            <div
-              className={
-                projectReady ? "validation validation-success" : "validation validation-danger"
-              }
-            >
-              <strong>{projectReady ? "Ready to create" : "Not ready yet"}</strong>
-              <span>
-                {" "}
-                {catalog.data.generation_provider === "KIE_FAL"
-                  ? "API usage is billed after generation."
-                  : hostedPreflightEstimateText(
-                      preflightResult.estimate,
-                      catalog.data.gpu_readiness.dispatch_available,
-                    )}
-              </span>
-            </div>
-          ) : null}
-          {readinessBlockers.length > 0 ? (
-            <div className="validation validation-danger">
-              <strong>Fix these blockers:</strong>
-              <ul>
-                {readinessBlockers.map((blocker) => (
-                  <li key={blocker}>{blocker}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
           {!keywordsValid ? (
             <p className="validation validation-danger">
               Extra prompt keywords must be at most 500 characters.
@@ -3538,13 +3494,9 @@ export function HostedCreateProjectScreen() {
               <p id="video-coverage-help" className="helper">
                 {coverageValid
                   ? videoCoveragePercent === 0
-                    ? "Off · no generated scene-video jobs or charges."
-                    : `Up to ${videoCoveragePercent}% of the finished video. Video replaces each selected scene completely.`
+                    ? "Scene footage off · $0."
+                    : `Up to ${videoCoveragePercent}% of your video. Full scenes only.`
                   : "Use a whole percentage from 0 through 100."}
-              </p>
-              <p className="helper">
-                Whole-scene lengths, avatar time and clip availability can reduce coverage. 100%
-                animates every eligible full-screen image scene.
               </p>
               {!coverageSupported ? (
                 <p className="validation validation-danger">
@@ -3553,27 +3505,22 @@ export function HostedCreateProjectScreen() {
               ) : null}
               {coverageValid && voiceoverDurationMs !== null ? (
                 <p className="helper" aria-label="Preliminary scene footage estimate">
-                  Target ceiling ·{" "}
-                  {(((voiceoverDurationMs / 1000) * videoCoveragePercent) / 100).toFixed(2)}s scene
-                  footage
+                  Scene footage: up to{" "}
+                  {(((voiceoverDurationMs / 1000) * videoCoveragePercent) / 100).toFixed(2)}s
                   {videoCoveragePercent === 0
-                    ? " · $0 scene-video estimate"
-                    : ` · Preliminary footage-only base estimate ${formatUsd((((voiceoverDurationMs / 1000) * videoCoveragePercent) / 100) * catalog.data.video_generation.usd_per_second)}`}
-                  {videoCoveragePercent > 0
-                    ? ". Exact planning accounts for complete scenes and billed clip-duration allowances."
-                    : "."}
+                    ? " · $0"
+                    : ` · Base estimate ${formatUsd((((voiceoverDurationMs / 1000) * videoCoveragePercent) / 100) * catalog.data.video_generation.usd_per_second)}`}
                 </p>
               ) : null}
             </fieldset>
           ) : null}
           {submit.isPending ? (
             <p className="helper" role="status">
-              Saving your project and adding it to the queue…
+              Adding to queue…
             </p>
           ) : creationLocked ? (
             <p className="helper" role="status">
-              Your original creation request is saved. Retry with these inputs to confirm it; check
-              Projects before starting another video.
+              Request saved. Retry to confirm, or check Queue.
             </p>
           ) : null}
           {voiceoverMeta ? (
@@ -3583,19 +3530,10 @@ export function HostedCreateProjectScreen() {
           !catalog.data.gpu_readiness.dispatch_available ? (
             <p className="helper hosted-beta-note" role="note">
               {executionBackend === "RUNPOD_POD"
-                ? "Image and avatar generation is unavailable in this release. Cloud media compute adds cost."
-                : "Creation runs through prompt writing. Final video generation is unavailable; no paid GPU work will start."}
+                ? "Image and avatar generation unavailable. Cloud compute is billed."
+                : "Prompt writing only. Video generation unavailable."}
             </p>
           ) : null}
-          <Button
-            variant="secondary"
-            disabled={
-              !canPreflight || preflightMutation.isPending || submit.isPending || creationLocked
-            }
-            onClick={() => preflightMutation.mutate()}
-          >
-            Check readiness
-          </Button>
           <Button
             busy={preflightMutation.isPending || submit.isPending}
             disabled={
@@ -3607,7 +3545,7 @@ export function HostedCreateProjectScreen() {
             onClick={() => submit.mutate()}
           >
             <FileAudio size={16} />
-            Create project & start
+            Create video
           </Button>
         </Panel>
       </div>

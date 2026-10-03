@@ -93,6 +93,9 @@ Lead with plain user outcomes: `Waiting`, `Preparing`, `Generating images`, `Gen
 VRAM, and provider reconciliation behind **Technical details**. Never say `stopped` or `scale-to-zero`
 unless backend/provider evidence supports it. Never imply technical QA judged creative quality.
 
+Use short, direct copy throughout the app. Prefer one sentence per helper; errors state the blocker
+and next action. Remove redundant explanations and confirmation steps; retain necessary cost facts.
+
 ## Information architecture
 
 ### 1. Login and admission
@@ -135,8 +138,8 @@ Team access never grants visibility into another account's projects or media.
 - Selectors show only the account's usable versions plus explicit built-ins. A foreign/removed ID
   becomes a generic unavailable state, not an existence leak.
 - Default path selects built-in `documentary_stock_v1`; no avatar is silently selected.
-- Voiceover validates local/server probe, checksum, duration, and resumable private upload before
-  Ready. Submission immediately disables duplicates and shows its durable queue result.
+- Create video automatically checks probe/checksum/duration, capacity and ownership before upload.
+  No separate readiness button. Submission blocks duplicates and confirms the durable queue result.
 - Preflight shows `Ready to generate` or concise blocker count, estimated variable range, cap, exact
   creative/model settings, and storage/consent facts. It does not expose GPU choices, Pod controls,
   endpoint configuration, or model-volume actions.
