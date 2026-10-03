@@ -126,9 +126,10 @@ Team access never grants visibility into another account's projects or media.
 
 ### 3. Create Project
 
-- Title, validated voiceover upload by file picker or drag and drop, visual Avatar Profile selector, visual Image Style selector,
-  optional keyword toggle/text, optional seed, estimate, and one Generate button. Cost remains
-  visible and exactly accounted, but there is no user-configured maximum-spend field.
+- Title, validated voiceover picker/drop, visual Avatar Profile/Image Style selectors, optional keyword
+  toggle/text and seed, estimate, one Generate button. Selecting audio autofills blank titles without
+  .mp3/.wav; replacement updates unchanged suggestions, manual titles remain. Cost stays visible and
+  exactly accounted; no user-configured maximum-spend field.
 - No project-local avatar upload. `+ New avatar` autosaves the entire draft/upload handle, returns to
   it, and selects the new ready profile. `+ New style` behaves the same.
 - Selectors show only the account's usable versions plus explicit built-ins. A foreign/removed ID

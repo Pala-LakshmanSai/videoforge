@@ -1,10 +1,17 @@
 voiceover_title_autofill_2026_10_03:
   checkpoint: V2-09
   branch: codex/seedance-video
-  state: LOCAL_GREEN_PUBLICATION_PENDING
+  state: PRODUCTION_PUBLISHED_ASSETS_VERIFIED
+  production_source: 218bcc81f1356e609bc882a559d9240fa57fd8a8
+  production_version: e0b23b9b-2564-439f-9f8e-ddee76e06816
+  production_traffic_percent: 100
   behavior: Valid_picker_or_drop_sets_blank_title_from_filename_without_final_MP3_orWAV_case_insensitive;replacement_updates_unchanged_suggestion;manual_title_preserved;240character_limit;invalid_files_and_locked_requests_unchanged.
   validation: 222_HostedProductScreens_tests_web_types_changed_lint_production_build_PASS.
   provider_spend: No_project_submit_provider_call_or_paid_compute;native_and_backend_unchanged.
+  publication: Worker_bundle_byte_identical_to9e64470d;51bindings25secrets3Workflow_identities4native_pins_preserved;23public_payloads_exact;Chrome_Create_readback;upload_behavior_has_component_proof_only.
+  remaining_gates: No_live_Chrome_file_upload_or_paid_canary_started;existing_long_Local_editorial_invoice_gates_unchanged.
+  paid_compute_shutdown: None_started_or_stopped.
+  evidence: evidence/acceptance/VF-10-09/2026-10-03-create-queue-handoff.md#voiceover-title-autofill-follow-up
 
 creation_queue_handoff_2026_10_03:
   checkpoint: V2-09

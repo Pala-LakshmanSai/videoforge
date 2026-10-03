@@ -27,3 +27,11 @@ Cloud image remains `sha256:dea08f0ad4aa1f02d0ccd26c63e9322a4495899a96f80f29a2c2
 Fresh first-submission latency, full-film editorial/playback, installed Local, representative long-film performance and settled invoices remain separate gates; focused checks do not establish whole-repository CI green. Creating a project with **Create project & start** submits it automatically; additional projects wait for the same-account workload slot. Filling a form alone does not enqueue.
 
 Private HTTP, asset, deployment, Chrome and cleanup receipts are retained under `.videoforge/create-handoff-20261003` in the operator checkout. They contain no new paid attempt authority and are not public release artifacts.
+
+## Voiceover title autofill follow-up
+
+User requested filename-derived titles on voiceover selection. Published source `218bcc81f1356e609bc882a559d9240fa57fd8a8`, Worker `e0b23b9b-2564-439f-9f8e-ddee76e06816`, traffic100%. Valid picker/drop selections fill a blank title from the filename without its final .mp3/.wav extension, case-insensitively; other periods remain. Replacing the voiceover updates an unchanged suggestion, while manual titles remain. The240-character title limit, file validation, pending/locked request protection and durable project identity remain.
+
+All222 HostedProductScreens tests, web TypeScript, changed lint, production build, bundle firewall, context/secret/diff checks pass. Picker MP3/uppercase extension, replacement WAV, preserved manual title and existing dropped-WAV behavior have component proof. An initial test invocation from the repository root lacked the web jsdom setup; rerunning from apps/web passed. No dependency install occurred.
+
+Worker bundle is byte-identical to the prior release; all51bindings,25secrets,three Workflow identities and four native runtime pins remain. All23 public payloads match and Chrome loads the published Create screen. A live Chrome file selection was not performed; component upload proof is kept distinct from browser page readback. No project submission, provider request or paid compute was started/stopped. Existing long-film, installed Local, editorial and invoice gates remain. Private release receipts live under `.videoforge/voiceover-title-20261003`.
