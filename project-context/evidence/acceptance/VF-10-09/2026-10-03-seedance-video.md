@@ -1,5 +1,7 @@
 # Seedance video layer — production audit
 
+Subsequent Cloud-only qualification: [three-minute worker acceptance](2026-10-03-seedance-cloud-workers.md) supersedes the short canary as the latest Cloud technical proof. The153-second results below remain dated original implementation evidence.
+
 Checkpoint V2-09; task SEEDANCE_VIDEO_PLAN. User authorized implementation, production deployment and a finite USD4 provider/compute budget. Existing projects and the shared checkout were preserved.
 
 ## Release and rollback
