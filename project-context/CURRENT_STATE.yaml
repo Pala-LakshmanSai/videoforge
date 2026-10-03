@@ -1,3 +1,11 @@
+voiceover_title_autofill_2026_10_03:
+  checkpoint: V2-09
+  branch: codex/seedance-video
+  state: LOCAL_GREEN_PUBLICATION_PENDING
+  behavior: Valid_picker_or_drop_sets_blank_title_from_filename_without_final_MP3_orWAV_case_insensitive;replacement_updates_unchanged_suggestion;manual_title_preserved;240character_limit;invalid_files_and_locked_requests_unchanged.
+  validation: 222_HostedProductScreens_tests_web_types_changed_lint_production_build_PASS.
+  provider_spend: No_project_submit_provider_call_or_paid_compute;native_and_backend_unchanged.
+
 creation_queue_handoff_2026_10_03:
   checkpoint: V2-09
   branch: codex/seedance-video

@@ -3940,8 +3940,40 @@ describe("hosted product journey", () => {
     fireEvent.drop(dropzone!, { dataTransfer: { files: [file] } });
     expect(dropzone).not.toHaveClass("is-drag-over");
     expect(screen.getByText("narration.wav")).toBeInTheDocument();
+    expect(screen.getByLabelText("Video title")).toHaveValue("narration");
     expect(screen.getByText(/ready to check/u)).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("fills the title from a picked voiceover and preserves an edited title", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
+          styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
+          media_worker_state: "ONLINE",
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+        }),
+      ),
+    );
+    renderHosted(<HostedCreateProjectScreen />);
+    const input = await screen.findByLabelText("Final voiceover");
+    const title = screen.getByLabelText("Video title");
+    fireEvent.change(input, {
+      target: { files: [new File(["audio"], "Crete.flood.MP3", { type: "audio/mpeg" })] },
+    });
+    expect(title).toHaveValue("Crete.flood");
+    fireEvent.change(input, {
+      target: { files: [new File(["audio"], "Next film.wav", { type: "audio/wav" })] },
+    });
+    expect(title).toHaveValue("Next film");
+    fireEvent.change(title, { target: { value: "My edited title" } });
+    fireEvent.change(input, {
+      target: { files: [new File(["audio"], "Replacement.mp3", { type: "audio/mpeg" })] },
+    });
+    expect(title).toHaveValue("My edited title");
   });
 
   it("selects the explicit image style default and preserves a custom choice on catalog refresh", async () => {

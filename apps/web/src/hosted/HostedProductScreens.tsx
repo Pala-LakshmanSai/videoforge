@@ -2856,6 +2856,16 @@ export function HostedCreateProjectScreen() {
       setVoiceover(null);
       setError("Voiceover must be at most 1 GB.");
     } else {
+      const filenameTitle = (file: File) =>
+        file.name
+          .replace(/\.(mp3|wav)$/iu, "")
+          .trim()
+          .slice(0, 240);
+      setTitle((current) =>
+        !current.trim() || (voiceover && current === filenameTitle(voiceover))
+          ? filenameTitle(selected)
+          : current,
+      );
       setVoiceover(selected);
       setError(null);
     }
