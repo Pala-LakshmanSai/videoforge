@@ -1266,6 +1266,12 @@
       "name": "hosted_video_whole_scene_coverage",
       "filename": "0248_hosted_video_whole_scene_coverage.sql",
       "sha256": "sha256:2391c0e5f13958f4be1f1d7ed0050941d7e1b378a3a531138d6da280aa2cf0ac"
+    },
+    {
+      "version": 249,
+      "name": "cloud_access_follows_admission",
+      "filename": "0249_cloud_access_follows_admission.sql",
+      "sha256": "sha256:1edeac81a7ed0e4d3be84aeec2009f610458b57f350b5ae018de839eebc7b255"
     }
   ]
 }

@@ -407,7 +407,7 @@ status, worker receipt, artifact durability, and accepted application state rema
 
 ## API surface
 
-Every route derives account/workspace scope from the session and uses owner-scoped repositories.
+Every route derives account/workspace scope from the session and uses owner-scoped repositories. Ordinary Cloud follows VideoForge admission automatically (migration0249).
 Representative V2 surface:
 
 ```text

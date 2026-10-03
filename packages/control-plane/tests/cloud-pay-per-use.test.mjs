@@ -134,5 +134,23 @@ test('ongoing Cloud access preserves finite approvals, tenant isolation, debit a
    await db.query('UPDATE cloud_media_reservations SET pod_id=NULL WHERE id=$1',[reservation]);
    assert.equal(await ready(nextAuthority),true);
   });
+  await t.test('admission-derived access retains exact rental cleanup after admission is absent or revoked',async()=>{
+   await executor.execute(read('0238_hosted_team_access.sql'));
+   await executor.execute(read('0249_cloud_access_follows_admission.sql'));
+   // This fixture has no hosted-auth link. New admission fails while its committed
+   // rental remains observable for shutdown and reconciliation.
+   assert.equal(await ready(authority),false);
+   const metadata=async(a=attempt,f=fence)=>(await db.query('SELECT * FROM videoforge_cloud_media_reservation_authority($1,$2,$3)',[reservation,a,f])).rows;
+   assert.equal((await metadata())[0].id,authority);
+   assert.equal((await metadata())[0].enabled,false);
+   assert.equal((await metadata(uuid(249901))).length,0);
+   assert.equal((await metadata(attempt,uuid(249902))).length,0);
+   await db.query("SELECT set_config('videoforge.account_id',$1,false)",[IDS.accountB]);
+   assert.equal((await metadata()).length,0);
+   await db.query("SELECT set_config('videoforge.account_id',$1,false)",[IDS.accountA]);
+   await db.exec('SET ROLE videoforge_v209_runtime_dc9612d6');
+   assert.equal((await metadata())[0].id,authority);
+   await db.exec('RESET ROLE');
+  });
  } finally {await db.close();}
 });
