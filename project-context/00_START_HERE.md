@@ -1,4 +1,4 @@
-Hand-anatomy prevention is locally validated: required per-person hand count, wrist ownership and simple grips survive Kie compaction; writer/recovery identity and saved prompts remain intact. See `hand_anatomy_prevention_2026_10_03` in CURRENT_STATE.yaml.
+Hand-anatomy prevention is published at `8a4dae91` / Worker `e58efab8`: required per-person hand count, wrist ownership and simple grips survive Kie compaction; writer/recovery identity and saved prompts remain intact. See `hand_anatomy_prevention_2026_10_03` in CURRENT_STATE.yaml.
 
 Voiceover-based MP4 naming is published at `756d3f22` / Worker `502858ce`; Review and Library headers verified. See `voiceover_download_filename_2026_10_03` in CURRENT_STATE.yaml. Prior scene-video recovery and native pins remain.
 
