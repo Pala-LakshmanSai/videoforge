@@ -1243,6 +1243,7 @@ interface ProjectDetailResponse {
     readonly reserved_cost_micro_usd: number | string;
     readonly reported_cost_micro_usd?: number | string | null;
     readonly problem_code?: string | null;
+    readonly automatic_retry_pending?: boolean;
   };
   readonly gpu_lanes?: readonly HostedGpuLaneActivity[];
   readonly span_audio?: HostedSpanAudioProgress | null;
@@ -1887,6 +1888,7 @@ function isHostedV209PreSendIntegrityError(error: unknown): boolean {
 export function hostedProjectPollInterval(data: ProjectDetailResponse | undefined) {
   if (data?.queue?.blocked_reason === "HOSTED_CLOUD_CLEANUP_PENDING") return 2_000;
   if (!data) return 2_000;
+  if (data.voiceover_context?.automatic_retry_pending === true) return 2_000;
   if (["DISPATCHING", "UNKNOWN"].includes(data.prompt_progress?.state ?? "")) return 2_000;
   const activeWork = hostedHasActiveWork(data.stages, data.attempts, data.gpu_lanes);
   const terminalStage =
@@ -5514,6 +5516,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     return compactParts.join(" | ");
   })();
   const contextUnknown = query.data.voiceover_context?.state === "UNKNOWN";
+  const contextRetryPending = query.data.voiceover_context?.automatic_retry_pending === true;
   const contextProviderFailed =
     (contextReconciliation.error as (Error & { readonly code?: string }) | null)?.code ===
     "HOSTED_CONTEXT_RECONCILIATION_RUNWARE_TASK_PROVIDER_FAILED";
@@ -5536,11 +5539,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   // review means a context row exists and needs a human.
   const contextNeedsReview =
     !contextAutoStartError &&
+    !contextRetryPending &&
     (contextStage?.status === "FAILED" ||
       query.data.voiceover_context?.state === "UNKNOWN" ||
       query.data.voiceover_context?.state === "FAILED");
   const contextReconciliationCouldNotFinish =
     contextUnknown &&
+    !contextRetryPending &&
     !contextProviderFailed &&
     automaticContextReconciliationAttempt.current === query.data.voiceover_context?.id &&
     !contextReconciliation.isPending &&
@@ -6762,32 +6767,37 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       {asr?.state === "SUCCEEDED" && !contextComplete ? (
         <div className={`notice${contextNeedsReview ? " notice-danger" : ""}`} role="status">
           <strong>
-            {contextProviderFailed
-              ? "Provider task failed."
-              : contextValidationFailed
-                ? "Context result failed validation."
-                : contextUnknown
-                  ? contextReconciliation.isPending
-                    ? "Checking provider result…"
-                    : "Provider result needs confirmation."
-                  : contextNeedsReview
-                    ? "Context extraction needs review."
-                    : contextAutoStartError
-                      ? "Automatic context extraction could not start."
-                      : "Continuing after transcription."}
+            {contextRetryPending
+              ? "Context request interrupted. Retrying automatically."
+              : contextProviderFailed
+                ? "Provider task failed."
+                : contextValidationFailed
+                  ? "Context result failed validation."
+                  : contextUnknown
+                    ? contextReconciliation.isPending
+                      ? "Checking provider result…"
+                      : "Provider result needs confirmation."
+                    : contextNeedsReview
+                      ? "Context extraction needs review."
+                      : contextAutoStartError
+                        ? "Automatic context extraction could not start."
+                        : "Continuing after transcription."}
           </strong>
           <span>
-            {contextValidationFailed
-              ? "The provider returned a result, but it could not be accepted. This run is stopped; no new inference request was sent."
-              : contextUnknown
-                ? "No new request sent."
-                : contextNeedsReview
-                  ? "Stopped safely; no automatic retry."
-                  : "Story facts are saved before scene planning continues."}
+            {contextRetryPending
+              ? "Progress updates automatically while recovery continues."
+              : contextValidationFailed
+                ? "The provider returned a result, but it could not be accepted. This run is stopped; no new inference request was sent."
+                : contextUnknown
+                  ? "No new request sent."
+                  : contextNeedsReview
+                    ? "Stopped safely; no automatic retry."
+                    : "Story facts are saved before scene planning continues."}
           </span>
           {contextAutoStartError ? <span>{contextExtraction.error.message}</span> : null}
           {contextReconciliation.isError &&
           contextUnknown &&
+          !contextRetryPending &&
           !failedStageIds.has("voiceover-context") ? (
             <span>{contextReconciliation.error.message}</span>
           ) : null}

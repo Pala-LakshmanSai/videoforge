@@ -679,6 +679,29 @@ describe("hosted project polling", () => {
     ).toBe(false);
   });
 
+  it.each(["UNKNOWN", "FAILED"] as const)(
+    "keeps polling a %s context while the server has automatic recovery pending",
+    (state) => {
+      expect(
+        hostedProjectPollInterval(
+          detail({
+            stages: [
+              { id: "voiceover-context", name: "Understand voiceover context", status: "FAILED" },
+            ],
+            voiceover_context: {
+              id: "44444444-4444-4444-8444-444444444444",
+              state,
+              transcript_hash: `sha256:${"b".repeat(64)}`,
+              reserved_cost_micro_usd: 10_000,
+              problem_code: "VOICEOVER_CONTEXT_NETWORK_UNCERTAIN",
+              automatic_retry_pending: true,
+            },
+          }),
+        ),
+      ).toBe(2_000);
+    },
+  );
+
   it("keeps polling while a nonterminal hosted stage is running", () => {
     expect(
       hostedProjectPollInterval(
@@ -694,6 +717,97 @@ describe("hosted project polling", () => {
         }),
       ),
     ).toBe(2_000);
+  });
+
+  it("catches up from context recovery to saved prompt timing without a focus event or paid retry", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const promptStartedAt = new Date(Date.now() - 615_000).toISOString();
+    let reads = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.endsWith("/reconcile-context"))
+        return Response.json(
+          { error: { message: "The original result is not available yet." } },
+          { status: 409 },
+        );
+      if (path.endsWith("/render") || path.endsWith("/prompts"))
+        return Response.json({ state: "COMPLETE" });
+      const recovered = ++reads >= 3;
+      return Response.json(
+        detail({
+          attempts: [
+            {
+              id: projectId,
+              kind: "ASR",
+              state: "SUCCEEDED",
+              version: 1,
+              created_at: promptStartedAt,
+              updated_at: promptStartedAt,
+              terminal_at: promptStartedAt,
+              output_checksum_sha256: null,
+              approved_at: null,
+              preview_url: null,
+            },
+          ],
+          generation: recovered
+            ? {
+                id: projectId,
+                timeline_plan_sha256: `sha256:${"a".repeat(64)}`,
+                planned_tasks: 1,
+                completed_tasks: 0,
+                failed_tasks: 0,
+                stage: "WAITING_FOR_GPU_QUALIFICATION",
+              }
+            : null,
+          stages: stageList({
+            prepare: "COMPLETE",
+            transcription: "COMPLETE",
+            "voiceover-context": recovered ? "COMPLETE" : "RETRY_WAIT",
+            planning: recovered ? "COMPLETE" : "PENDING",
+            "prompt-writing": recovered ? "RUNNING" : "PENDING",
+          }).map((stage) =>
+            stage.id === "prompt-writing" && recovered
+              ? { ...stage, started_at: promptStartedAt }
+              : stage,
+          ),
+          voiceover_context: {
+            id: projectId,
+            state: recovered ? "SUCCEEDED" : "UNKNOWN",
+            transcript_hash: `sha256:${"b".repeat(64)}`,
+            reserved_cost_micro_usd: 10_000,
+            problem_code: recovered ? null : "VOICEOVER_CONTEXT_NETWORK_UNCERTAIN",
+            automatic_retry_pending: !recovered,
+          },
+        }),
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    focusManager.setFocused(false);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+    expect(
+      await screen.findByText("Context request interrupted. Retrying automatically."),
+    ).toBeInTheDocument();
+    expect(
+      within(stageRow("Understand voiceover context")).getByText("RETRYING"),
+    ).toBeInTheDocument();
+    expect(
+      within(stageRow("Understand voiceover context")).queryByRole("button", { name: "Retry" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Needs attention")).not.toBeInTheDocument();
+    expect(screen.queryByText("project stopped")).not.toBeInTheDocument();
+    await waitFor(
+      () =>
+        expect(
+          within(stageRow("Understand voiceover context")).getByText("COMPLETE"),
+        ).toBeInTheDocument(),
+      { timeout: 3_500 },
+    );
+    expect(within(stageRow("Write image prompts")).getByText("RUNNING")).toBeInTheDocument();
+    expect(screen.getByLabelText("Write image prompts elapsed time")).toHaveTextContent(/10m 1\ds/);
+    expect(screen.queryByText("The original result is not available yet.")).not.toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/context")),
+    ).toHaveLength(0);
   });
 
   it("stops background reads after a blocked hosted stage", () => {

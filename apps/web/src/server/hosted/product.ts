@@ -6381,7 +6381,7 @@ export async function createVoiceoverContext(
             code: problemCode,
             message: definiteProviderRejection
               ? "Runware rejected the context request before VideoForge accepted a result."
-              : "Context extraction did not return a durable accepted result and will not retry automatically.",
+              : "No accepted context result was saved. Check Progress for recovery status.",
           },
         },
         definiteProviderRejection ? 422 : 502,
@@ -7282,7 +7282,8 @@ async function projectDetail(
         `SELECT context.id, context.state, context.transcript_hash, context.context_hash,
                 context.context_document, context.reserved_cost_micro_usd,
                 context.reported_cost_micro_usd, context.problem_code,
-                context.provider_may_have_charged, context.started_at, context.finished_at
+                context.provider_may_have_charged, context.started_at, context.finished_at,
+                context.redispatch_count
            FROM hosted_voiceover_contexts AS context
           WHERE context.account_id=$1 AND context.workspace_id=$2 AND context.project_id=$3
             AND context.project_revision_id=$4
@@ -8284,19 +8285,34 @@ async function projectDetail(
         problemCode: promptProgress?.problem_code,
       },
     );
-    const voiceoverContext = detail.voiceoverContext as Record<string, unknown> | null;
+    const storedVoiceoverContext = detail.voiceoverContext as Record<string, unknown> | null;
+    // Use the same eligibility as the continuation sweep. An interrupted attempt is not a stopped
+    // project while the server still has a bounded automatic retry pending.
+    const contextRetryPending = Boolean(
+      asr?.state === "SUCCEEDED" &&
+        storedVoiceoverContext &&
+        ["FAILED", "UNKNOWN"].includes(String(storedVoiceoverContext.state)) &&
+        storedVoiceoverContext.context_hash === null &&
+        HOSTED_CONTEXT_RETRYABLE_PROBLEM_CODES.has(String(storedVoiceoverContext.problem_code)) &&
+        Number(storedVoiceoverContext.redispatch_count ?? 0) < HOSTED_CONTEXT_REDISPATCH_BUDGET,
+    );
+    const voiceoverContext: Record<string, unknown> | null = storedVoiceoverContext
+      ? { ...storedVoiceoverContext, automatic_retry_pending: contextRetryPending }
+      : null;
     const contextState = String(voiceoverContext?.state ?? "WAITING");
     const contextProblemCode = String(voiceoverContext?.problem_code ?? "");
     const contextStageStatus =
       contextState === "SUCCEEDED"
         ? "COMPLETE"
-        : contextState === "UNKNOWN"
-          ? "FAILED"
-          : contextState === "DISPATCHING"
-            ? "RUNNING"
-            : !voiceoverContext && asr?.state === "SUCCEEDED"
+        : contextRetryPending
+          ? "RETRY_WAIT"
+          : contextState === "UNKNOWN"
+            ? "FAILED"
+            : contextState === "DISPATCHING"
               ? "RUNNING"
-              : contextState;
+              : !voiceoverContext && asr?.state === "SUCCEEDED"
+                ? "RUNNING"
+                : contextState;
     const admissionWaiting = (detail.queue as Record<string, unknown> | null)?.state === "WAITING";
     const spanAdmissionWaiting =
       promptStage.status === "COMPLETE" &&
@@ -8412,29 +8428,31 @@ async function projectDetail(
         detail:
           contextState === "SUCCEEDED"
             ? "Compact whole-script facts are saved for scene planning and prompt relevance."
-            : contextState === "UNKNOWN"
-              ? [
-                  "VOICEOVER_CONTEXT_INVALID",
-                  "VOICEOVER_CONTEXT_JSON_INVALID",
-                  "VOICEOVER_CONTEXT_JSON_DUPLICATE_PROPERTY",
-                  "VOICEOVER_CONTEXT_TOO_LARGE",
-                ].includes(contextProblemCode)
-                ? "The provider returned context that failed validation. This run is stopped; no automatic redispatch occurred."
-                : contextProblemCode === "HOSTED_CONTEXT_DISPATCH_TIMEOUT"
-                  ? "The request exceeded its safe deadline. Its result is uncertain and will not be dispatched again automatically."
-                  : contextProblemCode === "VOICEOVER_CONTEXT_NETWORK_UNCERTAIN"
-                    ? "Runware could not be reached before an accepted task was confirmed. VideoForge retries this automatically while the revision's retry budget lasts."
-                    : contextProblemCode === "VOICEOVER_CONTEXT_PROVIDER_UNAVAILABLE"
-                      ? "Runware returned a temporary server failure before an accepted result was confirmed. VideoForge retries this automatically while the revision's retry budget lasts."
-                      : contextProblemCode === "VOICEOVER_CONTEXT_RESPONSE_UNCERTAIN"
-                        ? "Runware responded, but no durable accepted result could be verified. VideoForge retries this automatically while the revision's retry budget lasts."
-                        : "The provider result is uncertain, so VideoForge retries it automatically while the revision's retry budget lasts."
-              : contextState === "FAILED" &&
-                  contextProblemCode === "VOICEOVER_CONTEXT_PROVIDER_REJECTED"
-                ? "Runware rejected the request before VideoForge accepted a result."
-                : !voiceoverContext && asr?.state === "SUCCEEDED"
-                  ? "VideoForge is starting voiceover context automatically within the project limit."
-                  : "The complete transcript is summarized once into bounded story context.",
+            : contextRetryPending
+              ? "Context request interrupted. VideoForge is retrying automatically."
+              : contextState === "UNKNOWN"
+                ? [
+                    "VOICEOVER_CONTEXT_INVALID",
+                    "VOICEOVER_CONTEXT_JSON_INVALID",
+                    "VOICEOVER_CONTEXT_JSON_DUPLICATE_PROPERTY",
+                    "VOICEOVER_CONTEXT_TOO_LARGE",
+                  ].includes(contextProblemCode)
+                  ? "The provider returned context that failed validation. This run is stopped; no automatic redispatch occurred."
+                  : contextProblemCode === "HOSTED_CONTEXT_DISPATCH_TIMEOUT"
+                    ? "The request exceeded its safe deadline. Its result is uncertain and will not be dispatched again automatically."
+                    : contextProblemCode === "VOICEOVER_CONTEXT_NETWORK_UNCERTAIN"
+                      ? "Runware could not be reached. Automatic retries are exhausted; check the original provider result."
+                      : contextProblemCode === "VOICEOVER_CONTEXT_PROVIDER_UNAVAILABLE"
+                        ? "Runware returned a temporary server failure. Automatic retries are exhausted; check the original provider result."
+                        : contextProblemCode === "VOICEOVER_CONTEXT_RESPONSE_UNCERTAIN"
+                          ? "Runware responded without a verified result. Automatic retries are exhausted; check the original provider result."
+                          : "The provider result is uncertain. Check the original provider result before continuing."
+                : contextState === "FAILED" &&
+                    contextProblemCode === "VOICEOVER_CONTEXT_PROVIDER_REJECTED"
+                  ? "Runware rejected the request before VideoForge accepted a result."
+                  : !voiceoverContext && asr?.state === "SUCCEEDED"
+                    ? "VideoForge is starting voiceover context automatically within the project limit."
+                    : "The complete transcript is summarized once into bounded story context.",
         eta_ms: null,
       },
       {

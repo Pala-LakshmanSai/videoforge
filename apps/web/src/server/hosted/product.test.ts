@@ -2722,6 +2722,105 @@ describe("hosted product route contract", () => {
   });
 
   it.each([
+    {
+      state: "UNKNOWN",
+      problem: "VOICEOVER_CONTEXT_NETWORK_UNCERTAIN",
+      count: 1,
+      hash: null,
+      pending: true,
+    },
+    {
+      state: "FAILED",
+      problem: "VOICEOVER_CONTEXT_PROVIDER_REJECTED",
+      count: 29,
+      hash: null,
+      pending: true,
+    },
+    {
+      state: "UNKNOWN",
+      problem: "VOICEOVER_CONTEXT_NETWORK_UNCERTAIN",
+      count: 30,
+      hash: null,
+      pending: false,
+    },
+    {
+      state: "UNKNOWN",
+      problem: "VOICEOVER_CONTEXT_INVALID",
+      count: 1,
+      hash: null,
+      pending: false,
+    },
+    {
+      state: "UNKNOWN",
+      problem: "HOSTED_CONTEXT_DISPATCH_TIMEOUT",
+      count: 1,
+      hash: null,
+      pending: false,
+    },
+    {
+      state: "SUCCEEDED",
+      problem: null,
+      count: 1,
+      hash: `sha256:${"a".repeat(64)}`,
+      pending: false,
+    },
+    {
+      state: "UNKNOWN",
+      problem: "VOICEOVER_CONTEXT_NETWORK_UNCERTAIN",
+      count: 1,
+      hash: `sha256:${"a".repeat(64)}`,
+      pending: false,
+    },
+  ])(
+    "reports context recovery truth for $state / $problem / $count",
+    async ({ state, problem, count, hash, pending }) => {
+      const priorQuery = testState.query.getMockImplementation()!;
+      testState.query.mockImplementation(async (sql, params) => {
+        if (sql.includes("FROM hosted_voiceover_contexts AS context"))
+          return {
+            rows: [
+              {
+                id: PROJECT_ID,
+                state,
+                problem_code: problem,
+                redispatch_count: count,
+                context_hash: hash,
+              },
+            ],
+            affectedRows: 1,
+          };
+        if (sql.includes("SELECT attempt.id, attempt.kind, attempt.state, attempt.version"))
+          return { rows: [{ id: PROJECT_ID, kind: "ASR", state: "SUCCEEDED" }], affectedRows: 1 };
+        return priorQuery(sql, params);
+      });
+      try {
+        const result = await handleHostedProductRequest(
+          request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+          {},
+          stagingConfig,
+          executionContext,
+        );
+        expect(result?.status).toBe(200);
+        const body = (await result!.json()) as {
+          voiceover_context: { automatic_retry_pending: boolean };
+          stages: { id: string; status: string; detail: string }[];
+        };
+        expect(body.voiceover_context.automatic_retry_pending).toBe(pending);
+        const stage = body.stages.find((stage) => stage.id === "voiceover-context")!;
+        expect(stage.status).toBe(
+          state === "SUCCEEDED" ? "COMPLETE" : pending ? "RETRY_WAIT" : "FAILED",
+        );
+        if (pending)
+          expect(stage.detail).toBe(
+            "Context request interrupted. VideoForge is retrying automatically.",
+          );
+      } finally {
+        testState.query.mockImplementation(priorQuery);
+      }
+    },
+  );
+
+  it.each([
     { mode: "partial", expectedStatus: "COMPLETE", coverage: 100 / 30, fallbackCount: 1 },
     { mode: "all", expectedStatus: "COMPLETE", coverage: 0, fallbackCount: 2 },
     { mode: "unknown", expectedStatus: "ACTION_REQUIRED", coverage: 100 / 30, fallbackCount: 0 },
