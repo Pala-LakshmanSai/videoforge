@@ -45,3 +45,17 @@ qualification is needed for a presentation-only change. Chrome control remains u
 connection setup; these component and authenticated HTTP proofs do not establish live click,
 responsive-layout or playback acceptance. Earlier Cloud canary, billing/editorial/Local gates and
 rollback tag pre-seedance-video-20261002 remain unchanged.
+
+## Publication acceptance
+
+Application source b5fd4d5c795c3e0e7dcd1edbcfc533193c1d83fa / Cloudflare version
+831cb605-21d0-4435-a162-8cc2826101e0 is independently verified at100% traffic, with exact bytes
+and SHA256 for all23 public client assets. All51 bindings,25 secret names and three Workflow
+resource identities are retained; only the commit variable and client assets change. No Workflow
+restart or new instance occurs. Retained Cloud canary readback still has13 successful RUNPOD_POD
+CPU attempts and all12 internal stages, including completed technical validation. The newly
+observed ordinary user video is also SUCCEEDED/ready for review after natural continuation.
+Publication/readback evidence is private pipeline-publication/deployed-private.json and
+verified.json under the existing Seedance evidence directory. No credentials or customer media
+are committed. Chrome remains unavailable, so publication and component proof are separate from
+live browser acceptance. The user explicitly confirms keeping on-demand Pod lifecycle unchanged.
