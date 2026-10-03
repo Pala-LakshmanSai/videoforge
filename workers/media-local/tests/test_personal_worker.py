@@ -1157,7 +1157,8 @@ class PersonalWorkerContractTests(unittest.TestCase):
         ):
             self.assertIsNone(_validated_control_plane_origin(value))
 
-    def test_pairing_requires_exact_same_origin_response_and_token(self) -> None:
+    @patch("videoforge_media_local.personal_worker._platform_facts", return_value=("macos", "arm64"))
+    def test_pairing_requires_exact_same_origin_response_and_token(self, _platform: Mock) -> None:
         created = {
             "schema_version": "videoforge-media-worker-enrollment-created/v1",
             "enrollment_id": "11111111-1111-4111-8111-111111111111",
@@ -1200,7 +1201,8 @@ class PersonalWorkerContractTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "did not match"):
                 _enroll("https://app.example.test", "installation", "sha256:" + "c" * 64, store)
 
-    def test_command_pairing_keeps_pkce_and_skips_browser(self) -> None:
+    @patch("videoforge_media_local.personal_worker._platform_facts", return_value=("macos", "arm64"))
+    def test_command_pairing_keeps_pkce_and_skips_browser(self, _platform: Mock) -> None:
         created = {
             "schema_version": "videoforge-media-worker-enrollment-created/v1",
             "enrollment_id": "11111111-1111-4111-8111-111111111111",
