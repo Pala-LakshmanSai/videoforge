@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
+import { compileImagePrompt, NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH } from "@videoforge/pipeline";
 
 import type { HostedR2BucketBinding } from "../hosted/configuration";
 import { KieZImageClient } from "./kie-z-image";
-import { buildKieScenePrompt, observeKieImageJob, submitKieImageJob } from "./kie-image-job";
+import { buildKieScenePrompt, KIE_HAND_ANATOMY_GUIDANCE, observeKieImageJob, submitKieImageJob } from "./kie-image-job";
 
 const TASK_ID = "task_z-image_123";
 const OUTPUT_KEY =
@@ -174,6 +175,63 @@ describe("Kie image job", () => {
         components: full,
       } as never),
     ).not.toContain("viewpoint: hands action");
+  });
+
+  it("retains mandatory hand ownership when optional negatives cannot fit, without changing stored v3/v4 prompts", () => {
+    for (const styleProfileHash of [NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH, undefined]) {
+      const compiled = compileImagePrompt({
+        styleProfileHash,
+        writerOutput: {
+          scene_id: "hands_scene", literal_subject: "Two mechanics' hands and wrists",
+          action: "turn a nut with a wrench", environment: "an engine workshop",
+          in_image_shot_role: "HANDS_ACTION", lighting_context: "daylight",
+          continuity_tags: [], prompt_core: "Mechanics turn a nut with a wrench.",
+        },
+        expectedScene: { sceneId: "hands_scene", phrase: "Mechanics turn a nut with a wrench.",
+          sentenceContext: "Mechanics turn a nut with a wrench.", priorContext: null, nextContext: null,
+          inImageShotRole: "HANDS_ACTION", layout: "IMAGE_FULL" },
+        style: { positiveSuffix: "documentary photography", negativeSuffix: "malformed hands",
+          fullImageGuidance: "16:9 center-safe horizontal photograph",
+          splitImageGuidance: "8:9 center-safe right panel" },
+        extraPromptKeywords: null, applyExtraPromptKeywords: false,
+      });
+      const components = { ...compiled.components,
+        stylePositiveSuffix: "documentary photo ".repeat(17).trim() };
+      const wire = buildKieScenePrompt({ ...compiled, components }, { handAnatomy: true });
+      expect(wire.length).toBeGreaterThan(640);
+      expect(wire.length).toBeLessThanOrEqual(800);
+      expect(wire).toContain(KIE_HAND_ANATOMY_GUIDANCE);
+      expect(wire).toContain("Two mechanics' hands");
+      expect(wire).toContain("turn a nut with a wrench");
+      expect(wire).not.toContain("Avoid: malformed hands");
+      expect(buildKieScenePrompt(compiled)).not.toContain(KIE_HAND_ANATOMY_GUIDANCE);
+    }
+  });
+
+  it("keeps full/split hand constraints at exact 800 bounds with unchanged components and no landscape people", () => {
+    for (const cropGuidance of ["One horizontal photograph", "One continuous narrow photograph"]) {
+      const components = {
+        literalContent: "x", cropGuidance, stylePositiveSuffix: "documentary",
+        continuityAndShotRole: "same subject/setting/state, viewpoint: hands action",
+        extraPromptKeywords: "natural light", styleNegativeSuffix: "",
+      };
+      expect(KIE_HAND_ANATOMY_GUIDANCE.length).toBe(components.continuityAndShotRole.length);
+      const compiled = { promptCompilerVersion: "prompt-compiler-v4", components };
+      const fixed = buildKieScenePrompt(compiled as never, { handAnatomy: true }).length - 1;
+      const full = { ...compiled, components: { ...components, literalContent: "x".repeat(800 - fixed) } };
+      const snapshot = JSON.stringify(full);
+      const prompt = buildKieScenePrompt(full as never, { handAnatomy: true });
+      expect(prompt).toHaveLength(800);
+      expect(prompt).toContain(KIE_HAND_ANATOMY_GUIDANCE);
+      expect(prompt).toContain("natural light");
+      expect(JSON.stringify(full)).toBe(snapshot);
+      expect(() => buildKieScenePrompt({ ...full, components: {
+        ...full.components, literalContent: `${full.components.literalContent}x`,
+      } } as never, { handAnatomy: true })).toThrow("INPUT_INVALID");
+      const landscape = { ...full, components: { ...components,
+        literalContent: "Coastal cliffs overlook the sea", continuityAndShotRole: "viewpoint: environmental wide" } };
+      expect(buildKieScenePrompt(landscape as never, { handAnatomy: true })).toBe(buildKieScenePrompt(landscape as never));
+    }
   });
 
   it("maps style negatives and mandatory exclusions into Kie's single prompt", () => {

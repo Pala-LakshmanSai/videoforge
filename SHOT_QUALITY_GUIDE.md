@@ -38,6 +38,10 @@ Examples (only when supported by the voiceover):
 - A family walking along a road: “Family seen from behind walking along the road,” keeping all narrated members and the walking action.
 - A worker turning a valve: “Close unobstructed view of the worker's hand turning the valve with an ordinary grip,” keeping the contact centered.
 
+## Three-hand tool scenes — 2026-10-03
+
+Two supplied close-ups show three hands around one tool contact without clear ownership. Close framing alone does not solve this defect. New HANDS_ACTION prompts require at most two hands per person, attached to their own wrists and simple grips. Place this constraint in required provider text, not an optional negative suffix that prompt shortening can discard. Preserve narrated collaborators and actions; do not impose two hands across an entire group. Replace Natural Documentary's equal-size role clause to preserve its provider allowance, and keep other-style anatomy text required before submission. Saved images/videos are unchanged. No measured failure-rate improvement or perfect-anatomy guarantee is established.
+
 ## Review evidence and limits
 
 The downloaded files are `china found.mp4` (28:23.8) and `NAPAA - Napa Water Rights - final.mp4` (27:47.3), both 1920×1080. Reviewed 1,124 frames sampled every three seconds across both complete timelines: 568 China frames and 556 Napa frames on 32 contact sheets. Selected examples were then inspected at full resolution. Timestamps identify example frames, not exact shot boundaries. Shorter-than-three-second shots can be missed. This was a systematic visual frame review, not continuous real-time playback or an audio/script accuracy audit.

@@ -298,6 +298,8 @@ framing in `literal_subject` or `environment`, since compatibility-only `prompt_
 reach the final image description. Apply guidance once per batch; retain deterministic roles,
 layouts, narration order, source grounding, budget/recovery rules and immutable accepted prompts.
 No new heuristic rejection gate, image-analysis call or automatic regeneration is added.
+
+The 2026-10-03 hand-anatomy follow-up makes per-person hand count, wrist ownership and simple grips mandatory in newly bound HANDS_ACTION Kie prompts. The 49-character constraint replaces Natural Documentary's equal-size role clause without reducing the existing 800-character scene/style/keyword allowance. Other styles keep it in required positive text. Optional-negative compaction cannot discard it; necessary collaborators and narrated actions remain. Already-bound prompts retain exact saved bytes. Writer requests/batch plans, compiler/style versions, accepted media and budgets stay intact. This is a prompt-level prevention measure, not a measured anatomy-quality guarantee or an image-analysis/regeneration gate.
 Local proof establishes functional compatibility; fresh visual improvement remains unmeasured.
 
 ### Compact repeated instructions — 2026-09-27

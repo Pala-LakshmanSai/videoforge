@@ -247,9 +247,9 @@ describe("API prompt binding before scheduling", () => {
     const events: string[] = [];
     const compiled = ["first scene", "second scene", "third scene"].map((literalContent) => ({
       components: { literalContent, cropGuidance: "wide view", stylePositiveSuffix: "photo",
-        styleNegativeSuffix: "blur", continuityAndShotRole: "", extraPromptKeywords: "" },
+        styleNegativeSuffix: "blur", continuityAndShotRole: "same subject/setting/state, viewpoint: hands action", extraPromptKeywords: "" },
     }));
-    const expected = compiled.map((prompt) => buildKieScenePrompt(prompt as never));
+    const expected = compiled.map((prompt) => buildKieScenePrompt(prompt as never, { handAnatomy: true }));
     const jobs = compiled.map((prompt, index) => ({
       generationTaskId: id(String(index + 5)), lane: "IMAGE", state: "PREPARED",
       inputManifest: { get compiledPrompt() {
@@ -323,13 +323,13 @@ describe("API prompt binding before scheduling", () => {
     const f = await fixture("compile");
     for (const job of f.jobs.filter((row) => row.lane === "IMAGE" && row.state === "PREPARED")) {
       Object.defineProperty(job.inputManifest, "prompt", {
-        value: "Previously bound v4 image. viewpoint: human medium",
+        value: "Previously bound v4 image. viewpoint: hands action",
       });
     }
     expect((await f.run()).status).toBe(202);
     expect(f.events.filter((event) => event.startsWith("compile:"))).toEqual([]);
     expect(f.bindings.map((binding) => binding.args.at(-1))).toEqual(
-      Array(3).fill("Previously bound v4 image. viewpoint: human medium"),);
+      Array(3).fill("Previously bound v4 image. viewpoint: hands action"),);
   });
 
   it("resumes submitted results without compiling or rebinding blocked queued work", async () => {

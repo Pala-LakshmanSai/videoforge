@@ -1,3 +1,7 @@
+# Hand anatomy prevention — 2026-10-03
+
+The user supplies repeated three-hand tool-contact defects and authorizes a focused prevention fix and production rollout. Newly bound HANDS_ACTION Kie prompts require per-person hand count, wrist ownership and simple grips. Natural Documentary substitutes the canonical 49-character role slot with an equal-size anatomy constraint, preserving the 800-character scene/style/keyword allowance. Other styles keep the constraint in required positive text. Preserve necessary collaborators/actions, writer requests, batch plans, immutable compiler/style hashes, saved provider prompts/media, provider budgets, no-replay identity and native pipelines. Exact already-bound requests remain unchanged. No image analysis, automatic regeneration or new paid test. Visual failure-rate improvement is unmeasured; a prompt cannot guarantee correct anatomy. Current truth lives in hand_anatomy_prevention_2026_10_03 in CURRENT_STATE.yaml.
+
 # Voiceover-based download name — 2026-10-03
 
 Downloaded final MP4 uses the exact revision's saved voiceover filename, with MP3/WAV replaced by MP4. Preserve title independence, Unicode, private approval/checksum/range gates and unchanged output bytes. Missing historical metadata retains the generic filename. No new paid work. Current proof lives in voiceover_download_filename_2026_10_03 in CURRENT_STATE.yaml.

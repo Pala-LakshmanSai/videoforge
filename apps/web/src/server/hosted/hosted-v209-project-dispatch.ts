@@ -175,6 +175,7 @@ async function resumeHostedApiDispatch(
         ? job.inputManifest.prompt
         : buildKieScenePrompt(
           job.inputManifest.compiledPrompt as Parameters<typeof buildKieScenePrompt>[0],
+          { handAnatomy: true },
         ),
     }));
   if (prompts.length > 0) {

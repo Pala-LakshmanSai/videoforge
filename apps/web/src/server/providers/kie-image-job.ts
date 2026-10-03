@@ -7,6 +7,10 @@ import type { CompiledImagePrompt } from "@videoforge/pipeline";
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 const MAX_KIE_PROMPT_LENGTH = 800;
 const KIE_PROMPT_TARGET_LENGTH = 640;
+// Fits the canonical 49-character HANDS_ACTION role slot without reducing
+// the immutable style/scene/keyword allowance. Required only for new bindings.
+export const KIE_HAND_ANATOMY_GUIDANCE =
+  "Per person: two hands max, own wrists; simple grip.";
 const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
 const PNG_CRC_TABLE = Uint32Array.from({ length: 256 }, (_, index) => {
   let crc = index;
@@ -57,11 +61,17 @@ function distinctStyleNegatives(value: string): string[] {
 }
 
 /** Map compiled prompt parts into Kie's medium target without cutting scene or style text. */
-export function buildKieScenePrompt(compiled: CompiledImagePrompt): string {
+export function buildKieScenePrompt(
+  compiled: CompiledImagePrompt,
+  options: { readonly handAnatomy?: boolean } = {},
+): string {
   const c = compiled.components;
+  const handAnatomy = options.handAnatomy === true &&
+    /\bviewpoint:\s*hands action\b/iu.test(c.continuityAndShotRole);
   if (compiled.promptCompilerVersion === "prompt-compiler-v4") {
     try {
-      let prompt = naturalDocumentaryRequiredPrompt(c);
+      let prompt = naturalDocumentaryRequiredPrompt(handAnatomy
+        ? { ...c, continuityAndShotRole: KIE_HAND_ANATOMY_GUIDANCE } : c);
       let addedNegative = false;
       for (const term of distinctStyleNegatives(c.styleNegativeSuffix)) {
         const next = `${prompt}${addedNegative ? ", " : ". Avoid: "}${term}`;
@@ -99,6 +109,7 @@ export function buildKieScenePrompt(compiled: CompiledImagePrompt): string {
 
   // Scene, framing and style positives are core: reject if they cannot fit intact.
   if (
+    (handAnatomy && !add(KIE_HAND_ANATOMY_GUIDANCE, MAX_KIE_PROMPT_LENGTH)) ||
     !add(c.cropGuidance, MAX_KIE_PROMPT_LENGTH) ||
     !add(positiveStyle, MAX_KIE_PROMPT_LENGTH) ||
     !add(KIE_PERMANENT_EXCLUSIONS, MAX_KIE_PROMPT_LENGTH)
@@ -107,7 +118,7 @@ export function buildKieScenePrompt(compiled: CompiledImagePrompt): string {
 
   // Keep continuity within the medium target. User-selected keywords remain available through
   // Kie's hard bound when a long scene/style core leaves no room in the medium target.
-  add(compactContinuity(c.continuityAndShotRole), KIE_PROMPT_TARGET_LENGTH);
+  if (!handAnatomy) add(compactContinuity(c.continuityAndShotRole), KIE_PROMPT_TARGET_LENGTH);
   add(c.extraPromptKeywords ?? "", MAX_KIE_PROMPT_LENGTH);
   const exclusions = distinctStyleNegatives(negativeStyle);
   let addedNegative = false;
