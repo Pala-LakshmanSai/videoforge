@@ -552,6 +552,12 @@ def _upload_port(
     return value
 
 
+class _PersonalUploadHttpError(ValueError):
+    def __init__(self, status: int) -> None:
+        super().__init__("Personal worker artifact upload failed")
+        self.status = status
+
+
 def _stream_put(port: dict[str, Any], source: BinaryIO, size: int) -> None:
     if not _is_valid_https_url(port.get("url")):
         raise ValueError("Personal worker upload URL is not HTTPS")
@@ -571,7 +577,7 @@ def _stream_put(port: dict[str, Any], source: BinaryIO, size: int) -> None:
         response = connection.getresponse()
         response.read(4096)
         if response.status < 200 or response.status >= 300:
-            raise ValueError("Personal worker artifact upload failed")
+            raise _PersonalUploadHttpError(response.status)
     finally:
         connection.close()
 

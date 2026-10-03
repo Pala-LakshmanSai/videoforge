@@ -1365,6 +1365,112 @@ describe("hosted product route contract", () => {
     },
   );
 
+  it("reports a failed Cloud audio save without inventing provider failure or local retries", async () => {
+    const previous = testState.projectRows[0]!;
+    const original = testState.query.getMockImplementation()!;
+    testState.projectRows[0] = {
+      ...previous,
+      generation_provider: "KIE_FAL",
+      media_execution_backend: "RUNPOD_POD",
+    };
+    testState.query.mockImplementation(async (sql, params) => {
+      if (sql.includes("SELECT job.state, count(*)::int AS total")) {
+        expect(sql).toContain("job.execution_backend = 'PERSONAL_WORKER'");
+        return {
+          rows: [
+            {
+              state: "FAILED",
+              total: 1,
+              retryable: 0,
+              started_at: "2026-10-03T07:12:43Z",
+              completed_at: "2026-10-03T07:12:59Z",
+            },
+            {
+              state: "CANCELLED",
+              total: 55,
+              started_at: null,
+              completed_at: "2026-10-03T07:12:59Z",
+            },
+            {
+              state: "SUCCEEDED",
+              total: 15,
+              started_at: "2026-10-03T07:05:00Z",
+              completed_at: "2026-10-03T07:12:00Z",
+            },
+          ],
+          affectedRows: 3,
+        };
+      }
+      if (sql.includes("COALESCE(job.failure_code, lease.failure_code) AS failure_code"))
+        return { rows: [{ failure_code: "CLOUD_MEDIA_UPLOAD_FAILED" }], affectedRows: 1 };
+      if (sql.includes("FROM selected_span_audio AS span"))
+        return {
+          rows: [
+            { state: "MATERIALIZED", total: 15 },
+            { state: "PLANNED", total: 56 },
+          ],
+          affectedRows: 2,
+        };
+      if (sql.includes("SELECT runtime.id, runtime.stage"))
+        return {
+          rows: [
+            {
+              stage: "FAILED",
+              terminal_reason: "LANE_PERMANENT_FAILURE",
+              lanes: [
+                {
+                  lane: "mage_image",
+                  state: "FAILED",
+                  planned_item_count: 227,
+                  accepted_item_count: 0,
+                },
+                {
+                  lane: "soulx_avatar",
+                  state: "FAILED",
+                  planned_item_count: 71,
+                  accepted_item_count: 0,
+                },
+              ],
+            },
+          ],
+          affectedRows: 1,
+        };
+      return original(sql, params);
+    });
+    try {
+      const result = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+        environment,
+        stagingConfig,
+        executionContext,
+      );
+      const body = (await result!.json()) as {
+        stages: { id: string; status: string; detail: string }[];
+        span_audio: Record<string, unknown>;
+        gpu_lanes: Record<string, unknown>[];
+      };
+      expect(body.span_audio).toMatchObject({
+        failed: 1,
+        retrying: 0,
+        materialized: 15,
+        failure_code: "CLOUD_MEDIA_UPLOAD_FAILED",
+        completed_at: "2026-10-03T07:12:59.000Z",
+      });
+      expect(body.stages.find((s) => s.id === "audio-spanning")).toMatchObject({
+        status: "FAILED",
+      });
+      for (const id of ["image-generation", "avatar-generation"])
+        expect(body.stages.find((s) => s.id === id)).toMatchObject({ status: "BLOCKED" });
+      expect(body.stages.find((s) => s.id === "image-generation")?.detail).toContain(
+        "have not been submitted",
+      );
+      expect(body.gpu_lanes.every((l) => l.runtime_state === "BLOCKED")).toBe(true);
+    } finally {
+      testState.projectRows[0] = previous;
+      testState.query.mockImplementation(original);
+    }
+  });
+
   it("reports persisted stage boundaries without inventing technical or historical planning time", async () => {
     const previousProject = testState.projectRows[0]!;
     const previousAttempts = [...testState.projectDetailAttemptRows];

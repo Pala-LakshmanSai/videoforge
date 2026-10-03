@@ -163,6 +163,15 @@ jobs:
             -v "$GITHUB_WORKSPACE/workers/image-media/tests:/renderer-tests:ro" \
             vf-cloud-qualified -c 'import shutil,unittest; assert shutil.which("ffmpeg")=="/opt/videoforge/tools/ffmpeg"; assert shutil.which("ffprobe")=="/opt/videoforge/tools/ffprobe"; result=unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromName("test_seedance_render")); assert result.wasSuccessful() and result.testsRun>=6 and not result.skipped'
       - name: Record exact offline qualification
+        # Exercise bounded upload transport recovery inside the exact Linux candidate.
+        # These tests mock all transport and never contact providers.
+        run: |
+          set -euo pipefail
+          docker run --rm --network=none --entrypoint python \
+            -e PYTHONPATH=/opt/videoforge/packages/contracts/python:/opt/videoforge/workers/image-media/src:/opt/videoforge/workers/media-local/src:/worker-tests \
+            -v "$GITHUB_WORKSPACE/workers/media-local/tests:/worker-tests:ro" \
+            vf-cloud-qualified -m unittest test_runpod_job test_personal_worker
+      - name: Record qualified release configuration
         run: |
           set -euo pipefail
           printf 'Offline qualification passed. Private publication is permitted only for the reviewed source update.\n\n' >> "$GITHUB_STEP_SUMMARY"

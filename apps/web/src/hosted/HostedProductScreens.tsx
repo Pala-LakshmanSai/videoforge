@@ -1810,11 +1810,13 @@ export function spanAudioFailureMessage(
     const cause =
       failureCode === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT"
         ? "Cloud audio preparation stopped because temporary storage was insufficient."
-        : failureCode === "MEDIA_EXECUTION_IO_FAILED"
-          ? "Cloud audio preparation could not read or save the clips."
-          : failureCode === "MEDIA_EXECUTION_TIMEOUT"
-            ? "Cloud audio preparation reached its time limit."
-            : "Cloud audio preparation stopped before all clips were accepted.";
+        : failureCode === "CLOUD_MEDIA_UPLOAD_FAILED"
+          ? "Cloud audio preparation could not save a clip after its bounded upload recovery."
+          : failureCode === "MEDIA_EXECUTION_IO_FAILED"
+            ? "Cloud audio preparation could not read or save the clips."
+            : failureCode === "MEDIA_EXECUTION_TIMEOUT"
+              ? "Cloud audio preparation reached its time limit."
+              : "Cloud audio preparation stopped before all clips were accepted.";
     return `${cause} Accepted clips remain saved. ${
       retrying
         ? "The remaining clips are retrying automatically."
@@ -5510,17 +5512,20 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       cloudCleanupPending && ["render", "technical-check"].includes(stage.id)
         ? "RUNNING"
         : stage.status,
-    detail: isCloudMediaStage(stage.id)
-      ? cloudMediaPhaseLabel(
-          cloudStageAttempts[stage.id]?.cloud_phase,
-          cloudStageAttempts[stage.id]?.state ?? "WAITING",
-          query.data.queue?.position,
-        )
-      : stage.status === "COMPLETE" && stage.id !== "video-generation"
-        ? "Complete"
-        : stage.status === "PENDING" && stage.detail === "Waiting for an authoritative update."
-          ? "Waiting"
-          : stage.detail,
+    detail:
+      stage.id === "audio-spanning" && stage.status === "FAILED"
+        ? stage.detail
+        : isCloudMediaStage(stage.id)
+          ? cloudMediaPhaseLabel(
+              cloudStageAttempts[stage.id]?.cloud_phase,
+              cloudStageAttempts[stage.id]?.state ?? "WAITING",
+              query.data.queue?.position,
+            )
+          : stage.status === "COMPLETE" && stage.id !== "video-generation"
+            ? "Complete"
+            : stage.status === "PENDING" && stage.detail === "Waiting for an authoritative update."
+              ? "Waiting"
+              : stage.detail,
   }));
   // Preparation and final validation remain authoritative internal work, not numbered steps.
   const pipelineStages = uiStages.filter(
@@ -6026,7 +6031,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   );
   const unavailableRetryReason = (stageId: string): string => {
     if (stageId === "audio-spanning" && spanAudioBackend === "RUNPOD_POD")
-      return "Cloud audio preparation has no automatic retries remaining. Accepted clips stay saved; check the failure details. No manual replay is available.";
+      return "Cloud audio preparation stopped. Accepted clips stay saved; check the failure details. This finished attempt cannot be restarted from Progress.";
     if (stageId === "audio-spanning")
       return "The connected computer has exhausted this span's automatic retries. Check the local worker, then refresh progress; no manual replay is available.";
     if (stageId === "image-generation" || stageId === "avatar-generation")

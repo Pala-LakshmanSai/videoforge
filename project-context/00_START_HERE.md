@@ -1,6 +1,6 @@
-Cloud now follows current/future VideoForge admission automatically. Read `cloud_access_follows_admission_2026_10_03` in CURRENT_STATE.yaml. Earlier scoped eligibility is superseded (2026-10-03).
+Cloud audio save recovery is locally green; qualification/publication pending. Read `cloud_audio_save_repair_2026_10_03` in CURRENT_STATE.yaml. Cloud access still follows every current/future VideoForge admission.
 
-Cloud readiness repair is published (2026-10-03) at source `8ae9e4e3` / Worker `8c5981cf` (100%). Catalog, preflight and fresh Create share account-scoped Cloud admission; only the affected workspace was added to existing pay-per-use access. Actual Chrome with its 33-second voiceover passes every coverage preset and custom23; Local offline correctly blocks. No new render/provider/compute work. Read `cloud_readiness_repair_2026_10_03` in CURRENT_STATE.yaml and `evidence/acceptance/VF-10-09/2026-10-03-cloud-readiness.md`.
+Catalog/preflight/Create readiness is published at `8ae9e4e3` / Worker `8c5981cf`; admission-derived access supersedes its former account list. See CURRENT_STATE.yaml and the Cloud readiness/admission evidence.
 
 Whole-scene motion replacement and Create coverage selection are published (2026-10-03) at source `89cfe121` / Worker `57f26050` (100%), with migration248 and qualified Desktop0.1.47/Cloud readers. Coverage uses integer 0–100% of the finished video, default 7%, with whole-scene underfill and no overshoot. Legacy plans/outputs remain unchanged. Exact assets, authenticated HTTP and real Chrome controls pass; fresh paid whole-film/editorial acceptance remains open. Read `whole_scene_motion_plan_2026_10_03` in CURRENT_STATE.yaml and `tasks/SEEDANCE_VIDEO_PLAN.md#whole-scene-replacement-follow-up`.
 

@@ -357,6 +357,78 @@ it("shows account admission wait across Cloud transcription progress", async () 
   expect(screen.queryByText("Waiting for capacity")).not.toBeInTheDocument();
 });
 
+it("keeps the Cloud audio failure visible when later clips were cancelled before provider submission", async () => {
+  const projectId = "11111111-1111-4111-8111-111111111111";
+  const failure =
+    "15 of 71 clips are saved. Cloud audio preparation failed; accepted clips remain available.";
+  const detail = {
+    project: {
+      id: projectId,
+      title: "Cloud save failure",
+      created_at: "2026-10-03T07:05:00Z",
+      revision_id: "22222222-2222-4222-8222-222222222222",
+      revision_state: "LOCKED",
+      media_execution_backend: "RUNPOD_POD",
+    },
+    generation_provider: "KIE_FAL",
+    generation: null,
+    gpu_transport: "DISABLED_UNQUALIFIED",
+    gpu_readiness: gpuReadiness,
+    attempts: [
+      {
+        id: "33333333-3333-4333-8333-333333333333",
+        kind: "SPAN_AUDIO",
+        state: "CANCELLED",
+        execution_backend: "RUNPOD_POD",
+        cloud_phase: "CLEAN",
+      },
+    ],
+    span_audio: {
+      total: 71,
+      materialized: 15,
+      planned: 56,
+      running: 0,
+      queued: 0,
+      succeeded: 15,
+      failed: 1,
+      retrying: 0,
+      failure_code: "CLOUD_MEDIA_UPLOAD_FAILED",
+    },
+    stages: stageList({
+      "audio-spanning": "FAILED",
+      "image-generation": "BLOCKED",
+      "avatar-generation": "BLOCKED",
+    }).map((s) => (s.id === "audio-spanning" ? { ...s, detail: failure } : s)),
+    gpu_lanes: [
+      {
+        lane: "mage_image",
+        attempt_state: null,
+        provider_status: null,
+        runtime_state: "BLOCKED",
+        planned_item_count: 227,
+        accepted_item_count: 0,
+        attempt_ordinal: null,
+        submitted_at: null,
+        created_at: null,
+        terminal_at: null,
+      },
+    ],
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => Response.json(detail)),
+  );
+  renderHosted(<HostedProjectScreen projectId={projectId} />);
+  await screen.findByRole("list", { name: "Project stages" });
+  expect(within(stageRow("Audio spanning")).getByText("FAILED")).toBeInTheDocument();
+  expect(within(stageRow("Audio spanning")).getByText(failure)).toBeInTheDocument();
+  expect(within(stageRow("Generate images")).getByText("BLOCKED")).toBeInTheDocument();
+  expect(
+    screen.queryByText("The provider run ended without an accepted result."),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByText(/This provider attempt is terminal/)).not.toBeInTheDocument();
+});
+
 it.each([
   "MEDIA_EXECUTION_SUBPROCESS_FAILED",
   "MEDIA_EXECUTION_FAILED",

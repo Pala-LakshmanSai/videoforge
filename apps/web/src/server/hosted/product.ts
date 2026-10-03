@@ -7580,7 +7580,8 @@ async function projectDetail(
         `SELECT job.state, count(*)::int AS total,
                 min(job.submitted_at) AS started_at, max(job.terminal_at) AS completed_at,
                 count(*) FILTER (
-                  WHERE job.state = 'FAILED' AND job.replay_count < ${SPAN_AUDIO_RETRY_LIMIT}
+                  WHERE job.state = 'FAILED' AND job.execution_backend = 'PERSONAL_WORKER'
+                    AND job.replay_count < ${SPAN_AUDIO_RETRY_LIMIT}
                     AND job.deadline_at > now()
                 )::int AS retryable
            FROM hosted_cpu_job_attempts AS job
@@ -7590,21 +7591,21 @@ async function projectDetail(
           GROUP BY job.state`,
         [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
-      // Stage 6 runs on the owner's computer, so the reason a span could not be cut belongs in the
-      // payload: the owner has to free disk space locally, and the automatic retry then resumes.
+      // Cloud failures live on the CPU attempt; personal failures live on their exact lease.
       const spanAudioFailure = await transaction.query(
-        `SELECT lease.failure_code
-           FROM media_worker_leases AS lease
-           JOIN hosted_cpu_job_attempts AS job
+        `SELECT COALESCE(job.failure_code, lease.failure_code) AS failure_code
+           FROM hosted_cpu_job_attempts AS job
+           LEFT JOIN media_worker_leases AS lease
              ON job.account_id = lease.account_id
             AND job.workspace_id = lease.workspace_id
             AND job.id = lease.attempt_id
           WHERE job.account_id = $1 AND job.workspace_id = $2
             AND job.project_id = $3 AND job.kind = 'SPAN_AUDIO'
             AND job.project_revision_id = $4
-            AND lease.state = 'FAILED' AND lease.failure_code IS NOT NULL
-          GROUP BY lease.failure_code
-          ORDER BY count(*) DESC, lease.failure_code
+            AND job.state = 'FAILED'
+            AND (job.failure_code IS NOT NULL OR (lease.state = 'FAILED' AND lease.failure_code IS NOT NULL))
+          GROUP BY COALESCE(job.failure_code, lease.failure_code)
+          ORDER BY count(*) DESC, failure_code
           LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
@@ -8148,6 +8149,11 @@ async function projectDetail(
         spanCount(spanJobRows, "PERMANENT_FAILED") +
         spanCount(spanJobRows, "DEAD_LETTER"),
     });
+    const audioPreparationFailed = spanAudioProgress.failed > 0 && spanAudioProgress.retrying === 0;
+    const undispatchedApiBlocked =
+      projectApiGeneration &&
+      audioPreparationFailed &&
+      (detail.apiJobs as Record<string, unknown>[]).length === 0;
     const acceptedOutputCounts = new Map<string, number>();
     for (const output of detail.serverlessOutputs as Record<string, unknown>[]) {
       const lane = String(output.lane ?? "").toLowerCase();
@@ -8209,7 +8215,11 @@ async function projectDetail(
           attempt?.provider_status === null || attempt?.provider_status === undefined
             ? null
             : String(attempt.provider_status),
-        runtime_state: runtimeLane ? String(runtimeLane.state) : null,
+        runtime_state: undispatchedApiBlocked
+          ? "BLOCKED"
+          : runtimeLane
+            ? String(runtimeLane.state)
+            : null,
         planned_item_count: plannedItems,
         accepted_item_count: acceptedItems,
         // Durable submission state does not distinguish provider queueing, inference or retrieval.
@@ -8498,11 +8508,15 @@ async function projectDetail(
       {
         id: "image-generation",
         name: "Generate images",
-        status: String(laneState("mage_image")?.state ?? gpuPendingState),
+        status: undispatchedApiBlocked
+          ? "BLOCKED"
+          : String(laneState("mage_image")?.state ?? gpuPendingState),
         progress_percent: laneProgress("mage_image"),
         started_at: timestampOrNull(laneState("mage_image")?.submitted_at),
         completed_at: timestampOrNull(laneState("mage_image")?.terminal_at),
-        detail: "Generate and verify the planned scene images.",
+        detail: undispatchedApiBlocked
+          ? "Images have not been submitted. Cloud audio preparation must finish first."
+          : "Generate and verify the planned scene images.",
         eta_ms: null,
       },
       ...(videoPlan && requestedVideoCoverage > 0
@@ -8543,7 +8557,9 @@ async function projectDetail(
       {
         id: "avatar-generation",
         name: "Generate avatar video",
-        status: String(laneState("soulx_avatar")?.state ?? gpuPendingState),
+        status: undispatchedApiBlocked
+          ? "BLOCKED"
+          : String(laneState("soulx_avatar")?.state ?? gpuPendingState),
         progress_percent: laneProgress("soulx_avatar"),
         started_at: timestampOrNull(laneState("soulx_avatar")?.submitted_at),
         completed_at: timestampOrNull(laneState("soulx_avatar")?.terminal_at),

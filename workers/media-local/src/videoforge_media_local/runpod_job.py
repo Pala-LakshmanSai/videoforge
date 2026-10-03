@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import http.client
 import io
 import json
 import os
@@ -164,12 +165,22 @@ def verify_runtime(spec: RunPodJob, manifest_path: Path) -> media.ToolPaths:
     return tools
 
 
+class _ControlHttpError(ValueError):
+    def __init__(self, status: int) -> None:
+        super().__init__("RunPod control capability was rejected")
+        self.status = status
+
+
+class _CloudUploadFailed(OSError):
+    pass
+
+
 def _control(url: str, token: str, lease: str, body: object) -> object:
     status, value = media._request_json(url, "POST", {
         "authorization": f"Bearer {token}", "x-videoforge-lease-token": lease,
     }, body)
     if status != 200:
-        raise ValueError("RunPod control capability was rejected")
+        raise _ControlHttpError(status)
     return value
 
 
@@ -251,22 +262,48 @@ def _multipart(port: dict, source: BinaryIO, size: int, checksum: str,
 def _upload(url: str, source_name: str, key: str, content_type: str,
             source: BinaryIO, size: int, checksum: str, token: str, lease: str,
             should_cancel) -> None:
-    port = _control(url, token, lease, {
+    facts = {
         "schema_version": "videoforge-personal-worker-upload-authority/v1",
         "source": source_name, "object_key": key, "content_type": content_type,
         "content_length": size, "checksum_sha256": checksum,
-    })
-    if (not isinstance(port, dict) or port.get("contentLength") != size
-            or port.get("checksumSha256") != checksum or port.get("contentType") != content_type):
-        raise ValueError("RunPod upload authority differs from exact facts")
-    if should_cancel():
-        raise media._PersonalJobCancelled
-    if port.get("method") == "MULTIPART":
-        _multipart(port, source, size, checksum, token, lease, should_cancel)
-    elif port.get("method") == "PUT" and size <= _SINGLE_PUT_MAX_BYTES:
-        media._stream_put(port, source, size)
-    else:
-        raise ValueError("RunPod upload method or size is unsupported")
+    }
+    # Renew only this exact upload authority and resend the same verified bytes. No
+    # media processing or provider inference is repeated. Multipart owns its retries.
+    offset = source.tell()
+    for attempt in range(3):
+        if should_cancel():
+            raise media._PersonalJobCancelled
+        multipart = False
+        try:
+            port = _control(url, token, lease, facts)
+            if (not isinstance(port, dict) or port.get("contentLength") != size
+                    or port.get("checksumSha256") != checksum or port.get("contentType") != content_type):
+                raise ValueError("RunPod upload authority differs from exact facts")
+            if should_cancel():
+                raise media._PersonalJobCancelled
+            if port.get("method") == "MULTIPART":
+                multipart = True
+                _multipart(port, source, size, checksum, token, lease, should_cancel)
+            elif port.get("method") == "PUT" and size <= _SINGLE_PUT_MAX_BYTES:
+                source.seek(offset)
+                media._stream_put(port, source, size)
+            else:
+                raise ValueError("RunPod upload method or size is unsupported")
+            return
+        except (OSError, ValueError, http.client.HTTPException) as error:
+            transient = (
+                isinstance(error, (_ControlHttpError, media._PersonalUploadHttpError))
+                and error.status in media._TRANSIENT_DOWNLOAD_HTTP_STATUS_CODES
+            ) or media._is_transient_download_error(error) or isinstance(error, http.client.HTTPException)
+            if multipart or not transient:
+                raise
+            if attempt == 2:
+                raise _CloudUploadFailed("Cloud output upload transport exhausted") from error
+            # Check cancellation during bounded backoff, including rental deadline expiry.
+            for _ in range(10 * (attempt + 1)):
+                if should_cancel():
+                    raise media._PersonalJobCancelled
+                time.sleep(0.1)
 
 
 def _renewed_objects(original: RunPodJob, renewed: RunPodJob) -> dict[str, dict]:
@@ -501,6 +538,8 @@ def run(spec: RunPodJob, token: str, lease: str, tools: media.ToolPaths, *,
         status, failure = media._stopped_completion(monitor)
     except subprocess.TimeoutExpired:
         status, failure = "FAILED", "MEDIA_EXECUTION_TIMEOUT"
+    except _CloudUploadFailed:
+        status, failure = "FAILED", "CLOUD_MEDIA_UPLOAD_FAILED"
     except (OSError, ValueError, KeyError, TypeError):
         status, failure = "FAILED", "MEDIA_EXECUTION_FAILED"
     finally:

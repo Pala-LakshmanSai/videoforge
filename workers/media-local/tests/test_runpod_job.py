@@ -251,6 +251,58 @@ class RunPodJobTests(unittest.TestCase):
                               source, response["contentLength"], response["checksumSha256"],
                               "capability", "lease", lambda: False)
 
+    def test_single_put_recovers_lost_authority_and_response_with_identical_bytes(self):
+        response = {"method": "PUT", "contentLength": 3, "contentType": "audio/wav",
+                    "checksumSha256": "sha256:" + "a" * 64}
+        source = io.BytesIO(b"abc")
+        sent = []
+        def put(port, stream, size):
+            sent.append(stream.read())
+            if len(sent) == 1:
+                raise ConnectionResetError("lost response")
+        with patch.object(cloud, "_control", side_effect=[cloud._ControlHttpError(503), response, response]) as control, \
+                patch.object(cloud.media, "_stream_put", side_effect=put), patch.object(cloud.time, "sleep"):
+            cloud._upload("https://app.test/upload", "PRIMARY_RESULT_OUTPUT", "exact-key", "audio/wav",
+                          source, 3, response["checksumSha256"], "capability", "lease", lambda: False)
+        self.assertEqual(sent, [b"abc", b"abc"])
+        self.assertEqual(control.call_count, 3)
+        self.assertTrue(all(call.args == control.call_args_list[0].args for call in control.call_args_list))
+
+    def test_single_put_retries_transient_status_but_never_authority_or_integrity_rejections(self):
+        response = {"method": "PUT", "contentLength": 3, "contentType": "audio/wav",
+                    "checksumSha256": "sha256:" + "a" * 64}
+        for status, expected in [(503, 3), (429, 3), (403, 1), (409, 1)]:
+            with self.subTest(status=status), patch.object(cloud, "_control", return_value=response) as control, \
+                    patch.object(cloud.media, "_stream_put", side_effect=cloud.media._PersonalUploadHttpError(status)) as put, \
+                    patch.object(cloud.time, "sleep"):
+                with self.assertRaises(cloud._CloudUploadFailed if expected == 3 else ValueError):
+                    cloud._upload("https://app.test/upload", "PRIMARY_RESULT_OUTPUT", "exact-key", "audio/wav",
+                                  io.BytesIO(b"abc"), 3, response["checksumSha256"], "capability", "lease", lambda: False)
+                self.assertEqual(control.call_count, expected)
+                self.assertEqual(put.call_count, expected)
+        with patch.object(cloud, "_control", return_value={**response, "checksumSha256": "sha256:" + "b" * 64}) as control, \
+                patch.object(cloud.media, "_stream_put") as put:
+            with self.assertRaisesRegex(ValueError, "exact facts"):
+                cloud._upload("https://app.test/upload", "PRIMARY_RESULT_OUTPUT", "exact-key", "audio/wav",
+                              io.BytesIO(b"abc"), 3, response["checksumSha256"], "capability", "lease", lambda: False)
+            self.assertEqual(control.call_count, 1)
+            put.assert_not_called()
+
+    def test_single_put_cancellation_stops_retry_without_resending(self):
+        response = {"method": "PUT", "contentLength": 3, "contentType": "audio/wav",
+                    "checksumSha256": "sha256:" + "a" * 64}
+        stopped = False
+        def put(*args):
+            nonlocal stopped
+            stopped = True
+            raise ConnectionResetError("lost response")
+        with patch.object(cloud, "_control", return_value=response) as control, \
+                patch.object(cloud.media, "_stream_put", side_effect=put):
+            with self.assertRaises(cloud.media._PersonalJobCancelled):
+                cloud._upload("https://app.test/upload", "PRIMARY_RESULT_OUTPUT", "exact-key", "audio/wav",
+                              io.BytesIO(b"abc"), 3, response["checksumSha256"], "capability", "lease", lambda: stopped)
+            self.assertEqual(control.call_count, 1)
+
 
 if __name__ == "__main__":
     unittest.main()
