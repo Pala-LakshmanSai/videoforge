@@ -303,6 +303,13 @@ class RunPodJobTests(unittest.TestCase):
                               io.BytesIO(b"abc"), 3, response["checksumSha256"], "capability", "lease", lambda: stopped)
             self.assertEqual(control.call_count, 1)
 
+    def test_non_json_http_error_preserves_transient_status_for_upload_recovery(self):
+        error = urllib.error.HTTPError("https://app.test/upload", 503, "unavailable", {}, io.BytesIO(b"<html>Unavailable</html>"))
+        with patch("urllib.request.urlopen", side_effect=error), patch.object(cloud.media, "https_context"):
+            with self.assertRaises(cloud._ControlHttpError) as caught:
+                cloud._control("https://app.test/upload", "capability", "lease", {})
+            self.assertEqual(caught.exception.status, 503)
+
 
 if __name__ == "__main__":
     unittest.main()

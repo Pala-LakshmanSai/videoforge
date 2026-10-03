@@ -322,7 +322,13 @@ def _request_json(
             return response.status, json.loads(data) if data else None
     except urllib.error.HTTPError as error:
         data = error.read(maximum + 1)
-        return error.code, json.loads(data) if data else None
+        # Proxies can return HTML/text for a transient HTTP error. Preserve the
+        # status so exact upload recovery can distinguish it from authority denial.
+        try:
+            value = json.loads(data) if data and len(data) <= maximum else None
+        except (ValueError, UnicodeDecodeError):
+            value = None
+        return error.code, value
 
 
 def _is_transient_download_error(error: BaseException) -> bool:
