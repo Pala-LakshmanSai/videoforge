@@ -1,12 +1,14 @@
-Cloud audio save recovery is published at `844992af` / Worker `35bc258e` (100%). Native qualification, authenticated HTTP and real Chrome pass. Read `cloud_audio_save_repair_2026_10_03` in CURRENT_STATE.yaml. Cloud access follows every current/future admission; old terminal work is not replayed.
+Create/queue handoff is published at `9e64470d` / Worker `2a02ff20` (100%): exact job acceptance returns without waiting for the shared driver check; pending Create shows saving/queue status.254 focused tests, assets/HTTP/Chrome pass; existing video COMPLETE, three clean rentals, zero Pods. Read `creation_queue_handoff_2026_10_03` in CURRENT_STATE.yaml. Fresh first-submission timing remains unmeasured.
+
+Cloud audio save recovery retains native qualification, bounded uploads, truthful failures and admission-derived access. Read `cloud_audio_save_repair_2026_10_03` in CURRENT_STATE.yaml.
 
 Catalog/preflight/Create readiness is published at `8ae9e4e3` / Worker `8c5981cf`; admission-derived access supersedes its former account list. See CURRENT_STATE.yaml and the Cloud readiness/admission evidence.
 
 Whole-scene coverage retains migration248 and Desktop0.1.47: integer0–100%, default7%, whole-scene underfill without overshoot; legacy plans/outputs preserved. Assets/HTTP/Chrome pass; fresh paid/editorial gates remain. Read `whole_scene_motion_plan_2026_10_03` in CURRENT_STATE.yaml and `tasks/SEEDANCE_VIDEO_PLAN.md#whole-scene-replacement-follow-up`.
 
-Progress stage simplification (2026-10-03) is published at `b5fd4d5c` / Worker `831cb605` (100%): hide Prepare project and Technical check, retain internal validation and elapsed time, and show the recorded GPU as released during API work. All23 public assets match; on-demand Pod lifecycle is unchanged. Read `progress_stage_simplification_2026_10_03` in CURRENT_STATE.yaml. Chrome control remains unavailable.
+Progress simplification retains internal gates, wall elapsed and durable released-compute labels. Read `progress_stage_simplification_2026_10_03` in CURRENT_STATE.yaml; its historical browser gap remains separate from current Create/Queue/Progress proof.
 
-Earlier180-second Seedance Cloud acceptance retains exact7% motion, original narration/full decode and five clean rentals. Read `seedance_cloud_worker_acceptance_2026_10_03` in CURRENT_STATE.yaml and `evidence/acceptance/VF-10-09/2026-10-03-seedance-cloud-workers.md`; Local, long performance/editorial and invoices remain separate gates.
+Earlier180-second Cloud acceptance retains7% motion, narration/decode and five clean rentals. Read `seedance_cloud_worker_acceptance_2026_10_03` in CURRENT_STATE.yaml; Local, long performance/editorial and invoices remain separate.
 
 Progress elapsed fix is published from `f705d6c2` / Worker `f8b36fdf` on `codex/progress-elapsed`: wall-clock time counts parallel work once and includes waits. Read `progress_elapsed_2026_10_02` in CURRENT_STATE.yaml.
 
