@@ -164,6 +164,6 @@ Before delivery verify:
 - MP4 is seekable and plays in the user's Chrome.
 
 
-## Requested whole scene motion and selectable coverage (2026-10-03)
+## Published whole scene motion and selectable coverage (2026-10-03)
 
-DEC_VIDEO_SCENE_001 and DEC_VIDEO_COVERAGE_001 define the requested next behavior, still unimplemented: each accepted clip replaces a complete IMAGE_FULL scene within the user-selected finished-video coverage ceiling. Proposed Create range is integer 0–100%, default 7%; zero skips motion, high values saturate at eligible scene capacity, and avatars retain their timing/layout. Whole-scene underfill is valid; no silent overshoot. Existing revision plans remain immutable. See [the combined implementation plan](tasks/SEEDANCE_VIDEO_PLAN.md#whole-scene-replacement-follow-up).
+DEC_VIDEO_SCENE_001 and DEC_VIDEO_COVERAGE_001 are published in source 89cfe121: each accepted WHOLE_SCENE_V2 clip replaces a complete IMAGE_FULL scene within the user-selected finished-video coverage ceiling. Create accepts integers 0–100%, default 7%; zero skips scene footage, high values saturate at eligible scene capacity, and avatars retain their timing/layout. Whole-scene underfill is valid; no silent overshoot. Existing LEGACY_PREFIX_V1 plans retain their immutable 7% prefixes and outputs. Migration248, qualified Desktop0.1.47/Cloud readers and provider-free composition checks pass. Fresh paid whole-film/editorial acceptance remains separate. See [the combined implementation plan](tasks/SEEDANCE_VIDEO_PLAN.md#whole-scene-replacement-follow-up) and CURRENT_STATE.yaml.

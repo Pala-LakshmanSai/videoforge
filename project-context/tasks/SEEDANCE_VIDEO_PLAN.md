@@ -52,7 +52,7 @@ Progress UI follow-up (2026-10-03): user requests removing Prepare project and T
 
 ## Whole scene replacement follow-up
 
-Updated 2026-10-03. The user requested a combined implementation plan first, and confirmed that coverage means a percentage of the finished video. The user subsequently authorized implementation, all presets including 75% and 100%, and production publication. Source implementation is complete; qualification and publication gates remain pending.
+Updated 2026-10-03. The user requested a combined implementation plan first, and confirmed that coverage means a percentage of the finished video. The user subsequently authorized implementation, all presets including 75% and 100%, and production publication. Source implementation, additive migration, qualified Desktop/Cloud readers and production publication are complete. Exact public-asset readback and live Chrome coverage controls pass; fresh provider-backed whole-scene and full-film editorial acceptance remain separate gates.
 
 ### Product outcome
 
@@ -94,7 +94,7 @@ Inspected checkout codex/seedance-video at 28a335bf, including application b5fd4
 
 ### Existing car video repair
 
-Identify the exact project and canonical scene; verify the accepted car clip's checksum and playable frames. If it covers the complete scene, reuse it through a new immutable render revision/output without replaying image, avatar or video inference. If it is too short, full animation needs a separately scoped longer clip; the no-new-generation option uses the still throughout. A revised coverage choice must explicitly permit the entire scene. Preserve old output and receipts. Render-only Cloud work can still cost compute. The planning request does not start this repair.
+The retained export has 991 total frames; its car scene is [524,676), 152 frames (5.0667 seconds). Its immutable legacy 7% selection plays 69 video frames and then 83 still frames. A whole-scene request needs 5.2 generated seconds and a ceiling of at least 16%; existing export and receipts were not rewritten. Verify the accepted car clip's checksum and playable frames before any repair. If it covers the complete scene, reuse it through a new immutable render revision/output without replaying image, avatar or video inference. If it is too short, full animation needs a separately scoped longer clip; the no-new-generation option uses the still throughout. A revised coverage choice must explicitly permit the entire scene. Preserve old output and receipts. Render-only Cloud work can still cost compute. The planning request does not start this repair.
 
 ### Implementation order and acceptance gates
 
@@ -112,4 +112,12 @@ Required matrix:
 - Renderer: synthetic moving clip versus distinct still, decoded across every selected scene frame and boundary; no still tail/freeze/loop, no missing frames, unchanged total duration and narration, unchanged avatar composition. Reject partial scenes and too-short media under the new policy.
 - Product truth: requested/planned/accepted percentages and padded-duration cost agree with database and manifest; definite fallback lowers coverage and retains charge; Chrome verifies the final scene cuts rather than only UI labels.
 
-Handoff: V2-09 plan based on 28a335bf; source/screenshot evidence, not a fresh video acceptance. Planning and context edits only. New spend USD0; no provider requests, deployment, compute start/stop or inventory refresh. Implementation, migration, qualified releases, authorized canary/repair and real Chrome editorial acceptance remain open.
+### Implemented release and current gates
+
+Feature ee462b51af16c6bd095ca75f50fc026ca980f777 supplies all presets plus custom integers, finished-video coverage, immutable whole-scene policy and v3 renderer admission. Recovery d312c9898d3178f3ff2f4d1d83d2cbfc9c4eda18 resumes pending saved video work after stopped Workflow execution without reposting uncertain inference. Published source 89cfe121aff173311bccf11329b3f0444404f407 preserves policies, selection hashes, receipts and unknown job identities through metadata backup/restore. Legacy 7% prefix selections remain unchanged.
+
+Additive migration 248 is installed; 34 read-only production ledger/hash/role/RLS/scope/immutability checks pass. Qualified Desktop 0.1.47 and Cloud runtime run 37097442361 consume v3 and retain old versions. Cloudflare 57f26050-261e-4032-9f10-64dedce327b2 serves 100% traffic with the existing 51 bindings, 25 secrets and three Workflow resource identities; no new Workflow or paid project create occurred. Exact runtime hashes, test evidence and remaining gates are recorded in evidence/acceptance/VF-10-09/2026-10-03-whole-scene-coverage.md.
+
+Focused UI/API, planner, SQL, contracts, native synthetic FFmpeg, cancellation/uncertainty recovery and backup/restore checks pass. A provider-free 60-minute timeline passed every integer 0–100; 75% and 100% both saturate at the fixture's 75% eligible image time. This does not establish actual provider performance, a 30-minute speedup or a fresh generated whole film. Authenticated production HTTP validation passes 18 cases without project creation, generation starts or provider calls. Exact 23 static payloads and root HTML pass publication readback; 39 native/desktop inputs match the qualified release. Live Chrome presets/custom 23, keyboard 24, invalid 101 and mobile 390px controls pass with no horizontal overflow. Broad CI still has existing baseline failures. The unchanged 5000-observation wait bound can require reconciliation/resume for long high-coverage work; no fresh provider-backed high-coverage film was used to qualify that behavior.
+
+Handoff: V2-09, published source 89cfe121; new provider/compute spend USD0. Fresh direct RunPod inventory is empty, while a retained historical STOPPING/UNKNOWN launch with no Pod ID or verified cleanup remains unresolved. No new paid canary or car-export repair occurred. Real full-video editorial/playback, separately bounded paid acceptance/repair, long performance and final invoices remain unverified. Rollback must retain additive 248 and compatible v3 readers while disabling fresh admission and draining/reconciling exact submitted identities.
