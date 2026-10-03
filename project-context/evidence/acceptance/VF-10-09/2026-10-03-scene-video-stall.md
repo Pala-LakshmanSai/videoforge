@@ -1,6 +1,6 @@
 # Scene-video stall repair — 2026-10-03
 
-Checkpoint V2-09, codex/seedance-video. Publication and existing-project recovery pending at this source commit.
+Checkpoint V2-09, codex/seedance-video. Production source171f9ca2cc8d0a8529b1892c24f130e5a658bb80, Worker aa97d6b3-f1eb-4a91-8914-9e05e1135842 at100%. Existing-project recovery is verified; final assembly is running.
 
 ## Proven cause
 
@@ -15,3 +15,9 @@ Exact UUID/no mixed-result HTTP400 videoInference providerError is now terminal,
 The first reruns hit local ENOSPC; reproducible old builds/dry-run duplicates were removed and old bundles losslessly compressed, preserving source, accepted media, current rollback bundles and private receipts. The final suite passes.
 
 No fresh inference or canary is requested. Existing final render uses the already authorized ongoing Cloud lifecycle. Production recovery, final output, Chrome and compute cleanup must be verified separately; provider invoices and fresh30-minute performance remain unverified. Private exact task/provider/Workflow records are retained outside Git; no credentials or customer identities appear here.
+
+## Production recovery
+
+Publication preserves51 bindings,25 secret names,three Workflow resource identities andfour qualified native pins. All23 public payloads plus routed HTML match exactly. At14:26:48Z the original Workflow restarted automatically, settled the exact terminal task, and completed RENDER_SCHEDULED at14:26:56Z. No operator SQL repair, manual restart, new Workflow identity or inference POST occurred. All17 accepted clip checksums/receipt IDs/reported costs and all18 job UUIDs match the pre-release snapshot;233 images/71 avatars remain accepted. Owner detail HTTP200 and foreign404 pass. Real Chrome shows footage COMPLETE, one original-still fallback,6.47% actual motion and final assembly RUNNING. The original final render has one RUNNING attempt and one temporary rental; prior19 rentals are verified CLEAN. Assembly has advanced through downloading to RENDERING. Final output and cleanup remain pending at this handoff; the original ongoing Cloud authority governs them.
+
+Project Index update applied; other GPT Space writes/readbacks and Coverage reads encounter RPC UNAVAILABLE/session-closed errors. Their outcomes require future readback before retry; repository evidence remains authoritative. No Obsidian fallback.

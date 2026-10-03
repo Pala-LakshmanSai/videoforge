@@ -1,4 +1,4 @@
-Scene-video stall repair is locally prepared. Exact Runware HTTP400 terminal failure was being polled as temporary; the Workflow then exhausted5000 observations. Read `scene_video_stall_repair_2026_10_03` in CURRENT_STATE.yaml. Prior single-action Create and native pins remain.
+Scene-video stall repair is published at `171f9ca2` / Worker `aa97d6b3` (100%). Exact terminal Runware400 failure now settles to the saved image; stopped footage recovers automatically. Existing233 images/71 avatars/17 clips are intact; final Cloud assembly is running. Read `scene_video_stall_repair_2026_10_03` in CURRENT_STATE.yaml for proof and remaining cleanup.
 
 Cloud audio save recovery retains bounded uploads and truthful failures. Read `cloud_audio_save_repair_2026_10_03` in CURRENT_STATE.yaml.
 
