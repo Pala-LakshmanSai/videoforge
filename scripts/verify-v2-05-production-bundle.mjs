@@ -67,9 +67,11 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // staging bytes: v3 provenance, variable ceiling and full-scene guards. Fresh measured
 // closures are2,806,527 and2,803,452; provider/generated validators stay dynamic.
 // All quarantine, CPU bounds and exact no-growth checks remain enabled.
+// Browser CPU admission moves the shared driver check to the request's background lifetime.
+// Exact measured production/staging closures add211 bytes each; imports/quarantine are unchanged.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_806_527,
-  "wrangler.staging.jsonc": 2_803_452,
+  "wrangler.production.jsonc": 2_806_738,
+  "wrangler.staging.jsonc": 2_803_663,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",

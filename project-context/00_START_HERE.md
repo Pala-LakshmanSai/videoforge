@@ -6,11 +6,11 @@ Whole-scene coverage retains migration248 and Desktop0.1.47: integer0–100%, de
 
 Progress stage simplification (2026-10-03) is published at `b5fd4d5c` / Worker `831cb605` (100%): hide Prepare project and Technical check, retain internal validation and elapsed time, and show the recorded GPU as released during API work. All23 public assets match; on-demand Pod lifecycle is unchanged. Read `progress_stage_simplification_2026_10_03` in CURRENT_STATE.yaml. Chrome control remains unavailable.
 
-Seedance Cloud worker acceptance (2026-10-03) passes a fresh180-second production video:35 images,11 avatars,3 motion clips, exactly7% motion, original narration/full1080p30fps decode and all5 test Pods deleted. Published Cloud worker source matches all39 packaged files; production remains `390daad69` / Worker `4498a464` at100%. Read `seedance_cloud_worker_acceptance_2026_10_03` in CURRENT_STATE.yaml and `evidence/acceptance/VF-10-09/2026-10-03-seedance-cloud-workers.md`. User excludes Local rendering tests; Chrome control, long performance/editorial and invoices remain unverified.
+Earlier180-second Seedance Cloud acceptance retains exact7% motion, original narration/full decode and five clean rentals. Read `seedance_cloud_worker_acceptance_2026_10_03` in CURRENT_STATE.yaml and `evidence/acceptance/VF-10-09/2026-10-03-seedance-cloud-workers.md`; Local, long performance/editorial and invoices remain separate gates.
 
 Progress elapsed fix is published from `f705d6c2` / Worker `f8b36fdf` on `codex/progress-elapsed`: wall-clock time counts parallel work once and includes waits. Read `progress_elapsed_2026_10_02` in CURRENT_STATE.yaml.
 
-Natural Documentary default is published at source `fc312257` / Worker `0eb01e34` (2026-10-02). Migration239 and two-account authenticated catalog/default/privacy readback pass. Read `natural_documentary_2026_10_02` in CURRENT_STATE.yaml first for current release proof and limitations. Historical style versions and existing project pins are preserved.
+Natural Documentary retains migration239, verified private catalogs and immutable historical pins. Read `natural_documentary_2026_10_02` in CURRENT_STATE.yaml for release proof and limits.
 
 Ordinary Cloud follows DEC_CLOUD_BILLING_001: pay for temporary RunPod uptime as videos are created, without an account spend cap, expiry or rental quota.
 Published source3932c982 / Cloudflare252dedc0 completes a fresh159.2s video with all media execution remote, exact R2 checksum/full decode and real Chrome playback. All five Pods terminated; zero owned VideoForge Pods remain. Read `cloud_pay_per_use_2026_10_01` in CURRENT_STATE.yaml.
@@ -1964,3 +1964,4 @@ decisions: `15_DECISIONS_AND_OPEN_GATES.md`; architecture: `06_SYSTEM_ARCHITECTU
 `21_IMPLEMENTATION_EXECUTION_PLAN.md`; completion checkpoints:
 `22_PROJECT_COMPLETION_CHECKPOINTS.md`; copy-ready prompts:
 `templates/CHECKPOINT_CHAT_PROMPTS.md`; maintenance: `16_CONTEXT_MAINTENANCE.md`.
+Create-to-queue handoff is locally green; publication pending. Read `creation_queue_handoff_2026_10_03` in CURRENT_STATE.yaml. The exact job remains durable; shared continuation checking no longer delays browser admission.

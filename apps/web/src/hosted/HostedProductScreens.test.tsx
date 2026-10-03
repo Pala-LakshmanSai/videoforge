@@ -7771,6 +7771,36 @@ it("retains an accepted project identity when a later step returns a typed Cloud
   expect(checks).toBe(1);
 });
 
+it("shows active queue submission before an uncertain result without suggesting a concurrent retry", async () => {
+  let rejectCreate!: (error: Error) => void;
+  const pendingCreate = new Promise<Response>((_resolve, reject) => {
+    rejectCreate = reject;
+  });
+  const creates = vi.fn(() => pendingCreate);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.endsWith("/api/v2/hosted/project-catalog")) return Response.json(coverageCatalog());
+      if (path.endsWith("/api/v2/hosted/projects/preflight"))
+        return Response.json({ ok: true, ready: true, estimate: { projected_usd: 0 } });
+      if (path.endsWith("/api/v2/hosted/projects")) return creates();
+      throw new Error("Unexpected request");
+    }),
+  );
+  renderHosted(<HostedCreateProjectScreen />);
+  await fillCoverageCreateForm();
+  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  await waitFor(() => expect(creates).toHaveBeenCalledTimes(1));
+  expect(screen.getByText("Saving your project and adding it to the queue…")).toBeInTheDocument();
+  expect(screen.queryByText(/Your original creation request is saved/u)).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Create project & start" })).toBeDisabled();
+  rejectCreate(new Error("connection lost"));
+  await screen.findByText("connection lost");
+  expect(screen.getByText(/Your original creation request is saved/u)).toBeInTheDocument();
+  expect(creates).toHaveBeenCalledTimes(1);
+});
+
 it("blocks positive coverage when unavailable and allows Off without scene-video readiness", async () => {
   vi.stubGlobal(
     "fetch",

@@ -613,11 +613,15 @@ async function handleCpuSubmission(
         if (launchable.rows[0]?.id !== prepared.attemptId)
           throw new Error("PROJECT_LIFECYCLE_CLOSED");
         if (launchable.rows[0].state !== "PLANNED") return launchable.rows[0].state;
-        await startHostedCpuWorkflow(environment, {
-          attemptId: prepared.attemptId,
-          accountId: scope.account_id,
-          workspaceId: scope.workspace_id,
-        });
+        await startHostedCpuWorkflow(
+          environment,
+          {
+            attemptId: prepared.attemptId,
+            accountId: scope.account_id,
+            workspaceId: scope.workspace_id,
+          },
+          trusted ? undefined : executionContext,
+        );
         const outboxed = await transaction.query<{ id: string }>(
           `UPDATE hosted_cpu_job_attempts
               SET state = 'OUTBOXED', job_spec_content_length = $2,
@@ -1079,6 +1083,7 @@ async function handleCpuOutputDelete(
 export async function startHostedCpuWorkflow(
   environment: HostedRuntimeEnvironment,
   params: { readonly attemptId: string; readonly accountId: string; readonly workspaceId: string },
+  executionContext?: HostedExecutionContext,
 ): Promise<{ readonly id: string }> {
   if (
     !UUID.test(params.attemptId) ||
@@ -1090,7 +1095,12 @@ export async function startHostedCpuWorkflow(
   if (!workflow) throw new Error("Hosted Workflow binding is unavailable.");
   const started = await workflow.create({ id: params.attemptId, params });
   const { ensureHostedContinuationDriver } = await import("./pair-observer-guard");
-  await ensureHostedContinuationDriver(environment);
+  const continuation = ensureHostedContinuationDriver(environment);
+  // Browser admission waits for its exact durable workflow, then returns promptly.
+  // The shared driver's best-effort check must not hold the attempt transaction open.
+  // Internal schedulers without a real request lifetime retain their awaited behavior.
+  if (executionContext) executionContext.waitUntil(continuation);
+  else await continuation;
   return started;
 }
 

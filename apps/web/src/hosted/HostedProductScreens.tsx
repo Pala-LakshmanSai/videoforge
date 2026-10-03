@@ -3556,7 +3556,11 @@ export function HostedCreateProjectScreen() {
               ) : null}
             </fieldset>
           ) : null}
-          {creationLocked ? (
+          {submit.isPending ? (
+            <p className="helper" role="status">
+              Saving your project and adding it to the queue…
+            </p>
+          ) : creationLocked ? (
             <p className="helper" role="status">
               Your original creation request is saved. Retry with these inputs to confirm it; check
               Projects before starting another video.
