@@ -1,4 +1,4 @@
-Create/queue handoff is published at `9e64470d` / Worker `2a02ff20` (100%): exact job acceptance returns without waiting for the shared driver check; pending Create shows saving/queue status.254 focused tests, assets/HTTP/Chrome pass; existing video COMPLETE, three clean rentals, zero Pods. Read `creation_queue_handoff_2026_10_03` in CURRENT_STATE.yaml. Fresh first-submission timing remains unmeasured.
+Single-action Create is published at `4ed85859` / Worker `93e05688` (100%). No readiness button; checks run automatically. Create/shared coverage copy is concise.222 screen tests, build/types/assets/Chrome controls pass. Read `concise_one_action_create_2026_10_03` in CURRENT_STATE.yaml; prior exact-job handoff and filename-title autofill remain. Fresh first-submission timing remains unmeasured.
 
 Cloud audio save recovery retains bounded uploads and truthful failures. Read `cloud_audio_save_repair_2026_10_03` in CURRENT_STATE.yaml.
 
