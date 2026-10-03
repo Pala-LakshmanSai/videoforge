@@ -49,14 +49,19 @@ const testState = vi.hoisted(() => {
   const workerDeviceRows: Record<string, unknown>[] = [];
   const cleanup = { pending: false };
   const query = vi.fn(async (sql: string, params?: readonly unknown[]) => {
-    if (sql.includes("FROM cloud_media_reservations r") && sql.includes("AS pending")) return { rows: [cleanup], affectedRows: 1 };
+    if (sql.includes("FROM cloud_media_reservations r") && sql.includes("AS pending"))
+      return { rows: [cleanup], affectedRows: 1 };
     void params;
     if (sql.includes("videoforge_consume_hosted_rate_limit"))
       return { rows: rateLimitRows, affectedRows: 1 };
     if (sql.includes("videoforge_hosted_session_scope"))
       return { rows: scopeRows, affectedRows: 1 };
-    if (sql.includes("SELECT authority.object_key, authority.issued_content_length AS content_length") &&
-        sql.includes("JOIN hosted_project_reviews AS review"))
+    if (
+      sql.includes(
+        "SELECT authority.object_key, authority.issued_content_length AS content_length",
+      ) &&
+      sql.includes("JOIN hosted_project_reviews AS review")
+    )
       return { rows: approvedDownloadRows, affectedRows: approvedDownloadRows.length };
     // The picker's "which avatar can this workspace actually dispatch" lookup. It also selects the
     // canonical key, so it has to be routed before the pinned-avatar branch below.
@@ -69,7 +74,10 @@ const testState = vi.hoisted(() => {
       return { rows: preflightAvatarRows, affectedRows: preflightAvatarRows.length };
     }
     // The create path's own runtime-source read (preflight is a browser convenience, not the guard).
-    if (sql.includes("FROM avatar_profile_versions AS version") && sql.includes("LEFT JOIN assets AS runtime_source"))
+    if (
+      sql.includes("FROM avatar_profile_versions AS version") &&
+      sql.includes("LEFT JOIN assets AS runtime_source")
+    )
       return { rows: runtimeSourceRows, affectedRows: runtimeSourceRows.length };
     if (sql.includes("version.runtime_source_binary_sha256"))
       return { rows: presetAvatarRows, affectedRows: presetAvatarRows.length };
@@ -191,72 +199,175 @@ describe("approved final MP4 download", () => {
   const key = `tenant/owned/workspace/owned/project/${PROJECT_ID}/revision/owned/lane/render/job/owned/artifact/final-mp4`;
 
   it("streams an approved, matched R2 output on the authenticated origin", async () => {
-    testState.approvedDownloadRows.push({ object_key: key, content_length: bytes.length, checksum_sha256: checksum });
+    testState.approvedDownloadRows.push({
+      object_key: key,
+      content_length: bytes.length,
+      checksum_sha256: checksum,
+    });
     const digest = Uint8Array.from(Buffer.from("a".repeat(64), "hex")).buffer;
-    const head = vi.fn(async () => ({ size: bytes.length, httpMetadata: { contentType: "video/mp4" }, checksums: { sha256: digest } }));
-    const get = vi.fn(async () => ({ size: bytes.length, httpMetadata: { contentType: "video/mp4" }, body: new ReadableStream({ start(controller) { controller.enqueue(bytes); controller.close(); } }) }));
+    const head = vi.fn(async () => ({
+      size: bytes.length,
+      httpMetadata: { contentType: "video/mp4" },
+      checksums: { sha256: digest },
+    }));
+    const get = vi.fn(async () => ({
+      size: bytes.length,
+      httpMetadata: { contentType: "video/mp4" },
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(bytes);
+          controller.close();
+        },
+      }),
+    }));
     try {
-      const result = await handleHostedProductRequest(request(path, "GET"), { PRIVATE_ARTIFACTS: { head, get } } as unknown as HostedRuntimeEnvironment, config, executionContext);
+      const result = await handleHostedProductRequest(
+        request(path, "GET"),
+        { PRIVATE_ARTIFACTS: { head, get } } as unknown as HostedRuntimeEnvironment,
+        config,
+        executionContext,
+      );
       expect(result?.status).toBe(200);
-      expect(result?.headers.get("content-disposition")).toBe('attachment; filename="videoforge-output.mp4"');
+      expect(result?.headers.get("content-disposition")).toBe(
+        'attachment; filename="videoforge-output.mp4"',
+      );
       expect(result?.headers.get("content-length")).toBe(String(bytes.length));
       expect(result?.headers.get("x-videoforge-artifact-sha256")).toBe(checksum);
       expect(Array.from(new Uint8Array(await result!.arrayBuffer()))).toEqual(Array.from(bytes));
       expect(head).toHaveBeenCalledWith(key);
       expect(get).toHaveBeenCalledWith(key, undefined);
-      const query = testState.query.mock.calls.find(([sql]) => String(sql).includes("SELECT authority.object_key, authority.issued_content_length AS content_length"));
-      expect(String(query?.[0])).toContain("review.output_checksum_sha256 = authority.issued_checksum_sha256");
+      const query = testState.query.mock.calls.find(([sql]) =>
+        String(sql).includes(
+          "SELECT authority.object_key, authority.issued_content_length AS content_length",
+        ),
+      );
+      expect(String(query?.[0])).toContain(
+        "review.output_checksum_sha256 = authority.issued_checksum_sha256",
+      );
       expect(String(query?.[0])).toContain("attempt.project_revision_id = revision.id");
       expect(String(query?.[0])).toContain("attempt.state = 'SUCCEEDED'");
-      expect(String(query?.[0])).toContain("attempt.result_object_key = result_document.object_key");
+      expect(String(query?.[0])).toContain(
+        "attempt.result_object_key = result_document.object_key",
+      );
     } finally {
       testState.approvedDownloadRows.length = 0;
     }
   });
 
-  it.each(["bytes=2-5", "bytes=-4"])("serves seekable candidate preview on a stable authenticated URL: %s", async (range) => {
-    const attemptId = "22222222-2222-4222-8222-222222222222";
-    testState.approvedDownloadRows.push({ object_key: key, content_length: bytes.length, checksum_sha256: checksum });
-    const digest = Uint8Array.from(Buffer.from("a".repeat(64), "hex")).buffer;
-    const head = vi.fn(async () => ({ size: bytes.length, httpMetadata: { contentType: "video/mp4" }, checksums: { sha256: digest } }));
-    const offset = range === "bytes=2-5" ? 2 : bytes.length - 4;
-    const get = vi.fn(async () => ({ size: bytes.length, httpMetadata: { contentType: "video/mp4" }, body: new ReadableStream({ start(controller) { controller.enqueue(bytes.slice(offset, offset + 4)); controller.close(); } }) }));
-    try {
-      const req = request(`/api/v2/hosted/projects/${PROJECT_ID}/renders/${attemptId}/preview`, "GET");
-      req.headers.set("range", range);
-      const result = await handleHostedProductRequest(req, { PRIVATE_ARTIFACTS: { head, get } } as unknown as HostedRuntimeEnvironment, config, executionContext);
-      expect(result?.status).toBe(206);
-      expect(result?.headers.get("content-disposition")).toBe('inline; filename="videoforge-output.mp4"');
-      expect(result?.headers.get("content-range")).toBe(`bytes ${offset}-${offset + 3}/${bytes.length}`);
-      expect(result?.headers.get("content-length")).toBe("4");
-      expect(get).toHaveBeenCalledWith(key, { range: { offset, length: 4 } });
-      expect(Array.from(new Uint8Array(await result!.arrayBuffer()))).toEqual(Array.from(bytes.slice(offset, offset + 4)));
-    } finally { testState.approvedDownloadRows.length = 0; }
-  });
+  it.each(["bytes=2-5", "bytes=-4"])(
+    "serves seekable candidate preview on a stable authenticated URL: %s",
+    async (range) => {
+      const attemptId = "22222222-2222-4222-8222-222222222222";
+      testState.approvedDownloadRows.push({
+        object_key: key,
+        content_length: bytes.length,
+        checksum_sha256: checksum,
+      });
+      const digest = Uint8Array.from(Buffer.from("a".repeat(64), "hex")).buffer;
+      const head = vi.fn(async () => ({
+        size: bytes.length,
+        httpMetadata: { contentType: "video/mp4" },
+        checksums: { sha256: digest },
+      }));
+      const offset = range === "bytes=2-5" ? 2 : bytes.length - 4;
+      const get = vi.fn(async () => ({
+        size: bytes.length,
+        httpMetadata: { contentType: "video/mp4" },
+        body: new ReadableStream({
+          start(controller) {
+            controller.enqueue(bytes.slice(offset, offset + 4));
+            controller.close();
+          },
+        }),
+      }));
+      try {
+        const req = request(
+          `/api/v2/hosted/projects/${PROJECT_ID}/renders/${attemptId}/preview`,
+          "GET",
+        );
+        req.headers.set("range", range);
+        const result = await handleHostedProductRequest(
+          req,
+          { PRIVATE_ARTIFACTS: { head, get } } as unknown as HostedRuntimeEnvironment,
+          config,
+          executionContext,
+        );
+        expect(result?.status).toBe(206);
+        expect(result?.headers.get("content-disposition")).toBe(
+          'inline; filename="videoforge-output.mp4"',
+        );
+        expect(result?.headers.get("content-range")).toBe(
+          `bytes ${offset}-${offset + 3}/${bytes.length}`,
+        );
+        expect(result?.headers.get("content-length")).toBe("4");
+        expect(get).toHaveBeenCalledWith(key, { range: { offset, length: 4 } });
+        expect(Array.from(new Uint8Array(await result!.arrayBuffer()))).toEqual(
+          Array.from(bytes.slice(offset, offset + 4)),
+        );
+      } finally {
+        testState.approvedDownloadRows.length = 0;
+      }
+    },
+  );
 
   it("rejects an unsatisfiable range before reading media bytes", async () => {
-    testState.approvedDownloadRows.push({ object_key: key, content_length: bytes.length, checksum_sha256: checksum });
+    testState.approvedDownloadRows.push({
+      object_key: key,
+      content_length: bytes.length,
+      checksum_sha256: checksum,
+    });
     const digest = Uint8Array.from(Buffer.from("a".repeat(64), "hex")).buffer;
-    const head = vi.fn(async () => ({ size: bytes.length, httpMetadata: { contentType: "video/mp4" }, checksums: { sha256: digest } }));
+    const head = vi.fn(async () => ({
+      size: bytes.length,
+      httpMetadata: { contentType: "video/mp4" },
+      checksums: { sha256: digest },
+    }));
     const get = vi.fn();
     try {
-      const req = request(path, "GET"); req.headers.set("range", "bytes=999-1000");
-      const result = await handleHostedProductRequest(req, { PRIVATE_ARTIFACTS: { head, get } } as unknown as HostedRuntimeEnvironment, config, executionContext);
-      expect(result?.status).toBe(416); expect(get).not.toHaveBeenCalled();
-    } finally { testState.approvedDownloadRows.length = 0; }
+      const req = request(path, "GET");
+      req.headers.set("range", "bytes=999-1000");
+      const result = await handleHostedProductRequest(
+        req,
+        { PRIVATE_ARTIFACTS: { head, get } } as unknown as HostedRuntimeEnvironment,
+        config,
+        executionContext,
+      );
+      expect(result?.status).toBe(416);
+      expect(get).not.toHaveBeenCalled();
+    } finally {
+      testState.approvedDownloadRows.length = 0;
+    }
   });
 
   it("does not read R2 without an approved current revision, and rejects wrong checksum", async () => {
     const head = vi.fn();
     const get = vi.fn();
     const bucket = { PRIVATE_ARTIFACTS: { head, get } } as unknown as HostedRuntimeEnvironment;
-    const absent = await handleHostedProductRequest(request(path, "GET"), bucket, config, executionContext);
+    const absent = await handleHostedProductRequest(
+      request(path, "GET"),
+      bucket,
+      config,
+      executionContext,
+    );
     expect(absent?.status).toBe(404);
     expect(head).not.toHaveBeenCalled();
-    testState.approvedDownloadRows.push({ object_key: key, content_length: bytes.length, checksum_sha256: checksum });
-    head.mockResolvedValue({ size: bytes.length, httpMetadata: { contentType: "video/mp4" }, checksums: { sha256: new Uint8Array(32).buffer } });
+    testState.approvedDownloadRows.push({
+      object_key: key,
+      content_length: bytes.length,
+      checksum_sha256: checksum,
+    });
+    head.mockResolvedValue({
+      size: bytes.length,
+      httpMetadata: { contentType: "video/mp4" },
+      checksums: { sha256: new Uint8Array(32).buffer },
+    });
     try {
-      const mismatch = await handleHostedProductRequest(request(path, "GET"), bucket, config, executionContext);
+      const mismatch = await handleHostedProductRequest(
+        request(path, "GET"),
+        bucket,
+        config,
+        executionContext,
+      );
       expect(mismatch?.status).toBe(503);
       expect(get).not.toHaveBeenCalled();
     } finally {
@@ -342,13 +453,15 @@ it("estimates remaining API work from live counts while image and avatar lanes r
   expect(earlyBatch?.remaining_max_ms).toBeLessThan(1_100_000);
   expect(hostedApiRemainingTimeEstimate({ ...input, failed: true })).toBeNull();
   expect(hostedApiRemainingTimeEstimate({ ...input, durationMs: 0 })).toBeNull();
-  expect(hostedApiRemainingTimeEstimate({
-    ...input,
-    imageAccepted: 28,
-    avatarAccepted: 10,
-    renderSubmittedAt: "2026-09-25T00:00:00.000Z",
-    nowMs: Date.parse("2026-09-25T00:15:00.000Z"),
-  })?.overrun).toBe(true);
+  expect(
+    hostedApiRemainingTimeEstimate({
+      ...input,
+      imageAccepted: 28,
+      avatarAccepted: 10,
+      renderSubmittedAt: "2026-09-25T00:00:00.000Z",
+      nowMs: Date.parse("2026-09-25T00:15:00.000Z"),
+    })?.overrun,
+  ).toBe(true);
 });
 it("uses observed prompt throughput early in a long run", () => {
   const input = {
@@ -660,7 +773,6 @@ describe("hosted project upload renewal", () => {
       testState.runtimeSourceRows.length = 0;
     }
   });
-
 });
 
 function request(
@@ -795,9 +907,7 @@ describe("hosted product route contract", () => {
         String(sql).includes("version.state = 'READY'"),
     );
     expect(avatarCatalogCall).toBeDefined();
-    expect(String(avatarCatalogCall?.[0])).toContain(
-      "profile.scope_kind = 'SYSTEM'",
-    );
+    expect(String(avatarCatalogCall?.[0])).toContain("profile.scope_kind = 'SYSTEM'");
     expect(String(avatarCatalogCall?.[0])).toContain("profile.id = $3");
     expect(avatarCatalogCall?.[1]).toEqual([
       testState.scopeRows[0]?.account_id,
@@ -847,82 +957,98 @@ describe("hosted product route contract", () => {
     }
   });
 
-  it.each([4 * 1024 ** 3, 1024 ** 3, null])("checks capacity before explicit ASR retry: %s", async capacity => {
-    testState.workerDeviceRows.push({status:"ONLINE",count:1,available_disk_bytes:capacity});
-    const previousProject = testState.projectRows[0];
-    const revisionId = "22222222-2222-4222-8222-222222222222";
-    testState.projectRows[0] = {
-      revision_id: revisionId,
-      revision_number: 2,
-      voiceover_asset_id: "33333333-3333-4333-8333-333333333333",
-      checksum_sha256: `sha256:${"a".repeat(64)}`,
-      content_type: "audio/mpeg",
-      duration_ms: 159_216,
-      receipt_id: "44444444-4444-4444-8444-444444444444",
-      content_length: 320_000,
-      asr_attempt_count: 1,
-      asr_total_attempt_count: 1,
-      latest_asr_state: "FAILED",
-    };
-    try {
-      const result = await handleHostedProductRequest(
-        request(`/api/v2/hosted/projects/${PROJECT_ID}/asr`),
-        environment,
-        stagingConfig,
-        executionContext,
-      );
-      if (capacity === null || capacity < 2 * 1024 ** 3 + 640_000) {
-        expect(result?.status).toBe(409);
-        expect(await result?.json()).toMatchObject({error:{code:"MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT"}});
-        return;
-      }
-      expect(result?.status).toBe(202);
-      const body = (await result?.json()) as {
-        project_revision_id: string;
-        cpu_submission: {
-          idempotency_key: string;
+  it.each([4 * 1024 ** 3, 1024 ** 3, null])(
+    "checks capacity before explicit ASR retry: %s",
+    async (capacity) => {
+      testState.workerDeviceRows.push({
+        status: "ONLINE",
+        count: 1,
+        available_disk_bytes: capacity,
+      });
+      const previousProject = testState.projectRows[0];
+      const revisionId = "22222222-2222-4222-8222-222222222222";
+      testState.projectRows[0] = {
+        revision_id: revisionId,
+        revision_number: 2,
+        voiceover_asset_id: "33333333-3333-4333-8333-333333333333",
+        checksum_sha256: `sha256:${"a".repeat(64)}`,
+        content_type: "audio/mpeg",
+        duration_ms: 159_216,
+        receipt_id: "44444444-4444-4444-8444-444444444444",
+        content_length: 320_000,
+        asr_attempt_count: 1,
+        asr_total_attempt_count: 1,
+        latest_asr_state: "FAILED",
+      };
+      try {
+        const result = await handleHostedProductRequest(
+          request(`/api/v2/hosted/projects/${PROJECT_ID}/asr`),
+          environment,
+          stagingConfig,
+          executionContext,
+        );
+        if (capacity === null || capacity < 2 * 1024 ** 3 + 640_000) {
+          expect(result?.status).toBe(409);
+          expect(await result?.json()).toMatchObject({
+            error: { code: "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT" },
+          });
+          return;
+        }
+        expect(result?.status).toBe(202);
+        const body = (await result?.json()) as {
           project_revision_id: string;
-          input_document: {
-            attempt_id: string;
-            output: { result_uri: string };
-            cancel_token: string;
+          cpu_submission: {
+            idempotency_key: string;
+            project_revision_id: string;
+            input_document: {
+              attempt_id: string;
+              output: { result_uri: string };
+              cancel_token: string;
+            };
           };
         };
-      };
-      expect(body.project_revision_id).toBe(revisionId);
-      expect(body.cpu_submission.project_revision_id).toBe(revisionId);
-      expect(body.cpu_submission.idempotency_key).toBe(
-        `project-${PROJECT_ID}-revision-${revisionId}-asr-v2`,
-      );
-      expect(body.cpu_submission.input_document.attempt_id).toBe(revisionId);
-      expect(body.cpu_submission.input_document.output.result_uri).toBe(
-        `vf-local-run://${revisionId}/${revisionId}/asr-result.json`,
-      );
-      expect(body.cpu_submission.input_document.cancel_token).toBe(
-        `project-${PROJECT_ID}-revision-${revisionId}-asr-cancel`,
-      );
+        expect(body.project_revision_id).toBe(revisionId);
+        expect(body.cpu_submission.project_revision_id).toBe(revisionId);
+        expect(body.cpu_submission.idempotency_key).toBe(
+          `project-${PROJECT_ID}-revision-${revisionId}-asr-v2`,
+        );
+        expect(body.cpu_submission.input_document.attempt_id).toBe(revisionId);
+        expect(body.cpu_submission.input_document.output.result_uri).toBe(
+          `vf-local-run://${revisionId}/${revisionId}/asr-result.json`,
+        );
+        expect(body.cpu_submission.input_document.cancel_token).toBe(
+          `project-${PROJECT_ID}-revision-${revisionId}-asr-cancel`,
+        );
 
-      const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
-      const handoffStart = source.indexOf("async function asrHandoff(");
-      const handoffEnd = source.indexOf("function hostedTranscriptText(", handoffStart);
-      const handoff = source.slice(handoffStart, handoffEnd);
-      expect(handoff).toContain("revision.status = 'LOCKED'");
-      expect(handoff).toContain("ORDER BY revision.revision_number DESC, revision.id DESC");
-      const commitStart = source.indexOf("async function commitProject(");
-      const commitEnd = source.indexOf("/**\n * Advance the ordinary product journey", commitStart);
-      const commit = source.slice(commitStart, commitEnd);
-      expect(commit).toContain("hostedAsrSubmissionIdentity(projectId, revisionId, 1)");
-    } finally {
-      testState.projectRows[0] = previousProject!;
-      testState.workerDeviceRows.pop();
-    }
-  });
+        const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
+        const handoffStart = source.indexOf("async function asrHandoff(");
+        const handoffEnd = source.indexOf("function hostedTranscriptText(", handoffStart);
+        const handoff = source.slice(handoffStart, handoffEnd);
+        expect(handoff).toContain("revision.status = 'LOCKED'");
+        expect(handoff).toContain("ORDER BY revision.revision_number DESC, revision.id DESC");
+        const commitStart = source.indexOf("async function commitProject(");
+        const commitEnd = source.indexOf(
+          "/**\n * Advance the ordinary product journey",
+          commitStart,
+        );
+        const commit = source.slice(commitStart, commitEnd);
+        expect(commit).toContain("hostedAsrSubmissionIdentity(projectId, revisionId, 1)");
+      } finally {
+        testState.projectRows[0] = previousProject!;
+        testState.workerDeviceRows.pop();
+      }
+    },
+  );
 
   it("keeps the hand-off open when every failed attempt was a local resource failure", async () => {
     // A project whose transcriptions all failed because the owner's own computer ran out of disk is
     // recoverable on that machine, so those attempts must not spend the bounded retry budget: the
     // state row reports them in asr_total_attempt_count only.
-    testState.workerDeviceRows.push({status:"ONLINE",count:1,available_disk_bytes:4*1024**3});
+    testState.workerDeviceRows.push({
+      status: "ONLINE",
+      count: 1,
+      available_disk_bytes: 4 * 1024 ** 3,
+    });
     const previousProject = testState.projectRows[0];
     testState.projectRows[0] = {
       revision_id: "22222222-2222-4222-8222-222222222222",
@@ -945,10 +1071,13 @@ describe("hosted product route contract", () => {
         executionContext,
       );
       expect(result?.status).toBe(202);
-      const body = (await result?.json()) as { cpu_submission: { input_document: { attempt_id: string } } };
+      const body = (await result?.json()) as {
+        cpu_submission: { input_document: { attempt_id: string } };
+      };
       // The identity still advances with the total, so the fourth attempt cannot collide with the third.
       expect(body.cpu_submission.input_document.attempt_id).toBe(
-        hostedAsrSubmissionIdentity(PROJECT_ID, "22222222-2222-4222-8222-222222222222", 4).attemptId,
+        hostedAsrSubmissionIdentity(PROJECT_ID, "22222222-2222-4222-8222-222222222222", 4)
+          .attemptId,
       );
     } finally {
       testState.projectRows[0] = previousProject!;
@@ -957,7 +1086,11 @@ describe("hosted product route contract", () => {
   });
 
   it("refuses the hand-off once the total attempt ceiling is reached", async () => {
-    testState.workerDeviceRows.push({status:"ONLINE",count:1,available_disk_bytes:4*1024**3});
+    testState.workerDeviceRows.push({
+      status: "ONLINE",
+      count: 1,
+      available_disk_bytes: 4 * 1024 ** 3,
+    });
     const previousProject = testState.projectRows[0];
     testState.projectRows[0] = {
       revision_id: "22222222-2222-4222-8222-222222222222",
@@ -990,7 +1123,11 @@ describe("hosted product route contract", () => {
   });
 
   it("permits a fresh ASR identity after an older execution bundle's invalid output", async () => {
-    testState.workerDeviceRows.push({status:"ONLINE",count:1,available_disk_bytes:4*1024**3});
+    testState.workerDeviceRows.push({
+      status: "ONLINE",
+      count: 1,
+      available_disk_bytes: 4 * 1024 ** 3,
+    });
     const previousProject = testState.projectRows[0];
     testState.projectRows[0] = {
       revision_id: "22222222-2222-4222-8222-222222222222",
@@ -1039,7 +1176,11 @@ describe("hosted product route contract", () => {
   });
 
   it("refuses the hand-off once the voiceover itself failed the bounded number of times", async () => {
-    testState.workerDeviceRows.push({status:"ONLINE",count:1,available_disk_bytes:4*1024**3});
+    testState.workerDeviceRows.push({
+      status: "ONLINE",
+      count: 1,
+      available_disk_bytes: 4 * 1024 ** 3,
+    });
     const previousProject = testState.projectRows[0];
     testState.projectRows[0] = {
       revision_id: "22222222-2222-4222-8222-222222222222",
@@ -1076,10 +1217,18 @@ describe("hosted product route contract", () => {
     testState.projectRows.splice(0);
     testState.query.mockClear();
     try {
-      const result = await handleHostedProductRequest(request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"), environment, stagingConfig, executionContext);
+      const result = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+        environment,
+        stagingConfig,
+        executionContext,
+      );
       expect(result?.status).toBe(404);
       const failedTasks = testState.query.mock.calls.find(([sql]) =>
-        String(sql).includes("SELECT task.id, task.task_key, task.lane, task.state, task.updated_at"));
+        String(sql).includes(
+          "SELECT task.id, task.task_key, task.lane, task.state, task.updated_at",
+        ),
+      );
       expect(failedTasks).toBeUndefined();
     } finally {
       testState.projectRows.push(...previous);
@@ -1091,9 +1240,21 @@ describe("hosted product route contract", () => {
     const previousProject = testState.projectRows[0]!;
     const submittedAt = "2026-10-02T16:17:41.534Z";
     const jobs = [
-      ...Array.from({ length: 34 }, () => ({ lane: "IMAGE", state: "SUCCEEDED", submitted_at: submittedAt })),
-      ...Array.from({ length: 4 }, () => ({ lane: "AVATAR", state: "SUBMITTED", submitted_at: submittedAt })),
-      ...Array.from({ length: 8 }, () => ({ lane: "AVATAR", state: "PREPARED", submitted_at: null })),
+      ...Array.from({ length: 34 }, () => ({
+        lane: "IMAGE",
+        state: "SUCCEEDED",
+        submitted_at: submittedAt,
+      })),
+      ...Array.from({ length: 4 }, () => ({
+        lane: "AVATAR",
+        state: "SUBMITTED",
+        submitted_at: submittedAt,
+      })),
+      ...Array.from({ length: 8 }, () => ({
+        lane: "AVATAR",
+        state: "PREPARED",
+        submitted_at: null,
+      })),
     ];
     testState.projectRows[0] = { ...previousProject, generation_provider: "KIE_FAL" };
     testState.query.mockImplementation(async (sql, params) => {
@@ -1102,23 +1263,36 @@ describe("hosted product route contract", () => {
       return original(sql, params);
     });
     const read = async () => {
-      const result = await handleHostedProductRequest(request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"), environment, stagingConfig, executionContext);
+      const result = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+        environment,
+        stagingConfig,
+        executionContext,
+      );
       expect(result?.status).toBe(200);
-      return await result!.json() as { gpu_lanes: Array<Record<string, unknown>> };
+      return (await result!.json()) as { gpu_lanes: Array<Record<string, unknown>> };
     };
     try {
       const pending = await read();
       expect(pending.gpu_lanes.find((lane) => lane.lane === "soulx_avatar")).toMatchObject({
-        attempt_state: "IN_PROGRESS", accepted_item_count: 0, submitted_at: submittedAt,
-        provider_pending_item_count: 4, waiting_to_submit_item_count: 8, submitting_item_count: 0,
+        attempt_state: "IN_PROGRESS",
+        accepted_item_count: 0,
+        submitted_at: submittedAt,
+        provider_pending_item_count: 4,
+        waiting_to_submit_item_count: 8,
+        submitting_item_count: 0,
         provider_status: null,
       });
       expect(pending.gpu_lanes.find((lane) => lane.lane === "mage_image")).toMatchObject({
-        provider_pending_item_count: 0, waiting_to_submit_item_count: 0, submitting_item_count: 0,
+        provider_pending_item_count: 0,
+        waiting_to_submit_item_count: 0,
+        submitting_item_count: 0,
       });
       jobs[38]!.state = "SUBMITTING";
       expect((await read()).gpu_lanes.find((lane) => lane.lane === "soulx_avatar")).toMatchObject({
-        provider_pending_item_count: 4, waiting_to_submit_item_count: 7, submitting_item_count: 1,
+        provider_pending_item_count: 4,
+        waiting_to_submit_item_count: 7,
+        submitting_item_count: 1,
       });
       testState.projectRows[0] = { ...previousProject, generation_provider: "RUNPOD" };
       for (const lane of (await read()).gpu_lanes) {
@@ -1132,32 +1306,60 @@ describe("hosted product route contract", () => {
     }
   });
 
-  it.each([false, true])("projects waiting admission truthfully and preserves saved spans (cleanup=%s)", async (pending) => {
-    const original = testState.query.getMockImplementation()!;
-    let saved = false;
-    testState.cleanup.pending = pending;
-    testState.query.mockImplementation(async (sql, params) => {
-      if (sql.includes("AS prompt_task_state")) return { rows: [{ id: PROJECT_ID, prompt_task_state: "COMPLETE" }], affectedRows: 1 };
-      if (sql.includes("SELECT request.id, request.state, request.queue_order")) return { rows: [{ state: "WAITING", ahead: 2, total: 3 }], affectedRows: 1 };
-      if (saved && sql.includes("FROM selected_span_audio AS span")) return { rows: [{ state: "MATERIALIZED", total: 1 }], affectedRows: 1 };
-      if (saved && sql.includes("SELECT job.state, count(*)::int AS total")) return { rows: [{ state: "SUCCEEDED", total: 1, started_at: "2026-10-01T12:00:00Z", completed_at: "2026-10-01T12:00:01Z" }], affectedRows: 1 };
-      return original(sql, params);
-    });
-    const detail = async () => (await (await handleHostedProductRequest(request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"), environment, stagingConfig, executionContext))!.json()) as { stages: { id: string; status: string; detail: string }[]; queue: { blocked_reason: string | null } };
-    try {
-      const waiting = await detail();
-      expect(waiting.stages.find(stage => stage.id === "audio-spanning"))
-        .toMatchObject({ status: pending ? "BLOCKED" : "QUEUED" });
-      expect(waiting.queue.blocked_reason).toBe(pending ? "HOSTED_CLOUD_CLEANUP_PENDING" : null);
-      saved = true;
-      const retained = await detail();
-      expect(retained.stages.find(stage => stage.id === "audio-spanning"))
-        .toMatchObject({ status: "COMPLETE" });
-    } finally {
-      testState.query.mockImplementation(original);
-      testState.cleanup.pending = false;
-    }
-  });
+  it.each([false, true])(
+    "projects waiting admission truthfully and preserves saved spans (cleanup=%s)",
+    async (pending) => {
+      const original = testState.query.getMockImplementation()!;
+      let saved = false;
+      testState.cleanup.pending = pending;
+      testState.query.mockImplementation(async (sql, params) => {
+        if (sql.includes("AS prompt_task_state"))
+          return { rows: [{ id: PROJECT_ID, prompt_task_state: "COMPLETE" }], affectedRows: 1 };
+        if (sql.includes("SELECT request.id, request.state, request.queue_order"))
+          return { rows: [{ state: "WAITING", ahead: 2, total: 3 }], affectedRows: 1 };
+        if (saved && sql.includes("FROM selected_span_audio AS span"))
+          return { rows: [{ state: "MATERIALIZED", total: 1 }], affectedRows: 1 };
+        if (saved && sql.includes("SELECT job.state, count(*)::int AS total"))
+          return {
+            rows: [
+              {
+                state: "SUCCEEDED",
+                total: 1,
+                started_at: "2026-10-01T12:00:00Z",
+                completed_at: "2026-10-01T12:00:01Z",
+              },
+            ],
+            affectedRows: 1,
+          };
+        return original(sql, params);
+      });
+      const detail = async () =>
+        (await (await handleHostedProductRequest(
+          request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+          environment,
+          stagingConfig,
+          executionContext,
+        ))!.json()) as {
+          stages: { id: string; status: string; detail: string }[];
+          queue: { blocked_reason: string | null };
+        };
+      try {
+        const waiting = await detail();
+        expect(waiting.stages.find((stage) => stage.id === "audio-spanning")).toMatchObject({
+          status: pending ? "BLOCKED" : "QUEUED",
+        });
+        expect(waiting.queue.blocked_reason).toBe(pending ? "HOSTED_CLOUD_CLEANUP_PENDING" : null);
+        saved = true;
+        const retained = await detail();
+        expect(retained.stages.find((stage) => stage.id === "audio-spanning")).toMatchObject({
+          status: "COMPLETE",
+        });
+      } finally {
+        testState.query.mockImplementation(original);
+        testState.cleanup.pending = false;
+      }
+    },
+  );
 
   it("reports persisted stage boundaries without inventing technical or historical planning time", async () => {
     const previousProject = testState.projectRows[0]!;
@@ -1940,25 +2142,40 @@ describe("hosted product route contract", () => {
     ["PERSONAL_WORKER", true, "MEDIA_WORKER_OFFLINE"],
     ["RUNPOD_POD", true, null],
     ["RUNPOD_POD", false, "CLOUD_MEDIA_UNAVAILABLE"],
-  ])("checks selected media backend %s without changing Local readiness", async (backend, enabled, blocker) => {
-    const result = await handleHostedProductRequest(
-      request("/api/v2/hosted/projects/preflight", "POST", {
-        schema_version: "videoforge-hosted-project-preflight/v1",
-        title: "Media backend project",
-        avatar_profile_version_id: "22222222-2222-4222-8222-222222222222",
-        image_style_version_id: "33333333-3333-4333-8333-333333333333",
-        ...(backend ? { execution_backend: backend } : {}),
-        voiceover: { filename: "voiceover.mp3", content_type: "audio/mpeg", content_length: 320_000,
-          checksum_sha256: `sha256:${"a".repeat(64)}`, duration_ms: 20_000 },
-      }), environment, { ...stagingConfig, cloudMedia: { enabled } } as HostedRuntimeConfiguration,
-      executionContext,
-    );
-    expect(result?.status).toBe(200);
-    const body = await result!.json() as { execution_backend: string; blockers: { code: string }[] };
-    expect(body.execution_backend).toBe(backend ?? "PERSONAL_WORKER");
-    const mediaBlockers = body.blockers.filter((item) => ["MEDIA_WORKER_OFFLINE", "CLOUD_MEDIA_UNAVAILABLE"].includes(item.code));
-    expect(mediaBlockers.map((item) => item.code)).toEqual(blocker ? [blocker] : []);
-  });
+  ])(
+    "checks selected media backend %s without changing Local readiness",
+    async (backend, enabled, blocker) => {
+      const result = await handleHostedProductRequest(
+        request("/api/v2/hosted/projects/preflight", "POST", {
+          schema_version: "videoforge-hosted-project-preflight/v1",
+          title: "Media backend project",
+          avatar_profile_version_id: "22222222-2222-4222-8222-222222222222",
+          image_style_version_id: "33333333-3333-4333-8333-333333333333",
+          ...(backend ? { execution_backend: backend } : {}),
+          voiceover: {
+            filename: "voiceover.mp3",
+            content_type: "audio/mpeg",
+            content_length: 320_000,
+            checksum_sha256: `sha256:${"a".repeat(64)}`,
+            duration_ms: 20_000,
+          },
+        }),
+        environment,
+        { ...stagingConfig, cloudMedia: { enabled } } as HostedRuntimeConfiguration,
+        executionContext,
+      );
+      expect(result?.status).toBe(200);
+      const body = (await result!.json()) as {
+        execution_backend: string;
+        blockers: { code: string }[];
+      };
+      expect(body.execution_backend).toBe(backend ?? "PERSONAL_WORKER");
+      const mediaBlockers = body.blockers.filter((item) =>
+        ["MEDIA_WORKER_OFFLINE", "CLOUD_MEDIA_UNAVAILABLE"].includes(item.code),
+      );
+      expect(mediaBlockers.map((item) => item.code)).toEqual(blocker ? [blocker] : []);
+    },
+  );
 
   it("rejects client-supplied spend caps in hosted project preflight", async () => {
     const result = await handleHostedProductRequest(
@@ -2010,7 +2227,11 @@ describe("hosted product route contract", () => {
 
   it("blocks a pinned avatar version whose runtime source is a pass-through upload", async () => {
     testState.publishedStyleRows.push({});
-    testState.workerDeviceRows.push({ status: "ONLINE", count: "1", available_disk_bytes: 4 * 1024 ** 3 });
+    testState.workerDeviceRows.push({
+      status: "ONLINE",
+      count: "1",
+      available_disk_bytes: 4 * 1024 ** 3,
+    });
     testState.preflightAvatarRows.push({
       source_preparation_profile: "hosted-avatar-source-pass-through-v1",
       object_key:
@@ -2049,7 +2270,11 @@ describe("hosted product route contract", () => {
 
   it("blocks a pinned avatar runtime source whose key is not a canonical avatar.png", async () => {
     testState.publishedStyleRows.push({});
-    testState.workerDeviceRows.push({ status: "ONLINE", count: "1", available_disk_bytes: 4 * 1024 ** 3 });
+    testState.workerDeviceRows.push({
+      status: "ONLINE",
+      count: "1",
+      available_disk_bytes: 4 * 1024 ** 3,
+    });
     testState.preflightAvatarRows.push({
       source_preparation_profile: "soulx-pro-vf924u-approved-v1",
       object_key:
@@ -2078,7 +2303,11 @@ describe("hosted product route contract", () => {
 
   it("accepts a pinned system avatar version whose runtime source is canonical", async () => {
     testState.publishedStyleRows.push({});
-    testState.workerDeviceRows.push({ status: "ONLINE", count: "1", available_disk_bytes: 4 * 1024 ** 3 });
+    testState.workerDeviceRows.push({
+      status: "ONLINE",
+      count: "1",
+      available_disk_bytes: 4 * 1024 ** 3,
+    });
     testState.preflightAvatarRows.push({
       source_preparation_profile: "soulx-pro-vf924u-approved-v1",
       object_key:
@@ -2108,7 +2337,11 @@ describe("hosted product route contract", () => {
 
   it("names the qualified avatar in the blocker when the workspace has one", async () => {
     testState.publishedStyleRows.push({});
-    testState.workerDeviceRows.push({ status: "ONLINE", count: "1", available_disk_bytes: 4 * 1024 ** 3 });
+    testState.workerDeviceRows.push({
+      status: "ONLINE",
+      count: "1",
+      available_disk_bytes: 4 * 1024 ** 3,
+    });
     testState.preflightAvatarRows.push({
       source_preparation_profile: "hosted-avatar-source-pass-through-v1",
       object_key:
@@ -2210,9 +2443,16 @@ describe("hosted product route contract", () => {
   });
 
   it("does not report image prompts complete merely because a timeline exists", () => {
-    expect(hostedPromptWritingState("FAILED", true, { acceptedScenes: 70, totalScenes: 258,
-      problemCode: "HOSTED_PROMPT_PROVIDER_CREDITS_LOW" })).toMatchObject({
-      status: "BLOCKED", progressPercent: 27, detail: expect.stringContaining("70 saved prompts remain intact"),
+    expect(
+      hostedPromptWritingState("FAILED", true, {
+        acceptedScenes: 70,
+        totalScenes: 258,
+        problemCode: "HOSTED_PROMPT_PROVIDER_CREDITS_LOW",
+      }),
+    ).toMatchObject({
+      status: "BLOCKED",
+      progressPercent: 27,
+      detail: expect.stringContaining("70 saved prompts remain intact"),
     });
     expect(hostedPromptWritingState(null, true)).toEqual({
       status: "WAITING",
@@ -2225,7 +2465,9 @@ describe("hosted product route contract", () => {
       progressPercent: 100,
       detail: "Durable accepted scene prompts are ready for image generation.",
     });
-    expect(hostedPromptWritingState("FAILED", true, { acceptedScenes: 50, totalScenes: 320 })).toEqual({
+    expect(
+      hostedPromptWritingState("FAILED", true, { acceptedScenes: 50, totalScenes: 320 }),
+    ).toEqual({
       status: "FAILED",
       progressPercent: 15,
       detail: "50 image prompts were saved before writing stopped.",
@@ -2233,7 +2475,9 @@ describe("hosted product route contract", () => {
     // A writer task is created the moment prompt writing starts; every non-terminal durable state it
     // passes through must read as running work, never as "not started".
     for (const inFlight of ["PENDING", "READY", "DISPATCHING", "RUNNING"]) {
-      expect(hostedPromptWritingState(inFlight, true, { acceptedScenes: 25, totalScenes: 100 })).toEqual({
+      expect(
+        hostedPromptWritingState(inFlight, true, { acceptedScenes: 25, totalScenes: 100 }),
+      ).toEqual({
         status: "RUNNING",
         progressPercent: 25,
         detail: "Image prompts are being written and verified against the approved style.",
@@ -2360,51 +2604,113 @@ describe("hosted product route contract", () => {
     { mode: "price", expectedStatus: "FAILED", coverage: 100 / 30, fallbackCount: 0 },
     { mode: "missing-source", expectedStatus: "FAILED", coverage: 100 / 30, fallbackCount: 0 },
     { mode: "tombstoned-source", expectedStatus: "FAILED", coverage: 100 / 30, fallbackCount: 0 },
-  ])("reports $mode scene-video fallback without losing charges or weakening blockers", async ({ mode, expectedStatus, coverage, fallbackCount }) => {
-    const priorQuery = testState.query.getMockImplementation()!;
-    const priorProject = testState.projectRows[0]!;
-    testState.projectRows[0] = { ...priorProject, generation_provider: "KIE_FAL" };
-    const failed = { state: "FAILED", failure_code: "SEEDANCE_RESULT_INVALID", static_fallback: true,
-      output_cost_usd: 0.02, video_frame_count: 100, duration_seconds: 4 };
-    const accepted = { state: "SUCCEEDED", accepted_barrier_valid: true, output_cost_usd: 0.04,
-      video_frame_count: 100, duration_seconds: 4 };
-    const jobs = [mode === "all" ? failed : accepted, mode === "unknown"
-      ? { ...failed, state: "UNKNOWN_NO_RETRY", static_fallback: false }
-      : mode === "price" ? { ...failed, failure_code: "SEEDANCE_PRICE_CHANGED", static_fallback: false }
-      : mode.endsWith("source") ? { ...failed, static_fallback: false } : failed];
-    testState.query.mockImplementation(async (sql, params) => {
-      if (sql.includes("FROM hosted_video_plans")) return { rows: [{ planned_at: "2026-10-03T00:00:00Z", selections: [{ durationSeconds: 4 }, { durationSeconds: 4 }] }], affectedRows: 1 };
-      if (sql.includes("FROM hosted_video_jobs job")) {
-        expect(sql).toContain("videoforge_hosted_video_static_fallback");
-        expect(sql).toContain("source.id=job.source_api_job_id");
-        expect(sql).toContain("source.output_asset_id=job.source_asset_id AND source.output_sha256=job.source_sha256");
-        expect(sql).toContain("original.kind='IMAGE' AND original.state='ACCEPTED'");
-        expect(sql).toContain("original_receipt.deleted_at IS NULL");
-        expect(sql).toContain("original_receipt.checksum_sha256=original.binary_sha256 AND original_receipt.content_length=original.byte_size");
-        return { rows: jobs, affectedRows: jobs.length };
+  ])(
+    "reports $mode scene-video fallback without losing charges or weakening blockers",
+    async ({ mode, expectedStatus, coverage, fallbackCount }) => {
+      const priorQuery = testState.query.getMockImplementation()!;
+      const priorProject = testState.projectRows[0]!;
+      testState.projectRows[0] = { ...priorProject, generation_provider: "KIE_FAL" };
+      const failed = {
+        state: "FAILED",
+        failure_code: "SEEDANCE_RESULT_INVALID",
+        static_fallback: true,
+        output_cost_usd: 0.02,
+        video_frame_count: 100,
+        duration_seconds: 4,
+      };
+      const accepted = {
+        state: "SUCCEEDED",
+        accepted_barrier_valid: true,
+        output_cost_usd: 0.04,
+        video_frame_count: 100,
+        duration_seconds: 4,
+      };
+      const jobs = [
+        mode === "all" ? failed : accepted,
+        mode === "unknown"
+          ? { ...failed, state: "UNKNOWN_NO_RETRY", static_fallback: false }
+          : mode === "price"
+            ? { ...failed, failure_code: "SEEDANCE_PRICE_CHANGED", static_fallback: false }
+            : mode.endsWith("source")
+              ? { ...failed, static_fallback: false }
+              : failed,
+      ];
+      testState.query.mockImplementation(async (sql, params) => {
+        if (sql.includes("FROM hosted_video_plans"))
+          return {
+            rows: [
+              {
+                planned_at: "2026-10-03T00:00:00Z",
+                selections: [{ durationSeconds: 4 }, { durationSeconds: 4 }],
+              },
+            ],
+            affectedRows: 1,
+          };
+        if (sql.includes("FROM hosted_video_jobs job")) {
+          expect(sql).toContain("videoforge_hosted_video_static_fallback");
+          expect(sql).toContain("source.id=job.source_api_job_id");
+          expect(sql).toContain(
+            "source.output_asset_id=job.source_asset_id AND source.output_sha256=job.source_sha256",
+          );
+          expect(sql).toContain("original.kind='IMAGE' AND original.state='ACCEPTED'");
+          expect(sql).toContain("original_receipt.deleted_at IS NULL");
+          expect(sql).toContain(
+            "original_receipt.checksum_sha256=original.binary_sha256 AND original_receipt.content_length=original.byte_size",
+          );
+          return { rows: jobs, affectedRows: jobs.length };
+        }
+        if (sql.includes("SELECT plan.id, plan.canonical_document_hash"))
+          return {
+            rows: [
+              {
+                final_frame_count: 3000,
+                image_scene_count: 2,
+                avatar_frame_count: 300,
+                planned_tasks: 3,
+                completed_tasks: 3,
+                failed_tasks: 0,
+              },
+            ],
+            affectedRows: 1,
+          };
+        return priorQuery(sql, params);
+      });
+      try {
+        const result = await handleHostedProductRequest(
+          request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+          {},
+          stagingConfig,
+          executionContext,
+        );
+        expect(result?.status).toBe(200);
+        const body = (await result!.json()) as {
+          stages: { id: string; status: string; detail: string; progress_percent: number }[];
+          cost: {
+            api_estimate: {
+              seedance_actual_coverage_percent: number;
+              seedance_fallback_count: number;
+              seedance_reported_usd: number;
+            };
+          };
+        };
+        const stage = body.stages.find((stage) => stage.id === "video-generation")!;
+        expect(stage.status).toBe(expectedStatus);
+        expect(body.cost.api_estimate.seedance_actual_coverage_percent).toBeCloseTo(coverage);
+        expect(body.cost.api_estimate.seedance_fallback_count).toBe(fallbackCount);
+        expect(body.cost.api_estimate.seedance_reported_usd).toBeCloseTo(
+          mode === "all" ? 0.04 : 0.06,
+        );
+        if (expectedStatus === "COMPLETE") {
+          expect(stage.progress_percent).toBe(100);
+          expect(stage.detail).toContain("original still");
+          expect(stage.detail).toContain("actual motion (up to 7% target)");
+        }
+      } finally {
+        testState.query.mockImplementation(priorQuery);
+        testState.projectRows[0] = priorProject;
       }
-      if (sql.includes("SELECT plan.id, plan.canonical_document_hash")) return { rows: [{ final_frame_count: 3000, image_scene_count: 2, avatar_frame_count: 300, planned_tasks: 3, completed_tasks: 3, failed_tasks: 0 }], affectedRows: 1 };
-      return priorQuery(sql, params);
-    });
-    try {
-      const result = await handleHostedProductRequest(request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"), {}, stagingConfig, executionContext);
-      expect(result?.status).toBe(200);
-      const body = await result!.json() as { stages: { id: string; status: string; detail: string; progress_percent: number }[]; cost: { api_estimate: { seedance_actual_coverage_percent: number; seedance_fallback_count: number; seedance_reported_usd: number } } };
-      const stage = body.stages.find((stage) => stage.id === "video-generation")!;
-      expect(stage.status).toBe(expectedStatus);
-      expect(body.cost.api_estimate.seedance_actual_coverage_percent).toBeCloseTo(coverage);
-      expect(body.cost.api_estimate.seedance_fallback_count).toBe(fallbackCount);
-      expect(body.cost.api_estimate.seedance_reported_usd).toBeCloseTo(mode === "all" ? 0.04 : 0.06);
-      if (expectedStatus === "COMPLETE") {
-        expect(stage.progress_percent).toBe(100);
-        expect(stage.detail).toContain("original still");
-        expect(stage.detail).toContain("actual motion (up to 7% target)");
-      }
-    } finally {
-      testState.query.mockImplementation(priorQuery);
-      testState.projectRows[0] = priorProject;
-    }
-  });
+    },
+  );
 
   it("keeps project progress, prompt rows, and batch progress on one latest revision", () => {
     const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
@@ -2603,16 +2909,16 @@ describe("hosted product route contract", () => {
           prompt: editedPrompt ?? "A person holding a watermelon in a produce market.",
           label: editedPrompt ?? "A person holding a watermelon in a produce market.",
         });
-    expect(body.review.avatar_footage).toHaveLength(1);
-    expect(body.review.avatar_footage[0]).toMatchObject({ id: soulx.item_id });
-    expect(body.review.media_pagination).toEqual({
-      images: { page: 1, page_size: 96, total_accepted: 1, has_more: false },
-      avatar: { page: 1, page_size: 96, total_accepted: 1, has_more: false },
-    });
-    expect(body.media_pagination).toEqual(body.review.media_pagination);
-    expect(head).toHaveBeenCalledTimes(2);
-    expect(head).toHaveBeenNthCalledWith(1, mage.object_key);
-    expect(head).toHaveBeenNthCalledWith(2, soulx.object_key);
+        expect(body.review.avatar_footage).toHaveLength(1);
+        expect(body.review.avatar_footage[0]).toMatchObject({ id: soulx.item_id });
+        expect(body.review.media_pagination).toEqual({
+          images: { page: 1, page_size: 96, total_accepted: 1, has_more: false },
+          avatar: { page: 1, page_size: 96, total_accepted: 1, has_more: false },
+        });
+        expect(body.media_pagination).toEqual(body.review.media_pagination);
+        expect(head).toHaveBeenCalledTimes(2);
+        expect(head).toHaveBeenNthCalledWith(1, mage.object_key);
+        expect(head).toHaveBeenNthCalledWith(2, soulx.object_key);
 
         const mediaCall = testState.query.mock.calls.find(([sql]) =>
           String(sql).includes("FROM video_runtime_accepted_units AS unit"),
@@ -2624,7 +2930,9 @@ describe("hosted product route contract", () => {
         expect(mediaCall?.[0]).toContain("reservation.state = 'COMMITTED'");
         expect(mediaCall?.[0]).toContain("receipt.deleted_at IS NULL");
         expect(mediaCall?.[0]).toContain("FROM hosted_api_image_regeneration_jobs AS regeneration");
-        expect(mediaCall?.[0]).toContain("COALESCE(regeneration.source_api_job_id, regeneration.source_attempt_id) AS attempt_id");
+        expect(mediaCall?.[0]).toContain(
+          "COALESCE(regeneration.source_api_job_id, regeneration.source_attempt_id) AS attempt_id",
+        );
         expect(mediaCall?.[0]).toContain("regeneration.state = 'SUCCEEDED'");
         expect(mediaCall?.[0]).toContain("asset.state = 'ACCEPTED'");
         expect(mediaCall?.[0]).toContain("'prompt', regeneration.input_manifest->>'prompt'");
@@ -2672,7 +2980,7 @@ describe("hosted product route contract", () => {
     const block = source.slice(start, end);
     expect(start).toBeGreaterThanOrEqual(0);
     expect(block).toContain('kind: "avatar" | "videos" = "avatar"');
-    expect(block).toContain('hostedMediaCandidates(outputs, kind, page)');
+    expect(block).toContain("hostedMediaCandidates(outputs, kind, page)");
     expect(block).toContain('contentType !== "video/mp4"');
     expect(block).toContain("object.size !== contentLength");
     expect(block).toContain(
@@ -2702,7 +3010,6 @@ describe("hosted product route contract", () => {
     expect(query).toContain("JOIN artifact_receipts AS receipt");
     expect(query).toContain("receipt.deleted_at IS NULL");
     expect(query).toContain("receipt.checksum_sha256 = unit.checksum_sha256");
-
   });
 
   it("verifies media in bounded parallel batches while preserving order", async () => {
@@ -2728,11 +3035,7 @@ describe("hosted product route contract", () => {
         ],
       };
     });
-    testState.projectDetailMediaRows.splice(
-      0,
-      testState.projectDetailMediaRows.length,
-      ...outputs,
-    );
+    testState.projectDetailMediaRows.splice(0, testState.projectDetailMediaRows.length, ...outputs);
     let active = 0;
     let maxActive = 0;
     const head = vi.fn(async (objectKey: string) => {
@@ -2764,9 +3067,7 @@ describe("hosted product route contract", () => {
         readonly review: { readonly contact_sheet: readonly { id: string }[] };
       };
       expect(body.review.contact_sheet.map((item) => item.id)).toEqual(
-        outputs
-          .filter((_, index) => index !== 95)
-          .map((output) => output.artifacts[0]!.item_id),
+        outputs.filter((_, index) => index !== 95).map((output) => output.artifacts[0]!.item_id),
       );
       expect(maxActive).toBeGreaterThan(1);
       expect(maxActive).toBeLessThanOrEqual(8);
@@ -2797,81 +3098,583 @@ describe("hosted product route contract", () => {
 
 describe("Cloud ASR immutable successor recovery", () => {
   it("reuses one durable successor and its exact retained receipt on duplicate explicit retries", async () => {
-    const original=testState.query.getMockImplementation()!;
-    const previous=testState.projectRows[0]!;
-    const failedId="77777777-7777-4777-8777-777777777777",successor="88888888-8888-4888-8888-888888888888";
-    testState.projectRows[0]={revision_id:"22222222-2222-4222-8222-222222222222",revision_number:1,
-      voiceover_asset_id:"33333333-3333-4333-8333-333333333333",checksum_sha256:`sha256:${"a".repeat(64)}`,
-      content_type:"audio/mpeg",duration_ms:159216,receipt_id:"44444444-4444-4444-8444-444444444444",
+    const original = testState.query.getMockImplementation()!;
+    const previous = testState.projectRows[0]!;
+    const failedId = "77777777-7777-4777-8777-777777777777",
+      successor = "88888888-8888-4888-8888-888888888888";
+    testState.projectRows[0] = {
+      revision_id: "22222222-2222-4222-8222-222222222222",
+      revision_number: 1,
+      voiceover_asset_id: "33333333-3333-4333-8333-333333333333",
+      checksum_sha256: `sha256:${"a".repeat(64)}`,
+      content_type: "audio/mpeg",
+      duration_ms: 159216,
+      receipt_id: "44444444-4444-4444-8444-444444444444",
       content_length: 320_000,
-      asr_attempt_count:1,asr_total_attempt_count:1,latest_asr_state:"FAILED",latest_asr_backend:"RUNPOD_POD",latest_asr_attempt_id:failedId};
-    testState.query.mockImplementation(async (statement,parameters)=>{
-      if(statement.includes("videoforge_prepare_cloud_media_asr_recovery")) {
-        expect(parameters).toEqual([testState.scopeRows[0]?.account_id,testState.scopeRows[0]?.workspace_id,
-          testState.scopeRows[0]?.user_id,PROJECT_ID,failedId]);
-        testState.projectRows[0]={...testState.projectRows[0],revision_id:successor,revision_number:2,
+      asr_attempt_count: 1,
+      asr_total_attempt_count: 1,
+      latest_asr_state: "FAILED",
+      latest_asr_backend: "RUNPOD_POD",
+      latest_asr_attempt_id: failedId,
+    };
+    testState.query.mockImplementation(async (statement, parameters) => {
+      if (statement.includes("videoforge_prepare_cloud_media_asr_recovery")) {
+        expect(parameters).toEqual([
+          testState.scopeRows[0]?.account_id,
+          testState.scopeRows[0]?.workspace_id,
+          testState.scopeRows[0]?.user_id,
+          PROJECT_ID,
+          failedId,
+        ]);
+        testState.projectRows[0] = {
+          ...testState.projectRows[0],
+          revision_id: successor,
+          revision_number: 2,
           content_length: 320_000,
-      asr_attempt_count:0,asr_total_attempt_count:0,latest_asr_state:null,latest_asr_attempt_id:null};
-        return {rows:[{revision_id:successor}],affectedRows:1};
+          asr_attempt_count: 0,
+          asr_total_attempt_count: 0,
+          latest_asr_state: null,
+          latest_asr_attempt_id: null,
+        };
+        return { rows: [{ revision_id: successor }], affectedRows: 1 };
       }
-      return original(statement,parameters);
+      return original(statement, parameters);
     });
     try {
-      const cloudConfig={...stagingConfig,cloudMedia:{enabled:true}} as HostedRuntimeConfiguration;
-      const first=await handleHostedProductRequest(request(`/api/v2/hosted/projects/${PROJECT_ID}/asr`),environment,cloudConfig,executionContext);
-      const second=await handleHostedProductRequest(request(`/api/v2/hosted/projects/${PROJECT_ID}/asr`),environment,cloudConfig,executionContext);
-      expect(first?.status).toBe(202);expect(second?.status).toBe(202);
-      const firstBody=await first?.json() as {project_revision_id:string;cpu_submission:{objects:{artifact_receipt_id:string}[];idempotency_key:string}},secondBody=await second?.json();
+      const cloudConfig = {
+        ...stagingConfig,
+        cloudMedia: { enabled: true },
+      } as HostedRuntimeConfiguration;
+      const first = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}/asr`),
+        environment,
+        cloudConfig,
+        executionContext,
+      );
+      const second = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}/asr`),
+        environment,
+        cloudConfig,
+        executionContext,
+      );
+      expect(first?.status).toBe(202);
+      expect(second?.status).toBe(202);
+      const firstBody = (await first?.json()) as {
+          project_revision_id: string;
+          cpu_submission: { objects: { artifact_receipt_id: string }[]; idempotency_key: string };
+        },
+        secondBody = await second?.json();
       expect(firstBody).toEqual(secondBody);
       expect(firstBody.project_revision_id).toBe(successor);
-      expect(firstBody.cpu_submission.objects[0]?.artifact_receipt_id).toBe("44444444-4444-4444-8444-444444444444");
+      expect(firstBody.cpu_submission.objects[0]?.artifact_receipt_id).toBe(
+        "44444444-4444-4444-8444-444444444444",
+      );
       expect(firstBody.cpu_submission.idempotency_key).toContain(`revision-${successor}-asr-v1`);
-      expect(testState.query.mock.calls.filter(([statement])=>statement.includes("videoforge_prepare_cloud_media_asr_recovery"))).toHaveLength(1);
-      const inherited=testState.query.mock.calls.filter(([statement])=>statement.includes("videoforge_pin_hosted_video_plan"));
+      expect(
+        testState.query.mock.calls.filter(([statement]) =>
+          statement.includes("videoforge_prepare_cloud_media_asr_recovery"),
+        ),
+      ).toHaveLength(1);
+      const inherited = testState.query.mock.calls.filter(([statement]) =>
+        statement.includes("videoforge_copy_hosted_video_plan"),
+      );
       expect(inherited).toHaveLength(1);
       expect(inherited[0]?.[0]).toContain("WHERE EXISTS(SELECT 1 FROM hosted_video_plans");
-      expect(inherited[0]?.[1]).toEqual([testState.scopeRows[0]?.account_id,testState.scopeRows[0]?.workspace_id,
-        successor,"22222222-2222-4222-8222-222222222222"]);
-    } finally {testState.projectRows[0]=previous;testState.query.mockImplementation(original);}
+      expect(inherited[0]?.[1]).toEqual([
+        testState.scopeRows[0]?.account_id,
+        testState.scopeRows[0]?.workspace_id,
+        "22222222-2222-4222-8222-222222222222",
+        successor,
+      ]);
+    } finally {
+      testState.projectRows[0] = previous;
+      testState.query.mockImplementation(original);
+    }
   });
   it("maps an unsettled or ineligible Cloud recovery to a bounded response without changing Local", async () => {
-    const original=testState.query.getMockImplementation()!,previous=testState.projectRows[0]!;
-    testState.projectRows[0]={revision_id:"22222222-2222-4222-8222-222222222222",latest_asr_state:"FAILED",
-      latest_asr_backend:"RUNPOD_POD",latest_asr_attempt_id:"77777777-7777-4777-8777-777777777777"};
-    testState.query.mockImplementation(async (statement,parameters)=>{
-      if(statement.includes("videoforge_prepare_cloud_media_asr_recovery")) throw Object.assign(new Error("private database details"),{code:"23514"});
-      return original(statement,parameters);
+    const original = testState.query.getMockImplementation()!,
+      previous = testState.projectRows[0]!;
+    testState.projectRows[0] = {
+      revision_id: "22222222-2222-4222-8222-222222222222",
+      latest_asr_state: "FAILED",
+      latest_asr_backend: "RUNPOD_POD",
+      latest_asr_attempt_id: "77777777-7777-4777-8777-777777777777",
+    };
+    testState.query.mockImplementation(async (statement, parameters) => {
+      if (statement.includes("videoforge_prepare_cloud_media_asr_recovery"))
+        throw Object.assign(new Error("private database details"), { code: "23514" });
+      return original(statement, parameters);
     });
     try {
-      const result=await handleHostedProductRequest(request(`/api/v2/hosted/projects/${PROJECT_ID}/asr`),environment,
-        {...stagingConfig,cloudMedia:{enabled:true}} as HostedRuntimeConfiguration,executionContext);
-      expect(result?.status).toBe(409);expect(await result?.json()).toEqual({error:{code:"HOSTED_ASR_RECOVERY_NOT_ELIGIBLE"}});
-    } finally {testState.projectRows[0]=previous;testState.query.mockImplementation(original);}
+      const result = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}/asr`),
+        environment,
+        { ...stagingConfig, cloudMedia: { enabled: true } } as HostedRuntimeConfiguration,
+        executionContext,
+      );
+      expect(result?.status).toBe(409);
+      expect(await result?.json()).toEqual({ error: { code: "HOSTED_ASR_RECOVERY_NOT_ELIGIBLE" } });
+    } finally {
+      testState.projectRows[0] = previous;
+      testState.query.mockImplementation(original);
+    }
   });
 });
 
- it("blocks preflight and direct creation before any new reservation while earlier Cloud cleanup is unconfirmed", async () => {
+it("blocks preflight and direct creation before any new reservation while earlier Cloud cleanup is unconfirmed", async () => {
   testState.cleanup.pending = true;
   const body = {
     title: "Cleanup guarded project",
     avatar_profile_version_id: "22222222-2222-4222-8222-222222222222",
     image_style_version_id: "33333333-3333-4333-8333-333333333333",
-    voiceover: { filename: "voiceover.mp3", content_type: "audio/mpeg", content_length: 320000,
-      checksum_sha256: `sha256:${"a".repeat(64)}`, duration_ms: 20000 },
+    voiceover: {
+      filename: "voiceover.mp3",
+      content_type: "audio/mpeg",
+      content_length: 320000,
+      checksum_sha256: `sha256:${"a".repeat(64)}`,
+      duration_ms: 20000,
+    },
   };
   try {
-    const preflight = await handleHostedProductRequest(request("/api/v2/hosted/projects/preflight", "POST", {
-      ...body, schema_version: "videoforge-hosted-project-preflight/v1",
-    }), environment, stagingConfig, executionContext);
-    expect(await preflight!.json()).toMatchObject({ ok: false, blockers: expect.arrayContaining([
-      expect.objectContaining({ code: "HOSTED_CLOUD_CLEANUP_PENDING", severity: "BLOCKING" }),
-    ]) });
+    const preflight = await handleHostedProductRequest(
+      request("/api/v2/hosted/projects/preflight", "POST", {
+        ...body,
+        schema_version: "videoforge-hosted-project-preflight/v1",
+      }),
+      environment,
+      stagingConfig,
+      executionContext,
+    );
+    expect(await preflight!.json()).toMatchObject({
+      ok: false,
+      blockers: expect.arrayContaining([
+        expect.objectContaining({ code: "HOSTED_CLOUD_CLEANUP_PENDING", severity: "BLOCKING" }),
+      ]),
+    });
     testState.query.mockClear();
-    const created = await handleHostedProductRequest(request("/api/v2/hosted/projects", "POST", {
-      ...body, schema_version: "videoforge-hosted-project-create/v1",
-    }, true, { "idempotency-key": "cleanup-guard-0000000000000001" }), { ...environment, PRIVATE_ARTIFACTS: {} } as HostedRuntimeEnvironment, stagingConfig, executionContext);
+    const created = await handleHostedProductRequest(
+      request(
+        "/api/v2/hosted/projects",
+        "POST",
+        {
+          ...body,
+          schema_version: "videoforge-hosted-project-create/v1",
+        },
+        true,
+        { "idempotency-key": "cleanup-guard-0000000000000001" },
+      ),
+      { ...environment, PRIVATE_ARTIFACTS: {} } as HostedRuntimeEnvironment,
+      stagingConfig,
+      executionContext,
+    );
     expect(created!.status).toBe(409);
-    expect(await created!.json()).toMatchObject({ error: { code: "HOSTED_CLOUD_CLEANUP_PENDING" } });
+    expect(await created!.json()).toMatchObject({
+      error: { code: "HOSTED_CLOUD_CLEANUP_PENDING" },
+    });
     expect(testState.query.mock.calls.some(([sql]) => sql.includes("INSERT INTO"))).toBe(false);
-  } finally { testState.cleanup.pending = false; }
+  } finally {
+    testState.cleanup.pending = false;
+  }
+});
+
+describe("adjustable scene footage router contract", () => {
+  const styleVersionId = "66666666-6666-4666-8666-666666666666";
+  const runtimeKey = `tenant/${testState.scopeRows[0]?.account_id}/workspace/${testState.scopeRows[0]?.workspace_id}/avatar-profile/${PRESET_ID}/version/${PRESET_ID}/canonical/avatar.png`;
+  const baseBody = {
+    title: "Complete scene footage",
+    avatar_profile_version_id: PRESET_ID,
+    image_style_version_id: styleVersionId,
+    voiceover: {
+      filename: "voiceover.mp3",
+      content_type: "audio/mpeg",
+      content_length: 320_000,
+      checksum_sha256: `sha256:${"a".repeat(64)}`,
+      duration_ms: 60_000,
+    },
+  };
+  const coverageConfig = {
+    ...stagingConfig,
+    videoGenerationEnabled: true,
+    styleAnalysis: {},
+  } as unknown as HostedRuntimeConfiguration;
+  const createEnvironment = { PRIVATE_ARTIFACTS: {} } as HostedRuntimeEnvironment;
+  const installReadyPresets = () => {
+    const runtime = {
+      source_preparation_profile: "soulx-pro-vf924u-approved-v1",
+      object_key: runtimeKey,
+    };
+    testState.publishedStyleRows.push({
+      style_id: styleVersionId,
+      version_id: styleVersionId,
+      style_profile_hash: `sha256:${"c".repeat(64)}`,
+      scope_kind: "WORKSPACE",
+    });
+    testState.presetAvatarRows.push({
+      profile_id: PRESET_ID,
+      profile_name: "Ready avatar",
+      version_id: PRESET_ID,
+      scope_kind: "WORKSPACE",
+      profile_hash: `sha256:${"d".repeat(64)}`,
+      runtime_source_asset_id: "55555555-5555-4555-8555-555555555555",
+      runtime_source_binary_sha256: `sha256:${"e".repeat(64)}`,
+      source_preparation_profile: runtime.source_preparation_profile,
+      source_validation_profile: "hosted-avatar-source-validation-v1",
+    });
+    testState.runtimeSourceRows.push(runtime);
+    testState.preflightAvatarRows.push(runtime);
+    testState.workerDeviceRows.push({
+      status: "ONLINE",
+      count: "1",
+      available_disk_bytes: 4 * 1024 ** 3,
+    });
+  };
+  const clearReadyPresets = () => {
+    testState.publishedStyleRows.length = 0;
+    testState.presetAvatarRows.length = 0;
+    testState.runtimeSourceRows.length = 0;
+    testState.preflightAvatarRows.length = 0;
+    testState.workerDeviceRows.length = 0;
+    testState.createReplayRows.length = 0;
+    testState.query.mockClear();
+  };
+
+  it.each([0, 7, 15, 25, 50, 75, 100, 23])(
+    "preflight/v2 reports finished-video target and base estimate at %s percent",
+    async (coverage) => {
+      installReadyPresets();
+      try {
+        const result = await handleHostedProductRequest(
+          request("/api/v2/hosted/projects/preflight", "POST", {
+            ...baseBody,
+            schema_version: "videoforge-hosted-project-preflight/v2",
+            video_coverage_percent: coverage,
+          }),
+          environment,
+          coverageConfig,
+          executionContext,
+        );
+        expect(result?.status).toBe(200);
+        expect(await result!.json()).toMatchObject({
+          schema_version: "videoforge-hosted-project-preflight/v2",
+          ok: true,
+          ready: true,
+          video_coverage_percent: coverage,
+          estimate: {
+            motion: {
+              requested_coverage_percent: coverage,
+              target_seconds: (60 * coverage) / 100,
+              preliminary_usd: ((60 * coverage) / 100) * 0.01336,
+            },
+          },
+        });
+        expect(
+          testState.query.mock.calls.some(([sql]) =>
+            sql.includes("videoforge_pin_hosted_video_plan"),
+          ),
+        ).toBe(false);
+      } finally {
+        clearReadyPresets();
+      }
+    },
+  );
+
+  it.each([0, 7, 15, 25, 50, 75, 100, 23])(
+    "create/v3 pins immutable WHOLE_SCENE_V2 at %s percent",
+    async (coverage) => {
+      installReadyPresets();
+      testState.query.mockClear();
+      try {
+        const result = await handleHostedProductRequest(
+          request(
+            "/api/v2/hosted/projects",
+            "POST",
+            {
+              ...baseBody,
+              schema_version: "videoforge-hosted-project-create/v3",
+              video_coverage_percent: coverage,
+            },
+            true,
+            { "idempotency-key": `whole-scene-${coverage}-0000000000000001` },
+          ),
+          createEnvironment,
+          coverageConfig,
+          executionContext,
+        );
+        expect(result?.status).toBe(201);
+        const body = (await result!.json()) as { project_revision_id: string; state: string };
+        expect(body.state).toBe("UPLOAD_PENDING");
+        const calls = testState.query.mock.calls.filter(([sql]) =>
+          sql.includes("videoforge_pin_hosted_video_plan"),
+        );
+        expect(calls).toHaveLength(1);
+        expect(calls[0]![1]).toEqual([
+          testState.scopeRows[0]!.account_id,
+          testState.scopeRows[0]!.workspace_id,
+          body.project_revision_id,
+          coverage,
+          "WHOLE_SCENE_V2",
+        ]);
+      } finally {
+        clearReadyPresets();
+      }
+    },
+  );
+
+  it.each(["25", "", null, undefined, -1, 101, 7.5, true, {}, []])(
+    "rejects malformed coverage %j before any project write",
+    async (coverage) => {
+      testState.query.mockClear();
+      try {
+        for (const [path, schema, code] of [
+          [
+            "/api/v2/hosted/projects/preflight",
+            "videoforge-hosted-project-preflight/v2",
+            "PROJECT_PREFLIGHT_REJECTED",
+          ],
+          [
+            "/api/v2/hosted/projects",
+            "videoforge-hosted-project-create/v3",
+            "PROJECT_CREATE_REJECTED",
+          ],
+        ]) {
+          const result = await handleHostedProductRequest(
+            request(
+              path!,
+              "POST",
+              { ...baseBody, schema_version: schema, video_coverage_percent: coverage },
+              true,
+              { "idempotency-key": "malformed-coverage-00000000000001" },
+            ),
+            createEnvironment,
+            coverageConfig,
+            executionContext,
+          );
+          expect(result?.status).toBe(400);
+          expect(await errorCode(result)).toBe(code);
+        }
+        expect(
+          testState.query.mock.calls.some(
+            ([sql]) =>
+              sql.includes("INSERT INTO") || sql.includes("videoforge_pin_hosted_video_plan"),
+          ),
+        ).toBe(false);
+      } finally {
+        clearReadyPresets();
+      }
+    },
+  );
+
+  it.each(["videoforge-hosted-project-create/v1", "videoforge-hosted-project-create/v2"])(
+    "legacy %s defaults to the server's enabled 7 percent policy",
+    async (schema) => {
+      installReadyPresets();
+      testState.query.mockClear();
+      try {
+        const result = await handleHostedProductRequest(
+          request(
+            "/api/v2/hosted/projects",
+            "POST",
+            {
+              ...baseBody,
+              schema_version: schema,
+            },
+            true,
+            { "idempotency-key": "legacy-default-coverage-00000000001" },
+          ),
+          createEnvironment,
+          coverageConfig,
+          executionContext,
+        );
+        expect(result?.status).toBe(201);
+        const pin = testState.query.mock.calls.find(([sql]) =>
+          sql.includes("videoforge_pin_hosted_video_plan"),
+        );
+        expect(pin?.[1]?.slice(3)).toEqual([7, "WHOLE_SCENE_V2"]);
+      } finally {
+        clearReadyPresets();
+      }
+    },
+  );
+
+  it("legacy preflight defaults to Off when scene-video generation is disabled", async () => {
+    installReadyPresets();
+    try {
+      const result = await handleHostedProductRequest(
+        request("/api/v2/hosted/projects/preflight", "POST", {
+          ...baseBody,
+          schema_version: "videoforge-hosted-project-preflight/v1",
+        }),
+        environment,
+        { ...coverageConfig, videoGenerationEnabled: false },
+        executionContext,
+      );
+      expect(result?.status).toBe(200);
+      expect(await result!.json()).toMatchObject({
+        ok: true,
+        ready: true,
+        video_coverage_percent: 0,
+        estimate: {
+          motion: { requested_coverage_percent: 0, target_seconds: 0, preliminary_usd: 0 },
+        },
+      });
+    } finally {
+      clearReadyPresets();
+    }
+  });
+
+  it("explicit Off creates and pins zero while the enabled scene-video provider key is absent", async () => {
+    installReadyPresets();
+    testState.query.mockClear();
+    try {
+      const result = await handleHostedProductRequest(
+        request(
+          "/api/v2/hosted/projects",
+          "POST",
+          {
+            ...baseBody,
+            schema_version: "videoforge-hosted-project-create/v3",
+            video_coverage_percent: 0,
+          },
+          true,
+          { "idempotency-key": "off-missing-key-0000000000000001" },
+        ),
+        createEnvironment,
+        { ...coverageConfig, styleAnalysis: null },
+        executionContext,
+      );
+      expect(result?.status).toBe(201);
+      const pin = testState.query.mock.calls.find(([sql]) =>
+        sql.includes("videoforge_pin_hosted_video_plan"),
+      );
+      expect(pin?.[1]?.slice(3)).toEqual([0, "WHOLE_SCENE_V2"]);
+    } finally {
+      clearReadyPresets();
+    }
+  });
+
+  it("rejects fresh positive coverage while disabled before reservation and blocks preflight clearly", async () => {
+    installReadyPresets();
+    testState.query.mockClear();
+    try {
+      const disabled = { ...coverageConfig, videoGenerationEnabled: false };
+      const result = await handleHostedProductRequest(
+        request(
+          "/api/v2/hosted/projects",
+          "POST",
+          {
+            ...baseBody,
+            schema_version: "videoforge-hosted-project-create/v3",
+            video_coverage_percent: 75,
+          },
+          true,
+          { "idempotency-key": "disabled-positive-0000000000000001" },
+        ),
+        createEnvironment,
+        disabled,
+        executionContext,
+      );
+      expect(result?.status).toBe(409);
+      expect(await errorCode(result)).toBe("SCENE_VIDEO_UNAVAILABLE");
+      const preflight = await handleHostedProductRequest(
+        request("/api/v2/hosted/projects/preflight", "POST", {
+          ...baseBody,
+          schema_version: "videoforge-hosted-project-preflight/v2",
+          video_coverage_percent: 75,
+        }),
+        environment,
+        disabled,
+        executionContext,
+      );
+      expect(await preflight!.json()).toMatchObject({
+        ok: false,
+        ready: false,
+        video_coverage_percent: 75,
+        blockers: expect.arrayContaining([
+          expect.objectContaining({ code: "SCENE_VIDEO_UNAVAILABLE", severity: "BLOCKING" }),
+        ]),
+      });
+      expect(
+        testState.query.mock.calls.some(
+          ([sql]) =>
+            sql.includes("INSERT INTO") || sql.includes("videoforge_pin_hosted_video_plan"),
+        ),
+      ).toBe(false);
+    } finally {
+      clearReadyPresets();
+    }
+  });
+
+  it("replays the saved 75-percent pending request after feature disable without repinning or reserving", async () => {
+    installReadyPresets();
+    testState.query.mockClear();
+    try {
+      const body = {
+        ...baseBody,
+        schema_version: "videoforge-hosted-project-create/v3",
+        video_coverage_percent: 75,
+      };
+      const headers = { "idempotency-key": "coverage-replay-75-00000000000001" };
+      const first = await handleHostedProductRequest(
+        request("/api/v2/hosted/projects", "POST", body, true, headers),
+        createEnvironment,
+        coverageConfig,
+        executionContext,
+      );
+      expect(first?.status).toBe(201);
+      const created = (await first!.json()) as { project_id: string; project_revision_id: string };
+      const reservation = testState.query.mock.calls.find(([sql]) =>
+        sql.includes("INSERT INTO artifact_reservations"),
+      )![1]!;
+      const savedHash = testState.query.mock.calls.find(([sql]) =>
+        sql.includes("INSERT INTO hosted_project_create_requests"),
+      )![1]![4];
+      testState.createReplayRows.push({
+        request_sha256: savedHash,
+        state: "UPLOAD_PENDING",
+        project_id: created.project_id,
+        project_revision_id: created.project_revision_id,
+        upload_reservation_id: reservation[0],
+        object_key: reservation[6],
+        content_type: reservation[7],
+        content_length: reservation[8],
+        checksum_sha256: reservation[9],
+        expires_at: new Date(Date.now() + 15 * 60_000).toISOString(),
+      });
+      testState.query.mockClear();
+      const replay = await handleHostedProductRequest(
+        request("/api/v2/hosted/projects", "POST", body, true, headers),
+        createEnvironment,
+        { ...coverageConfig, videoGenerationEnabled: false, styleAnalysis: null },
+        executionContext,
+      );
+      expect(replay?.status).toBe(201);
+      expect(await replay!.json()).toMatchObject({
+        project_id: created.project_id,
+        project_revision_id: created.project_revision_id,
+        state: "UPLOAD_PENDING",
+      });
+      expect(
+        testState.query.mock.calls.some(
+          ([sql]) =>
+            sql.includes("INSERT INTO") || sql.includes("videoforge_pin_hosted_video_plan"),
+        ),
+      ).toBe(false);
+      const changed = await handleHostedProductRequest(
+        request(
+          "/api/v2/hosted/projects",
+          "POST",
+          { ...body, video_coverage_percent: 100 },
+          true,
+          headers,
+        ),
+        createEnvironment,
+        { ...coverageConfig, videoGenerationEnabled: false },
+        executionContext,
+      );
+      expect(changed?.status).toBe(409);
+      expect(await errorCode(changed)).toBe("PROJECT_IDEMPOTENCY_CONFLICT");
+    } finally {
+      clearReadyPresets();
+    }
+  });
 });

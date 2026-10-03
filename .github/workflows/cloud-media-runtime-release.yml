@@ -154,15 +154,14 @@ jobs:
             docker build --platform linux/amd64 -f workers/media-local/Dockerfile.runpod -t vf-cloud-qualified --build-arg FFMPEG_SHA256 --build-arg FFPROBE_SHA256 --build-arg WHISPER_SHA256 .
           fi
           docker run --rm --network=none --entrypoint python vf-cloud-qualified -c 'import json; assert json.load(open("/opt/videoforge/runtime.json"))["qualified"] is True'
-      - name: Verify Seedance motion and retained-image rendering offline
-        if: inputs.operation == 'qualify-source'
+      - name: Verify whole-scene and legacy motion rendering offline
         run: |
           set -euo pipefail
           docker run --rm --network=none --user "$(id -u):$(id -g)" --entrypoint python \
             -e PATH=/opt/videoforge/tools:/usr/local/bin:/usr/bin:/bin \
             -e PYTHONPATH=/opt/videoforge/packages/contracts/python:/opt/videoforge/workers/image-media/src:/opt/videoforge/workers/media-local/src:/renderer-tests \
             -v "$GITHUB_WORKSPACE/workers/image-media/tests:/renderer-tests:ro" \
-            vf-cloud-qualified -c 'import shutil,unittest; assert shutil.which("ffmpeg")=="/opt/videoforge/tools/ffmpeg"; assert shutil.which("ffprobe")=="/opt/videoforge/tools/ffprobe"; result=unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromName("test_seedance_render")); assert result.wasSuccessful() and result.testsRun>0 and not result.skipped'
+            vf-cloud-qualified -c 'import shutil,unittest; assert shutil.which("ffmpeg")=="/opt/videoforge/tools/ffmpeg"; assert shutil.which("ffprobe")=="/opt/videoforge/tools/ffprobe"; result=unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromName("test_seedance_render")); assert result.wasSuccessful() and result.testsRun>=6 and not result.skipped'
       - name: Record exact offline qualification
         run: |
           set -euo pipefail

@@ -202,3 +202,35 @@ def test_resolved_render_manifest_rejects_mixed_render_and_zoom_profile_versions
     )
     with pytest.raises(ValidationError):
         CONTRACT_MODELS["resolvedRenderManifest"].model_validate(invalid)
+
+
+def test_whole_scene_manifest_rejects_partial_and_over_budget_video() -> None:
+    manifest = load_fixture("resolved_render_manifest.valid.json")
+    manifest["schema_version"] = "resolved-render-manifest/v3"
+    manifest["video_policy"] = {
+        "coverage_percent": 100,
+        "replacement_policy": "WHOLE_SCENE_V2",
+        "selection_sha256": "sha256:" + "9" * 64,
+    }
+    scene = next(
+        segment
+        for segment in manifest["segments"]
+        if segment["timeline_composition"] == "IMAGE_FULL"
+    )
+    scene["accepted_assets"]["video"] = {"asset_id": "clip-whole", "sha256": "sha256:" + "8" * 64}
+    scene["render"].update(
+        video_source_profile="seedance-pro-fast-1248x704-v1",
+        video_frame_count=scene["end_frame_exclusive"] - scene["start_frame"],
+    )
+    validate_contract("resolvedRenderManifest", manifest)
+    scene["render"]["video_frame_count"] -= 1
+    with pytest.raises(ContractValidationError):
+        validate_contract("resolvedRenderManifest", manifest)
+    scene["render"]["video_frame_count"] += 1
+    manifest["video_policy"]["coverage_percent"] = 0
+    with pytest.raises(ContractValidationError):
+        validate_contract("resolvedRenderManifest", manifest)
+    del manifest["video_policy"]
+    manifest["schema_version"] = "resolved-render-manifest/v2"
+    scene["render"]["video_frame_count"] = 25
+    validate_contract("resolvedRenderManifest", manifest)

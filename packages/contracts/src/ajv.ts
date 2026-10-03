@@ -608,6 +608,57 @@ export const semanticContractIssues = <Name extends ContractName>(
         );
       }
     }
+    if (
+      manifest.schema_version === "resolved-render-manifest/v3" &&
+      manifest.video_policy !== undefined
+    ) {
+      let nextFrame = 0;
+      let selectedFrames = 0;
+      const segmentIds = new Set<string>();
+      for (const [index, segment] of manifest.segments.entries()) {
+        const frames = segment.end_frame_exclusive - segment.start_frame;
+        if (
+          segment.start_frame !== nextFrame ||
+          frames <= 0 ||
+          segmentIds.has(segment.segment_id)
+        ) {
+          issues.push(
+            semanticIssue(
+              `/segments/${index}`,
+              "Whole-scene timeline must be contiguous with unique scene identities.",
+            ),
+          );
+        }
+        nextFrame = segment.end_frame_exclusive;
+        segmentIds.add(segment.segment_id);
+        if (
+          segment.timeline_composition === "IMAGE_FULL" &&
+          segment.accepted_assets.video !== undefined
+        ) {
+          if (frames > 357 || segment.render.video_frame_count !== frames) {
+            issues.push(
+              semanticIssue(
+                `/segments/${index}/render/video_frame_count`,
+                "Accepted video must replace every frame of its scene.",
+              ),
+            );
+          }
+          selectedFrames += frames;
+        }
+      }
+      if (
+        nextFrame !== manifest.total_frames ||
+        selectedFrames >
+          Math.floor((manifest.total_frames * manifest.video_policy.coverage_percent) / 100)
+      ) {
+        issues.push(
+          semanticIssue(
+            "/video_policy",
+            "Whole-scene coverage must fit the pinned finished-video budget.",
+          ),
+        );
+      }
+    }
     return issues;
   }
   if (contractName === "generationWorkManifest") {

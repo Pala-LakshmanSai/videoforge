@@ -193,6 +193,38 @@ test("resolved render manifests cannot mix render and zoom profile versions", as
   );
 });
 
+test("v3 manifest contracts reject partial scenes and over-budget coverage while retaining legacy prefixes", async () => {
+  const manifest = await loadFixture("resolved_render_manifest.valid.json");
+  manifest.schema_version = "resolved-render-manifest/v3";
+  manifest.video_policy = {
+    coverage_percent: 100,
+    replacement_policy: "WHOLE_SCENE_V2",
+    selection_sha256: `sha256:${"9".repeat(64)}`,
+  };
+  const scene = manifest.segments.find(
+    ({ timeline_composition }) => timeline_composition === "IMAGE_FULL",
+  );
+  scene.accepted_assets.video = { asset_id: "clip-whole", sha256: `sha256:${"8".repeat(64)}` };
+  scene.render.video_source_profile = "seedance-pro-fast-1248x704-v1";
+  scene.render.video_frame_count = scene.end_frame_exclusive - scene.start_frame;
+  assert.equal(validateContract("resolvedRenderManifest", manifest).success, true);
+  for (const change of ["partial", "budget", "missing", "legacy-policy"]) {
+    const invalid = structuredClone(manifest);
+    if (change === "partial")
+      invalid.segments.find(
+        ({ timeline_composition }) => timeline_composition === "IMAGE_FULL",
+      ).render.video_frame_count -= 1;
+    if (change === "budget") invalid.video_policy.coverage_percent = 0;
+    if (change === "missing") delete invalid.video_policy;
+    if (change === "legacy-policy") invalid.schema_version = "resolved-render-manifest/v2";
+    assert.equal(validateContract("resolvedRenderManifest", invalid).success, false, change);
+  }
+  delete manifest.video_policy;
+  manifest.schema_version = "resolved-render-manifest/v2";
+  scene.render.video_frame_count = 25;
+  assert.equal(validateContract("resolvedRenderManifest", manifest).success, true);
+});
+
 test("output-rule keywords accept explicit negative constraints", () => {
   const accepted = [
     "ultra realistic, no AI look",

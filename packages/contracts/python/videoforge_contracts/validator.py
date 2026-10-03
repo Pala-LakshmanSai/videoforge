@@ -656,6 +656,48 @@ def _semantic_contract_issues(
                         "Split-image zoom profile must match the render profile version.",
                     )
                 )
+        if value["schema_version"] == "resolved-render-manifest/v3":
+            next_frame = 0
+            selected_frames = 0
+            segment_ids: set[str] = set()
+            for index, segment in enumerate(value["segments"]):
+                frames = segment["end_frame_exclusive"] - segment["start_frame"]
+                if (
+                    segment["start_frame"] != next_frame
+                    or frames <= 0
+                    or segment["segment_id"] in segment_ids
+                ):
+                    issues.append(
+                        _semantic_issue(
+                            f"/segments/{index}",
+                            "Whole-scene timeline must be contiguous with unique scene identities.",
+                        )
+                    )
+                next_frame = segment["end_frame_exclusive"]
+                segment_ids.add(segment["segment_id"])
+                if (
+                    segment["timeline_composition"] == "IMAGE_FULL"
+                    and "video" in segment["accepted_assets"]
+                ):
+                    if frames > 357 or segment["render"]["video_frame_count"] != frames:
+                        issues.append(
+                            _semantic_issue(
+                                f"/segments/{index}/render/video_frame_count",
+                                "Accepted video must replace every frame of its scene.",
+                            )
+                        )
+                    selected_frames += frames
+            if (
+                next_frame != value["total_frames"]
+                or selected_frames
+                > value["total_frames"] * value["video_policy"]["coverage_percent"] // 100
+            ):
+                issues.append(
+                    _semantic_issue(
+                        "/video_policy",
+                        "Whole-scene coverage must fit the pinned finished-video budget.",
+                    )
+                )
         return tuple(issues)
     if contract_name == "generationWorkManifest":
         issues = []

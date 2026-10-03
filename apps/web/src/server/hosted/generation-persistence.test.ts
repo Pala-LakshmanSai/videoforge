@@ -181,43 +181,142 @@ describe("hosted canonical timing persistence", () => {
   });
 
   it.each([
-    { name: "unpadded saved selections on replay", replayed: true, hasPlan: true,
-      selections: [{ segmentId: "image-scene", sourceTaskKey: "image:image-scene", videoFrameCount: 37, durationSeconds: 1.3 }] },
-    { name: "a saved empty selection plan on replay", replayed: true, hasPlan: true, selections: [] },
-    { name: "missing selections after canonical append", replayed: true, hasPlan: true, selections: null },
+    {
+      name: "unpadded saved selections on replay",
+      replayed: true,
+      hasPlan: true,
+      selections: [
+        {
+          segmentId: "image-scene",
+          sourceTaskKey: "image:image-scene",
+          videoFrameCount: 37,
+          durationSeconds: 1.3,
+        },
+      ],
+    },
+    {
+      name: "a saved empty selection plan on replay",
+      replayed: true,
+      hasPlan: true,
+      selections: [],
+    },
+    {
+      name: "missing selections after canonical append",
+      replayed: true,
+      hasPlan: true,
+      selections: null,
+    },
     { name: "fresh opted-in selections", replayed: false, hasPlan: true, selections: null },
-    { name: "a legacy revision without video opt-in", replayed: true, hasPlan: false, selections: null },
+    {
+      name: "a legacy revision without video opt-in",
+      replayed: true,
+      hasPlan: false,
+      selections: null,
+    },
+    {
+      name: "Off remains Off after recovery",
+      replayed: true,
+      hasPlan: true,
+      selections: null,
+      coverage: 0,
+      policy: "WHOLE_SCENE_V2",
+    },
+    {
+      name: "75 percent selects complete saved-policy scenes",
+      replayed: false,
+      hasPlan: true,
+      selections: null,
+      coverage: 75,
+      policy: "WHOLE_SCENE_V2",
+    },
+    {
+      name: "maximum retains full-scene selection",
+      replayed: true,
+      hasPlan: true,
+      selections: null,
+      coverage: 100,
+      policy: "WHOLE_SCENE_V2",
+    },
   ])("preserves $name and only finishes an unplanned opted-in revision", async (scenario) => {
     const prepared = await fixture();
     const revisionId = "55555555-5555-4555-8555-555555555555";
-    const input = { snapshot: {
-      accountId: ACCOUNT, workspaceId: WORKSPACE, userId: "33333333-3333-4333-8333-333333333333",
-      projectId: "44444444-4444-4444-8444-444444444444", projectRevisionId: revisionId,
-      asrAttemptId: "66666666-6666-4666-8666-666666666666",
-      asrInputSha256: `sha256:${"a".repeat(64)}`, asrOutputSha256: `sha256:${"b".repeat(64)}`,
-    }, preparedTranscript: prepared.preparedTranscript, preparedTimeline: {
-      ...prepared.preparedTimeline, timelinePersistence: {
-        ...prepared.preparedTimeline.timelinePersistence, totalFrames: 529, segments: [
-          { segmentKey: "image-scene", startFrame: 0, endFrameExclusive: 150,
-            timelineComposition: "IMAGE_FULL", requiredSlots: { image: { task_key: "image:image-scene" } } },
-          { segmentKey: "avatar-scene", startFrame: 150, endFrameExclusive: 529,
-            timelineComposition: "AVATAR_FULL", requiredSlots: {} },
-        ],
+    const input = {
+      snapshot: {
+        accountId: ACCOUNT,
+        workspaceId: WORKSPACE,
+        userId: "33333333-3333-4333-8333-333333333333",
+        projectId: "44444444-4444-4444-8444-444444444444",
+        projectRevisionId: revisionId,
+        asrAttemptId: "66666666-6666-4666-8666-666666666666",
+        asrInputSha256: `sha256:${"a".repeat(64)}`,
+        asrOutputSha256: `sha256:${"b".repeat(64)}`,
       },
-    }, generationPlanSha256: `sha256:${"4".repeat(64)}`, tasks: [],
+      preparedTranscript: prepared.preparedTranscript,
+      preparedTimeline: {
+        ...prepared.preparedTimeline,
+        timelinePersistence: {
+          ...prepared.preparedTimeline.timelinePersistence,
+          totalFrames: 529,
+          segments: [
+            {
+              segmentKey: "image-scene",
+              startFrame: 0,
+              endFrameExclusive: 150,
+              timelineComposition: "IMAGE_FULL",
+              requiredSlots: { image: { task_key: "image:image-scene" } },
+            },
+            {
+              segmentKey: "avatar-scene",
+              startFrame: 150,
+              endFrameExclusive: 529,
+              timelineComposition: "AVATAR_FULL",
+              requiredSlots: {},
+            },
+          ],
+        },
+      },
+      generationPlanSha256: `sha256:${"4".repeat(64)}`,
+      tasks: [],
     } as unknown as Parameters<HostedGenerationPersistence["persistProviderInertPlan"]>[0];
     const objects = new Map<string, ArrayBuffer>();
-    const bucket = { put: async (key: string, bytes: ArrayBuffer) => { objects.set(key, bytes); },
-      get: async (key: string) => { const bytes = objects.get(key); return bytes
-        ? { size: bytes.byteLength, httpMetadata: { contentType: "application/json" }, arrayBuffer: async () => bytes } : null; } };
+    const bucket = {
+      put: async (key: string, bytes: ArrayBuffer) => {
+        objects.set(key, bytes);
+      },
+      get: async (key: string) => {
+        const bytes = objects.get(key);
+        return bytes
+          ? {
+              size: bytes.byteLength,
+              httpMetadata: { contentType: "application/json" },
+              arrayBuffer: async () => bytes,
+            }
+          : null;
+      },
+    };
     const planned: unknown[] = [];
     const original = structuredClone(scenario.selections);
     const query = vi.fn(async (sql: string, values?: readonly unknown[]) => {
       if (sql.includes("videoforge_append_hosted_canonical_timing"))
         return { rows: [{ replayed: scenario.replayed }], rowCount: 1 };
-      if (sql.startsWith("SELECT selections FROM hosted_video_plans")) {
+      if (
+        sql.startsWith(
+          "SELECT selections, coverage_percent, replacement_policy FROM hosted_video_plans",
+        )
+      ) {
         expect(values).toEqual([ACCOUNT, WORKSPACE, revisionId]);
-        return { rows: scenario.hasPlan ? [{ selections: scenario.selections }] : [], rowCount: scenario.hasPlan ? 1 : 0 };
+        return {
+          rows: scenario.hasPlan
+            ? [
+                {
+                  selections: scenario.selections,
+                  coverage_percent: "coverage" in scenario ? scenario.coverage : 7,
+                  replacement_policy: "policy" in scenario ? scenario.policy : "LEGACY_PREFIX_V1",
+                },
+              ]
+            : [],
+          rowCount: scenario.hasPlan ? 1 : 0,
+        };
       }
       if (sql.includes("videoforge_plan_hosted_video_selections")) {
         expect(values?.slice(0, 3)).toEqual([ACCOUNT, WORKSPACE, revisionId]);
@@ -227,10 +326,28 @@ describe("hosted canonical timing persistence", () => {
     });
     const pool = { query, connect: async () => ({ query, release: vi.fn() }) };
     const persistence = new HostedCanonicalTimingPersistence(pool as never, bucket as never);
-    await expect(persistence.persistProviderInertPlan(input)).resolves.toEqual({ replayed: scenario.replayed });
+    await expect(persistence.persistProviderInertPlan(input)).resolves.toEqual({
+      replayed: scenario.replayed,
+    });
     expect(scenario.selections).toEqual(original);
-    expect(planned).toEqual(scenario.hasPlan && scenario.selections === null
-      ? [[{ segmentId: "image-scene", sourceTaskKey: "image:image-scene", videoFrameCount: 37, durationSeconds: 1.4 }]] : []);
-    expect(query.mock.calls.map(([sql]) => sql).join("\n")).not.toContain("videoforge_pin_hosted_video_plan");
+    expect(planned).toEqual(
+      scenario.hasPlan && scenario.selections === null
+        ? [
+            "coverage" in scenario && scenario.coverage === 0
+              ? []
+              : [
+                  {
+                    segmentId: "image-scene",
+                    sourceTaskKey: "image:image-scene",
+                    videoFrameCount: "policy" in scenario ? 150 : 37,
+                    durationSeconds: "policy" in scenario ? 5.1 : 1.4,
+                  },
+                ],
+          ]
+        : [],
+    );
+    expect(query.mock.calls.map(([sql]) => sql).join("\n")).not.toContain(
+      "videoforge_pin_hosted_video_plan",
+    );
   });
 });

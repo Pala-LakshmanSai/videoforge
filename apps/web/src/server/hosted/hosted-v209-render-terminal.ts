@@ -40,7 +40,9 @@ async function readCandidate(
   scope: Readonly<{ accountId: string; workspaceId: string; attemptId: string }>,
 ): Promise<Row> {
   return database.transaction(async (transaction) => {
-    await transaction.query("SELECT set_config('videoforge.account_id',$1,true)", [scope.accountId]);
+    await transaction.query("SELECT set_config('videoforge.account_id',$1,true)", [
+      scope.accountId,
+    ]);
     const result = await transaction.query<{ candidate: unknown }>(
       "SELECT public.videoforge_read_v209_render_terminal_candidate($1::uuid,$2::uuid,$3::uuid) AS candidate",
       [scope.accountId, scope.workspaceId, scope.attemptId],
@@ -61,19 +63,22 @@ function validateCandidate(
     candidate.workspaceId !== scope.workspaceId ||
     candidate.attemptId !== scope.attemptId ||
     candidate.attemptState !== "SUCCEEDED" ||
-    (candidate.renderOnlyRun === true ?
-      !(candidate.apiOutputsAccepted === true && candidate.generationProvider === "KIE_FAL" &&
-        ((candidate.renderOnlyState === "PREPARING" && candidate.leaseState === "ACTIVE") ||
-         (candidate.renderOnlyState === "SUCCEEDED" && candidate.leaseState === "RELEASED"))) :
-      candidate.leaseState !== "RELEASED" ||
-    !(
-      candidate.leaseReleaseReason === "HOSTED_PAIR_OUTPUTS_ACCEPTED" ||
-      (candidate.leaseReleaseReason === "HOSTED_PAIR_PROVIDER_TERMINAL" &&
-        Number(candidate.acceptedLaneCount) === 2) ||
-      (candidate.leaseReleaseReason === "HOSTED_API_OUTPUTS_ACCEPTED" &&
-        candidate.generationProvider === "KIE_FAL" &&
-        candidate.apiOutputsAccepted === true)
-    )) ||
+    (candidate.renderOnlyRun === true
+      ? !(
+          candidate.apiOutputsAccepted === true &&
+          candidate.generationProvider === "KIE_FAL" &&
+          ((candidate.renderOnlyState === "PREPARING" && candidate.leaseState === "ACTIVE") ||
+            (candidate.renderOnlyState === "SUCCEEDED" && candidate.leaseState === "RELEASED"))
+        )
+      : candidate.leaseState !== "RELEASED" ||
+        !(
+          candidate.leaseReleaseReason === "HOSTED_PAIR_OUTPUTS_ACCEPTED" ||
+          (candidate.leaseReleaseReason === "HOSTED_PAIR_PROVIDER_TERMINAL" &&
+            Number(candidate.acceptedLaneCount) === 2) ||
+          (candidate.leaseReleaseReason === "HOSTED_API_OUTPUTS_ACCEPTED" &&
+            candidate.generationProvider === "KIE_FAL" &&
+            candidate.apiOutputsAccepted === true)
+        )) ||
     !UUID.test(text(candidate.runtimeId)) ||
     !UUID.test(text(candidate.generationRequestId)) ||
     !UUID.test(text(candidate.leaseId)) ||
@@ -92,7 +97,9 @@ function validateCandidate(
     plan.kind !== "RENDER" ||
     plan.project_id !== candidate.projectId ||
     plan.project_revision_id !== candidate.projectRevisionId ||
-    !["render-job-input/v1", "render-job-input/v2"].includes(String(input.schema_version)) ||
+    !["render-job-input/v1", "render-job-input/v2", "render-job-input/v3"].includes(
+      String(input.schema_version),
+    ) ||
     input.project_revision_id !== candidate.projectRevisionId ||
     manifest.sha256 !== candidate.renderManifestSha256
   )
@@ -235,11 +242,15 @@ export function createHostedV209RenderTerminalHandoff(input: {
       )
         throw new Error("HOSTED_V209_RENDER_TERMINAL_INVALID");
       const finalOutput =
-        (candidate.renderOnlyRun === true && candidate.renderOnlyState === "PREPARING" || candidate.runtimeStage === "RENDERING") && candidate.generationRequestState === "ACTIVE"
+        ((candidate.renderOnlyRun === true && candidate.renderOnlyState === "PREPARING") ||
+          candidate.runtimeStage === "RENDERING") &&
+        candidate.generationRequestState === "ACTIVE"
           ? await loadFreshFinalOutput(input.bucket, candidate)
           : loadReplayedFinalOutput(candidate);
       const finalized = await input.database.transaction(async (transaction) => {
-        await transaction.query("SELECT set_config('videoforge.account_id',$1,true)", [scope.accountId]);
+        await transaction.query("SELECT set_config('videoforge.account_id',$1,true)", [
+          scope.accountId,
+        ]);
         const result = await transaction.query<{ result: unknown }>(
           "SELECT public.videoforge_finalize_v209_render_terminal($1::jsonb) AS result",
           [

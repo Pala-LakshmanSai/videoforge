@@ -1712,6 +1712,177 @@ test("0240 applies to the real prior chain and enforces private immutable video 
       "SUCCEEDED",
     );
 
+    // Reuse the fully accepted source/output receipts to prove the additive v3
+    // gate and full-scene fallback. Only fixture metadata is adapted; runtime
+    // callers have no write privileges and all gates stay enabled for assertions.
+    await executor.execute(
+      readFileSync(
+        new URL("../migrations/0248_hosted_video_whole_scene_coverage.sql", import.meta.url),
+        "utf8",
+      ),
+    );
+    const wholeSelections = [
+      {
+        segmentId: "scene",
+        sourceTaskKey: "image:scene",
+        videoFrameCount: 300,
+        durationSeconds: 10.1,
+      },
+    ];
+    await db.exec("ALTER TABLE hosted_video_plans DISABLE TRIGGER ALL");
+    await db.query(
+      `UPDATE hosted_video_plans SET coverage_percent=100,replacement_policy='WHOLE_SCENE_V2',selections=$2::jsonb,
+      selection_sha256='sha256:'||encode(sha256(convert_to(videoforge_canonical_jsonb($2::jsonb),'UTF8')),'hex') WHERE project_revision_id=$1`,
+      [r, JSON.stringify(wholeSelections)],
+    );
+    await db.exec("ALTER TABLE hosted_video_plans ENABLE TRIGGER ALL");
+    await db.exec("ALTER TABLE timeline_segments DISABLE TRIGGER ALL");
+    await db.query(
+      "UPDATE timeline_segments SET end_frame_exclusive=300,source_audio_end_ms_exclusive=10000 WHERE id=$1",
+      [segment],
+    );
+    await db.exec("ALTER TABLE timeline_segments ENABLE TRIGGER ALL");
+    await db.exec("ALTER TABLE hosted_video_jobs DISABLE TRIGGER ALL");
+    await db.query("UPDATE hosted_video_jobs SET duration_seconds=10.1 WHERE id=$1", [j]);
+    await db.exec("ALTER TABLE hosted_video_jobs ENABLE TRIGGER ALL");
+    const wholePlan = (
+      await db.query(
+        "SELECT to_jsonb(p) value FROM hosted_video_plans p WHERE project_revision_id=$1",
+        [r],
+      )
+    ).rows[0].value;
+    const wholeManifest = {
+      ...manifest,
+      schema_version: "resolved-render-manifest/v3",
+      total_frames: 300,
+      video_policy: {
+        coverage_percent: 100,
+        replacement_policy: "WHOLE_SCENE_V2",
+        selection_sha256: wholePlan.selection_sha256,
+      },
+      segments: [{ ...manifest.segments[0], start_frame: 0, end_frame_exclusive: 300 }],
+    };
+    assert.equal(
+      await call("videoforge_hosted_video_manifest_valid", [
+        a,
+        w,
+        g,
+        JSON.stringify(wholeManifest),
+      ]),
+      true,
+    );
+    assert.equal(
+      await call("videoforge_hosted_video_manifest_valid", [
+        a,
+        w,
+        g,
+        JSON.stringify({ ...wholeManifest, schema_version: "resolved-render-manifest/v2" }),
+      ]),
+      false,
+    );
+    assert.equal(
+      await call("videoforge_hosted_video_manifest_valid", [
+        a,
+        w,
+        g,
+        JSON.stringify({
+          ...wholeManifest,
+          segments: [
+            {
+              ...wholeManifest.segments[0],
+              render: { ...wholeManifest.segments[0].render, video_frame_count: 299 },
+            },
+          ],
+        }),
+      ]),
+      false,
+    );
+    assert.equal(
+      await call("videoforge_hosted_video_manifest_valid", [
+        a,
+        w,
+        g,
+        JSON.stringify({
+          ...wholeManifest,
+          segments: [{ ...wholeManifest.segments[0], end_frame_exclusive: 299 }],
+        }),
+      ]),
+      false,
+    );
+    await seed(
+      "hosted_v209_ordinary_resolved_render_manifests",
+      `INSERT INTO hosted_v209_ordinary_resolved_render_manifests(generation_request_id,account_id,workspace_id,project_id,project_revision_id,asset_id,reservation_id,manifest_sha256,manifest_document,object_key,content_length,receipt_sha256) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,'whole-manifest-fixture',100,$8)`,
+      [g, a, w, p, r, sourceAsset, sourceReservation, hash, JSON.stringify(wholeManifest)],
+    );
+    const wholeInput = {
+      schema_version: "render-job-input/v3",
+      video_policy: wholeManifest.video_policy,
+      resolved_render_manifest: { sha256: hash },
+    };
+    assert.equal(
+      await call("videoforge_hosted_video_render_input_valid", [
+        a,
+        w,
+        r,
+        JSON.stringify(wholeInput),
+      ]),
+      true,
+    );
+    assert.equal(
+      await call("videoforge_hosted_video_render_input_valid", [
+        a,
+        w,
+        r,
+        JSON.stringify({
+          ...wholeInput,
+          resolved_render_manifest: { sha256: "sha256:" + "b".repeat(64) },
+        }),
+      ]),
+      false,
+    );
+    assert.equal(
+      await call("videoforge_hosted_video_render_input_valid", [
+        a,
+        w,
+        r,
+        JSON.stringify({ ...wholeInput, schema_version: "render-job-input/v1" }),
+      ]),
+      false,
+    );
+    await db.exec("ALTER TABLE hosted_video_jobs DISABLE TRIGGER ALL");
+    await db.query(
+      "UPDATE hosted_video_jobs SET state='FAILED',failure_code='SEEDANCE_CLIP_TOO_SHORT',output_asset_id=NULL,output_receipt_id=NULL,output_sha256=NULL,output_bytes=NULL,output_probe=NULL WHERE id=$1",
+      [j],
+    );
+    await db.exec("ALTER TABLE hosted_video_jobs ENABLE TRIGGER ALL");
+    const wholeFallback = {
+      ...wholeManifest,
+      segments: [
+        {
+          ...wholeManifest.segments[0],
+          accepted_assets: { image: wholeManifest.segments[0].accepted_assets.image },
+          render: {},
+        },
+      ],
+    };
+    assert.equal(
+      await call("videoforge_hosted_video_manifest_valid", [
+        a,
+        w,
+        g,
+        JSON.stringify(wholeFallback),
+      ]),
+      true,
+    );
+    assert.equal(
+      await call("videoforge_hosted_video_manifest_valid", [
+        a,
+        w,
+        g,
+        JSON.stringify(wholeManifest),
+      ]),
+      false,
+    );
     await db.exec("ROLLBACK");
   } finally {
     await db.close();

@@ -7494,7 +7494,7 @@ export const canonicalSchemaDocuments = {
   "resolvedRenderManifest": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://videoforge.local/schemas/resolved-render-manifest-v1.json",
-    "title": "VideoForge Resolved Render Manifest v1/v2",
+    "title": "VideoForge Resolved Render Manifest v1/v2/v3",
     "type": "object",
     "additionalProperties": false,
     "required": [
@@ -7512,7 +7512,8 @@ export const canonicalSchemaDocuments = {
       "schema_version": {
         "enum": [
           "resolved-render-manifest/v1",
-          "resolved-render-manifest/v2"
+          "resolved-render-manifest/v2",
+          "resolved-render-manifest/v3"
         ]
       },
       "project_revision_id": {
@@ -7621,6 +7622,9 @@ export const canonicalSchemaDocuments = {
             }
           ]
         }
+      },
+      "video_policy": {
+        "$ref": "#/$defs/videoPolicy"
       }
     },
     "allOf": [
@@ -7720,6 +7724,55 @@ export const canonicalSchemaDocuments = {
             }
           },
           "type": "object"
+        }
+      },
+      {
+        "if": {
+          "type": "object",
+          "properties": {
+            "schema_version": {
+              "const": "resolved-render-manifest/v3"
+            }
+          }
+        },
+        "then": {
+          "type": "object",
+          "required": [
+            "video_policy"
+          ],
+          "properties": {
+            "video_policy": {
+              "$ref": "#/$defs/videoPolicy"
+            },
+            "segments": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "render": {
+                    "type": "object",
+                    "properties": {
+                      "video_frame_count": {
+                        "type": "integer",
+                        "maximum": 357
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "else": {
+          "type": "object",
+          "not": {
+            "required": [
+              "video_policy"
+            ]
+          },
+          "properties": {
+            "video_policy": {}
+          }
         }
       }
     ],
@@ -8617,6 +8670,29 @@ export const canonicalSchemaDocuments = {
             }
           }
         ]
+      },
+      "videoPolicy": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "coverage_percent",
+          "replacement_policy",
+          "selection_sha256"
+        ],
+        "properties": {
+          "coverage_percent": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "replacement_policy": {
+            "const": "WHOLE_SCENE_V2"
+          },
+          "selection_sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        }
       }
     }
   },
@@ -10183,7 +10259,7 @@ export const canonicalSchemaDocuments = {
   "renderJobInput": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://videoforge.local/schemas/render-job-input-v1.json",
-    "title": "VideoForge Render Job Input v1/v2",
+    "title": "VideoForge Render Job Input v1/v2/v3",
     "type": "object",
     "additionalProperties": false,
     "required": [
@@ -10200,7 +10276,8 @@ export const canonicalSchemaDocuments = {
       "schema_version": {
         "enum": [
           "render-job-input/v1",
-          "render-job-input/v2"
+          "render-job-input/v2",
+          "render-job-input/v3"
         ]
       },
       "project_revision_id": {
@@ -10289,6 +10366,9 @@ export const canonicalSchemaDocuments = {
         "type": "string",
         "minLength": 32,
         "maxLength": 512
+      },
+      "video_policy": {
+        "$ref": "#/$defs/videoPolicy"
       }
     },
     "$defs": {
@@ -10327,6 +10407,28 @@ export const canonicalSchemaDocuments = {
           },
           "artifact_uri": {
             "$ref": "#/$defs/objectUri"
+          }
+        }
+      },
+      "videoPolicy": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "coverage_percent",
+          "replacement_policy",
+          "selection_sha256"
+        ],
+        "properties": {
+          "coverage_percent": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "replacement_policy": {
+            "const": "WHOLE_SCENE_V2"
+          },
+          "selection_sha256": {
+            "$ref": "#/$defs/sha256"
           }
         }
       }
@@ -10378,6 +10480,38 @@ export const canonicalSchemaDocuments = {
             }
           },
           "type": "object"
+        }
+      },
+      {
+        "if": {
+          "type": "object",
+          "properties": {
+            "schema_version": {
+              "const": "render-job-input/v3"
+            }
+          }
+        },
+        "then": {
+          "type": "object",
+          "required": [
+            "video_policy"
+          ],
+          "properties": {
+            "video_policy": {
+              "$ref": "#/$defs/videoPolicy"
+            }
+          }
+        },
+        "else": {
+          "type": "object",
+          "not": {
+            "required": [
+              "video_policy"
+            ]
+          },
+          "properties": {
+            "video_policy": {}
+          }
         }
       }
     ]

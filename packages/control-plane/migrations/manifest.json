@@ -1230,6 +1230,42 @@
       "name": "hosted_seedance_video_unknown_no_task",
       "filename": "0242_hosted_seedance_video_unknown_no_task.sql",
       "sha256": "sha256:cec3c8d1dd27697a8a355a6c518c3c08a3b550a8c543342a8f9e4dba7e38a8a4"
+    },
+    {
+      "version": 243,
+      "name": "hosted_seedance_video_first_post",
+      "filename": "0243_hosted_seedance_video_first_post.sql",
+      "sha256": "sha256:11b68f128973b79d73acaa1b2681bbce742275cb57bb4847c203bdbf2da1217c"
+    },
+    {
+      "version": 244,
+      "name": "hosted_seedance_video_static_fallback",
+      "filename": "0244_hosted_seedance_video_static_fallback.sql",
+      "sha256": "sha256:a9d2793b96e4f1d774758cb9afa004774e709df1526c2659b84b657c367c11a4"
+    },
+    {
+      "version": 245,
+      "name": "hosted_seedance_video_render_reader_grant",
+      "filename": "0245_hosted_seedance_video_render_reader_grant.sql",
+      "sha256": "sha256:c694271dcad6b4629a2ce62a08b29a446bb0a7bcb3a168c97856eebaf420c033"
+    },
+    {
+      "version": 246,
+      "name": "hosted_seedance_video_canonical_segment",
+      "filename": "0246_hosted_seedance_video_canonical_segment.sql",
+      "sha256": "sha256:d01fed826d9803731007e63a34c34563ddfdff6f09c64dc9c570e87b4ea8172c"
+    },
+    {
+      "version": 247,
+      "name": "hosted_video_worker_input_keys",
+      "filename": "0247_hosted_video_worker_input_keys.sql",
+      "sha256": "sha256:898f1b23ecb61c75092af05c681c7fb0f6156dc7f337e04f219f8ab5598b0b52"
+    },
+    {
+      "version": 248,
+      "name": "hosted_video_whole_scene_coverage",
+      "filename": "0248_hosted_video_whole_scene_coverage.sql",
+      "sha256": "sha256:2391c0e5f13958f4be1f1d7ed0050941d7e1b378a3a531138d6da280aa2cf0ac"
     }
   ]
 }

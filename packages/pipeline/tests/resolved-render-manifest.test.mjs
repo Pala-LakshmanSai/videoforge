@@ -203,24 +203,140 @@ test("pins Seedance motion to its retained image and caps exact timeline coverag
   }
 });
 
+test("whole-scene policy pins coverage, forbids image tails and retains Off provenance", async () => {
+  const request = await requestWith(
+    CANDIDATES.map((candidate) =>
+      candidate.kind === "AVATAR_CLIP"
+        ? { ...candidate, rendererSourceProfile: "local-fixture-centered-832x480p25-v1" }
+        : candidate,
+    ),
+  );
+  const scene = request.timeline.value.segments[1];
+  const video = {
+    segmentId: scene.segment_id,
+    sourceTaskKey: "image:seg_0002",
+    sourceSha256: CANDIDATES[1].sha256,
+    videoFrameCount: scene.end_frame_exclusive - scene.start_frame,
+    assetId: "asset_video_whole",
+    sha256: `sha256:${"8".repeat(64)}`,
+    kind: "VIDEO",
+  };
+  const videoPolicy = {
+    coveragePercent: 50,
+    replacementPolicy: "WHOLE_SCENE_V2",
+    selectionSha256: `sha256:${"9".repeat(64)}`,
+  };
+  const whole = requireSuccess(
+    await planVNextResolvedRenderManifest({ ...request, videoPolicy, videoAssets: [video] }),
+  ).value;
+  assert.equal(whole.schema_version, "resolved-render-manifest/v3");
+  assert.equal(whole.video_policy.coverage_percent, 50);
+  assert.equal(whole.segments[1].render.video_frame_count, video.videoFrameCount);
+  for (const invalid of [
+    { videoAssets: [{ ...video, videoFrameCount: video.videoFrameCount - 1 }] },
+    { videoPolicy: { ...videoPolicy, coveragePercent: 7 } },
+    { videoPolicy: { ...videoPolicy, coveragePercent: 0 } },
+    { videoPolicy: { ...videoPolicy, coveragePercent: 50.5 } },
+    { videoPolicy: { ...videoPolicy, selectionSha256: "forged" } },
+  ])
+    assert.equal(
+      (
+        await planVNextResolvedRenderManifest({
+          ...request,
+          videoPolicy,
+          videoAssets: [video],
+          ...invalid,
+        })
+      ).ok,
+      false,
+    );
+  for (const coveragePercent of [0, 7, 25, 75, 100]) {
+    const fallback = requireSuccess(
+      await planVNextResolvedRenderManifest({
+        ...request,
+        videoPolicy: { ...videoPolicy, coveragePercent },
+        videoAssets: [],
+      }),
+    ).value;
+    assert.equal(fallback.schema_version, "resolved-render-manifest/v3");
+    assert.equal(fallback.video_policy.coverage_percent, coveragePercent);
+    assert.ok(fallback.segments.every((segment) => segment.accepted_assets.video === undefined));
+  }
+});
+
+test("v3 clips honor the provider headroom boundary at 357 frames", async () => {
+  const request = await requestWith();
+  for (const frames of [357, 358]) {
+    const scene = {
+      ...request.timeline.value.segments[1],
+      start_frame: 0,
+      end_frame_exclusive: frames,
+    };
+    const planned = await planVNextResolvedRenderManifest({
+      ...request,
+      timeline: {
+        ...request.timeline,
+        value: { ...request.timeline.value, total_frames: frames, segments: [scene] },
+      },
+      acceptedAssets: { byTaskKey: { "image:seg_0002": CANDIDATES[1] } },
+      videoPolicy: {
+        coveragePercent: 100,
+        replacementPolicy: "WHOLE_SCENE_V2",
+        selectionSha256: `sha256:${"9".repeat(64)}`,
+      },
+      videoAssets: [
+        {
+          segmentId: scene.segment_id,
+          sourceTaskKey: "image:seg_0002",
+          sourceSha256: CANDIDATES[1].sha256,
+          videoFrameCount: frames,
+          assetId: "whole-limit-clip",
+          sha256: `sha256:${"8".repeat(64)}`,
+          kind: "VIDEO",
+        },
+      ],
+    });
+    assert.equal(planned.ok, frames === 357);
+  }
+});
+
 test("maps only exact hosted UUID segment aliases without changing provider identity", async () => {
-  const request = await requestWith(CANDIDATES.map((candidate) => candidate.kind === "AVATAR_CLIP"
-    ? { ...candidate, rendererSourceProfile: "local-fixture-centered-832x480p25-v1" } : candidate));
+  const request = await requestWith(
+    CANDIDATES.map((candidate) =>
+      candidate.kind === "AVATAR_CLIP"
+        ? { ...candidate, rendererSourceProfile: "local-fixture-centered-832x480p25-v1" }
+        : candidate,
+    ),
+  );
   const canonicalId = "6aa52c17-016f-5220-868f-f15582fac4cc";
   const timelineValue = structuredClone(request.timeline.value);
   timelineValue.segments[1].segment_id = canonicalId;
   const timeline = await validateAndHashContractDocument("timelinePlan", timelineValue);
-  const video = { segmentId: `segment:${canonicalId}`, sourceTaskKey: "image:seg_0002",
-    sourceSha256: CANDIDATES[1].sha256, videoFrameCount: 25, assetId: "asset_video_seg_0002",
-    sha256: `sha256:${"8".repeat(64)}`, kind: "VIDEO" };
-  const planned = requireSuccess(await planVNextResolvedRenderManifest({ ...request, timeline, videoAssets: [video] }));
+  const video = {
+    segmentId: `segment:${canonicalId}`,
+    sourceTaskKey: "image:seg_0002",
+    sourceSha256: CANDIDATES[1].sha256,
+    videoFrameCount: 25,
+    assetId: "asset_video_seg_0002",
+    sha256: `sha256:${"8".repeat(64)}`,
+    kind: "VIDEO",
+  };
+  const planned = requireSuccess(
+    await planVNextResolvedRenderManifest({ ...request, timeline, videoAssets: [video] }),
+  );
   assert.equal(planned.value.segments[1].segment_id, canonicalId);
   assert.equal(planned.value.segments[1].render.video_frame_count, 25);
   assert.equal(planned.value.segments[1].accepted_assets.image.sha256, video.sourceSha256);
   assert.equal(video.segmentId, `segment:${canonicalId}`);
   assert.equal(matchesVideoTimelineSegmentId("seg_0002", "seg_0002"), true);
   assert.equal(matchesVideoTimelineSegmentId("segment:seg_0002", "seg_0002"), false);
-  assert.equal(matchesVideoTimelineSegmentId(`segment:${canonicalId.toUpperCase()}`, canonicalId.toUpperCase()), false);
+  assert.equal(
+    matchesVideoTimelineSegmentId(
+      `segment:${canonicalId.toUpperCase()}`,
+      canonicalId.toUpperCase(),
+    ),
+    false,
+  );
   for (const videoAssets of [
     [{ ...video, segmentId: `segment:segment:${canonicalId}` }],
     [{ ...video, segmentId: "segment:da4c19fe-2346-5517-952a-6109124a53ad" }],

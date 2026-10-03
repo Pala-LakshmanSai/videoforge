@@ -179,8 +179,8 @@
     {
       "source": "project-context/evidence/resolved_render_manifest.schema.json",
       "destination": "generated/schemas/resolved_render_manifest.schema.json",
-      "bytes": 31485,
-      "sha256": "sha256:42f4f248f845149ff45bf202175ba45fe9cb15f7441ec2c4a7fcd1acd60edf18"
+      "bytes": 33214,
+      "sha256": "sha256:094ba003bc4b1ec3120f9f2523a403bfaf06a6be433979a0b4d8b2b30d31a958"
     },
     {
       "source": "project-context/evidence/production_manifest.schema.json",
@@ -221,8 +221,8 @@
     {
       "source": "project-context/evidence/render_job_input.schema.json",
       "destination": "generated/schemas/render_job_input.schema.json",
-      "bytes": 4599,
-      "sha256": "sha256:041f611adb74eb4e3d9bed6dbd5b24faf910ee39f9d08aa1d6f1e35e4cb315d2"
+      "bytes": 5814,
+      "sha256": "sha256:77f6d61a246441b42061a3dd503d223d5925fa9749601be2ea52128615b07559"
     },
     {
       "source": "project-context/evidence/technical_probe.schema.json",

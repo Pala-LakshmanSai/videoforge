@@ -1,4 +1,7 @@
-import { hostedAccountCleanupPending, HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE } from "./hosted-v209-queue-admission";
+import {
+  hostedAccountCleanupPending,
+  HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE,
+} from "./hosted-v209-queue-admission";
 import { localMediaRequiredBytes, qualifiedPersonalWorkers } from "./personal-worker-readiness";
 import type { HostedExecutionContext } from "./auth";
 import type { SqlExecutor, TransactionalSqlExecutor } from "@videoforge/control-plane";
@@ -212,6 +215,7 @@ interface ProjectCreateInput {
   readonly generationMode: "LOWEST_COST" | "BALANCED" | "FASTER";
   readonly userSeed: number | null;
   readonly executionBackend: "PERSONAL_WORKER" | "RUNPOD_POD";
+  readonly videoCoveragePercent: number | null;
   readonly voiceover: {
     readonly filename: string;
     readonly contentType: string;
@@ -322,10 +326,15 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
     "execution_backend",
   ];
   const schemaVersion = record.schema_version;
+  const coverageSchema =
+    schemaVersion === "videoforge-hosted-project-create/v3" ||
+    schemaVersion === "videoforge-hosted-project-preflight/v2";
+  const allowedKeys = coverageSchema ? [...v2Keys, "video_coverage_percent"] : v2Keys;
   if (
     schemaVersion !== "videoforge-hosted-project-create/v1" &&
     schemaVersion !== "videoforge-hosted-project-create/v2" &&
-    schemaVersion !== "videoforge-hosted-project-preflight/v1"
+    schemaVersion !== "videoforge-hosted-project-preflight/v1" &&
+    !coverageSchema
   )
     return null;
   if (
@@ -333,8 +342,12 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
       (keys.size !== legacyKeys.length || legacyKeys.some((key) => !keys.has(key)))) ||
     (schemaVersion !== "videoforge-hosted-project-create/v1" &&
       (keys.size < legacyKeys.length ||
-        keys.size > v2Keys.length ||
-        [...keys].some((key) => !v2Keys.includes(key)))) ||
+        keys.size > allowedKeys.length ||
+        [...keys].some((key) => !allowedKeys.includes(key)))) ||
+    (coverageSchema &&
+      (!Number.isSafeInteger(record.video_coverage_percent) ||
+        Number(record.video_coverage_percent) < 0 ||
+        Number(record.video_coverage_percent) > 100)) ||
     typeof record.title !== "string" ||
     record.title !== record.title.trim() ||
     record.title.length < 1 ||
@@ -392,7 +405,8 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
         Number(userSeed) < 0 ||
         Number(userSeed) > 4_294_967_295)) ||
     (executionBackend !== undefined &&
-      executionBackend !== "PERSONAL_WORKER" && executionBackend !== "RUNPOD_POD") ||
+      executionBackend !== "PERSONAL_WORKER" &&
+      executionBackend !== "RUNPOD_POD") ||
     (applyExtraPromptKeywords === true &&
       (typeof extraPromptKeywords !== "string" || !/\S/u.test(extraPromptKeywords)))
   ) {
@@ -409,6 +423,7 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
       generationMode === "BALANCED" || generationMode === "FASTER" ? generationMode : "LOWEST_COST",
     userSeed: typeof userSeed === "number" ? userSeed : null,
     executionBackend: executionBackend === "RUNPOD_POD" ? "RUNPOD_POD" : "PERSONAL_WORKER",
+    videoCoveragePercent: coverageSchema ? Number(record.video_coverage_percent) : null,
     voiceover: {
       filename: voiceover.filename,
       contentType: voiceover.content_type,
@@ -3794,8 +3809,9 @@ export function recentFullRenderDurationMs(
       return FULL_RENDER_REFERENCE_FAILURE_CODES.has(String(attempt.error_code ?? ""));
     })
     .map((attempt) => elapsedMs(attempt.submitted_at, attempt.terminal_at))
-    .filter((duration): duration is number =>
-      duration !== null && duration >= FULL_RENDER_REFERENCE_MIN_MS,
+    .filter(
+      (duration): duration is number =>
+        duration !== null && duration >= FULL_RENDER_REFERENCE_MIN_MS,
     );
   return durations.at(-1) ?? null;
 }
@@ -3847,7 +3863,14 @@ export function hostedApiRemainingTimeEstimate(input: {
     const startMs = start == null ? NaN : new Date(String(start)).getTime();
     return Number.isFinite(startMs) ? Math.max(0, now - startMs) : 0;
   };
-  const remainingMs = (total: number, accepted: number, referenceMs: number, referenceCount: number, startedAt: unknown, liveFrom = Math.ceil(total / 2)) => {
+  const remainingMs = (
+    total: number,
+    accepted: number,
+    referenceMs: number,
+    referenceCount: number,
+    startedAt: unknown,
+    liveFrom = Math.ceil(total / 2),
+  ) => {
     const remaining = Math.max(0, total - accepted);
     if (remaining === 0) return 0;
     const referencePerItem = referenceMs / referenceCount;
@@ -3857,24 +3880,46 @@ export function hostedApiRemainingTimeEstimate(input: {
   };
   const promptMs = input.promptComplete
     ? 0
-    : remainingMs(input.promptTotal, input.promptAccepted, 94_000, 29, input.promptStartedAt,
-        Math.min(20, Math.ceil(input.promptTotal / 2)));
+    : remainingMs(
+        input.promptTotal,
+        input.promptAccepted,
+        94_000,
+        29,
+        input.promptStartedAt,
+        Math.min(20, Math.ceil(input.promptTotal / 2)),
+      );
   const spanMs = remainingMs(input.spanTotal, input.spanReady, 47_000, 9, input.spanStartedAt);
-  const imageMs = remainingMs(input.imageTotal, input.imageAccepted, 183_000, 28.5, input.imageSubmittedAt);
-  const avatarMs = remainingMs(input.avatarTotal, input.avatarAccepted, 180_000, 9.5, input.avatarSubmittedAt);
+  const imageMs = remainingMs(
+    input.imageTotal,
+    input.imageAccepted,
+    183_000,
+    28.5,
+    input.imageSubmittedAt,
+  );
+  const avatarMs = remainingMs(
+    input.avatarTotal,
+    input.avatarAccepted,
+    180_000,
+    9.5,
+    input.avatarSubmittedAt,
+  );
   const beforeRenderMs = promptMs + spanMs + Math.max(imageMs, avatarMs);
   const scale = input.durationMs / 159_200;
-  const renderMinMs = renderReferenceMs === null
-    ? 60_000 + 354_000 * scale
-    : Math.round(renderReferenceMs * 0.8);
-  const renderMaxMs = renderReferenceMs === null
-    ? 60_000 + 744_000 * scale
-    : Math.round(renderReferenceMs * 1.2);
+  const renderMinMs =
+    renderReferenceMs === null ? 60_000 + 354_000 * scale : Math.round(renderReferenceMs * 0.8);
+  const renderMaxMs =
+    renderReferenceMs === null ? 60_000 + 744_000 * scale : Math.round(renderReferenceMs * 1.2);
   const renderElapsedMs = activeMs(input.renderSubmittedAt);
   const overrun = input.renderSubmittedAt != null && renderElapsedMs > renderMaxMs;
   return {
-    remaining_min_ms: Math.max(0, Math.round(beforeRenderMs * 0.75 + renderMinMs - renderElapsedMs)),
-    remaining_max_ms: Math.max(overrun ? 60_000 : 0, Math.round(beforeRenderMs * 1.5 + renderMaxMs - renderElapsedMs)),
+    remaining_min_ms: Math.max(
+      0,
+      Math.round(beforeRenderMs * 0.75 + renderMinMs - renderElapsedMs),
+    ),
+    remaining_max_ms: Math.max(
+      overrun ? 60_000 : 0,
+      Math.round(beforeRenderMs * 1.5 + renderMaxMs - renderElapsedMs),
+    ),
     basis: renderReferenceMs === null ? "RECENT_API_SHORT_RUN" : "RECENT_FULL_RENDER",
     overrun,
   };
@@ -4102,13 +4147,23 @@ async function catalog(
           ORDER BY version.updated_at DESC, style.name`,
         [scope.account_id, scope.workspace_id],
       );
-      const workers = await (await import("./personal-worker-readiness")).qualifiedPersonalWorkers(
-        transaction, config.mediaWorkerRelease, scope.account_id, scope.workspace_id,
+      const workers = await (
+        await import("./personal-worker-readiness")
+      ).qualifiedPersonalWorkers(
+        transaction,
+        config.mediaWorkerRelease,
+        scope.account_id,
+        scope.workspace_id,
       );
-      const cloudReady = config.cloudMedia?.enabled ? await transaction.query<{allowed:boolean}>("SELECT public.videoforge_cloud_media_new_project_ready($1::uuid) AS allowed", [config.cloudMedia.budgetAuthorityId]) : null;
-      const cloudCleanupPending = config.cloudMedia?.enabled && await hostedAccountCleanupPending(
-        transaction, scope.account_id, scope.workspace_id,
-      );
+      const cloudReady = config.cloudMedia?.enabled
+        ? await transaction.query<{ allowed: boolean }>(
+            "SELECT public.videoforge_cloud_media_new_project_ready($1::uuid) AS allowed",
+            [config.cloudMedia.budgetAuthorityId],
+          )
+        : null;
+      const cloudCleanupPending =
+        config.cloudMedia?.enabled &&
+        (await hostedAccountCleanupPending(transaction, scope.account_id, scope.workspace_id));
       return {
         cloudAvailable: cloudReady?.rows[0]?.allowed === true,
         cloudMessage: cloudCleanupPending ? HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE : null,
@@ -4204,11 +4259,14 @@ async function catalog(
       };
     });
     const gpuReadiness = hostedGpuReadinessForConfiguration(config);
-    const defaultStyle = styleRows.find((style) =>
-      style.style_id === NATURAL_DOCUMENTARY_STYLE_ID &&
-      style.version_id === NATURAL_DOCUMENTARY_STYLE_VERSION_ID &&
-      style.profile_hash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH &&
-      style.scope_kind === "SYSTEM" && style.status === "ACTIVE" && style.state === "PUBLISHED",
+    const defaultStyle = styleRows.find(
+      (style) =>
+        style.style_id === NATURAL_DOCUMENTARY_STYLE_ID &&
+        style.version_id === NATURAL_DOCUMENTARY_STYLE_VERSION_ID &&
+        style.profile_hash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH &&
+        style.scope_kind === "SYSTEM" &&
+        style.status === "ACTIVE" &&
+        style.state === "PUBLISHED",
     );
     return response({
       schema_version: "videoforge-hosted-project-catalog/v1",
@@ -4220,7 +4278,20 @@ async function catalog(
       media_worker_state: data.workers > 0 ? "ONLINE" : "WAITING_FOR_YOUR_COMPUTER",
       local_media_free_bytes: data.availableDiskBytes,
       cloud_media: { available: data.cloudAvailable, message: data.cloudMessage },
-      ...(config.videoGenerationEnabled ? { video_generation: { coverage_percent: 7, usd_per_second: 0.01336, resolution: "720p", aspect_ratio: "16:9" } } : {}),
+      ...(config.videoGenerationEnabled
+        ? {
+            video_generation: {
+              coverage_percent: 7,
+              coverage_default_percent: 7,
+              coverage_min_percent: 0,
+              coverage_max_percent: 100,
+              adjustable_coverage_supported: true,
+              usd_per_second: 0.01336,
+              resolution: "720p",
+              aspect_ratio: "16:9",
+            },
+          }
+        : {}),
       generation_provider: config.apiGeneration ? "KIE_FAL" : "RUNPOD",
       gpu_transport: gpuReadiness.gpu_transport,
       gpu_readiness: gpuReadiness,
@@ -4757,7 +4828,11 @@ const PROMPT_WRITER_STATES: ReadonlyMap<
 export function hostedPromptWritingState(
   promptTaskState: unknown,
   planExists: boolean,
-  progress?: { readonly acceptedScenes: number; readonly totalScenes: number; readonly problemCode?: unknown },
+  progress?: {
+    readonly acceptedScenes: number;
+    readonly totalScenes: number;
+    readonly problemCode?: unknown;
+  },
 ): {
   readonly status: "COMPLETE" | "FAILED" | "BLOCKED" | "RETRY_WAIT" | "RUNNING" | "WAITING";
   readonly progressPercent: number;
@@ -4767,8 +4842,10 @@ export function hostedPromptWritingState(
   if (progress?.problemCode === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW") {
     return {
       status: "BLOCKED",
-      progressPercent: progress.totalScenes > 0
-        ? Math.min(99, Math.floor(progress.acceptedScenes / progress.totalScenes * 100)) : 0,
+      progressPercent:
+        progress.totalScenes > 0
+          ? Math.min(99, Math.floor((progress.acceptedScenes / progress.totalScenes) * 100))
+          : 0,
       detail: `Prompt writing is paused while provider credits are unavailable. ${progress.acceptedScenes} saved prompts remain intact.`,
     };
   }
@@ -4855,7 +4932,10 @@ async function projectPreflight(
           [scope.account_id, scope.workspace_id, input.styleVersionId],
         ),
         (await import("./personal-worker-readiness")).qualifiedPersonalWorkers(
-          transaction, config.mediaWorkerRelease, scope.account_id, scope.workspace_id,
+          transaction,
+          config.mediaWorkerRelease,
+          scope.account_id,
+          scope.workspace_id,
         ),
       ]);
       const avatarRow = avatar.rows[0];
@@ -4863,7 +4943,13 @@ async function projectPreflight(
         ? avatarRuntimeSourceReadyForApi(avatarRow)
         : avatarRuntimeSourceQualified(avatarRow);
       return {
-        cleanupPending: await hostedAccountCleanupPending(transaction, scope.account_id, scope.workspace_id, null, input.executionBackend),
+        cleanupPending: await hostedAccountCleanupPending(
+          transaction,
+          scope.account_id,
+          scope.workspace_id,
+          null,
+          input.executionBackend,
+        ),
         avatarReady: avatar.rows.length > 0,
         avatarRuntimeSourceQualified: runtimeSourceQualified,
         qualifiedAvatarName: qualifiedAvatarName === null ? null : String(qualifiedAvatarName),
@@ -4872,10 +4958,22 @@ async function projectPreflight(
         availableDiskBytes: workers.availableDiskBytes,
       };
     });
+    const videoCoveragePercent =
+      input.videoCoveragePercent ?? (config.videoGenerationEnabled ? 7 : 0);
     const blockers: HostedPreflightBlocker[] = [];
-    if (facts.cleanupPending) blockers.push({
-      code: "HOSTED_CLOUD_CLEANUP_PENDING", message: HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE, severity: "BLOCKING",
-    });
+    if (videoCoveragePercent > 0 && !config.videoGenerationEnabled)
+      blockers.push({
+        code: "SCENE_VIDEO_UNAVAILABLE",
+        message:
+          "Scene video generation is unavailable. Set video footage coverage to Off or try again when it is available.",
+        severity: "BLOCKING",
+      });
+    if (facts.cleanupPending)
+      blockers.push({
+        code: "HOSTED_CLOUD_CLEANUP_PENDING",
+        message: HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE,
+        severity: "BLOCKING",
+      });
     if (!facts.avatarReady) {
       blockers.push({
         code: "AVATAR_PROFILE_NOT_READY",
@@ -4906,10 +5004,18 @@ async function projectPreflight(
         severity: "BLOCKING",
       });
     }
-    if (input.executionBackend === "PERSONAL_WORKER" && facts.workers > 0 &&
-      (facts.availableDiskBytes === null || facts.availableDiskBytes < localMediaRequiredBytes(input.voiceover.contentLength))) {
-      blockers.push({code: "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT",
-        message: "Free disk space on your connected computer before starting. Local media needs 2 GiB plus twice the voiceover size.", severity: "BLOCKING"});
+    if (
+      input.executionBackend === "PERSONAL_WORKER" &&
+      facts.workers > 0 &&
+      (facts.availableDiskBytes === null ||
+        facts.availableDiskBytes < localMediaRequiredBytes(input.voiceover.contentLength))
+    ) {
+      blockers.push({
+        code: "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT",
+        message:
+          "Free disk space on your connected computer before starting. Local media needs 2 GiB plus twice the voiceover size.",
+        severity: "BLOCKING",
+      });
     }
     if (input.executionBackend === "RUNPOD_POD" && !config.cloudMedia?.enabled) {
       blockers.push({
@@ -4929,7 +5035,11 @@ async function projectPreflight(
     const ok = blockers.every((blocker) => blocker.severity !== "BLOCKING");
     const gpuProductState = hostedGpuProductState(gpuReadiness);
     return response({
-      schema_version: "videoforge-hosted-project-preflight/v1",
+      schema_version:
+        input.videoCoveragePercent === null
+          ? "videoforge-hosted-project-preflight/v1"
+          : "videoforge-hosted-project-preflight/v2",
+      video_coverage_percent: videoCoveragePercent,
       ok,
       ready: ok,
       execution_backend: input.executionBackend,
@@ -4938,14 +5048,23 @@ async function projectPreflight(
         minimum_usd: 0,
         maximum_usd: null,
         cap_usd: null,
-        detail: input.executionBackend === "RUNPOD_POD"
-          ? "Cloud media compute adds cost to Kie image and Fal generation usage."
-          : config.apiGeneration
-          ? "Kie image and Fal compute usage is billed after generation."
-          : gpuProductState.estimateDetail,
+        detail:
+          input.executionBackend === "RUNPOD_POD"
+            ? "Cloud media compute adds cost to Kie image and Fal generation usage."
+            : config.apiGeneration
+              ? "Kie image and Fal compute usage is billed after generation."
+              : gpuProductState.estimateDetail,
         voiceover_bytes: input.voiceover.contentLength,
         duration_ms: input.voiceover.durationMs,
         generation_mode: input.generationMode,
+        motion: {
+          requested_coverage_percent: videoCoveragePercent,
+          target_seconds: ((input.voiceover.durationMs / 1000) * videoCoveragePercent) / 100,
+          preliminary_usd:
+            (((input.voiceover.durationMs / 1000) * videoCoveragePercent) / 100) * 0.01336,
+          detail:
+            "Preliminary scene-video estimate. Whole scenes and avatar time can reduce coverage; request timing allowances and Cloud compute can add cost. Exact planned footage cost is shown after scheduling.",
+        },
       },
       blockers,
       gpu_transport: gpuReadiness.gpu_transport,
@@ -4979,6 +5098,8 @@ async function createProject(
     if (raw instanceof Response) return raw;
     const input = parseCreate(raw);
     if (!input) return response({ error: { code: "PROJECT_CREATE_REJECTED" } }, 400);
+    const videoCoveragePercent =
+      input.videoCoveragePercent ?? (config.videoGenerationEnabled ? 7 : 0);
     if (input.executionBackend === "RUNPOD_POD" && !config.cloudMedia?.enabled)
       return response({ error: { code: "CLOUD_MEDIA_UNAVAILABLE" } }, 409);
     requestedTitle = input.title;
@@ -5034,7 +5155,17 @@ async function createProject(
         }
         return replay;
       }
-      if (await hostedAccountCleanupPending(transaction, scope.account_id, scope.workspace_id, null, input.executionBackend))
+      if (videoCoveragePercent > 0 && !config.videoGenerationEnabled)
+        throw new Error("SCENE_VIDEO_UNAVAILABLE");
+      if (
+        await hostedAccountCleanupPending(
+          transaction,
+          scope.account_id,
+          scope.workspace_id,
+          null,
+          input.executionBackend,
+        )
+      )
         throw new Error("HOSTED_CLOUD_CLEANUP_PENDING");
       const resolved = await resolveProjectPresets(
         transaction,
@@ -5172,9 +5303,15 @@ async function createProject(
         ],
       );
       if (config.videoGenerationEnabled) {
-        if (!config.styleAnalysis) throw new Error("HOSTED_VIDEO_GENERATION_KEY_MISSING");
-        await transaction.query("SELECT public.videoforge_pin_hosted_video_plan($1,$2,$3)",
-          [scope.account_id, scope.workspace_id, revisionId]);
+        if (videoCoveragePercent > 0 && !config.styleAnalysis)
+          throw new Error("HOSTED_VIDEO_GENERATION_KEY_MISSING");
+        await transaction.query("SELECT public.videoforge_pin_hosted_video_plan($1,$2,$3,$4,$5)", [
+          scope.account_id,
+          scope.workspace_id,
+          revisionId,
+          videoCoveragePercent,
+          "WHOLE_SCENE_V2",
+        ]);
       }
       await transaction.query(`UPDATE assets SET project_revision_id = $1 WHERE id = $2`, [
         revisionId,
@@ -5274,12 +5411,25 @@ async function createProject(
       201,
     );
   } catch (error) {
+    if (error instanceof Error && error.message === "SCENE_VIDEO_UNAVAILABLE")
+      return response(
+        {
+          error: {
+            code: error.message,
+            message: "Scene video generation is unavailable. Set coverage to Off.",
+          },
+        },
+        409,
+      );
     if (error instanceof Error && error.message === "PROJECT_IDEMPOTENCY_CONFLICT")
       return response({ error: { code: error.message } }, 409);
     if (error instanceof Error && error.message === "VOICEOVER_UPLOAD_NOT_RENEWABLE")
       return response({ error: { code: error.message } }, 409);
     if (error instanceof Error && error.message === "HOSTED_CLOUD_CLEANUP_PENDING")
-      return response({ error: { code: error.message, message: HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE } }, 409);
+      return response(
+        { error: { code: error.message, message: HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE } },
+        409,
+      );
     if (error instanceof Error && error.message === "PROJECT_PRESET_NOT_READY")
       return response({ error: { code: error.message } }, 409);
     if (error instanceof Error && error.message === "AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED")
@@ -5554,7 +5704,7 @@ async function asrHandoff(
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
   const pool = createNeonPool(config.neon.databaseUrl);
-  let cloudRecovery=false;
+  let cloudRecovery = false;
   try {
     const scope = await sessionScope(request, config, pool, executionContext);
     if (scope instanceof Response) return scope;
@@ -5563,23 +5713,24 @@ async function asrHandoff(
         "videoforge.account_id",
         scope.account_id,
       ]);
-      const load = () => transaction.query<{
-        revision_id: string;
-        revision_number: number | string;
-        voiceover_asset_id: string;
-        checksum_sha256: string;
-        content_type: string;
-        duration_ms: number | string;
-        receipt_id: string;
-        content_length: string | number;
-        media_execution_backend: string;
-        asr_attempt_count: number | string;
-        asr_total_attempt_count: number | string;
-        latest_asr_state: string | null;
-        latest_asr_backend: string | null;
-        latest_asr_attempt_id: string | null;
-      }>(
-        `SELECT revision.id::text AS revision_id,
+      const load = () =>
+        transaction.query<{
+          revision_id: string;
+          revision_number: number | string;
+          voiceover_asset_id: string;
+          checksum_sha256: string;
+          content_type: string;
+          duration_ms: number | string;
+          receipt_id: string;
+          content_length: string | number;
+          media_execution_backend: string;
+          asr_attempt_count: number | string;
+          asr_total_attempt_count: number | string;
+          latest_asr_state: string | null;
+          latest_asr_backend: string | null;
+          latest_asr_attempt_id: string | null;
+        }>(
+          `SELECT revision.id::text AS revision_id,
                 revision.revision_number,
                 revision.voiceover_asset_id::text AS voiceover_asset_id,
                 receipt.checksum_sha256, receipt.content_type, receipt.content_length, revision.media_execution_backend,
@@ -5661,34 +5812,59 @@ async function asrHandoff(
             AND project.status = 'ACTIVE'
           ORDER BY revision.revision_number DESC, revision.id DESC
           LIMIT 1`,
-        [scope.account_id, scope.workspace_id, projectId, config.mediaWorkerRelease.executionBundleSha256],
-      );
-      let result=await load();
-      const latest=result.rows[0];
-      if(latest?.latest_asr_backend==="RUNPOD_POD" && latest.latest_asr_state==="FAILED") {
-        cloudRecovery=true;
-        if(!config.cloudMedia) throw new Error("CLOUD_MEDIA_UNAVAILABLE");
-        if(!latest.latest_asr_attempt_id || !UUID.test(latest.latest_asr_attempt_id))
+          [
+            scope.account_id,
+            scope.workspace_id,
+            projectId,
+            config.mediaWorkerRelease.executionBundleSha256,
+          ],
+        );
+      let result = await load();
+      const latest = result.rows[0];
+      if (latest?.latest_asr_backend === "RUNPOD_POD" && latest.latest_asr_state === "FAILED") {
+        cloudRecovery = true;
+        if (!config.cloudMedia) throw new Error("CLOUD_MEDIA_UNAVAILABLE");
+        if (!latest.latest_asr_attempt_id || !UUID.test(latest.latest_asr_attempt_id))
           throw new Error("HOSTED_ASR_RECOVERY_NOT_ELIGIBLE");
-        const recovered=await transaction.query<{revision_id:string}>(
+        const recovered = await transaction.query<{ revision_id: string }>(
           "SELECT public.videoforge_prepare_cloud_media_asr_recovery($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid) AS revision_id",
-          [scope.account_id,scope.workspace_id,scope.user_id,projectId,latest.latest_asr_attempt_id]);
-        const revision=recovered.rows[0]?.revision_id;
-        if(!revision || !UUID.test(revision)) throw new Error("HOSTED_ASR_RECOVERY_NOT_ELIGIBLE");
+          [
+            scope.account_id,
+            scope.workspace_id,
+            scope.user_id,
+            projectId,
+            latest.latest_asr_attempt_id,
+          ],
+        );
+        const revision = recovered.rows[0]?.revision_id;
+        if (!revision || !UUID.test(revision)) throw new Error("HOSTED_ASR_RECOVERY_NOT_ELIGIBLE");
         // Recovery keeps the owner's pinned coverage choice; legacy revisions stay image-only.
         await transaction.query(
-          `SELECT public.videoforge_pin_hosted_video_plan($1::uuid,$2::uuid,$3::uuid)
+          `SELECT public.videoforge_copy_hosted_video_plan($1::uuid,$2::uuid,$3::uuid,$4::uuid)
              WHERE EXISTS(SELECT 1 FROM hosted_video_plans
-               WHERE account_id=$1 AND workspace_id=$2 AND project_revision_id=$4::uuid)`,
-          [scope.account_id,scope.workspace_id,revision,latest.revision_id]);
-        result=await load();
-        if(result.rows[0]?.revision_id!==revision) throw new Error("HOSTED_ASR_RECOVERY_NOT_ELIGIBLE");
+               WHERE account_id=$1 AND workspace_id=$2 AND project_revision_id=$3::uuid)`,
+          [scope.account_id, scope.workspace_id, latest.revision_id, revision],
+        );
+        result = await load();
+        if (result.rows[0]?.revision_id !== revision)
+          throw new Error("HOSTED_ASR_RECOVERY_NOT_ELIGIBLE");
       }
       const row = result.rows[0];
       if (row && (row.media_execution_backend ?? row.latest_asr_backend) !== "RUNPOD_POD") {
-        const workers = await (await import("./personal-worker-readiness")).qualifiedPersonalWorkers(transaction, config.mediaWorkerRelease, scope.account_id, scope.workspace_id);
+        const workers = await (
+          await import("./personal-worker-readiness")
+        ).qualifiedPersonalWorkers(
+          transaction,
+          config.mediaWorkerRelease,
+          scope.account_id,
+          scope.workspace_id,
+        );
         const required = localMediaRequiredBytes(Number(row.content_length));
-        if (!Number.isSafeInteger(required) || workers.availableDiskBytes === null || workers.availableDiskBytes < required)
+        if (
+          !Number.isSafeInteger(required) ||
+          workers.availableDiskBytes === null ||
+          workers.availableDiskBytes < required
+        )
           throw new Error("MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT");
       }
       return row ?? null;
@@ -5792,14 +5968,29 @@ async function asrHandoff(
       },
       202,
     );
-  } catch(error) {
-    if(error instanceof Error && error.message==="CLOUD_MEDIA_UNAVAILABLE")
-      return response({error:{code:"CLOUD_MEDIA_UNAVAILABLE"}},503);
-    if((error instanceof Error && error.message==="HOSTED_ASR_RECOVERY_NOT_ELIGIBLE") ||
-      (cloudRecovery && error && typeof error==="object" && "code" in error && ["42501","23514","23505","55000"].includes(String(error.code))))
-      return response({error:{code:"HOSTED_ASR_RECOVERY_NOT_ELIGIBLE"}},409);
+  } catch (error) {
+    if (error instanceof Error && error.message === "CLOUD_MEDIA_UNAVAILABLE")
+      return response({ error: { code: "CLOUD_MEDIA_UNAVAILABLE" } }, 503);
+    if (
+      (error instanceof Error && error.message === "HOSTED_ASR_RECOVERY_NOT_ELIGIBLE") ||
+      (cloudRecovery &&
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        ["42501", "23514", "23505", "55000"].includes(String(error.code)))
+    )
+      return response({ error: { code: "HOSTED_ASR_RECOVERY_NOT_ELIGIBLE" } }, 409);
     if (error instanceof Error && error.message === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT")
-      return response({error:{code:error.message,message:"Free disk space on your connected computer before retrying transcription. Local media needs 2 GiB plus twice the voiceover size."}},409);
+      return response(
+        {
+          error: {
+            code: error.message,
+            message:
+              "Free disk space on your connected computer before retrying transcription. Local media needs 2 GiB plus twice the voiceover size.",
+          },
+        },
+        409,
+      );
     throw error;
   } finally {
     await pool.end();
@@ -6430,7 +6621,9 @@ export async function renderHandoff(
         asr_attempt_id: string | null;
         asr_terminal_at: string | null;
         asr_execution_backend: "PERSONAL_WORKER" | "RUNPOD_POD" | null;
-        asr_cloud_runtime: import("./generation-coordinator").HostedGenerationSnapshot["asrCloudRuntime"] | null;
+        asr_cloud_runtime:
+          | import("./generation-coordinator").HostedGenerationSnapshot["asrCloudRuntime"]
+          | null;
         asr_input_object_key: string | null;
         asr_input_content_length: number | string | null;
         asr_input_sha256: string | null;
@@ -6699,7 +6892,8 @@ function hostedMediaRequest(request: Request): {
   const rawPage = Number(params.get("media_page") ?? "1");
   const page = Number.isSafeInteger(rawPage) && rawPage >= 1 && rawPage <= 1_000 ? rawPage : 1;
   const rawKind = params.get("media_kind");
-  const kind = rawKind === "images" || rawKind === "avatar" || rawKind === "videos" ? rawKind : null;
+  const kind =
+    rawKind === "images" || rawKind === "avatar" || rawKind === "videos" ? rawKind : null;
   return Object.freeze({ kind, page });
 }
 
@@ -6732,8 +6926,11 @@ function countHostedMediaArtifacts(
 ): number {
   let count = 0;
   for (const output of outputs) {
-    if ((kind === "avatar" && String(output.lane ?? "").toLowerCase() !== "soulx_avatar") ||
-        (kind === "videos" && output.lane !== "scene_video")) continue;
+    if (
+      (kind === "avatar" && String(output.lane ?? "").toLowerCase() !== "soulx_avatar") ||
+      (kind === "videos" && output.lane !== "scene_video")
+    )
+      continue;
     if (!Array.isArray(output.artifacts)) continue;
     for (const rawArtifact of output.artifacts) {
       const artifact = validHostedMediaArtifact(rawArtifact);
@@ -6769,8 +6966,11 @@ function hostedMediaCandidates(
   const start = (page - 1) * HOSTED_MEDIA_PAGE_SIZE;
   let ordinal = 0;
   for (const output of outputs) {
-    if ((kind === "avatar" && output.lane !== "soulx_avatar") ||
-        (kind === "videos" && output.lane !== "scene_video")) continue;
+    if (
+      (kind === "avatar" && output.lane !== "soulx_avatar") ||
+      (kind === "videos" && output.lane !== "scene_video")
+    )
+      continue;
     if (!Array.isArray(output.artifacts)) continue;
     for (const rawArtifact of output.artifacts) {
       const artifact = validHostedMediaArtifact(rawArtifact);
@@ -7540,8 +7740,13 @@ async function projectDetail(
           )
         : { rows: [] as Record<string, unknown>[] };
       const videoPlan = await transaction.query(
-        "SELECT selections,planned_at,coverage_percent FROM hosted_video_plans WHERE account_id=$1 AND workspace_id=$2 AND project_revision_id=$3",
-        [scope.account_id, scope.workspace_id, currentRevisionId]);
+        `SELECT selections,planned_at,coverage_percent,replacement_policy,selection_sha256,
+          (SELECT sum(scene.end_frame_exclusive-scene.start_frame) FROM timeline_segments scene
+            WHERE scene.account_id=$1 AND scene.workspace_id=$2 AND scene.project_revision_id=$3
+              AND scene.timeline_composition='IMAGE_FULL' AND scene.end_frame_exclusive-scene.start_frame<=357) AS eligible_frames
+          FROM hosted_video_plans WHERE account_id=$1 AND workspace_id=$2 AND project_revision_id=$3`,
+        [scope.account_id, scope.workspace_id, currentRevisionId],
+      );
       const videoJobs = await transaction.query(
         `SELECT job.*, (public.videoforge_hosted_video_static_fallback(job.state,job.failure_code,job.output_cost_usd,job.duration_seconds)
           AND job.output_asset_id IS NULL AND job.output_receipt_id IS NULL AND job.output_sha256 IS NULL
@@ -7565,13 +7770,19 @@ async function projectDetail(
              AND receipt.object_key=job.output_object_key AND receipt.checksum_sha256=job.output_sha256
              AND receipt.content_length=job.output_bytes) AS accepted_barrier_valid
          FROM hosted_video_jobs job WHERE account_id=$1 AND workspace_id=$2 AND project_revision_id=$3 ORDER BY segment_id`,
-        [scope.account_id, scope.workspace_id, currentRevisionId]);
+        [scope.account_id, scope.workspace_id, currentRevisionId],
+      );
       const renderRetryStatus = await transaction.query<{ value: unknown }>(
         "SELECT public.videoforge_read_hosted_api_render_recovery_status($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::text) AS value",
-        [scope.account_id,scope.workspace_id,scope.user_id,projectId,
+        [
+          scope.account_id,
+          scope.workspace_id,
+          scope.user_id,
+          projectId,
           (project.rows[0] as Record<string, unknown>).media_execution_backend === "RUNPOD_POD"
-            ? config.cloudMedia?.sourceSha256 ?? config.mediaWorkerRelease.executionBundleSha256
-            : config.mediaWorkerRelease.executionBundleSha256],
+            ? (config.cloudMedia?.sourceSha256 ?? config.mediaWorkerRelease.executionBundleSha256)
+            : config.mediaWorkerRelease.executionBundleSha256,
+        ],
       );
       const cost = await transaction.query(
         `SELECT revision.maximum_cost_micro_usd,
@@ -7702,18 +7913,32 @@ async function projectDetail(
       );
       return {
         project: project.rows[0],
-        localWorker: project.rows[0].media_execution_backend === "PERSONAL_WORKER"
-          ? await qualifiedPersonalWorkers(transaction, config.mediaWorkerRelease, scope.account_id, scope.workspace_id)
-          : null,
+        localWorker:
+          project.rows[0].media_execution_backend === "PERSONAL_WORKER"
+            ? await qualifiedPersonalWorkers(
+                transaction,
+                config.mediaWorkerRelease,
+                scope.account_id,
+                scope.workspace_id,
+              )
+            : null,
         attempts: attempts.rows,
         voiceoverContext: voiceoverContext.rows[0] ?? null,
         generation: generation.rows[0] ?? null,
         prompts: prompts.rows,
         promptProgress: promptProgress.rows[0] ?? null,
         queue: queue.rows[0] ?? null,
-        cleanupPending: queue.rows[0]?.state === "WAITING" &&
-          await hostedAccountCleanupPending(transaction, scope.account_id, scope.workspace_id, projectId,
-            project.rows[0].media_execution_backend === "RUNPOD_POD" ? "RUNPOD_POD" : "PERSONAL_WORKER"),
+        cleanupPending:
+          queue.rows[0]?.state === "WAITING" &&
+          (await hostedAccountCleanupPending(
+            transaction,
+            scope.account_id,
+            scope.workspace_id,
+            projectId,
+            project.rows[0].media_execution_backend === "RUNPOD_POD"
+              ? "RUNPOD_POD"
+              : "PERSONAL_WORKER",
+          )),
         runtime: runtime.rows[0] ?? null,
         serverlessAttempts: serverlessAttempts.rows,
         serverlessOutputs: serverlessOutputs.rows,
@@ -7770,10 +7995,10 @@ async function projectDetail(
             : value.kind === "ASR"
               ? value.state === "SUCCEEDED"
                 ? 100
-              : value.state === "RUNNING"
-                ? 50
-                : 0
-            : null,
+                : value.state === "RUNNING"
+                  ? 50
+                  : 0
+              : null,
         queue_position: null,
         timing: hostedTiming({
           createdAt: value.created_at,
@@ -7900,14 +8125,16 @@ async function projectDetail(
                     ? "BLOCKED"
                     : "OUTBOXED"
                   : null;
-      const apiStartedAt = apiJobs
-        .map((job) => timestampOrNull(job.created_at))
-        .filter((value): value is string => value !== null)
-        .sort()[0] ?? null;
-      const apiSubmittedAt = apiJobs
-        .map((job) => timestampOrNull(job.submitted_at))
-        .filter((value): value is string => value !== null)
-        .sort()[0] ?? null;
+      const apiStartedAt =
+        apiJobs
+          .map((job) => timestampOrNull(job.created_at))
+          .filter((value): value is string => value !== null)
+          .sort()[0] ?? null;
+      const apiSubmittedAt =
+        apiJobs
+          .map((job) => timestampOrNull(job.submitted_at))
+          .filter((value): value is string => value !== null)
+          .sort()[0] ?? null;
       const apiCompletedAt =
         apiState === "SUCCEEDED"
           ? (apiJobs
@@ -7936,19 +8163,21 @@ async function projectDetail(
         planned_item_count: plannedItems,
         accepted_item_count: acceptedItems,
         // Durable submission state does not distinguish provider queueing, inference or retrieval.
-        ...(projectApiGeneration ? {
-          provider_pending_item_count: apiJobs.filter((job) => job.state === "SUBMITTED").length,
-          waiting_to_submit_item_count: apiJobs.filter((job) => job.state === "PREPARED").length,
-          submitting_item_count: apiJobs.filter((job) => job.state === "SUBMITTING").length,
-        } : {}),
+        ...(projectApiGeneration
+          ? {
+              provider_pending_item_count: apiJobs.filter((job) => job.state === "SUBMITTED")
+                .length,
+              waiting_to_submit_item_count: apiJobs.filter((job) => job.state === "PREPARED")
+                .length,
+              submitting_item_count: apiJobs.filter((job) => job.state === "SUBMITTING").length,
+            }
+          : {}),
         attempt_ordinal: numberOrNull(attempt?.attempt_ordinal),
         submitted_at: projectApiGeneration
           ? apiSubmittedAt
           : timestampOrNull(attempt?.submitted_at),
         created_at: projectApiGeneration ? apiStartedAt : timestampOrNull(attempt?.created_at),
-        terminal_at: projectApiGeneration
-          ? apiCompletedAt
-          : timestampOrNull(attempt?.terminal_at),
+        terminal_at: projectApiGeneration ? apiCompletedAt : timestampOrNull(attempt?.terminal_at),
       };
     });
     const laneProgress = (lane: string): number | null => {
@@ -7967,8 +8196,13 @@ async function projectDetail(
         .find((value) => value.kind === kind);
     const asr = latestAttempt("ASR");
     const render = latestAttempt("RENDER");
-    const currentRenderApproved = Boolean(detail.review && render && (detail.review as Record<string, unknown>).render_attempt_id === render.id);
-    const cloudMedia = (detail.project as Record<string, unknown>).media_execution_backend === "RUNPOD_POD";
+    const currentRenderApproved = Boolean(
+      detail.review &&
+        render &&
+        (detail.review as Record<string, unknown>).render_attempt_id === render.id,
+    );
+    const cloudMedia =
+      (detail.project as Record<string, unknown>).media_execution_backend === "RUNPOD_POD";
     const renderReferenceMs = recentFullRenderDurationMs(
       detail.attempts as Record<string, unknown>[],
     );
@@ -7983,7 +8217,11 @@ async function projectDetail(
     const promptStage = hostedPromptWritingState(
       (detail.generation as Record<string, unknown> | null)?.prompt_task_state,
       detail.generation !== null,
-      { acceptedScenes: acceptedPromptScenes, totalScenes: totalPromptScenes, problemCode: promptProgress?.problem_code },
+      {
+        acceptedScenes: acceptedPromptScenes,
+        totalScenes: totalPromptScenes,
+        problemCode: promptProgress?.problem_code,
+      },
     );
     const voiceoverContext = detail.voiceoverContext as Record<string, unknown> | null;
     const contextState = String(voiceoverContext?.state ?? "WAITING");
@@ -7999,25 +8237,75 @@ async function projectDetail(
               ? "RUNNING"
               : contextState;
     const admissionWaiting = (detail.queue as Record<string, unknown> | null)?.state === "WAITING";
-    const spanAdmissionWaiting = promptStage.status === "COMPLETE" && admissionWaiting &&
-      spanAudioProgress.started_at === null && spanAudioProgress.failed === 0 &&
+    const spanAdmissionWaiting =
+      promptStage.status === "COMPLETE" &&
+      admissionWaiting &&
+      spanAudioProgress.started_at === null &&
+      spanAudioProgress.failed === 0 &&
       spanAudioProgress.materialized === 0;
     const videoPlan = detail.videoPlan as Record<string, unknown> | null;
     const videoJobs = detail.videoJobs as Record<string, unknown>[];
-    const videoSelections = Array.isArray(videoPlan?.selections) ? videoPlan.selections as Record<string, unknown>[] : [];
-    const acceptedVideoJobs = videoJobs.filter((job) => job.state === "SUCCEEDED" && job.accepted_barrier_valid === true);
+    const videoSelections = Array.isArray(videoPlan?.selections)
+      ? (videoPlan.selections as Record<string, unknown>[])
+      : [];
+    const requestedVideoCoverage = videoPlan ? (numberOrNull(videoPlan.coverage_percent) ?? 7) : 0;
+    const acceptedVideoJobs = videoJobs.filter(
+      (job) => job.state === "SUCCEEDED" && job.accepted_barrier_valid === true,
+    );
     const videoAccepted = acceptedVideoJobs.length;
-    const videoFallback = videoJobs.filter((job) => job.state === "FAILED" && job.static_fallback === true).length;
+    const videoFallback = videoJobs.filter(
+      (job) => job.state === "FAILED" && job.static_fallback === true,
+    ).length;
     const videoFinished = videoAccepted + videoFallback;
-    const videoComplete = videoPlan !== null && videoPlan.planned_at !== null && videoJobs.length === videoSelections.length && videoFinished === videoSelections.length;
-    const videoProblem = videoJobs.find((job) => job.state === "FAILED" && job.static_fallback !== true);
+    const videoComplete =
+      videoPlan !== null &&
+      videoPlan.planned_at !== null &&
+      videoJobs.length === videoSelections.length &&
+      videoFinished === videoSelections.length;
+    const videoProblem = videoJobs.find(
+      (job) => job.state === "FAILED" && job.static_fallback !== true,
+    );
     const videoUncertain = videoJobs.some((job) => job.state === "UNKNOWN_NO_RETRY");
     const apiPlan = detail.generation as Record<string, unknown> | null;
     const finalFrameCount = numberOrNull(apiPlan?.final_frame_count);
-    const actualVideoCoverage = finalFrameCount !== null && finalFrameCount > 0
-      ? acceptedVideoJobs.reduce((sum, job) => sum + (numberOrNull(job.video_frame_count) ?? 0), 0) * 100 / finalFrameCount
+    const actualVideoCoverage =
+      finalFrameCount !== null && finalFrameCount > 0
+        ? (acceptedVideoJobs.reduce(
+            (sum, job) => sum + (numberOrNull(job.video_frame_count) ?? 0),
+            0,
+          ) *
+            100) /
+          finalFrameCount
+        : null;
+    const plannedVideoCoverage =
+      videoPlan?.planned_at && finalFrameCount !== null && finalFrameCount > 0
+        ? (videoSelections.reduce(
+            (sum, selection) => sum + (numberOrNull(selection.videoFrameCount) ?? 0),
+            0,
+          ) *
+            100) /
+          finalFrameCount
+        : null;
+    const eligibleVideoCoverage =
+      finalFrameCount !== null &&
+      finalFrameCount > 0 &&
+      numberOrNull(videoPlan?.eligible_frames) !== null
+        ? (Number(videoPlan!.eligible_frames) * 100) / finalFrameCount
+        : null;
+    const sceneFootageCoverage = videoPlan
+      ? {
+          requested_coverage_percent: requestedVideoCoverage,
+          planned_coverage_percent: plannedVideoCoverage,
+          actual_coverage_percent: actualVideoCoverage,
+          eligible_coverage_percent: eligibleVideoCoverage,
+          fallback_count: videoFallback,
+        }
       : null;
-    const videoTimes = (key: string) => videoJobs.map((job) => timestampOrNull(job[key])).filter((value): value is string => value !== null).sort();
+    const videoTimes = (key: string) =>
+      videoJobs
+        .map((job) => timestampOrNull(job[key]))
+        .filter((value): value is string => value !== null)
+        .sort();
     const stages = [
       {
         id: "prepare",
@@ -8040,16 +8328,17 @@ async function projectDetail(
             ? null
             : asr?.state === "SUCCEEDED"
               ? 100
-            : asr && ["FAILED", "CANCELLED", "EXPIRED", "DEAD_LETTER"].includes(String(asr.state))
-              ? 0
-              : asr
-                ? 50
-                : 0,
+              : asr && ["FAILED", "CANCELLED", "EXPIRED", "DEAD_LETTER"].includes(String(asr.state))
+                ? 0
+                : asr
+                  ? 50
+                  : 0,
         started_at: timestampOrNull(asr?.submitted_at),
         completed_at: timestampOrNull(asr?.terminal_at),
-        detail: asr?.execution_backend === "RUNPOD_POD" || (!asr && cloudMedia)
-          ? "Cloud media execution converts the voiceover into timed speech."
-          : "Your connected computer is converting the voiceover into timed speech.",
+        detail:
+          asr?.execution_backend === "RUNPOD_POD" || (!asr && cloudMedia)
+            ? "Cloud media execution converts the voiceover into timed speech."
+            : "Your connected computer is converting the voiceover into timed speech.",
         eta_ms: null,
       },
       {
@@ -8118,10 +8407,11 @@ async function projectDetail(
       {
         id: "audio-spanning",
         name: "Audio spanning",
-        status:
-          spanAdmissionWaiting
-            ? detail.cleanupPending ? "BLOCKED" : "QUEUED"
-            : spanAudioProgress.failed > 0
+        status: spanAdmissionWaiting
+          ? detail.cleanupPending
+            ? "BLOCKED"
+            : "QUEUED"
+          : spanAudioProgress.failed > 0
             ? spanAudioProgress.retrying > 0
               ? "RUNNING"
               : "FAILED"
@@ -8132,28 +8422,27 @@ async function projectDetail(
                   spanAudioProgress.started_at !== null
                 ? "RUNNING"
                 : "WAITING",
-        progress_percent: cloudMedia ? null : hostedProgressPercent(
-          spanAudioProgress.materialized,
-          spanTotal > 0 ? spanTotal : null,
-        ),
+        progress_percent: cloudMedia
+          ? null
+          : hostedProgressPercent(spanAudioProgress.materialized, spanTotal > 0 ? spanTotal : null),
         started_at: spanAudioProgress.started_at,
         completed_at: spanAudioProgress.completed_at,
-        detail:
-          spanAdmissionWaiting
-            ? detail.cleanupPending
-              ? HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE + " Saved prompts remain available; this stage resumes automatically after cleanup."
-              : "Waiting for an earlier project. Audio preparation starts automatically when the account slot opens."
-            : cloudMedia
+        detail: spanAdmissionWaiting
+          ? detail.cleanupPending
+            ? HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE +
+              " Saved prompts remain available; this stage resumes automatically after cleanup."
+            : "Waiting for an earlier project. Audio preparation starts automatically when the account slot opens."
+          : cloudMedia
             ? spanAudioProgress.failed > 0
               ? `${spanAudioProgress.materialized} of ${spanTotal} clips are saved. Cloud audio preparation failed; accepted clips remain available.`
               : "Cloud media execution prepares the exact selected audio spans."
             : spanTotal > 0
-            ? spanAudioProgress.failed > 0
-              ? spanAudioProgress.retrying > 0
-                ? `${hostedSpanFailureMessage(spanAudioProgress.failure_code, spanTotal, spanAudioProgress.materialized)} The same ${spanAudioProgress.retrying} clip${spanAudioProgress.retrying === 1 ? "" : "s"} retry automatically on your computer.`
-                : `${hostedSpanFailureMessage(spanAudioProgress.failure_code, spanTotal, spanAudioProgress.materialized)} Open this project again to retry on your computer.`
-              : `Your computer extracts the exact voiceover span for each avatar segment. ${spanAudioProgress.materialized} of ${spanTotal} spans are ready.`
-            : "Your computer extracts the exact voiceover span for each avatar segment before any GPU work starts.",
+              ? spanAudioProgress.failed > 0
+                ? spanAudioProgress.retrying > 0
+                  ? `${hostedSpanFailureMessage(spanAudioProgress.failure_code, spanTotal, spanAudioProgress.materialized)} The same ${spanAudioProgress.retrying} clip${spanAudioProgress.retrying === 1 ? "" : "s"} retry automatically on your computer.`
+                  : `${hostedSpanFailureMessage(spanAudioProgress.failure_code, spanTotal, spanAudioProgress.materialized)} Open this project again to retry on your computer.`
+                : `Your computer extracts the exact voiceover span for each avatar segment. ${spanAudioProgress.materialized} of ${spanTotal} spans are ready.`
+              : "Your computer extracts the exact voiceover span for each avatar segment before any GPU work starts.",
         eta_ms: null,
       },
       {
@@ -8166,19 +8455,41 @@ async function projectDetail(
         detail: "Generate and verify the planned scene images.",
         eta_ms: null,
       },
-      ...(videoPlan ? [{
-        id: "video-generation", name: "Generate scene videos",
-        status: videoComplete ? "COMPLETE" : videoProblem ? "FAILED" : videoUncertain ? "ACTION_REQUIRED" :
-          videoJobs.some((job) => ["SUBMITTING", "SUBMITTED", "SUCCEEDED"].includes(String(job.state))) ? "RUNNING" : "WAITING",
-        progress_percent: videoSelections.length ? Math.round(videoFinished * 100 / videoSelections.length) : videoComplete ? 100 : 0,
-        started_at: videoTimes("submitted_at")[0] ?? null,
-        completed_at: videoComplete || videoProblem ? videoTimes("completed_at").at(-1) ?? null : null,
-        detail: videoProblem ? `Scene video generation stopped: ${String(videoProblem.failure_code)}. Accepted images and clips remain saved.` :
-          videoUncertain ? "Confirming the saved Runware task. No duplicate generation request is sent." :
-          videoComplete && videoSelections.length === 0 ? "No eligible image-only scene requires motion in this short timeline." :
-          `${videoAccepted} of ${videoSelections.length} clips accepted${videoFallback ? ` · ${videoFallback} ${videoFallback === 1 ? "scene kept as its original still" : "scenes kept as their original stills"}` : ""} · ${actualVideoCoverage === null ? "Up to 7% motion target" : `${actualVideoCoverage.toFixed(2)}% actual motion (up to 7% target)`} · 720p 16:9.${videoComplete ? "" : " Runs alongside images and avatars as source images become ready."}`,
-        eta_ms: null,
-      }] : []),
+      ...(videoPlan && requestedVideoCoverage > 0
+        ? [
+            {
+              id: "video-generation",
+              name: "Generate scene videos",
+              status: videoComplete
+                ? "COMPLETE"
+                : videoProblem
+                  ? "FAILED"
+                  : videoUncertain
+                    ? "ACTION_REQUIRED"
+                    : videoJobs.some((job) =>
+                          ["SUBMITTING", "SUBMITTED", "SUCCEEDED"].includes(String(job.state)),
+                        )
+                      ? "RUNNING"
+                      : "WAITING",
+              progress_percent: videoSelections.length
+                ? Math.round((videoFinished * 100) / videoSelections.length)
+                : videoComplete
+                  ? 100
+                  : 0,
+              started_at: videoTimes("submitted_at")[0] ?? null,
+              completed_at:
+                videoComplete || videoProblem ? (videoTimes("completed_at").at(-1) ?? null) : null,
+              detail: videoProblem
+                ? `Scene video generation stopped: ${String(videoProblem.failure_code)}. Accepted images and clips remain saved.`
+                : videoUncertain
+                  ? "Confirming the saved Runware task. No duplicate generation request is sent."
+                  : videoComplete && videoSelections.length === 0
+                    ? `No complete image scene fits the requested ${requestedVideoCoverage}% coverage. Original images are used throughout those scenes.`
+                    : `${videoAccepted} of ${videoSelections.length} clips accepted${videoFallback ? ` · ${videoFallback} ${videoFallback === 1 ? "scene kept as its original still" : "scenes kept as their original stills"}` : ""} · ${actualVideoCoverage === null ? `Up to ${requestedVideoCoverage}% motion target` : `${actualVideoCoverage.toFixed(2)}% actual motion (up to ${requestedVideoCoverage}% target)`} · 720p 16:9.${videoComplete ? "" : " Runs alongside images and avatars as source images become ready."}`,
+              eta_ms: null,
+            },
+          ]
+        : []),
       {
         id: "avatar-generation",
         name: "Generate avatar video",
@@ -8193,9 +8504,14 @@ async function projectDetail(
         id: "render",
         name: "Assemble final video",
         status: String(render?.state ?? "WAITING"),
-        progress_percent: render?.execution_backend === "RUNPOD_POD" || (!render && cloudMedia)
-          ? null
-          : render ? (render.state === "SUCCEEDED" ? 100 : 50) : 0,
+        progress_percent:
+          render?.execution_backend === "RUNPOD_POD" || (!render && cloudMedia)
+            ? null
+            : render
+              ? render.state === "SUCCEEDED"
+                ? 100
+                : 50
+              : 0,
         started_at: timestampOrNull(render?.submitted_at),
         completed_at: timestampOrNull(render?.terminal_at),
         detail:
@@ -8206,21 +8522,25 @@ async function projectDetail(
                 ? "Cloud media execution assembled the accepted media and original voiceover."
                 : "Cloud media execution assembles the accepted media and original voiceover."
             : render?.state === "FAILED"
-            ? hostedLocalFailureMessage(
-                typeof render.error_code === "string" ? render.error_code : null,
-                "Your computer could not assemble the final video. Open this project again to retry it there.",
-              )
-            : render?.state === "SUCCEEDED"
-              ? "Your computer assembled the final video from the accepted media and voiceover."
-              : "Your computer assembles the accepted media and voiceover into the final video.",
+              ? hostedLocalFailureMessage(
+                  typeof render.error_code === "string" ? render.error_code : null,
+                  "Your computer could not assemble the final video. Open this project again to retry it there.",
+                )
+              : render?.state === "SUCCEEDED"
+                ? "Your computer assembled the final video from the accepted media and voiceover."
+                : "Your computer assembles the accepted media and voiceover into the final video.",
         eta_ms: null,
       },
       {
         id: "technical-check",
         name: "Technical check",
         status: render?.state === "SUCCEEDED" ? "COMPLETE" : "WAITING",
-        progress_percent: render?.execution_backend === "RUNPOD_POD" || (!render && cloudMedia)
-          ? null : render?.state === "SUCCEEDED" ? 100 : 0,
+        progress_percent:
+          render?.execution_backend === "RUNPOD_POD" || (!render && cloudMedia)
+            ? null
+            : render?.state === "SUCCEEDED"
+              ? 100
+              : 0,
         started_at: null,
         completed_at: null,
         detail: "VideoForge verifies the final file, duration, audio, and checksum.",
@@ -8240,7 +8560,9 @@ async function projectDetail(
         progress_percent: currentRenderApproved ? 100 : 0,
         started_at: render?.state === "SUCCEEDED" ? timestampOrNull(render?.terminal_at) : null,
         completed_at: timestampOrNull(
-          currentRenderApproved ? (detail.review as Record<string, unknown> | null)?.approved_at : null,
+          currentRenderApproved
+            ? (detail.review as Record<string, unknown> | null)?.approved_at
+            : null,
         ),
         detail:
           render?.state === "SUCCEEDED"
@@ -8286,14 +8608,28 @@ async function projectDetail(
             kie_usd: apiImageCount * 0.004,
             fal_avatar_seconds: apiAvatarFrames / 30,
             fal_usd: (apiAvatarFrames / 30) * 0.005,
-            ...(videoPlan ? {
-              seedance_seconds: videoSelections.reduce((sum, selection) => sum + (numberOrNull(selection.durationSeconds) ?? 0), 0),
-              seedance_usd: videoSelections.reduce((sum, selection) => sum + (numberOrNull(selection.durationSeconds) ?? 0) * 0.01336, 0),
-              seedance_reported_usd: videoJobs.reduce((sum, job) => sum + (numberOrNull(job.output_cost_usd) ?? 0), 0),
-              seedance_coverage_percent: 7,
-              seedance_actual_coverage_percent: actualVideoCoverage,
-              seedance_fallback_count: videoFallback,
-            } : {}),
+            ...(videoPlan
+              ? {
+                  seedance_seconds: videoSelections.reduce(
+                    (sum, selection) => sum + (numberOrNull(selection.durationSeconds) ?? 0),
+                    0,
+                  ),
+                  seedance_usd: videoSelections.reduce(
+                    (sum, selection) =>
+                      sum + (numberOrNull(selection.durationSeconds) ?? 0) * 0.01336,
+                    0,
+                  ),
+                  seedance_reported_usd: videoJobs.reduce(
+                    (sum, job) => sum + (numberOrNull(job.output_cost_usd) ?? 0),
+                    0,
+                  ),
+                  seedance_coverage_percent: requestedVideoCoverage,
+                  seedance_planned_coverage_percent: plannedVideoCoverage,
+                  seedance_eligible_coverage_percent: eligibleVideoCoverage,
+                  seedance_actual_coverage_percent: actualVideoCoverage,
+                  seedance_fallback_count: videoFallback,
+                }
+              : {}),
             pricing_checked_at: videoPlan ? "2026-10-02" : "2026-09-25",
           }
         : null;
@@ -8304,30 +8640,47 @@ async function projectDetail(
         .map((job) => timestampOrNull(job.submitted_at))
         .filter((value): value is string => value !== null)
         .sort()[0] ?? null;
-    const timeEstimate = projectApiGeneration && (!videoPlan || videoComplete) && finalFrameCount !== null && finalFrameCount > 0
-      ? hostedApiRemainingTimeEstimate({
-          durationMs: (finalFrameCount / 30) * 1000,
-          promptTotal: totalPromptScenes || apiImageCount || 0,
-          promptAccepted: acceptedPromptScenes,
-          promptComplete: promptStage.status === "COMPLETE",
-          promptStartedAt: promptProgress?.started_at,
-          spanTotal: Math.max(spanTotal, numberOrNull(apiPlan?.avatar_segment_count) ?? 0),
-          spanReady: spanAudioProgress.materialized,
-          spanStartedAt: spanAudioProgress.started_at,
-          imageTotal: apiImageCount ?? 0,
-          imageAccepted: gpuLaneActivity.find((lane) => lane.lane === "mage_image")?.accepted_item_count ?? 0,
-          imageSubmittedAt: laneSubmittedAt("IMAGE"),
-          avatarTotal: numberOrNull(apiPlan?.avatar_segment_count) ?? 0,
-          avatarAccepted: gpuLaneActivity.find((lane) => lane.lane === "soulx_avatar")?.accepted_item_count ?? 0,
-          avatarSubmittedAt: laneSubmittedAt("AVATAR"),
-          renderSubmittedAt: render?.state === "RUNNING" ? render.submitted_at : null,
-          renderReferenceMs,
-          renderComplete: render?.state === "SUCCEEDED",
-          failed: stages.some((stage) => ["FAILED", "UNKNOWN", "UNKNOWN_NO_RETRY", "BLOCKED", "PERMANENT_FAILED", "DEAD_LETTER"].includes(stage.status)) ||
-            apiJobs.some((job) => ["FAILED", "UNKNOWN_NO_RETRY"].includes(String(job.state))) ||
-            runtime?.stage === "FAILED",
-        })
-      : null;
+    const timeEstimate =
+      projectApiGeneration &&
+      (!videoPlan || videoComplete) &&
+      finalFrameCount !== null &&
+      finalFrameCount > 0
+        ? hostedApiRemainingTimeEstimate({
+            durationMs: (finalFrameCount / 30) * 1000,
+            promptTotal: totalPromptScenes || apiImageCount || 0,
+            promptAccepted: acceptedPromptScenes,
+            promptComplete: promptStage.status === "COMPLETE",
+            promptStartedAt: promptProgress?.started_at,
+            spanTotal: Math.max(spanTotal, numberOrNull(apiPlan?.avatar_segment_count) ?? 0),
+            spanReady: spanAudioProgress.materialized,
+            spanStartedAt: spanAudioProgress.started_at,
+            imageTotal: apiImageCount ?? 0,
+            imageAccepted:
+              gpuLaneActivity.find((lane) => lane.lane === "mage_image")?.accepted_item_count ?? 0,
+            imageSubmittedAt: laneSubmittedAt("IMAGE"),
+            avatarTotal: numberOrNull(apiPlan?.avatar_segment_count) ?? 0,
+            avatarAccepted:
+              gpuLaneActivity.find((lane) => lane.lane === "soulx_avatar")?.accepted_item_count ??
+              0,
+            avatarSubmittedAt: laneSubmittedAt("AVATAR"),
+            renderSubmittedAt: render?.state === "RUNNING" ? render.submitted_at : null,
+            renderReferenceMs,
+            renderComplete: render?.state === "SUCCEEDED",
+            failed:
+              stages.some((stage) =>
+                [
+                  "FAILED",
+                  "UNKNOWN",
+                  "UNKNOWN_NO_RETRY",
+                  "BLOCKED",
+                  "PERMANENT_FAILED",
+                  "DEAD_LETTER",
+                ].includes(stage.status),
+              ) ||
+              apiJobs.some((job) => ["FAILED", "UNKNOWN_NO_RETRY"].includes(String(job.state))) ||
+              runtime?.stage === "FAILED",
+          })
+        : null;
     const timingRows = [...(detail.attempts as Record<string, unknown>[]), ...serverlessAttempts];
     const createdAt = timingRows
       .map((value) => new Date(String(value.created_at)).getTime())
@@ -8384,15 +8737,31 @@ async function projectDetail(
           replacement_allowed: false,
         })),
     ];
-    const outputRows = [...detail.serverlessOutputs as Record<string, unknown>[], ...videoJobs
-      .filter((job) => job.state === "SUCCEEDED" && job.accepted_barrier_valid === true)
-      .map((job) => ({ lane: "scene_video", artifacts: [{ item_id: job.id, object_key: job.output_object_key,
-        checksum_sha256: job.output_sha256, content_length: job.output_bytes, content_type: "video/mp4" }] }))];
+    const outputRows = [
+      ...(detail.serverlessOutputs as Record<string, unknown>[]),
+      ...videoJobs
+        .filter((job) => job.state === "SUCCEEDED" && job.accepted_barrier_valid === true)
+        .map((job) => ({
+          lane: "scene_video",
+          artifacts: [
+            {
+              item_id: job.id,
+              object_key: job.output_object_key,
+              checksum_sha256: job.output_sha256,
+              content_length: job.output_bytes,
+              content_type: "video/mp4",
+            },
+          ],
+        })),
+    ];
     const totalAcceptedImages = countHostedMediaArtifacts(outputRows, "images");
     const totalAcceptedAvatar = countHostedMediaArtifacts(outputRows, "avatar");
-    const imagePage = requestedMedia.kind && requestedMedia.kind !== "images" ? 1 : requestedMedia.page;
-    const avatarPage = requestedMedia.kind && requestedMedia.kind !== "avatar" ? 1 : requestedMedia.page;
-    const videoPage = requestedMedia.kind && requestedMedia.kind !== "videos" ? 1 : requestedMedia.page;
+    const imagePage =
+      requestedMedia.kind && requestedMedia.kind !== "images" ? 1 : requestedMedia.page;
+    const avatarPage =
+      requestedMedia.kind && requestedMedia.kind !== "avatar" ? 1 : requestedMedia.page;
+    const videoPage =
+      requestedMedia.kind && requestedMedia.kind !== "videos" ? 1 : requestedMedia.page;
     const [sheet, footage, sceneFootage] = await Promise.all([
       requestedMedia.kind && requestedMedia.kind !== "images"
         ? Promise.resolve([] as readonly HostedContactSheetItem[])
@@ -8407,12 +8776,20 @@ async function projectDetail(
         ? Promise.resolve([] as readonly HostedAvatarFootageItem[])
         : avatarFootage(outputRows, environment.PRIVATE_ARTIFACTS, signer, avatarPage),
       videoPlan && (!requestedMedia.kind || requestedMedia.kind === "videos")
-        ? avatarFootage(outputRows, environment.PRIVATE_ARTIFACTS, signer, videoPage, "videos") : Promise.resolve([]),
+        ? avatarFootage(outputRows, environment.PRIVATE_ARTIFACTS, signer, videoPage, "videos")
+        : Promise.resolve([]),
     ]);
     const mediaPagination = {
       images: hostedMediaPagination(imagePage, totalAcceptedImages),
       avatar: hostedMediaPagination(avatarPage, totalAcceptedAvatar),
-      ...(videoPlan ? { videos: hostedMediaPagination(videoPage, countHostedMediaArtifacts(outputRows, "videos")) } : {}),
+      ...(videoPlan
+        ? {
+            videos: hostedMediaPagination(
+              videoPage,
+              countHostedMediaArtifacts(outputRows, "videos"),
+            ),
+          }
+        : {}),
     } as const;
     let downloadUrl: string | null = null;
     const reviewRow = detail.review as Record<string, unknown> | null;
@@ -8440,8 +8817,13 @@ async function projectDetail(
       attempts,
       cloud_media: { available: Boolean(config.cloudMedia?.enabled) },
       api_recovery: {
-        can_resume_saved_work: [...apiJobs, ...videoJobs].some((job) => ["SUBMITTED", "SUBMITTING", "UNKNOWN_NO_RETRY"].includes(String(job.state))) &&
-          [...apiJobs, ...videoJobs].some((job) => ["SUBMITTING", "UNKNOWN_NO_RETRY", "FAILED"].includes(String(job.state))),
+        can_resume_saved_work:
+          [...apiJobs, ...videoJobs].some((job) =>
+            ["SUBMITTED", "SUBMITTING", "UNKNOWN_NO_RETRY"].includes(String(job.state)),
+          ) &&
+          [...apiJobs, ...videoJobs].some((job) =>
+            ["SUBMITTING", "UNKNOWN_NO_RETRY", "FAILED"].includes(String(job.state)),
+          ),
         provider_calls_authorized: false,
       },
       render_retry: detail.renderRetryStatus,
@@ -8461,7 +8843,9 @@ async function projectDetail(
                   : Number(detail.generation.planned_tasks) > 0 &&
                       Number(detail.generation.completed_tasks) ===
                         Number(detail.generation.planned_tasks)
-                    ? videoPlan && !videoComplete ? "GENERATING_VIDEO" : "READY_FOR_RENDER"
+                    ? videoPlan && !videoComplete
+                      ? "GENERATING_VIDEO"
+                      : "READY_FOR_RENDER"
                     : gpuPendingState,
             },
       prompts: detail.prompts,
@@ -8482,7 +8866,9 @@ async function projectDetail(
         cap_usd: null,
         billed_seconds: null,
         provider: projectApiGeneration
-          ? videoPlan ? "kie+fal+runware" : "kie+fal"
+          ? videoPlan
+            ? "kie+fal+runware"
+            : "kie+fal"
           : serverlessAttempts.length > 0
             ? "runpod"
             : voiceoverContext || detail.prompts.length > 0
@@ -8493,7 +8879,9 @@ async function projectDetail(
       review: {
         contact_sheet: sheet,
         avatar_footage: footage,
-        ...(videoPlan ? { scene_footage: sceneFootage } : {}),
+        ...(videoPlan
+          ? { scene_footage: sceneFootage, scene_footage_coverage: sceneFootageCoverage }
+          : {}),
         media_pagination: mediaPagination,
         quality_flags: qualityFlags,
         manifest_url: manifestUrl,
@@ -8501,7 +8889,9 @@ async function projectDetail(
       },
       contact_sheet: sheet,
       avatar_footage: footage,
-      ...(videoPlan ? { scene_footage: sceneFootage } : {}),
+      ...(videoPlan
+        ? { scene_footage: sceneFootage, scene_footage_coverage: sceneFootageCoverage }
+        : {}),
       media_pagination: mediaPagination,
       quality_flags: qualityFlags,
       manifest_url: manifestUrl,
@@ -8519,7 +8909,8 @@ async function downloadApprovedRender(
   executionContext: HostedExecutionContext,
   previewAttemptId: string | null = null,
 ): Promise<Response> {
-  if (previewAttemptId !== null && !UUID.test(previewAttemptId)) return response({ error: { code: "RENDER_NOT_FOUND" } }, 404);
+  if (previewAttemptId !== null && !UUID.test(previewAttemptId))
+    return response({ error: { code: "RENDER_NOT_FOUND" } }, 404);
   if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
   const bucket = environment.PRIVATE_ARTIFACTS;
   if (!bucket) return response({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
@@ -8602,14 +8993,26 @@ async function downloadApprovedRender(
     const artifact = result.rows[0];
     const size = Number(artifact?.content_length);
     if (
-      !artifact || !Number.isSafeInteger(size) || size < 1 || size > 10 * 1024 ** 3 ||
+      !artifact ||
+      !Number.isSafeInteger(size) ||
+      size < 1 ||
+      size > 10 * 1024 ** 3 ||
       !SHA256.test(artifact.checksum_sha256)
-    ) return response({ error: { code: "APPROVED_RENDER_NOT_FOUND" } }, 404);
+    )
+      return response({ error: { code: "APPROVED_RENDER_NOT_FOUND" } }, 404);
     const head = await bucket.head(artifact.object_key);
     if (
-      !head || head.size !== size || head.httpMetadata?.contentType !== "video/mp4" ||
-      !(await verifyHostedPreviewChecksum(bucket, artifact.object_key, head, artifact.checksum_sha256))
-    ) return response({ error: { code: "APPROVED_RENDER_UNAVAILABLE" } }, 503);
+      !head ||
+      head.size !== size ||
+      head.httpMetadata?.contentType !== "video/mp4" ||
+      !(await verifyHostedPreviewChecksum(
+        bucket,
+        artifact.object_key,
+        head,
+        artifact.checksum_sha256,
+      ))
+    )
+      return response({ error: { code: "APPROVED_RENDER_UNAVAILABLE" } }, 503);
     const rangeHeader = request.headers.get("range");
     let range: { offset: number; length: number } | undefined;
     if (rangeHeader) {
@@ -8618,15 +9021,24 @@ async function downloadApprovedRender(
       const end = match?.[2] ? Number(match[2]) : null;
       const offset = start ?? Math.max(0, size - (end ?? 0));
       const last = start === null ? size - 1 : Math.min(end ?? size - 1, size - 1);
-      if (!match || (start === null && end === null) ||
-        !Number.isSafeInteger(offset) || !Number.isSafeInteger(last) || offset >= size ||
-        offset < 0 || last < offset || (start === null && end === 0))
+      if (
+        !match ||
+        (start === null && end === null) ||
+        !Number.isSafeInteger(offset) ||
+        !Number.isSafeInteger(last) ||
+        offset >= size ||
+        offset < 0 ||
+        last < offset ||
+        (start === null && end === 0)
+      )
         return new Response(null, { status: 416, headers: { "content-range": `bytes */${size}` } });
       range = { offset, length: last - offset + 1 };
     }
     const object = await bucket.get(artifact.object_key, range ? { range } : undefined);
     if (
-      !object?.body || object.size !== size || object.httpMetadata?.contentType !== "video/mp4" ||
+      !object?.body ||
+      object.size !== size ||
+      object.httpMetadata?.contentType !== "video/mp4" ||
       (head.etag && object.etag !== head.etag)
     )
       return response({ error: { code: "APPROVED_RENDER_UNAVAILABLE" } }, 503);
@@ -8634,10 +9046,12 @@ async function downloadApprovedRender(
       status: range ? 206 : 200,
       headers: {
         "accept-ranges": "bytes",
-        ...(range ? { "content-range": `bytes ${range.offset}-${range.offset + range.length - 1}/${size}` } : {}),
+        ...(range
+          ? { "content-range": `bytes ${range.offset}-${range.offset + range.length - 1}/${size}` }
+          : {}),
         "content-type": "video/mp4",
         "content-length": String(range?.length ?? size),
-        "content-disposition": `${previewAttemptId ? 'inline' : 'attachment'}; filename="videoforge-output.mp4"`,
+        "content-disposition": `${previewAttemptId ? "inline" : "attachment"}; filename="videoforge-output.mp4"`,
         "cache-control": "private, no-store",
         "x-content-type-options": "nosniff",
         "x-videoforge-artifact-sha256": artifact.checksum_sha256,
@@ -8883,9 +9297,19 @@ export async function handleHostedProductRequest(
   const review = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/review$/u.exec(url.pathname);
   if (request.method === "POST" && review)
     return approveReview(request, review[1]!, config, executionContext);
-  const preview = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/renders\/([0-9a-f-]+)\/preview$/u.exec(url.pathname);
+  const preview =
+    /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/renders\/([0-9a-f-]+)\/preview$/u.exec(
+      url.pathname,
+    );
   if (request.method === "GET" && preview)
-    return downloadApprovedRender(request, preview[1]!, environment, config, executionContext, preview[2]!);
+    return downloadApprovedRender(
+      request,
+      preview[1]!,
+      environment,
+      config,
+      executionContext,
+      preview[2]!,
+    );
   const download = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/download$/u.exec(url.pathname);
   if (request.method === "GET" && download)
     return downloadApprovedRender(request, download[1]!, environment, config, executionContext);

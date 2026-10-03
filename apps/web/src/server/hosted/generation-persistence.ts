@@ -270,12 +270,20 @@ export class HostedCanonicalTimingPersistence implements HostedGenerationPersist
           JSON.stringify(payload),
         ],
       );
-      const videoPlan = await transaction.query<{ selections: unknown }>(
-        "SELECT selections FROM hosted_video_plans WHERE account_id=$1 AND workspace_id=$2 AND project_revision_id=$3",
+      const videoPlan = await transaction.query<{
+        selections: unknown;
+        coverage_percent: number;
+        replacement_policy: "LEGACY_PREFIX_V1" | "WHOLE_SCENE_V2";
+      }>(
+        "SELECT selections, coverage_percent, replacement_policy FROM hosted_video_plans WHERE account_id=$1 AND workspace_id=$2 AND project_revision_id=$3",
         [input.snapshot.accountId, input.snapshot.workspaceId, input.snapshot.projectRevisionId],
       );
-      if (videoPlan.rows.length > 1 || (videoPlan.rows.length === 1 &&
-          videoPlan.rows[0]!.selections !== null && !Array.isArray(videoPlan.rows[0]!.selections)))
+      if (
+        videoPlan.rows.length > 1 ||
+        (videoPlan.rows.length === 1 &&
+          videoPlan.rows[0]!.selections !== null &&
+          !Array.isArray(videoPlan.rows[0]!.selections))
+      )
         fail("HOSTED_VIDEO_PLAN_DATABASE_READBACK_MISMATCH");
       // Existing selections pin their original duration policy. A legacy revision stays opted out;
       // an opted-in plan with null selections still finishes after an interrupted canonical append.
@@ -283,14 +291,27 @@ export class HostedCanonicalTimingPersistence implements HostedGenerationPersist
       const timeline = {
         total_frames: input.preparedTimeline.timelinePersistence.totalFrames,
         segments: input.preparedTimeline.timelinePersistence.segments.map((segment) => ({
-          segment_id: segment.segmentKey, start_frame: segment.startFrame,
-          end_frame_exclusive: segment.endFrameExclusive, timeline_composition: segment.timelineComposition,
+          segment_id: segment.segmentKey,
+          start_frame: segment.startFrame,
+          end_frame_exclusive: segment.endFrameExclusive,
+          timeline_composition: segment.timelineComposition,
           required_slots: segment.requiredSlots,
         })) as unknown as TimelinePlanDocument["segments"],
       };
-      await transaction.query("SELECT public.videoforge_plan_hosted_video_selections($1,$2,$3,$4::jsonb)",
-        [input.snapshot.accountId, input.snapshot.workspaceId, input.snapshot.projectRevisionId,
-          JSON.stringify(planHostedVideoSelections(timeline))]);
+      await transaction.query(
+        "SELECT public.videoforge_plan_hosted_video_selections($1,$2,$3,$4::jsonb)",
+        [
+          input.snapshot.accountId,
+          input.snapshot.workspaceId,
+          input.snapshot.projectRevisionId,
+          JSON.stringify(
+            planHostedVideoSelections(timeline, {
+              coveragePercent: videoPlan.rows[0]!.coverage_percent,
+              replacementPolicy: videoPlan.rows[0]!.replacement_policy,
+            }),
+          ),
+        ],
+      );
       return saved;
     });
     const replayed = result.rows[0]?.replayed;

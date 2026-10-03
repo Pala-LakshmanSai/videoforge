@@ -88,122 +88,285 @@ it("labels cloud phases from durable state without invented progress", () => {
   expect(cloudMediaPhaseLabel("STOPPING", "FAILED")).toBe("Stopping compute");
   expect(cloudMediaPhaseLabel("STOPPING", "SUCCEEDED")).toBe("Stopping compute");
   expect(cloudMediaPhaseLabel(null, "RUNNING")).toBe("Waiting for cloud status");
-  expect(cloudMediaPhaseLabel("WAITING_CAPACITY", "OUTBOXED", 2)).toBe("Waiting for earlier project");
+  expect(cloudMediaPhaseLabel("WAITING_CAPACITY", "OUTBOXED", 2)).toBe(
+    "Waiting for earlier project",
+  );
   expect(cloudMediaPhaseLabel("WAITING_CAPACITY", "OUTBOXED", 1)).toBe("Waiting for capacity");
   expect(cloudMediaPhaseLabel("STOPPING", "FAILED", 2)).toBe("Stopping compute");
 });
 
 it("shows the actual assigned machine and distinguishes released GPU and API work", () => {
-  const cloud={kind:"RENDER" as const,state:"RUNNING",execution_backend:"RUNPOD_POD" as const,cloud_gpu:"NVIDIA RTX PRO 4500",cloud_machine_active:true};
-  const local={kind:"RENDER" as const,state:"RUNNING",execution_backend:"PERSONAL_WORKER" as const,local_machine_name:"Editing Mac",local_machine_active:true};
-  expect(hostedMachineLabel("RUNPOD_POD",[cloud])).toBe("Cloud · RunPod · NVIDIA RTX PRO 4500");
-  expect(hostedMachineLabel("PERSONAL_WORKER",[local])).toBe("Local · Editing Mac");
-  expect(hostedMachineLabel("RUNPOD_POD",[{...cloud,state:"SUCCEEDED",cloud_machine_active:false}])).toBe("Cloud · NVIDIA RTX PRO 4500 · GPU released");
-  expect(hostedMachineLabel("RUNPOD_POD",[{...cloud,kind:"SPAN_AUDIO",state:"SUCCEEDED",cloud_machine_active:false}],true)).toBe("Cloud · Media APIs · No active RunPod compute");
-  expect(hostedMachineLabel("RUNPOD_POD",[])).toBe("Cloud · Waiting for RunPod compute");
-  const cpu = {...cloud,cloud_gpu:null,cloud_cpu:"16 vCPU / 64 GB RAM"};
-  expect(hostedMachineLabel("RUNPOD_POD",[cpu])).toBe("Cloud · RunPod · 16 vCPU / 64 GB RAM");
-  expect(hostedMachineLabel("RUNPOD_POD",[{...cpu,state:"SUCCEEDED",cloud_machine_active:false}])).toBe("Cloud · 16 vCPU / 64 GB RAM · Compute released");
-  expect(hostedMachineLabel("PERSONAL_WORKER",[])).toBe("Local · Waiting for computer");
-  expect(hostedMachineLabel("RUNPOD_POD",[],false,2)).toBe("Cloud · Waiting for earlier project");
-  expect(hostedMachineLabel("RUNPOD_POD",[cloud],false,2)).toBe("Cloud · RunPod · NVIDIA RTX PRO 4500");
-  expect(hostedMachineLabel("PERSONAL_WORKER",[],false,2)).toBe("Local · Waiting for computer");
-  expect(hostedMachineLabel("RUNPOD_POD",[{...cloud,kind:"ASR",state:"CANCELLED",cloud_machine_active:false}],false,2)).toBe("Cloud · No active RunPod compute");
-  expect(hostedMachineLabel("PERSONAL_WORKER",[{...local,kind:"ASR",state:"CANCELLED",local_machine_active:false}],false,2)).toBe("Local · No active computer");
+  const cloud = {
+    kind: "RENDER" as const,
+    state: "RUNNING",
+    execution_backend: "RUNPOD_POD" as const,
+    cloud_gpu: "NVIDIA RTX PRO 4500",
+    cloud_machine_active: true,
+  };
+  const local = {
+    kind: "RENDER" as const,
+    state: "RUNNING",
+    execution_backend: "PERSONAL_WORKER" as const,
+    local_machine_name: "Editing Mac",
+    local_machine_active: true,
+  };
+  expect(hostedMachineLabel("RUNPOD_POD", [cloud])).toBe("Cloud · RunPod · NVIDIA RTX PRO 4500");
+  expect(hostedMachineLabel("PERSONAL_WORKER", [local])).toBe("Local · Editing Mac");
+  expect(
+    hostedMachineLabel("RUNPOD_POD", [
+      { ...cloud, state: "SUCCEEDED", cloud_machine_active: false },
+    ]),
+  ).toBe("Cloud · NVIDIA RTX PRO 4500 · GPU released");
+  expect(
+    hostedMachineLabel(
+      "RUNPOD_POD",
+      [{ ...cloud, kind: "SPAN_AUDIO", state: "SUCCEEDED", cloud_machine_active: false }],
+      true,
+    ),
+  ).toBe("Cloud · Media APIs · No active RunPod compute");
+  expect(hostedMachineLabel("RUNPOD_POD", [])).toBe("Cloud · Waiting for RunPod compute");
+  const cpu = { ...cloud, cloud_gpu: null, cloud_cpu: "16 vCPU / 64 GB RAM" };
+  expect(hostedMachineLabel("RUNPOD_POD", [cpu])).toBe("Cloud · RunPod · 16 vCPU / 64 GB RAM");
+  expect(
+    hostedMachineLabel("RUNPOD_POD", [{ ...cpu, state: "SUCCEEDED", cloud_machine_active: false }]),
+  ).toBe("Cloud · 16 vCPU / 64 GB RAM · Compute released");
+  expect(hostedMachineLabel("PERSONAL_WORKER", [])).toBe("Local · Waiting for computer");
+  expect(hostedMachineLabel("RUNPOD_POD", [], false, 2)).toBe(
+    "Cloud · Waiting for earlier project",
+  );
+  expect(hostedMachineLabel("RUNPOD_POD", [cloud], false, 2)).toBe(
+    "Cloud · RunPod · NVIDIA RTX PRO 4500",
+  );
+  expect(hostedMachineLabel("PERSONAL_WORKER", [], false, 2)).toBe("Local · Waiting for computer");
+  expect(
+    hostedMachineLabel(
+      "RUNPOD_POD",
+      [{ ...cloud, kind: "ASR", state: "CANCELLED", cloud_machine_active: false }],
+      false,
+      2,
+    ),
+  ).toBe("Cloud · No active RunPod compute");
+  expect(
+    hostedMachineLabel(
+      "PERSONAL_WORKER",
+      [{ ...local, kind: "ASR", state: "CANCELLED", local_machine_active: false }],
+      false,
+      2,
+    ),
+  ).toBe("Local · No active computer");
 });
 
 it("distinguishes a connected computer waiting in the queue from an active project lease", () => {
-  const asr = {kind: "ASR" as const, state: "SUCCEEDED", local_machine_active: false};
-  const online = {state: "ONLINE" as const};
-  expect(hostedMachineLabel("PERSONAL_WORKER", [asr], false, 2, online))
-    .toBe("Local · Computer online · Waiting for earlier project");
-  expect(hostedMachineLabel("PERSONAL_WORKER", [asr], false, 1, online))
-    .toBe("Local · Computer online · Waiting for assignment");
-  expect(hostedMachineLabel("PERSONAL_WORKER", [asr], false, 2, {state: "BUSY"}))
-    .toBe("Local · Computer connected · Busy");
-  expect(hostedMachineLabel("PERSONAL_WORKER", [asr], false, 2, {state: "WAITING_FOR_YOUR_COMPUTER"}))
-    .toBe("Local · No active computer");
-  expect(hostedMachineLabel("PERSONAL_WORKER", [{...asr, local_machine_active: true, local_machine_name: "Editing Mac"}], false, 2, online))
-    .toBe("Local · Editing Mac");
-  expect(hostedMachineLabel("PERSONAL_WORKER", [{...asr, kind: "RENDER", local_machine_name: "Editing Mac"}], false, 2, online))
-    .toBe("Local · Editing Mac · Finished");
-  expect(hostedMachineLabel("RUNPOD_POD", [], false, 2, online))
-    .toBe("Cloud · Waiting for earlier project");
-  expect(hostedMachineLabel("PERSONAL_WORKER", [asr], true, 2, online))
-    .toBe("Local render · Computer online · Kie / Fal APIs generating media");
+  const asr = { kind: "ASR" as const, state: "SUCCEEDED", local_machine_active: false };
+  const online = { state: "ONLINE" as const };
+  expect(hostedMachineLabel("PERSONAL_WORKER", [asr], false, 2, online)).toBe(
+    "Local · Computer online · Waiting for earlier project",
+  );
+  expect(hostedMachineLabel("PERSONAL_WORKER", [asr], false, 1, online)).toBe(
+    "Local · Computer online · Waiting for assignment",
+  );
+  expect(hostedMachineLabel("PERSONAL_WORKER", [asr], false, 2, { state: "BUSY" })).toBe(
+    "Local · Computer connected · Busy",
+  );
+  expect(
+    hostedMachineLabel("PERSONAL_WORKER", [asr], false, 2, { state: "WAITING_FOR_YOUR_COMPUTER" }),
+  ).toBe("Local · No active computer");
+  expect(
+    hostedMachineLabel(
+      "PERSONAL_WORKER",
+      [{ ...asr, local_machine_active: true, local_machine_name: "Editing Mac" }],
+      false,
+      2,
+      online,
+    ),
+  ).toBe("Local · Editing Mac");
+  expect(
+    hostedMachineLabel(
+      "PERSONAL_WORKER",
+      [{ ...asr, kind: "RENDER", local_machine_name: "Editing Mac" }],
+      false,
+      2,
+      online,
+    ),
+  ).toBe("Local · Editing Mac · Finished");
+  expect(hostedMachineLabel("RUNPOD_POD", [], false, 2, online)).toBe(
+    "Cloud · Waiting for earlier project",
+  );
+  expect(hostedMachineLabel("PERSONAL_WORKER", [asr], true, 2, online)).toBe(
+    "Local render · Computer online · Kie / Fal APIs generating media",
+  );
 });
 
 it.each(["image-generation", "avatar-generation"])(
-  "keeps the computer connection visible during %s", async (stageId) => {
+  "keeps the computer connection visible during %s",
+  async (stageId) => {
     const projectId = "11111111-1111-4111-8111-111111111111";
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
-      project: { id: projectId, title: "API generation", revision_id: projectId,
-        revision_state: "LOCKED", media_execution_backend: "PERSONAL_WORKER" },
-      generation_provider: "KIE_FAL", generation: null, attempts: [],
-      gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
-      local_worker: { state: "ONLINE" }, stages: stageList({ [stageId]: "RUNNING" }),
-    })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          project: {
+            id: projectId,
+            title: "API generation",
+            revision_id: projectId,
+            revision_state: "LOCKED",
+            media_execution_backend: "PERSONAL_WORKER",
+          },
+          generation_provider: "KIE_FAL",
+          generation: null,
+          attempts: [],
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+          local_worker: { state: "ONLINE" },
+          stages: stageList({ [stageId]: "RUNNING" }),
+        }),
+      ),
+    );
     renderHosted(<HostedProjectScreen projectId={projectId} />);
-    expect(await screen.findByLabelText("Rendering machine"))
-      .toHaveTextContent("Local render · Computer online · Kie / Fal APIs generating media");
+    expect(await screen.findByLabelText("Rendering machine")).toHaveTextContent(
+      "Local render · Computer online · Kie / Fal APIs generating media",
+    );
     expect(screen.queryByText(/Computer not assigned yet/)).not.toBeInTheDocument();
   },
 );
 
 it("preserves busy, disconnected and active computer truth during API generation", () => {
-  expect(hostedMachineLabel("PERSONAL_WORKER", [], true, 1, { state: "BUSY" }))
-    .toBe("Local render · Computer connected · Busy · Kie / Fal APIs generating media");
+  expect(hostedMachineLabel("PERSONAL_WORKER", [], true, 1, { state: "BUSY" })).toBe(
+    "Local render · Computer connected · Busy · Kie / Fal APIs generating media",
+  );
   for (const worker of [undefined, { state: "WAITING_FOR_YOUR_COMPUTER" as const }]) {
-    expect(hostedMachineLabel("PERSONAL_WORKER", [], true, 1, worker))
-      .toBe("Local render · Waiting for computer · Kie / Fal APIs generating media");
+    expect(hostedMachineLabel("PERSONAL_WORKER", [], true, 1, worker)).toBe(
+      "Local render · Waiting for computer · Kie / Fal APIs generating media",
+    );
   }
-  expect(hostedMachineLabel("PERSONAL_WORKER", [{ kind: "SPAN_AUDIO", state: "RUNNING",
-    local_machine_active: true, local_machine_name: "Editing Mac" }], true, 1, { state: "ONLINE" }))
-    .toBe("Local · Editing Mac");
+  expect(
+    hostedMachineLabel(
+      "PERSONAL_WORKER",
+      [
+        {
+          kind: "SPAN_AUDIO",
+          state: "RUNNING",
+          local_machine_active: true,
+          local_machine_name: "Editing Mac",
+        },
+      ],
+      true,
+      1,
+      { state: "ONLINE" },
+    ),
+  ).toBe("Local · Editing Mac");
 });
 
 it("shows the active span ahead of queued and completed Cloud attempts", () => {
-  const complete={state:"SUCCEEDED",cloud_phase:"CLEAN"},active={state:"RUNNING",cloud_phase:"RENDERING"},queued={state:"OUTBOXED",cloud_phase:"WAITING_CAPACITY"};
-  expect(currentHostedAttempt([complete,active,queued])).toBe(active);
-  expect(currentHostedAttempt([complete,{state:"SUCCEEDED",cloud_phase:"STOPPING"},queued])?.cloud_phase).toBe("STOPPING");
-  expect(currentHostedAttempt([complete,queued])).toBe(queued);
+  const complete = { state: "SUCCEEDED", cloud_phase: "CLEAN" },
+    active = { state: "RUNNING", cloud_phase: "RENDERING" },
+    queued = { state: "OUTBOXED", cloud_phase: "WAITING_CAPACITY" };
+  expect(currentHostedAttempt([complete, active, queued])).toBe(active);
+  expect(
+    currentHostedAttempt([complete, { state: "SUCCEEDED", cloud_phase: "STOPPING" }, queued])
+      ?.cloud_phase,
+  ).toBe("STOPPING");
+  expect(currentHostedAttempt([complete, queued])).toBe(queued);
   expect(currentHostedAttempt([complete])).toBe(complete);
   expect(currentHostedAttempt([])).toBeUndefined();
 });
 
 it("times a Cloud render-only run from its fresh attempt", async () => {
-  const projectId="11111111-1111-4111-8111-111111111111";
-  vi.stubGlobal("fetch",vi.fn(async()=>Response.json({
-    project:{id:projectId,title:"Retained Cloud retry",created_at:"2026-09-01T10:00:00Z",revision_id:"22222222-2222-4222-8222-222222222222",revision_state:"LOCKED",media_execution_backend:"PERSONAL_WORKER"},
-    generation_provider:"KIE_FAL",cloud_media:{available:true},generation:null,gpu_transport:"DISABLED_UNQUALIFIED",gpu_readiness:gpuReadiness,
-    attempts:[{id:projectId,kind:"RENDER",state:"SUCCEEDED",execution_backend:"RUNPOD_POD",render_only_run:true,created_at:"2026-09-29T10:12:00Z",terminal_at:"2026-09-29T10:15:00Z",cloud_phase:"CLEAN"}],
-    stages:[{id:"render",name:"Assemble final video",status:"COMPLETE",progress_percent:null}],
-  })));
-  renderHosted(<HostedProjectScreen projectId={projectId}/>);
+  const projectId = "11111111-1111-4111-8111-111111111111";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        project: {
+          id: projectId,
+          title: "Retained Cloud retry",
+          created_at: "2026-09-01T10:00:00Z",
+          revision_id: "22222222-2222-4222-8222-222222222222",
+          revision_state: "LOCKED",
+          media_execution_backend: "PERSONAL_WORKER",
+        },
+        generation_provider: "KIE_FAL",
+        cloud_media: { available: true },
+        generation: null,
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: gpuReadiness,
+        attempts: [
+          {
+            id: projectId,
+            kind: "RENDER",
+            state: "SUCCEEDED",
+            execution_backend: "RUNPOD_POD",
+            render_only_run: true,
+            created_at: "2026-09-29T10:12:00Z",
+            terminal_at: "2026-09-29T10:15:00Z",
+            cloud_phase: "CLEAN",
+          },
+        ],
+        stages: [
+          {
+            id: "render",
+            name: "Assemble final video",
+            status: "COMPLETE",
+            progress_percent: null,
+          },
+        ],
+      }),
+    ),
+  );
+  renderHosted(<HostedProjectScreen projectId={projectId} />);
   expect(await screen.findByLabelText("Wall elapsed time")).toHaveTextContent("3m 00s");
 });
 
 it("shows account admission wait across Cloud transcription progress", async () => {
-  const projectId="11111111-1111-4111-8111-111111111111";
-  vi.stubGlobal("fetch",vi.fn(async()=>Response.json({
-    project:{id:projectId,title:"Queued Cloud transcription",revision_id:projectId,revision_state:"LOCKED",media_execution_backend:"RUNPOD_POD"},
-    generation:null,generation_provider:"KIE_FAL",gpu_transport:"DISABLED_UNQUALIFIED",gpu_readiness:gpuReadiness,
-    attempts:[{id:projectId,kind:"ASR",state:"OUTBOXED",execution_backend:"RUNPOD_POD",cloud_phase:"WAITING_CAPACITY"}],
-    queue:{status:"QUEUED",position:2},stages:stageList({transcription:"RUNNING"}),
-  })));
-  renderHosted(<HostedProjectScreen projectId={projectId}/>);
-  const stages=await screen.findByRole("list",{name:"Project stages"});
+  const projectId = "11111111-1111-4111-8111-111111111111";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        project: {
+          id: projectId,
+          title: "Queued Cloud transcription",
+          revision_id: projectId,
+          revision_state: "LOCKED",
+          media_execution_backend: "RUNPOD_POD",
+        },
+        generation: null,
+        generation_provider: "KIE_FAL",
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: gpuReadiness,
+        attempts: [
+          {
+            id: projectId,
+            kind: "ASR",
+            state: "OUTBOXED",
+            execution_backend: "RUNPOD_POD",
+            cloud_phase: "WAITING_CAPACITY",
+          },
+        ],
+        queue: { status: "QUEUED", position: 2 },
+        stages: stageList({ transcription: "RUNNING" }),
+      }),
+    ),
+  );
+  renderHosted(<HostedProjectScreen projectId={projectId} />);
+  const stages = await screen.findByRole("list", { name: "Project stages" });
   expect(within(stages).getByText("Waiting for earlier project")).toBeInTheDocument();
-  expect(screen.getByLabelText("Rendering machine")).toHaveTextContent("Cloud · Waiting for earlier project");
+  expect(screen.getByLabelText("Rendering machine")).toHaveTextContent(
+    "Cloud · Waiting for earlier project",
+  );
   expect(screen.queryByText("Waiting for capacity")).not.toBeInTheDocument();
 });
 
 it.each([
-  "MEDIA_EXECUTION_SUBPROCESS_FAILED", "MEDIA_EXECUTION_FAILED",
-  "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT", "MEDIA_EXECUTION_IO_FAILED",
-  "MEDIA_EXECUTION_CONTRACT_INVALID", "ASR_RESULT_INVALID", "MEDIA_EXECUTION_TIMEOUT",
+  "MEDIA_EXECUTION_SUBPROCESS_FAILED",
+  "MEDIA_EXECUTION_FAILED",
+  "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT",
+  "MEDIA_EXECUTION_IO_FAILED",
+  "MEDIA_EXECUTION_CONTRACT_INVALID",
+  "ASR_RESULT_INVALID",
+  "MEDIA_EXECUTION_TIMEOUT",
   "CLOUD_MEDIA_PROVIDER_REJECTED",
-])("explains Cloud transcription failure %s without desktop repair guidance", code => {
+])("explains Cloud transcription failure %s without desktop repair guidance", (code) => {
   const message = transcriptionFailureMessage(code, "RUNPOD_POD");
   expect(message).toMatch(/^Cloud transcription/);
   expect(message).toContain("Your project and voiceover are saved.");
@@ -211,8 +374,12 @@ it.each([
   expect(message).not.toContain(code);
 });
 
-it.each([false, true])("uses persisted Cloud span retry state: %s", retrying => {
-  const message = spanAudioFailureMessage("MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT", retrying, "RUNPOD_POD");
+it.each([false, true])("uses persisted Cloud span retry state: %s", (retrying) => {
+  const message = spanAudioFailureMessage(
+    "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT",
+    retrying,
+    "RUNPOD_POD",
+  );
   expect(message).toContain("temporary storage was insufficient");
   expect(message).toContain("Accepted clips remain saved.");
   expect(message).not.toMatch(/computer|personal media worker|free space there/i);
@@ -220,42 +387,122 @@ it.each([false, true])("uses persisted Cloud span retry state: %s", retrying => 
 });
 
 it.each([
-  {kind:"ASR", backend:"RUNPOD_POD", cloud:true},
-  {kind:"ASR", backend:undefined, cloud:false},
-  {kind:"SPAN_AUDIO", backend:"RUNPOD_POD", cloud:true},
-  {kind:"SPAN_AUDIO", backend:undefined, cloud:false},
-] as const)("failure guidance follows stored $kind backend $backend before project selection", async ({kind,backend,cloud}) => {
-  const projectId="11111111-1111-4111-8111-111111111111";
-  const detail={project:{id:projectId,title:"Backend failure",created_at:"2026-09-28T10:00:00Z",revision_id:"22222222-2222-4222-8222-222222222222",revision_state:"LOCKED",media_execution_backend:"RUNPOD_POD"},
-    generation:null,gpu_transport:"DISABLED_UNQUALIFIED",gpu_readiness:gpuReadiness,
-    attempts:[{id:"33333333-3333-4333-8333-333333333333",kind,state:"FAILED",execution_backend:backend,error_code:"MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT"}],
-    span_audio:kind === "SPAN_AUDIO" ? {total:2,materialized:1,planned:0,running:0,queued:0,succeeded:1,failed:1,retrying:0,failure_code:"MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT"}:null,
-    stages:stageList({[kind === "ASR" ? "transcription" : "audio-spanning"]:"FAILED"})};
-  const fetchMock=vi.fn(async(_input: RequestInfo | URL, _init?: RequestInit)=>Response.json(detail));vi.stubGlobal("fetch",fetchMock);
-  renderHosted(<HostedProjectScreen projectId={projectId}/>);
-  await screen.findByRole("list",{name:"Project stages"});
-  if(kind === "ASR") {
-    const message=transcriptionFailureMessage("MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT",backend);
-    expect(screen.getByText(message)).toBeInTheDocument();
-    expect(message.startsWith("Cloud")).toBe(cloud);
-  } else {
-    const heading=screen.getByRole("heading",{name:"Avatar audio stopped"});
-    const panel=heading.closest("section");if(!panel)throw Error("Span panel missing");
-    expect(within(panel).getByText(cloud ? /^Cloud$/ : "Your computer")).toBeInTheDocument();
-    expect(within(panel).getByText(spanAudioFailureMessage("MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT",false,backend))).toBeInTheDocument();
-    const row=stageRow("Audio spanning");expect(within(row).getByRole("button",{name:"Retry"})).toBeDisabled();
-    expect(within(row).getByRole("alert")).toHaveTextContent(cloud ? /Cloud audio preparation/ : /connected computer/);
-    if(cloud)expect(within(panel).getByRole("alert")).toHaveTextContent("Accepted clips remain saved.");
-  }
-  expect(fetchMock.mock.calls.every(([, init])=>!init?.method || init.method === "GET")).toBe(true);
-});
+  { kind: "ASR", backend: "RUNPOD_POD", cloud: true },
+  { kind: "ASR", backend: undefined, cloud: false },
+  { kind: "SPAN_AUDIO", backend: "RUNPOD_POD", cloud: true },
+  { kind: "SPAN_AUDIO", backend: undefined, cloud: false },
+] as const)(
+  "failure guidance follows stored $kind backend $backend before project selection",
+  async ({ kind, backend, cloud }) => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const detail = {
+      project: {
+        id: projectId,
+        title: "Backend failure",
+        created_at: "2026-09-28T10:00:00Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+        media_execution_backend: "RUNPOD_POD",
+      },
+      generation: null,
+      gpu_transport: "DISABLED_UNQUALIFIED",
+      gpu_readiness: gpuReadiness,
+      attempts: [
+        {
+          id: "33333333-3333-4333-8333-333333333333",
+          kind,
+          state: "FAILED",
+          execution_backend: backend,
+          error_code: "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT",
+        },
+      ],
+      span_audio:
+        kind === "SPAN_AUDIO"
+          ? {
+              total: 2,
+              materialized: 1,
+              planned: 0,
+              running: 0,
+              queued: 0,
+              succeeded: 1,
+              failed: 1,
+              retrying: 0,
+              failure_code: "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT",
+            }
+          : null,
+      stages: stageList({ [kind === "ASR" ? "transcription" : "audio-spanning"]: "FAILED" }),
+    };
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      Response.json(detail),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+    await screen.findByRole("list", { name: "Project stages" });
+    if (kind === "ASR") {
+      const message = transcriptionFailureMessage(
+        "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT",
+        backend,
+      );
+      expect(screen.getByText(message)).toBeInTheDocument();
+      expect(message.startsWith("Cloud")).toBe(cloud);
+    } else {
+      const heading = screen.getByRole("heading", { name: "Avatar audio stopped" });
+      const panel = heading.closest("section");
+      if (!panel) throw Error("Span panel missing");
+      expect(within(panel).getByText(cloud ? /^Cloud$/ : "Your computer")).toBeInTheDocument();
+      expect(
+        within(panel).getByText(
+          spanAudioFailureMessage("MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT", false, backend),
+        ),
+      ).toBeInTheDocument();
+      const row = stageRow("Audio spanning");
+      expect(within(row).getByRole("button", { name: "Retry" })).toBeDisabled();
+      expect(within(row).getByRole("alert")).toHaveTextContent(
+        cloud ? /Cloud audio preparation/ : /connected computer/,
+      );
+      if (cloud)
+        expect(within(panel).getByRole("alert")).toHaveTextContent("Accepted clips remain saved.");
+    }
+    expect(fetchMock.mock.calls.every(([, init]) => !init?.method || init.method === "GET")).toBe(
+      true,
+    );
+  },
+);
 
 it("describes the Cloud render retry limit without changing eligibility", async () => {
-  const projectId="11111111-1111-4111-8111-111111111111",failedId="33333333-3333-4333-8333-333333333333";
-  vi.stubGlobal("fetch",vi.fn(async()=>Response.json({project:{id:projectId,title:"Bounded Cloud retry",created_at:"2026-09-28T10:00:00Z",revision_id:"22222222-2222-4222-8222-222222222222",revision_state:"LOCKED"},generation:null,gpu_transport:"DISABLED_UNQUALIFIED",gpu_readiness:gpuReadiness,
-    attempts:[{id:failedId,kind:"RENDER",state:"FAILED",execution_backend:"RUNPOD_POD"}],render_retry:{eligible:false,reason:"RETRY_LIMIT_REACHED",failed_attempt_id:failedId,attempt_limit:5},stages:stageList({render:"FAILED"})})));
-  renderHosted(<HostedProjectScreen projectId={projectId}/>);await screen.findByRole("list",{name:"Project stages"});
-  const row=stageRow("Assemble final video");expect(within(row).getByRole("button",{name:"Retry"})).toBeDisabled();
+  const projectId = "11111111-1111-4111-8111-111111111111",
+    failedId = "33333333-3333-4333-8333-333333333333";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        project: {
+          id: projectId,
+          title: "Bounded Cloud retry",
+          created_at: "2026-09-28T10:00:00Z",
+          revision_id: "22222222-2222-4222-8222-222222222222",
+          revision_state: "LOCKED",
+        },
+        generation: null,
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: gpuReadiness,
+        attempts: [
+          { id: failedId, kind: "RENDER", state: "FAILED", execution_backend: "RUNPOD_POD" },
+        ],
+        render_retry: {
+          eligible: false,
+          reason: "RETRY_LIMIT_REACHED",
+          failed_attempt_id: failedId,
+          attempt_limit: 5,
+        },
+        stages: stageList({ render: "FAILED" }),
+      }),
+    ),
+  );
+  renderHosted(<HostedProjectScreen projectId={projectId} />);
+  await screen.findByRole("list", { name: "Project stages" });
+  const row = stageRow("Assemble final video");
+  expect(within(row).getByRole("button", { name: "Retry" })).toBeDisabled();
   expect(within(row).getByRole("alert")).toHaveTextContent("bounded Cloud render retry limit");
   expect(within(row).getByRole("alert")).not.toHaveTextContent("local render");
 });
@@ -333,10 +580,14 @@ describe("hosted project polling", () => {
       stages: [{ id: "prompt-writing", name: "Write image prompts", status: "FAILED" }],
     });
     for (const state of ["UNKNOWN", "DISPATCHING"] as const) {
-      expect(hostedProjectPollInterval({
-        ...value,
-        prompt_progress: { state } as NonNullable<ProjectDetailResponseForPolling["prompt_progress"]>,
-      })).toBe(2_000);
+      expect(
+        hostedProjectPollInterval({
+          ...value,
+          prompt_progress: { state } as NonNullable<
+            ProjectDetailResponseForPolling["prompt_progress"]
+          >,
+        }),
+      ).toBe(2_000);
     }
   });
 
@@ -457,9 +708,7 @@ it("reuses signed media URLs until their refresh window and refreshes expired UR
   const item = { id: "clip-1", video_url: firstUrl };
 
   expect(hostedSignedUrlExpiresAtMs(firstUrl)).toBe(issuedAt + 300_000);
-  expect(stableHostedMediaUrl(cache, "project:revision", "avatar", item, issuedAt)).toBe(
-    firstUrl,
-  );
+  expect(stableHostedMediaUrl(cache, "project:revision", "avatar", item, issuedAt)).toBe(firstUrl);
   expect(
     stableHostedMediaUrl(
       cache,
@@ -636,71 +885,160 @@ it.each([
   { motion: false, stageIds: true, count: 9 },
   { motion: true, stageIds: true, count: 10 },
   { motion: false, stageIds: false, count: 9 },
-])("hides internal stages but preserves numbering and timing ($motion, $stageIds)", async ({ motion, stageIds, count }) => {
-  vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-03T03:32:03Z"));
-  const stages = stageList({ prepare: "COMPLETE", transcription: "RUNNING" });
-  stages[0] = { ...stages[0]!, started_at: "2026-10-03T03:30:00Z", completed_at: "2026-10-03T03:30:03Z" };
-  stages[1] = { ...stages[1]!, started_at: "2026-10-03T03:30:03Z" };
-  if (motion) stages.splice(7, 0, { ...stages[6]!, id: "video-generation", name: "Generate scene videos" });
-  const fetchMock = vi.fn(async () => Response.json({
-    project: { id: "visible-pipeline", revision_id: "revision", revision_state: "LOCKED", title: "Visible pipeline", created_at: "2026-10-03T03:30:00Z" },
-    generation_provider: "KIE_FAL", attempts: [{ id: "asr", kind: "ASR", state: "RUNNING" }],
-    generation: null, gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
-    stages: stageIds ? stages : stages.map(({ id: _id, ...stage }) => stage),
-  }));
-  vi.stubGlobal("fetch", fetchMock);
-  renderHosted(<HostedProjectScreen projectId="visible-pipeline" />);
-  const list = await screen.findByRole("list", { name: "Project stages" });
-  const rows = within(list).getAllByRole("listitem");
-  expect(rows).toHaveLength(count);
-  expect(within(list).queryByText("Prepare project")).not.toBeInTheDocument();
-  expect(within(list).queryByText("Technical check")).not.toBeInTheDocument();
-  expect(within(rows[0]!).getByText("Transcribe voiceover")).toBeInTheDocument();
-  expect(rows.map(row => row.querySelector(".stage-index")?.textContent)).toEqual(
-    Array.from({ length: count }, (_, i) => String(i + 1).padStart(2, "0")),
-  );
-  const hero = screen.getByRole("region", { name: "Live video progress" });
-  expect(within(hero).getByText(`01/${String(count).padStart(2, "0")}`)).toBeInTheDocument();
-  expect(screen.getByLabelText("Transcribe voiceover elapsed time")).toHaveTextContent("2m 00s");
-  expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent("2m 03s");
-});
+])(
+  "hides internal stages but preserves numbering and timing ($motion, $stageIds)",
+  async ({ motion, stageIds, count }) => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-03T03:32:03Z"));
+    const stages = stageList({ prepare: "COMPLETE", transcription: "RUNNING" });
+    stages[0] = {
+      ...stages[0]!,
+      started_at: "2026-10-03T03:30:00Z",
+      completed_at: "2026-10-03T03:30:03Z",
+    };
+    stages[1] = { ...stages[1]!, started_at: "2026-10-03T03:30:03Z" };
+    if (motion)
+      stages.splice(7, 0, { ...stages[6]!, id: "video-generation", name: "Generate scene videos" });
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        project: {
+          id: "visible-pipeline",
+          revision_id: "revision",
+          revision_state: "LOCKED",
+          title: "Visible pipeline",
+          created_at: "2026-10-03T03:30:00Z",
+        },
+        generation_provider: "KIE_FAL",
+        attempts: [{ id: "asr", kind: "ASR", state: "RUNNING" }],
+        generation: null,
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: gpuReadiness,
+        stages: stageIds ? stages : stages.map(({ id: _id, ...stage }) => stage),
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId="visible-pipeline" />);
+    const list = await screen.findByRole("list", { name: "Project stages" });
+    const rows = within(list).getAllByRole("listitem");
+    expect(rows).toHaveLength(count);
+    expect(within(list).queryByText("Prepare project")).not.toBeInTheDocument();
+    expect(within(list).queryByText("Technical check")).not.toBeInTheDocument();
+    expect(within(rows[0]!).getByText("Transcribe voiceover")).toBeInTheDocument();
+    expect(rows.map((row) => row.querySelector(".stage-index")?.textContent)).toEqual(
+      Array.from({ length: count }, (_, i) => String(i + 1).padStart(2, "0")),
+    );
+    const hero = screen.getByRole("region", { name: "Live video progress" });
+    expect(within(hero).getByText(`01/${String(count).padStart(2, "0")}`)).toBeInTheDocument();
+    expect(screen.getByLabelText("Transcribe voiceover elapsed time")).toHaveTextContent("2m 00s");
+    expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent("2m 03s");
+  },
+);
 
-it.each(["CLEAN", "COMPLETE"])("retains the recorded GPU after %s cleanup and identifies current API work", phase => {
-  const asr = { kind: "ASR" as const, state: "SUCCEEDED", execution_backend: "RUNPOD_POD" as const,
-    cloud_gpu: "NVIDIA RTX PRO 4500", cloud_phase: phase, cloud_machine_active: false };
-  expect(hostedMachineLabel("RUNPOD_POD", [asr])).toBe("Cloud · RunPod · NVIDIA RTX PRO 4500 · Compute released");
-  expect(hostedMachineLabel("RUNPOD_POD", [asr], true)).toBe("Cloud · RunPod · NVIDIA RTX PRO 4500 · Compute released · Media APIs running");
-  expect(hostedMachineLabel("RUNPOD_POD", [{ ...asr, cloud_phase: "AMBIGUOUS" }], true))
-    .toBe("Cloud · Media APIs · No active RunPod compute");
-  const active = { ...asr, kind: "RENDER" as const, state: "RUNNING", cloud_phase: "RENDERING", cloud_machine_active: true };
-  expect(hostedMachineLabel("RUNPOD_POD", [asr, active], true)).toBe("Cloud · RunPod · NVIDIA RTX PRO 4500");
-});
+it.each(["CLEAN", "COMPLETE"])(
+  "retains the recorded GPU after %s cleanup and identifies current API work",
+  (phase) => {
+    const asr = {
+      kind: "ASR" as const,
+      state: "SUCCEEDED",
+      execution_backend: "RUNPOD_POD" as const,
+      cloud_gpu: "NVIDIA RTX PRO 4500",
+      cloud_phase: phase,
+      cloud_machine_active: false,
+    };
+    expect(hostedMachineLabel("RUNPOD_POD", [asr])).toBe(
+      "Cloud · RunPod · NVIDIA RTX PRO 4500 · Compute released",
+    );
+    expect(hostedMachineLabel("RUNPOD_POD", [asr], true)).toBe(
+      "Cloud · RunPod · NVIDIA RTX PRO 4500 · Compute released · Media APIs running",
+    );
+    expect(hostedMachineLabel("RUNPOD_POD", [{ ...asr, cloud_phase: "AMBIGUOUS" }], true)).toBe(
+      "Cloud · Media APIs · No active RunPod compute",
+    );
+    const active = {
+      ...asr,
+      kind: "RENDER" as const,
+      state: "RUNNING",
+      cloud_phase: "RENDERING",
+      cloud_machine_active: true,
+    };
+    expect(hostedMachineLabel("RUNPOD_POD", [asr, active], true)).toBe(
+      "Cloud · RunPod · NVIDIA RTX PRO 4500",
+    );
+  },
+);
 
 it("keeps approved downloads on the authenticated route when no download URL is reported", async () => {
   const projectId = "11111111-1111-4111-8111-111111111111";
-  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ project: { id: projectId, title: "Final" },
-    attempts: [{ id: "render", kind: "RENDER", state: "SUCCEEDED", approved_at: "2026-09-26T05:00:00Z",
-      preview_url: "https://expired-preview.invalid/final-mp4?expired=true" }], review: { download_url: null } })));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        project: { id: projectId, title: "Final" },
+        attempts: [
+          {
+            id: "render",
+            kind: "RENDER",
+            state: "SUCCEEDED",
+            approved_at: "2026-09-26T05:00:00Z",
+            preview_url: "https://expired-preview.invalid/final-mp4?expired=true",
+          },
+        ],
+        review: { download_url: null },
+      }),
+    ),
+  );
   renderHosted(<HostedReviewScreen projectId={projectId} />);
-  expect(await screen.findByRole("link", { name: "Download MP4" }))
-    .toHaveAttribute("href", `/api/v2/hosted/projects/${projectId}/download`);
+  expect(await screen.findByRole("link", { name: "Download MP4" })).toHaveAttribute(
+    "href",
+    `/api/v2/hosted/projects/${projectId}/download`,
+  );
 });
 
 it("keeps rendering available after optional scene clips fall back to original stills", async () => {
-  const detail = "1 of 2 clips accepted · 1 scene kept as its original still · 3.33% actual motion (up to 7% target) · 720p 16:9.";
-  vi.stubGlobal("fetch", vi.fn(async () => Response.json({
-    project: { id: "fallback", title: "Retained still fallback", revision_id: "revision", revision_state: "LOCKED" },
-    generation_provider: "KIE_FAL", attempts: [], generation: null,
-    gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
-    stages: [
-      { id: "video-generation", name: "Generate scene videos", status: "COMPLETE", progress_percent: 100, detail },
-      { id: "render", name: "Assemble final video", status: "RUNNING" },
-    ],
-    cost: { api_estimate: { kie_images: 2, kie_usd: 0.008, fal_avatar_seconds: 10, fal_usd: 0.05,
-      seedance_seconds: 8, seedance_usd: 0.10688, seedance_reported_usd: 0.06,
-      seedance_coverage_percent: 7, seedance_actual_coverage_percent: 100 / 30, seedance_fallback_count: 1,
-      pricing_checked_at: "2026-10-03" } },
-  })));
+  const detail =
+    "1 of 2 clips accepted · 1 scene kept as its original still · 3.33% actual motion (up to 7% target) · 720p 16:9.";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        project: {
+          id: "fallback",
+          title: "Retained still fallback",
+          revision_id: "revision",
+          revision_state: "LOCKED",
+        },
+        generation_provider: "KIE_FAL",
+        attempts: [],
+        generation: null,
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: gpuReadiness,
+        stages: [
+          {
+            id: "video-generation",
+            name: "Generate scene videos",
+            status: "COMPLETE",
+            progress_percent: 100,
+            detail,
+          },
+          { id: "render", name: "Assemble final video", status: "RUNNING" },
+        ],
+        cost: {
+          api_estimate: {
+            kie_images: 2,
+            kie_usd: 0.008,
+            fal_avatar_seconds: 10,
+            fal_usd: 0.05,
+            seedance_seconds: 8,
+            seedance_usd: 0.10688,
+            seedance_reported_usd: 0.06,
+            seedance_coverage_percent: 7,
+            seedance_actual_coverage_percent: 100 / 30,
+            seedance_fallback_count: 1,
+            pricing_checked_at: "2026-10-03",
+          },
+        },
+      }),
+    ),
+  );
   renderHosted(<HostedProjectScreen projectId="fallback" />);
   expect(await screen.findByText(detail)).toBeInTheDocument();
   expect(stageRow("Generate scene videos")).toHaveTextContent(/complete/i);
@@ -719,75 +1057,109 @@ it.each([
     expectedValue: "Taking longer",
     expectedDetail: /than recent short runs; API and render times vary/i,
   },
-])("shows an honest API project time estimate when overrun=$overrun", async ({
-  overrun,
-  expectedValue,
-  expectedDetail,
-}) => {
-  vi.stubGlobal("fetch", vi.fn(async () => Response.json({
-    project: { id: "estimate", title: "Estimated video", created_at: "2026-09-25T05:00:00Z",
-      revision_id: "revision", revision_state: "LOCKED" },
-    generation_provider: "KIE_FAL",
-    attempts: [],
-    generation: null,
-    gpu_transport: "DISABLED_UNQUALIFIED",
-    gpu_readiness: gpuReadiness,
-    stages: stageList({ prepare: "COMPLETE", transcription: "RUNNING" }),
-    time_estimate: {
-      remaining_min_ms: 120_000,
-      remaining_max_ms: 300_000,
-      basis: "RECENT_API_SHORT_RUN",
-      overrun,
-    },
-  })));
-  renderHosted(<HostedProjectScreen projectId="estimate" />);
-  const hero = await screen.findByRole("region", { name: "Live video progress" });
-  expect(within(hero).getByText(expectedValue)).toBeInTheDocument();
-  expect(within(hero).getByText(expectedDetail)).toBeInTheDocument();
-  expect(within(hero).queryByText("Not reported")).not.toBeInTheDocument();
-});
+])(
+  "shows an honest API project time estimate when overrun=$overrun",
+  async ({ overrun, expectedValue, expectedDetail }) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          project: {
+            id: "estimate",
+            title: "Estimated video",
+            created_at: "2026-09-25T05:00:00Z",
+            revision_id: "revision",
+            revision_state: "LOCKED",
+          },
+          generation_provider: "KIE_FAL",
+          attempts: [],
+          generation: null,
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+          stages: stageList({ prepare: "COMPLETE", transcription: "RUNNING" }),
+          time_estimate: {
+            remaining_min_ms: 120_000,
+            remaining_max_ms: 300_000,
+            basis: "RECENT_API_SHORT_RUN",
+            overrun,
+          },
+        }),
+      ),
+    );
+    renderHosted(<HostedProjectScreen projectId="estimate" />);
+    const hero = await screen.findByRole("region", { name: "Live video progress" });
+    expect(within(hero).getByText(expectedValue)).toBeInTheDocument();
+    expect(within(hero).getByText(expectedDetail)).toBeInTheDocument();
+    expect(within(hero).queryByText("Not reported")).not.toBeInTheDocument();
+  },
+);
 
 it("labels a long-video estimate as measured from a recent full render", async () => {
-  vi.stubGlobal("fetch", vi.fn(async () => Response.json({
-    project: { id: "estimate-full", title: "Measured video", created_at: "2026-09-25T05:00:00Z",
-      revision_id: "revision", revision_state: "LOCKED" },
-    generation_provider: "KIE_FAL",
-    attempts: [],
-    generation: null,
-    gpu_transport: "DISABLED_UNQUALIFIED",
-    gpu_readiness: gpuReadiness,
-    stages: stageList({ prepare: "COMPLETE", render: "RUNNING" }),
-    time_estimate: {
-      remaining_min_ms: 348_000,
-      remaining_max_ms: 972_000,
-      basis: "RECENT_FULL_RENDER",
-      overrun: false,
-    },
-  })));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        project: {
+          id: "estimate-full",
+          title: "Measured video",
+          created_at: "2026-09-25T05:00:00Z",
+          revision_id: "revision",
+          revision_state: "LOCKED",
+        },
+        generation_provider: "KIE_FAL",
+        attempts: [],
+        generation: null,
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: gpuReadiness,
+        stages: stageList({ prepare: "COMPLETE", render: "RUNNING" }),
+        time_estimate: {
+          remaining_min_ms: 348_000,
+          remaining_max_ms: 972_000,
+          basis: "RECENT_FULL_RENDER",
+          overrun: false,
+        },
+      }),
+    ),
+  );
   renderHosted(<HostedProjectScreen projectId="estimate-full" />);
   const hero = await screen.findByRole("region", { name: "Live video progress" });
   expect(within(hero).getByText("~5–17 min")).toBeInTheDocument();
-  expect(within(hero).getByText("remaining · based on the recent full render; times vary")).toBeInTheDocument();
+  expect(
+    within(hero).getByText("remaining · based on the recent full render; times vary"),
+  ).toBeInTheDocument();
 });
 
 it("refreshes a running project's time estimate without reloading", async () => {
   let reads = 0;
-  vi.stubGlobal("fetch", vi.fn(async () => Response.json({
-    project: { id: "estimate-live", title: "Estimated video", created_at: "2026-09-25T05:00:00Z",
-      revision_id: "revision", revision_state: "LOCKED" },
-    generation_provider: "KIE_FAL",
-    attempts: [],
-    generation: null,
-    gpu_transport: "DISABLED_UNQUALIFIED",
-    gpu_readiness: gpuReadiness,
-    stages: stageList({ prepare: "COMPLETE", transcription: "RUNNING" }),
-    time_estimate: ++reads === 1 ? null : {
-      remaining_min_ms: 120_000,
-      remaining_max_ms: 300_000,
-      basis: "RECENT_API_SHORT_RUN",
-      overrun: false,
-    },
-  })));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        project: {
+          id: "estimate-live",
+          title: "Estimated video",
+          created_at: "2026-09-25T05:00:00Z",
+          revision_id: "revision",
+          revision_state: "LOCKED",
+        },
+        generation_provider: "KIE_FAL",
+        attempts: [],
+        generation: null,
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: gpuReadiness,
+        stages: stageList({ prepare: "COMPLETE", transcription: "RUNNING" }),
+        time_estimate:
+          ++reads === 1
+            ? null
+            : {
+                remaining_min_ms: 120_000,
+                remaining_max_ms: 300_000,
+                basis: "RECENT_API_SHORT_RUN",
+                overrun: false,
+              },
+      }),
+    ),
+  );
   renderHosted(<HostedProjectScreen projectId="estimate-live" />);
   const hero = await screen.findByRole("region", { name: "Live video progress" });
   const estimateMetric = within(hero).getByText("Estimated").closest<HTMLElement>(".metric");
@@ -800,42 +1172,81 @@ it("refreshes a running project's time estimate without reloading", async () => 
 
 it("shows ready without stale remaining time or generation notice after render succeeds", async () => {
   let completed = false;
-  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
-    if (String(input).endsWith("/gpu-dispatch")) {
-      completed = true;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/gpu-dispatch")) {
+        completed = true;
+        return Response.json(
+          {
+            schema_version: "videoforge-hosted-v209-project-dispatch/v1",
+            state: "SCHEDULED",
+            correlation_id: "completed-generation",
+          },
+          { status: 202 },
+        );
+      }
       return Response.json({
-        schema_version: "videoforge-hosted-v209-project-dispatch/v1",
-        state: "SCHEDULED",
-        correlation_id: "completed-generation",
-      }, { status: 202 });
-    }
-    return Response.json({
-      project: { id: "estimate-ready", title: "Ready video", created_at: "2026-09-25T05:00:00Z",
-        revision_id: "revision", revision_state: "LOCKED" },
-      generation_provider: "KIE_FAL",
-      attempts: completed ? [{ id: "render", kind: "RENDER", state: "SUCCEEDED",
-        terminal_at: "2026-09-25T05:03:00Z" }] : [],
-      generation: { id: "generation", timeline_plan_sha256: `sha256:${"a".repeat(64)}`,
-        planned_tasks: 2, completed_tasks: completed ? 2 : 0, failed_tasks: 0,
-        stage: completed ? "READY_FOR_RENDER" : "READY_FOR_GPU_DISPATCH" },
-      gpu_transport: "DISABLED_UNQUALIFIED",
-      gpu_readiness: gpuReadiness,
-      queue: null,
-      stages: stageList(completed
-        ? { prepare: "COMPLETE", transcription: "COMPLETE", "voiceover-context": "COMPLETE",
-          planning: "COMPLETE", "prompt-writing": "COMPLETE", "audio-spanning": "COMPLETE",
-          "image-generation": "COMPLETE", "avatar-generation": "COMPLETE", render: "COMPLETE",
-          "technical-check": "COMPLETE" }
-        : { prepare: "COMPLETE", transcription: "COMPLETE", "voiceover-context": "COMPLETE",
-          planning: "COMPLETE", "prompt-writing": "COMPLETE" }),
-      time_estimate: {
-        remaining_min_ms: completed ? 0 : 120_000,
-        remaining_max_ms: completed ? 0 : 300_000,
-        basis: "RECENT_API_SHORT_RUN",
-        overrun: false,
-      },
-    });
-  }));
+        project: {
+          id: "estimate-ready",
+          title: "Ready video",
+          created_at: "2026-09-25T05:00:00Z",
+          revision_id: "revision",
+          revision_state: "LOCKED",
+        },
+        generation_provider: "KIE_FAL",
+        attempts: completed
+          ? [
+              {
+                id: "render",
+                kind: "RENDER",
+                state: "SUCCEEDED",
+                terminal_at: "2026-09-25T05:03:00Z",
+              },
+            ]
+          : [],
+        generation: {
+          id: "generation",
+          timeline_plan_sha256: `sha256:${"a".repeat(64)}`,
+          planned_tasks: 2,
+          completed_tasks: completed ? 2 : 0,
+          failed_tasks: 0,
+          stage: completed ? "READY_FOR_RENDER" : "READY_FOR_GPU_DISPATCH",
+        },
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: gpuReadiness,
+        queue: null,
+        stages: stageList(
+          completed
+            ? {
+                prepare: "COMPLETE",
+                transcription: "COMPLETE",
+                "voiceover-context": "COMPLETE",
+                planning: "COMPLETE",
+                "prompt-writing": "COMPLETE",
+                "audio-spanning": "COMPLETE",
+                "image-generation": "COMPLETE",
+                "avatar-generation": "COMPLETE",
+                render: "COMPLETE",
+                "technical-check": "COMPLETE",
+              }
+            : {
+                prepare: "COMPLETE",
+                transcription: "COMPLETE",
+                "voiceover-context": "COMPLETE",
+                planning: "COMPLETE",
+                "prompt-writing": "COMPLETE",
+              },
+        ),
+        time_estimate: {
+          remaining_min_ms: completed ? 0 : 120_000,
+          remaining_max_ms: completed ? 0 : 300_000,
+          basis: "RECENT_API_SHORT_RUN",
+          overrun: false,
+        },
+      });
+    }),
+  );
   renderHosted(<HostedProjectScreen projectId="estimate-ready" />);
   const hero = await screen.findByRole("region", { name: "Live video progress" });
   const metric = within(hero).getByText("Estimated").closest<HTMLElement>(".metric");
@@ -847,21 +1258,40 @@ it("shows ready without stale remaining time or generation notice after render s
 
 it("shows a reasoned disabled Retry for every failed stage without a safe recovery route", async () => {
   const projectId = "11111111-1111-4111-8111-111111111111";
-  const stages = stageList(Object.fromEntries([
-    "prepare", "transcription", "voiceover-context", "planning", "prompt-writing",
-    "audio-spanning", "image-generation", "avatar-generation", "render",
-    "technical-check", "review",
-  ].map((id) => [id, "FAILED"])));
-  const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => Response.json({
-    project: { id: projectId, title: "Stopped video", created_at: "2026-09-25T05:00:00Z",
-      revision_id: "22222222-2222-4222-8222-222222222222", revision_state: "LOCKED" },
-    generation_provider: "KIE_FAL",
-    attempts: [],
-    generation: null,
-    gpu_transport: "DISABLED_UNQUALIFIED",
-    gpu_readiness: gpuReadiness,
-    stages,
-  }));
+  const stages = stageList(
+    Object.fromEntries(
+      [
+        "prepare",
+        "transcription",
+        "voiceover-context",
+        "planning",
+        "prompt-writing",
+        "audio-spanning",
+        "image-generation",
+        "avatar-generation",
+        "render",
+        "technical-check",
+        "review",
+      ].map((id) => [id, "FAILED"]),
+    ),
+  );
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+    Response.json({
+      project: {
+        id: projectId,
+        title: "Stopped video",
+        created_at: "2026-09-25T05:00:00Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+      },
+      generation_provider: "KIE_FAL",
+      attempts: [],
+      generation: null,
+      gpu_transport: "DISABLED_UNQUALIFIED",
+      gpu_readiness: gpuReadiness,
+      stages,
+    }),
+  );
   vi.stubGlobal("fetch", fetchMock);
   renderHosted(<HostedProjectScreen projectId={projectId} />);
   const list = await screen.findByRole("list", { name: "Project stages" });
@@ -869,73 +1299,147 @@ it("shows a reasoned disabled Retry for every failed stage without a safe recove
   expect(rows).toHaveLength(9);
   for (const row of rows) {
     expect(within(row).getByRole("button", { name: "Retry" })).toBeDisabled();
-    expect(within(row).getByRole("alert")).toHaveTextContent(/no safe retry|cannot be sent|not authorized|exhausted|outside the verified|No safe retry/i);
+    expect(within(row).getByRole("alert")).toHaveTextContent(
+      /no safe retry|cannot be sent|not authorized|exhausted|outside the verified|No safe retry/i,
+    );
   }
-  expect(within(stageRow("Generate images")).getByRole("link", { name: "Create a new video" }))
-    .toBeVisible();
+  expect(
+    within(stageRow("Generate images")).getByRole("link", { name: "Create a new video" }),
+  ).toBeVisible();
   expect(fetchMock.mock.calls.every(([, init]) => init?.method !== "POST")).toBe(true);
 });
 
 it.each(["image-generation", "avatar-generation"])(
-  "retrieves saved API results from the failed %s stage", async (stageId) => {
+  "retrieves saved API results from the failed %s stage",
+  async (stageId) => {
     const projectId = "11111111-1111-4111-8111-111111111111";
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => String(input).endsWith("/gpu-dispatch")
-      ? Response.json({ state: "SCHEDULED" })
-      : Response.json({ project: { id: projectId, title: "Saved API results", revision_id: "revision",
-          revision_state: "LOCKED", created_at: "2026-09-26T05:00:00Z" },
-        generation_provider: "KIE_FAL", attempts: [], generation: null,
-        api_recovery: { can_resume_saved_work: true, provider_calls_authorized: false },
-        gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
-        stages: stageList({ [stageId]: "FAILED" }) }));
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) =>
+      String(input).endsWith("/gpu-dispatch")
+        ? Response.json({ state: "SCHEDULED" })
+        : Response.json({
+            project: {
+              id: projectId,
+              title: "Saved API results",
+              revision_id: "revision",
+              revision_state: "LOCKED",
+              created_at: "2026-09-26T05:00:00Z",
+            },
+            generation_provider: "KIE_FAL",
+            attempts: [],
+            generation: null,
+            api_recovery: { can_resume_saved_work: true, provider_calls_authorized: false },
+            gpu_transport: "DISABLED_UNQUALIFIED",
+            gpu_readiness: gpuReadiness,
+            stages: stageList({ [stageId]: "FAILED" }),
+          }),
+    );
     vi.stubGlobal("fetch", fetchMock);
     renderHosted(<HostedProjectScreen projectId={projectId} />);
     await screen.findByRole("list", { name: "Project stages" });
-    const row = stageRow(stageId === "image-generation" ? "Generate images" : "Generate avatar video");
-    expect(within(row).getByText(/Saved outputs are reused; no new paid request/)).toBeInTheDocument();
+    const row = stageRow(
+      stageId === "image-generation" ? "Generate images" : "Generate avatar video",
+    );
+    expect(
+      within(row).getByText(/Saved outputs are reused; no new paid request/),
+    ).toBeInTheDocument();
     fireEvent.click(within(row).getByRole("button", { name: "Retry" }));
-    await waitFor(() => expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/gpu-dispatch"))).toBe(true));
-    expect(fetchMock.mock.calls.some(([input]) => /\/(asr-handoff|context|prompts|render-retry)$/.test(String(input)))).toBe(false);
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/gpu-dispatch"))).toBe(
+        true,
+      ),
+    );
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        /\/(asr-handoff|context|prompts|render-retry)$/.test(String(input)),
+      ),
+    ).toBe(false);
   },
 );
 
-it("offers an inline planning retry after the automatic handoff fails", async()=>{
-  const projectId="11111111-1111-4111-8111-111111111111";
-  let planningCalls=0;
-  const asrId="33333333-3333-4333-8333-333333333333";
-  const fetchMock=vi.fn(async(input:RequestInfo|URL)=>{
-    if(String(input).endsWith(`/projects/${projectId}/render`)){
-      planningCalls++;return planningCalls===1
-        ?Response.json({error:{code:"TEMPORARY_PLANNING_FAILURE",message:"Scene planning temporarily failed."}},{status:409})
-        :Response.json({state:"WAITING_FOR_GPU_QUALIFICATION"});
+it("offers an inline planning retry after the automatic handoff fails", async () => {
+  const projectId = "11111111-1111-4111-8111-111111111111";
+  let planningCalls = 0;
+  const asrId = "33333333-3333-4333-8333-333333333333";
+  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    if (String(input).endsWith(`/projects/${projectId}/render`)) {
+      planningCalls++;
+      return planningCalls === 1
+        ? Response.json(
+            {
+              error: {
+                code: "TEMPORARY_PLANNING_FAILURE",
+                message: "Scene planning temporarily failed.",
+              },
+            },
+            { status: 409 },
+          )
+        : Response.json({ state: "WAITING_FOR_GPU_QUALIFICATION" });
     }
-    return Response.json({project:{id:projectId,title:"Planning retry",created_at:"2026-09-26T05:00:00Z",
-      revision_id:"22222222-2222-4222-8222-222222222222",revision_state:"LOCKED"},
-      attempts:[{id:asrId,kind:"ASR",state:"SUCCEEDED"}],generation:null,
-      gpu_transport:"DISABLED_UNQUALIFIED",gpu_readiness:gpuReadiness,
-      voiceover_context:{id:"44444444-4444-4444-8444-444444444444",state:"SUCCEEDED"},
-      stages:stageList({transcription:"COMPLETE","voiceover-context":"COMPLETE",planning:"WAITING"})});
+    return Response.json({
+      project: {
+        id: projectId,
+        title: "Planning retry",
+        created_at: "2026-09-26T05:00:00Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+      },
+      attempts: [{ id: asrId, kind: "ASR", state: "SUCCEEDED" }],
+      generation: null,
+      gpu_transport: "DISABLED_UNQUALIFIED",
+      gpu_readiness: gpuReadiness,
+      voiceover_context: { id: "44444444-4444-4444-8444-444444444444", state: "SUCCEEDED" },
+      stages: stageList({
+        transcription: "COMPLETE",
+        "voiceover-context": "COMPLETE",
+        planning: "WAITING",
+      }),
+    });
   });
-  vi.stubGlobal("fetch",fetchMock);renderHosted(<HostedProjectScreen projectId={projectId}/>);
-  await waitFor(()=>expect(within(stageRow("Plan scenes")).getByRole("button",{name:"Retry"})).toBeEnabled());
+  vi.stubGlobal("fetch", fetchMock);
+  renderHosted(<HostedProjectScreen projectId={projectId} />);
+  await waitFor(() =>
+    expect(within(stageRow("Plan scenes")).getByRole("button", { name: "Retry" })).toBeEnabled(),
+  );
   expect(within(stageRow("Plan scenes")).getByText("FAILED")).toBeInTheDocument();
-  fireEvent.click(within(stageRow("Plan scenes")).getByRole("button",{name:"Retry"}));
-  await waitFor(()=>expect(planningCalls).toBe(2));
-  expect(fetchMock.mock.calls.some(([input])=>/\/(asr-handoff|context|prompts|gpu-dispatch)$/.test(String(input)))).toBe(false);
+  fireEvent.click(within(stageRow("Plan scenes")).getByRole("button", { name: "Retry" }));
+  await waitFor(() => expect(planningCalls).toBe(2));
+  expect(
+    fetchMock.mock.calls.some(([input]) =>
+      /\/(asr-handoff|context|prompts|gpu-dispatch)$/.test(String(input)),
+    ),
+  ).toBe(false);
 });
 
 it("offers local render retry for the exact three failed attempts", async () => {
   const projectId = "11111111-1111-4111-8111-111111111111";
   const attempts = [
-    { id: "11111111-1111-4111-8111-111111111112", kind: "RENDER", state: "FAILED",
-      error_code: "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT" },
-    { id: "11111111-1111-4111-8111-111111111113", kind: "RENDER", state: "FAILED",
-      error_code: "MEDIA_EXECUTION_IO_FAILED" },
-    { id: "11111111-1111-4111-8111-111111111114", kind: "RENDER", state: "FAILED",
-      error_code: "RENDER_INPUT_INVALID" },
+    {
+      id: "11111111-1111-4111-8111-111111111112",
+      kind: "RENDER",
+      state: "FAILED",
+      error_code: "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT",
+    },
+    {
+      id: "11111111-1111-4111-8111-111111111113",
+      kind: "RENDER",
+      state: "FAILED",
+      error_code: "MEDIA_EXECUTION_IO_FAILED",
+    },
+    {
+      id: "11111111-1111-4111-8111-111111111114",
+      kind: "RENDER",
+      state: "FAILED",
+      error_code: "RENDER_INPUT_INVALID",
+    },
   ];
   const detail = {
-    project: { id: projectId, title: "Render recovery", created_at: "2026-09-25T05:00:00Z",
-      revision_id: "22222222-2222-4222-8222-222222222222", revision_state: "LOCKED" },
+    project: {
+      id: projectId,
+      title: "Render recovery",
+      created_at: "2026-09-25T05:00:00Z",
+      revision_id: "22222222-2222-4222-8222-222222222222",
+      revision_state: "LOCKED",
+    },
     generation_provider: "KIE_FAL",
     attempts,
     generation: null,
@@ -956,83 +1460,203 @@ it("offers local render retry for the exact three failed attempts", async () => 
   await screen.findByRole("list", { name: "Project stages" });
   const retry = within(stageRow("Assemble final video")).getByRole("button", { name: "Retry" });
   fireEvent.click(retry);
-  await waitFor(() => expect(fetchMock.mock.calls.some(([input]) =>
-    String(input).endsWith(`/projects/${projectId}/render-retry`))).toBe(true));
-  expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/gpu-dispatch"))).toHaveLength(0);
+  await waitFor(() =>
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        String(input).endsWith(`/projects/${projectId}/render-retry`),
+      ),
+    ).toBe(true),
+  );
+  expect(
+    fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/gpu-dispatch")),
+  ).toHaveLength(0);
 });
 
 it.each([
   { sourceBackend: undefined, backendChoice: "PERSONAL_WORKER" },
   { sourceBackend: "PERSONAL_WORKER", backendChoice: "PERSONAL_WORKER" },
   { sourceBackend: "RUNPOD_POD", backendChoice: "RUNPOD_POD" },
-] as const)("retries the persisted backend without an in-project selector: $sourceBackend", async ({sourceBackend,backendChoice}) => {
-  const projectId="11111111-1111-4111-8111-111111111111";
-  const failedId="11111111-1111-4111-8111-111111111112";
-  const detail={project:{id:projectId,title:"Cloud recovery",created_at:"2026-09-26T05:00:00Z",
-    revision_id:"22222222-2222-4222-8222-222222222222",revision_state:"LOCKED",
-    media_execution_backend:sourceBackend ?? "PERSONAL_WORKER"},
-    generation_provider:"KIE_FAL",attempts:[{id:failedId,kind:"RENDER",state:"FAILED",execution_backend:sourceBackend}],
-    cloud_media:{available:true},generation:null,gpu_transport:"DISABLED_UNQUALIFIED",gpu_readiness:gpuReadiness,
-    render_retry:{eligible:true,reason:"ELIGIBLE",failed_attempt_id:failedId,attempt_limit:5},stages:stageList({render:"FAILED"})};
-  const fetchMock=vi.fn(async(input:RequestInfo|URL, init?: RequestInit) => {
-    if(String(input).endsWith("/render-retry")) {
-      expect(JSON.parse(String(init?.body))).toEqual(backendChoice === "RUNPOD_POD"
-        ? {schema_version:"videoforge-hosted-render-retry/v2",failed_attempt_id:failedId,execution_backend:"RUNPOD_POD"}
-        : {schema_version:"videoforge-hosted-render-disk-retry/v1",failed_attempt_id:failedId});
-      return Response.json({state:"OUTBOXED"},{status:202});
-    }
-    return Response.json(detail);
-  });
-  vi.stubGlobal("fetch",fetchMock);renderHosted(<HostedProjectScreen projectId={projectId}/>);
-  await screen.findByRole("list", { name: "Project stages" });
-  expect(screen.queryByLabelText("Retry media execution")).not.toBeInTheDocument();
-  expect(screen.queryByLabelText("Media execution")).not.toBeInTheDocument();
-  fireEvent.click(within(stageRow("Assemble final video")).getByRole("button",{name:"Retry"}));
-  await waitFor(()=>expect(fetchMock.mock.calls.some(([input])=>String(input).endsWith("/render-retry"))).toBe(true));
-  expect(fetchMock.mock.calls.some(([input])=>/\/(gpu-dispatch|prompts|context)$/.test(String(input)))).toBe(false);
-});
+] as const)(
+  "retries the persisted backend without an in-project selector: $sourceBackend",
+  async ({ sourceBackend, backendChoice }) => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const failedId = "11111111-1111-4111-8111-111111111112";
+    const detail = {
+      project: {
+        id: projectId,
+        title: "Cloud recovery",
+        created_at: "2026-09-26T05:00:00Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+        media_execution_backend: sourceBackend ?? "PERSONAL_WORKER",
+      },
+      generation_provider: "KIE_FAL",
+      attempts: [
+        { id: failedId, kind: "RENDER", state: "FAILED", execution_backend: sourceBackend },
+      ],
+      cloud_media: { available: true },
+      generation: null,
+      gpu_transport: "DISABLED_UNQUALIFIED",
+      gpu_readiness: gpuReadiness,
+      render_retry: {
+        eligible: true,
+        reason: "ELIGIBLE",
+        failed_attempt_id: failedId,
+        attempt_limit: 5,
+      },
+      stages: stageList({ render: "FAILED" }),
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith("/render-retry")) {
+        expect(JSON.parse(String(init?.body))).toEqual(
+          backendChoice === "RUNPOD_POD"
+            ? {
+                schema_version: "videoforge-hosted-render-retry/v2",
+                failed_attempt_id: failedId,
+                execution_backend: "RUNPOD_POD",
+              }
+            : {
+                schema_version: "videoforge-hosted-render-disk-retry/v1",
+                failed_attempt_id: failedId,
+              },
+        );
+        return Response.json({ state: "OUTBOXED" }, { status: 202 });
+      }
+      return Response.json(detail);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+    await screen.findByRole("list", { name: "Project stages" });
+    expect(screen.queryByLabelText("Retry media execution")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Media execution")).not.toBeInTheDocument();
+    fireEvent.click(
+      within(stageRow("Assemble final video")).getByRole("button", { name: "Retry" }),
+    );
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/render-retry"))).toBe(
+        true,
+      ),
+    );
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        /\/(gpu-dispatch|prompts|context)$/.test(String(input)),
+      ),
+    ).toBe(false);
+  },
+);
 
-it.each(["STOPPING", "SAVING", "CLEAN"] as const)("shows exact Cloud cleanup phase without CPU percentages: %s", async (phase) => {
-  const projectId="11111111-1111-4111-8111-111111111111";
-  vi.stubGlobal("fetch",vi.fn(async()=>Response.json({
-    project:{id:projectId,title:"Cloud phase proof",created_at:"2026-09-26T05:00:00Z",revision_id:"22222222-2222-4222-8222-222222222222",revision_state:"LOCKED",media_execution_backend:"RUNPOD_POD"},
-    generation_provider:"KIE_FAL",cloud_media:{available:true},generation:null,gpu_transport:"DISABLED_UNQUALIFIED",gpu_readiness:gpuReadiness,
-    attempts:[{id:projectId,kind:"RENDER",state:"SUCCEEDED",execution_backend:"RUNPOD_POD",cloud_phase:phase}],
-    stages:[{id:"render",name:"Assemble final video",status:"COMPLETE",progress_percent:null}],
-  })));
-  renderHosted(<HostedProjectScreen projectId={projectId}/>);
-  const expected=phase === "CLEAN" ? "Complete" : phase === "STOPPING" ? "Stopping compute" : "Saving";
-  expect((await screen.findAllByText(expected, {exact:true})).length).toBeGreaterThan(0);
-  expect(within(stageRow("Assemble final video")).queryByText(/\d+\/100/)).not.toBeInTheDocument();
-  if(phase !== "CLEAN") {
-    expect(screen.queryByText("Production complete")).not.toBeInTheDocument();
-    expect(screen.queryByRole("progressbar", {name:"Overall video progress"})).not.toBeInTheDocument();
-    expect(screen.getByRole("status", {name:"Cloud media phase"})).toHaveTextContent(expected);
-  }
-});
+it.each(["STOPPING", "SAVING", "CLEAN"] as const)(
+  "shows exact Cloud cleanup phase without CPU percentages: %s",
+  async (phase) => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          project: {
+            id: projectId,
+            title: "Cloud phase proof",
+            created_at: "2026-09-26T05:00:00Z",
+            revision_id: "22222222-2222-4222-8222-222222222222",
+            revision_state: "LOCKED",
+            media_execution_backend: "RUNPOD_POD",
+          },
+          generation_provider: "KIE_FAL",
+          cloud_media: { available: true },
+          generation: null,
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+          attempts: [
+            {
+              id: projectId,
+              kind: "RENDER",
+              state: "SUCCEEDED",
+              execution_backend: "RUNPOD_POD",
+              cloud_phase: phase,
+            },
+          ],
+          stages: [
+            {
+              id: "render",
+              name: "Assemble final video",
+              status: "COMPLETE",
+              progress_percent: null,
+            },
+          ],
+        }),
+      ),
+    );
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+    const expected =
+      phase === "CLEAN" ? "Complete" : phase === "STOPPING" ? "Stopping compute" : "Saving";
+    expect((await screen.findAllByText(expected, { exact: true })).length).toBeGreaterThan(0);
+    expect(
+      within(stageRow("Assemble final video")).queryByText(/\d+\/100/),
+    ).not.toBeInTheDocument();
+    if (phase !== "CLEAN") {
+      expect(screen.queryByText("Production complete")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("progressbar", { name: "Overall video progress" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole("status", { name: "Cloud media phase" })).toHaveTextContent(expected);
+    }
+  },
+);
 
 it.each([
-  [true,"ELIGIBLE","MEDIA_EXECUTION_TIMEOUT"],
-  [false,"WORKER_UPDATE_REQUIRED","RENDER_INPUT_INVALID"],
-  [false,"RETRY_LIMIT_REACHED","RENDER_PROCESS_FAILED"],
-] as const)("uses server retry eligibility %s (%s) without replaying API outputs", async (eligible,reason,errorCode) => {
-  const projectId="11111111-1111-4111-8111-111111111111";
-  const failedId="11111111-1111-4111-8111-111111111112";
-  const detail={project:{id:projectId,title:"Bounded retry",created_at:"2026-09-26T05:00:00Z",
-    revision_id:"22222222-2222-4222-8222-222222222222",revision_state:"LOCKED"},
-    generation_provider:"KIE_FAL",attempts:[{id:failedId,kind:"RENDER",state:"FAILED",error_code:errorCode}],
-    generation:null,gpu_transport:"DISABLED_UNQUALIFIED",gpu_readiness:gpuReadiness,
-    render_retry:{eligible,reason,failed_attempt_id:failedId,attempt_limit:5},stages:stageList({render:"FAILED"})};
-  const fetchMock=vi.fn(async(input:RequestInfo|URL)=>String(input).endsWith("/render-retry")
-    ? Response.json({state:"OUTBOXED",provider_calls_authorized:false},{status:202}):Response.json(detail));
-  vi.stubGlobal("fetch",fetchMock);renderHosted(<HostedProjectScreen projectId={projectId}/>);
-  await screen.findByRole("list",{name:"Project stages"});
-  const row=stageRow("Assemble final video");const retry=within(row).getByRole("button",{name:"Retry"});
-  expect(retry).toHaveProperty("disabled",!eligible);
-  if(eligible){fireEvent.click(retry);await waitFor(()=>expect(fetchMock.mock.calls.some(([input])=>String(input).endsWith("/render-retry"))).toBe(true));}
-  else expect(within(row).getByRole("alert")).toHaveTextContent(reason==="WORKER_UPDATE_REQUIRED"?/Update the connected worker/:/five local render attempts/);
-  expect(fetchMock.mock.calls.some(([input])=>String(input).endsWith("/gpu-dispatch"))).toBe(false);
-});
+  [true, "ELIGIBLE", "MEDIA_EXECUTION_TIMEOUT"],
+  [false, "WORKER_UPDATE_REQUIRED", "RENDER_INPUT_INVALID"],
+  [false, "RETRY_LIMIT_REACHED", "RENDER_PROCESS_FAILED"],
+] as const)(
+  "uses server retry eligibility %s (%s) without replaying API outputs",
+  async (eligible, reason, errorCode) => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const failedId = "11111111-1111-4111-8111-111111111112";
+    const detail = {
+      project: {
+        id: projectId,
+        title: "Bounded retry",
+        created_at: "2026-09-26T05:00:00Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+      },
+      generation_provider: "KIE_FAL",
+      attempts: [{ id: failedId, kind: "RENDER", state: "FAILED", error_code: errorCode }],
+      generation: null,
+      gpu_transport: "DISABLED_UNQUALIFIED",
+      gpu_readiness: gpuReadiness,
+      render_retry: { eligible, reason, failed_attempt_id: failedId, attempt_limit: 5 },
+      stages: stageList({ render: "FAILED" }),
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) =>
+      String(input).endsWith("/render-retry")
+        ? Response.json({ state: "OUTBOXED", provider_calls_authorized: false }, { status: 202 })
+        : Response.json(detail),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId={projectId} />);
+    await screen.findByRole("list", { name: "Project stages" });
+    const row = stageRow("Assemble final video");
+    const retry = within(row).getByRole("button", { name: "Retry" });
+    expect(retry).toHaveProperty("disabled", !eligible);
+    if (eligible) {
+      fireEvent.click(retry);
+      await waitFor(() =>
+        expect(
+          fetchMock.mock.calls.some(([input]) => String(input).endsWith("/render-retry")),
+        ).toBe(true),
+      );
+    } else
+      expect(within(row).getByRole("alert")).toHaveTextContent(
+        reason === "WORKER_UPDATE_REQUIRED"
+          ? /Update the connected worker/
+          : /five local render attempts/,
+      );
+    expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/gpu-dispatch"))).toBe(
+      false,
+    );
+  },
+);
 
 it("offers the guarded local retry for a first-attempt input failure", async () => {
   const projectId = "11111111-1111-4111-8111-111111111111";
@@ -1043,8 +1667,13 @@ it("offers the guarded local retry for a first-attempt input failure", async () 
     error_code: "RENDER_INPUT_INVALID",
   };
   const detail = {
-    project: { id: projectId, title: "First input recovery", created_at: "2026-09-25T05:00:00Z",
-      revision_id: "22222222-2222-4222-8222-222222222222", revision_state: "LOCKED" },
+    project: {
+      id: projectId,
+      title: "First input recovery",
+      created_at: "2026-09-25T05:00:00Z",
+      revision_id: "22222222-2222-4222-8222-222222222222",
+      revision_state: "LOCKED",
+    },
     generation_provider: "KIE_FAL",
     attempts: [failedAttempt],
     generation: null,
@@ -1068,9 +1697,16 @@ it("offers the guarded local retry for a first-attempt input failure", async () 
   const retry = within(stageRow("Assemble final video")).getByRole("button", { name: "Retry" });
   expect(retry).toBeEnabled();
   fireEvent.click(retry);
-  await waitFor(() => expect(fetchMock.mock.calls.some(([input]) =>
-    String(input).endsWith(`/projects/${projectId}/render-retry`))).toBe(true));
-  expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/gpu-dispatch"))).toHaveLength(0);
+  await waitFor(() =>
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        String(input).endsWith(`/projects/${projectId}/render-retry`),
+      ),
+    ).toBe(true),
+  );
+  expect(
+    fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/gpu-dispatch")),
+  ).toHaveLength(0);
 });
 
 it("offers process recovery only for the exact second-attempt input-to-process lineage", async () => {
@@ -1121,27 +1757,50 @@ it("offers process recovery only for the exact second-attempt input-to-process l
   expect(retry).toBeEnabled();
   fireEvent.click(retry);
   await waitFor(() =>
-    expect(fetchMock.mock.calls.some(([input]) =>
-      String(input).endsWith(`/projects/${projectId}/render-retry`))).toBe(true),
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        String(input).endsWith(`/projects/${projectId}/render-retry`),
+      ),
+    ).toBe(true),
   );
 });
 
 it("offers signal recovery only for the exact third failed render lineage", async () => {
   const projectId = "11111111-1111-4111-8111-111111111111";
   const attempts = [
-    { id: "11111111-1111-4111-8111-111111111112", kind: "RENDER", state: "FAILED",
-      error_code: "RENDER_INPUT_INVALID" },
-    { id: "11111111-1111-4111-8111-111111111113", kind: "RENDER", state: "FAILED",
-      error_code: "RENDER_PROCESS_FAILED" },
-    { id: "11111111-1111-4111-8111-111111111114", kind: "RENDER", state: "FAILED",
-      error_code: "RENDER_PROCESS_FAILED" },
+    {
+      id: "11111111-1111-4111-8111-111111111112",
+      kind: "RENDER",
+      state: "FAILED",
+      error_code: "RENDER_INPUT_INVALID",
+    },
+    {
+      id: "11111111-1111-4111-8111-111111111113",
+      kind: "RENDER",
+      state: "FAILED",
+      error_code: "RENDER_PROCESS_FAILED",
+    },
+    {
+      id: "11111111-1111-4111-8111-111111111114",
+      kind: "RENDER",
+      state: "FAILED",
+      error_code: "RENDER_PROCESS_FAILED",
+    },
   ];
   const detail = {
-    project: { id: projectId, title: "Signal recovery", created_at: "2026-09-25T05:00:00Z",
-      revision_id: "22222222-2222-4222-8222-222222222222", revision_state: "LOCKED" },
-    generation_provider: "KIE_FAL", attempts, generation: null,
+    project: {
+      id: projectId,
+      title: "Signal recovery",
+      created_at: "2026-09-25T05:00:00Z",
+      revision_id: "22222222-2222-4222-8222-222222222222",
+      revision_state: "LOCKED",
+    },
+    generation_provider: "KIE_FAL",
+    attempts,
+    generation: null,
     gpu_transport: "DISABLED_UNQUALIFIED" as const,
-    gpu_readiness: gpuReadiness, stages: stageList({ render: "FAILED" }),
+    gpu_readiness: gpuReadiness,
+    stages: stageList({ render: "FAILED" }),
   };
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     if (String(input).endsWith(`/projects/${projectId}/render-retry`)) {
@@ -1157,29 +1816,60 @@ it("offers signal recovery only for the exact third failed render lineage", asyn
   const retry = within(stageRow("Assemble final video")).getByRole("button", { name: "Retry" });
   expect(retry).toBeEnabled();
   fireEvent.click(retry);
-  await waitFor(() => expect(fetchMock.mock.calls.some(([input]) =>
-    String(input).endsWith(`/projects/${projectId}/render-retry`))).toBe(true));
-  expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/gpu-dispatch"))).toHaveLength(0);
+  await waitFor(() =>
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        String(input).endsWith(`/projects/${projectId}/render-retry`),
+      ),
+    ).toBe(true),
+  );
+  expect(
+    fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/gpu-dispatch")),
+  ).toHaveLength(0);
 });
 
 it("offers output recovery only for the exact fourth failed render lineage", async () => {
   const projectId = "11111111-1111-4111-8111-111111111111";
   const attempts = [
-    { id: "11111111-1111-4111-8111-111111111112", kind: "RENDER", state: "FAILED",
-      error_code: "RENDER_INPUT_INVALID" },
-    { id: "11111111-1111-4111-8111-111111111113", kind: "RENDER", state: "FAILED",
-      error_code: "RENDER_PROCESS_FAILED" },
-    { id: "11111111-1111-4111-8111-111111111114", kind: "RENDER", state: "FAILED",
-      error_code: "RENDER_PROCESS_FAILED" },
-    { id: "11111111-1111-4111-8111-111111111115", kind: "RENDER", state: "FAILED",
-      error_code: "RENDER_OUTPUT_INVALID" },
+    {
+      id: "11111111-1111-4111-8111-111111111112",
+      kind: "RENDER",
+      state: "FAILED",
+      error_code: "RENDER_INPUT_INVALID",
+    },
+    {
+      id: "11111111-1111-4111-8111-111111111113",
+      kind: "RENDER",
+      state: "FAILED",
+      error_code: "RENDER_PROCESS_FAILED",
+    },
+    {
+      id: "11111111-1111-4111-8111-111111111114",
+      kind: "RENDER",
+      state: "FAILED",
+      error_code: "RENDER_PROCESS_FAILED",
+    },
+    {
+      id: "11111111-1111-4111-8111-111111111115",
+      kind: "RENDER",
+      state: "FAILED",
+      error_code: "RENDER_OUTPUT_INVALID",
+    },
   ];
   const detail = {
-    project: { id: projectId, title: "Output recovery", created_at: "2026-09-25T05:00:00Z",
-      revision_id: "22222222-2222-4222-8222-222222222222", revision_state: "LOCKED" },
-    generation_provider: "KIE_FAL", attempts, generation: null,
+    project: {
+      id: projectId,
+      title: "Output recovery",
+      created_at: "2026-09-25T05:00:00Z",
+      revision_id: "22222222-2222-4222-8222-222222222222",
+      revision_state: "LOCKED",
+    },
+    generation_provider: "KIE_FAL",
+    attempts,
+    generation: null,
     gpu_transport: "DISABLED_UNQUALIFIED" as const,
-    gpu_readiness: gpuReadiness, stages: stageList({ render: "FAILED" }),
+    gpu_readiness: gpuReadiness,
+    stages: stageList({ render: "FAILED" }),
   };
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     if (String(input).endsWith(`/projects/${projectId}/render-retry`)) {
@@ -1195,9 +1885,16 @@ it("offers output recovery only for the exact fourth failed render lineage", asy
   const retry = within(stageRow("Assemble final video")).getByRole("button", { name: "Retry" });
   expect(retry).toBeEnabled();
   fireEvent.click(retry);
-  await waitFor(() => expect(fetchMock.mock.calls.some(([input]) =>
-    String(input).endsWith(`/projects/${projectId}/render-retry`))).toBe(true));
-  expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/gpu-dispatch"))).toHaveLength(0);
+  await waitFor(() =>
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        String(input).endsWith(`/projects/${projectId}/render-retry`),
+      ),
+    ).toBe(true),
+  );
+  expect(
+    fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/gpu-dispatch")),
+  ).toHaveLength(0);
 });
 
 it("does not expose process recovery for a lone process failure", async () => {
@@ -1211,12 +1908,14 @@ it("does not expose process recovery for a lone process failure", async () => {
       revision_state: "LOCKED",
     },
     generation_provider: "KIE_FAL",
-    attempts: [{
-      id: "11111111-1111-4111-8111-111111111113",
-      kind: "RENDER",
-      state: "FAILED",
-      error_code: "RENDER_PROCESS_FAILED",
-    }],
+    attempts: [
+      {
+        id: "11111111-1111-4111-8111-111111111113",
+        kind: "RENDER",
+        state: "FAILED",
+        error_code: "RENDER_PROCESS_FAILED",
+      },
+    ],
     generation: null,
     gpu_transport: "DISABLED_UNQUALIFIED" as const,
     gpu_readiness: gpuReadiness,
@@ -1226,9 +1925,12 @@ it("does not expose process recovery for a lone process failure", async () => {
   vi.stubGlobal("fetch", fetchMock);
   renderHosted(<HostedProjectScreen projectId={projectId} />);
   await screen.findByRole("list", { name: "Project stages" });
-  expect(within(stageRow("Assemble final video")).getByRole("button", { name: "Retry" }))
-    .toBeDisabled();
-  expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/render-retry"))).toBe(false);
+  expect(
+    within(stageRow("Assemble final video")).getByRole("button", { name: "Retry" }),
+  ).toBeDisabled();
+  expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/render-retry"))).toBe(
+    false,
+  );
 });
 
 it("shows frozen elapsed times in stage rows and the audio spanning panel", async () => {
@@ -1293,21 +1995,54 @@ it.each(["SUCCEEDED", "FAILED", "CANCELLED"])(
   "freezes total wall elapsed at production %s, excluding later human review",
   async (state) => {
     vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-02T10:25:00Z"));
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
-      project: { id: "wall-time", title: "Wall time", created_at: "2026-10-02T10:00:00Z",
-        revision_id: "revision", revision_state: "LOCKED" },
-      attempts: [], generation: null, gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
-      stages: [
-        { id: "image-generation", name: "Generate images", status: "SUCCEEDED",
-          started_at: "2026-10-02T10:01:00Z", completed_at: "2026-10-02T10:03:00Z" },
-        { id: "avatar-generation", name: "Generate avatar video", status: "SUCCEEDED",
-          started_at: "2026-10-02T10:02:00Z", completed_at: "2026-10-02T10:04:00Z" },
-        { id: "render", name: "Assemble final video", status: state,
-          started_at: "2026-10-02T10:06:00Z", completed_at: "2026-10-02T10:08:00Z" },
-        { id: "review", name: "Review and approve", status: "COMPLETE",
-          started_at: "2026-10-02T10:08:00Z", completed_at: "2026-10-02T10:20:00Z" },
-      ],
-    })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          project: {
+            id: "wall-time",
+            title: "Wall time",
+            created_at: "2026-10-02T10:00:00Z",
+            revision_id: "revision",
+            revision_state: "LOCKED",
+          },
+          attempts: [],
+          generation: null,
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+          stages: [
+            {
+              id: "image-generation",
+              name: "Generate images",
+              status: "SUCCEEDED",
+              started_at: "2026-10-02T10:01:00Z",
+              completed_at: "2026-10-02T10:03:00Z",
+            },
+            {
+              id: "avatar-generation",
+              name: "Generate avatar video",
+              status: "SUCCEEDED",
+              started_at: "2026-10-02T10:02:00Z",
+              completed_at: "2026-10-02T10:04:00Z",
+            },
+            {
+              id: "render",
+              name: "Assemble final video",
+              status: state,
+              started_at: "2026-10-02T10:06:00Z",
+              completed_at: "2026-10-02T10:08:00Z",
+            },
+            {
+              id: "review",
+              name: "Review and approve",
+              status: "COMPLETE",
+              started_at: "2026-10-02T10:08:00Z",
+              completed_at: "2026-10-02T10:20:00Z",
+            },
+          ],
+        }),
+      ),
+    );
     const view = renderHosted(<HostedProjectScreen projectId="wall-time" />);
     expect(await screen.findByLabelText("Total elapsed time")).toHaveTextContent(/^8m 00s$/);
     view.unmount();
@@ -1335,18 +2070,19 @@ it.each(["KIE_FAL", "RUNPOD"] as const)(
           attempts: [],
           generation: null,
           generation_provider: generationProvider,
-          cost: generationProvider === "KIE_FAL"
-            ? {
-                projected_usd: 0.023,
-                api_estimate: {
-                  kie_images: 2,
-                  kie_usd: 0.008,
-                  fal_avatar_seconds: 3,
-                  fal_usd: 0.015,
-                  pricing_checked_at: "2026-09-25",
-                },
-              }
-            : null,
+          cost:
+            generationProvider === "KIE_FAL"
+              ? {
+                  projected_usd: 0.023,
+                  api_estimate: {
+                    kie_images: 2,
+                    kie_usd: 0.008,
+                    fal_avatar_seconds: 3,
+                    fal_usd: 0.015,
+                    pricing_checked_at: "2026-09-25",
+                  },
+                }
+              : null,
           gpu_transport: "DISABLED_UNQUALIFIED",
           gpu_readiness: gpuReadiness,
           stages: [
@@ -1386,7 +2122,9 @@ it.each(["KIE_FAL", "RUNPOD"] as const)(
     );
     if (generationProvider === "KIE_FAL") {
       expect(screen.getByText("$0.02")).toBeInTheDocument();
-      expect(screen.getByText("2 Kie images + 3.0s Fal avatar · published-rate estimate")).toBeInTheDocument();
+      expect(
+        screen.getByText("2 Kie images + 3.0s Fal avatar · published-rate estimate"),
+      ).toBeInTheDocument();
       expect(screen.getByLabelText("Generate avatar video elapsed time")).toHaveTextContent(
         "1m 30s",
       );
@@ -1397,33 +2135,82 @@ it.each(["KIE_FAL", "RUNPOD"] as const)(
 
 it.each([
   ["KIE_FAL", "IN_PROGRESS", "0 of 12 accepted · 4 sent, awaiting results · 8 waiting to send"],
-  ["KIE_FAL", "UNKNOWN_NO_RETRY", "0 of 12 accepted · The API response is uncertain; this request will not be sent again automatically."],
+  [
+    "KIE_FAL",
+    "UNKNOWN_NO_RETRY",
+    "0 of 12 accepted · The API response is uncertain; this request will not be sent again automatically.",
+  ],
   ["KIE_FAL", "FAILED", "0 of 12 accepted · The provider run ended without an accepted result."],
-  ["KIE_FAL", "BLOCKED", "0 of 12 accepted · This request stopped before these items were sent to the API provider."],
-  ["RUNPOD", "IN_PROGRESS", "0 of 12 accepted · The provider has not reported any completed items yet."],
-])("shows exact API item counts without changing %s/%s lane semantics", async (provider, avatarState, expected) => {
-  vi.stubGlobal("fetch", vi.fn(async () => Response.json({
-    project: { id: "api-counts", title: "Parallel API generation", created_at: "2026-10-02T10:00:00Z", revision_id: "revision", revision_state: "LOCKED" },
-    attempts: [], generation: null, generation_provider: provider,
-    gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
-    stages: [
-      { id: "image-generation", name: "Generate images", status: "RUNNING" },
-      { id: "avatar-generation", name: "Generate avatar video", status: "RUNNING" },
-    ],
-    gpu_lanes: [
-      { lane: "mage_image", attempt_state: "IN_PROGRESS", runtime_state: "GENERATING", planned_item_count: 20, accepted_item_count: 6,
-        provider_pending_item_count: 4, waiting_to_submit_item_count: 9, submitting_item_count: 1 },
-      { lane: "soulx_avatar", attempt_state: avatarState, runtime_state: "GENERATING", planned_item_count: 12, accepted_item_count: 0,
-        provider_pending_item_count: 4, waiting_to_submit_item_count: 8, submitting_item_count: 0 },
-    ],
-  })));
-  renderHosted(<HostedProjectScreen projectId="api-counts" />);
-  expect((await screen.findAllByText(expected)).length).toBeGreaterThan(0);
-  if (provider === "KIE_FAL") {
-    expect(screen.getAllByText("6 of 20 accepted · 4 sent, awaiting results · 1 sending · 9 waiting to send").length).toBeGreaterThan(0);
-    expect(screen.queryByText(/cold start|Waiting for GPUs/u)).not.toBeInTheDocument();
-  }
-});
+  [
+    "KIE_FAL",
+    "BLOCKED",
+    "0 of 12 accepted · This request stopped before these items were sent to the API provider.",
+  ],
+  [
+    "RUNPOD",
+    "IN_PROGRESS",
+    "0 of 12 accepted · The provider has not reported any completed items yet.",
+  ],
+])(
+  "shows exact API item counts without changing %s/%s lane semantics",
+  async (provider, avatarState, expected) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          project: {
+            id: "api-counts",
+            title: "Parallel API generation",
+            created_at: "2026-10-02T10:00:00Z",
+            revision_id: "revision",
+            revision_state: "LOCKED",
+          },
+          attempts: [],
+          generation: null,
+          generation_provider: provider,
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+          stages: [
+            { id: "image-generation", name: "Generate images", status: "RUNNING" },
+            { id: "avatar-generation", name: "Generate avatar video", status: "RUNNING" },
+          ],
+          gpu_lanes: [
+            {
+              lane: "mage_image",
+              attempt_state: "IN_PROGRESS",
+              runtime_state: "GENERATING",
+              planned_item_count: 20,
+              accepted_item_count: 6,
+              provider_pending_item_count: 4,
+              waiting_to_submit_item_count: 9,
+              submitting_item_count: 1,
+            },
+            {
+              lane: "soulx_avatar",
+              attempt_state: avatarState,
+              runtime_state: "GENERATING",
+              planned_item_count: 12,
+              accepted_item_count: 0,
+              provider_pending_item_count: 4,
+              waiting_to_submit_item_count: 8,
+              submitting_item_count: 0,
+            },
+          ],
+        }),
+      ),
+    );
+    renderHosted(<HostedProjectScreen projectId="api-counts" />);
+    expect((await screen.findAllByText(expected)).length).toBeGreaterThan(0);
+    if (provider === "KIE_FAL") {
+      expect(
+        screen.getAllByText(
+          "6 of 20 accepted · 4 sent, awaiting results · 1 sending · 9 waiting to send",
+        ).length,
+      ).toBeGreaterThan(0);
+      expect(screen.queryByText(/cold start|Waiting for GPUs/u)).not.toBeInTheDocument();
+    }
+  },
+);
 
 it("regenerates images on loaded later pages while image generation is still running", async () => {
   const projectId = "11111111-1111-4111-8111-111111111111";
@@ -1458,10 +2245,23 @@ it("regenerates images on loaded later pages while image generation is still run
       gpu_transport: "DISABLED_UNQUALIFIED",
       gpu_readiness: gpuReadiness,
       generation: null,
-      stages: [{ id: "image-generation", name: "Generate images", status: "IN_PROGRESS", progress_percent: 50 }],
+      stages: [
+        {
+          id: "image-generation",
+          name: "Generate images",
+          status: "IN_PROGRESS",
+          progress_percent: 50,
+        },
+      ],
       media_pagination: { images: { total_accepted: 97 }, avatar: { total_accepted: 0 } },
       contact_sheet: laterPage
-        ? [{ id: imageTaskId, image_url: replacementReady ? "/replacement.png" : "/later.png", prompt: "Later image prompt" }]
+        ? [
+            {
+              id: imageTaskId,
+              image_url: replacementReady ? "/replacement.png" : "/later.png",
+              prompt: "Later image prompt",
+            },
+          ]
         : [{ id: "first-image", image_url: "/original.png", prompt: "First image prompt" }],
     });
   });
@@ -1470,12 +2270,20 @@ it("regenerates images on loaded later pages while image generation is still run
   fireEvent.click(await screen.findByRole("button", { name: "View generated images" }));
   fireEvent.click(screen.getByRole("button", { name: /Load more/ }));
   fireEvent.click(await screen.findByRole("button", { name: "Regenerate image 2" }));
-  await waitFor(() => expect(screen.getByRole("img", { name: "Generated image 2" })).toHaveAttribute("src", "/replacement.png"));
+  await waitFor(() =>
+    expect(screen.getByRole("img", { name: "Generated image 2" })).toHaveAttribute(
+      "src",
+      "/replacement.png",
+    ),
+  );
   expect(screen.getByText("Image regenerated.")).toBeVisible();
   expect(submissions).toBe(1);
   expect(pageReads).toBe(2);
   fireEvent.click(screen.getByRole("button", { name: "Open image 1" }));
-  expect(screen.getByRole("img", { name: "Generated image 1" })).toHaveAttribute("src", "/original.png");
+  expect(screen.getByRole("img", { name: "Generated image 1" })).toHaveAttribute(
+    "src",
+    "/original.png",
+  );
 });
 
 it.each(["RUNPOD", "KIE_FAL"] as const)(
@@ -1549,9 +2357,7 @@ it.each(["RUNPOD", "KIE_FAL"] as const)(
 
     fireEvent.click(await screen.findByRole("button", { name: "View generated images" }));
     expect(
-      screen.getByText(
-        "Regeneration uses Fal Z-Image Turbo and incurs an API charge.",
-      ),
+      screen.getByText("Regeneration uses Fal Z-Image Turbo and incurs an API charge."),
     ).toBeVisible();
     const prompt = screen.getByRole("textbox", { name: "Image prompt" });
     fireEvent.change(prompt, { target: { value: "Edited image prompt" } });
@@ -2136,13 +2942,25 @@ describe("hosted product journey", () => {
     ).resolves.toBe(20_000);
   });
 
-  it.each([0, null])("blocks Local before upload when disk capacity is %s", async capacity => {
-    vi.stubGlobal("fetch", vi.fn(async()=>Response.json({avatars:[],styles:[],media_worker_state:"ONLINE",local_media_free_bytes:capacity,
-      cloud_media:{available:true},gpu_transport:"DISABLED_UNQUALIFIED",gpu_readiness:gpuReadiness})));
+  it.each([0, null])("blocks Local before upload when disk capacity is %s", async (capacity) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          avatars: [],
+          styles: [],
+          media_worker_state: "ONLINE",
+          local_media_free_bytes: capacity,
+          cloud_media: { available: true },
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+        }),
+      ),
+    );
     renderHosted(<HostedCreateProjectScreen />);
     await screen.findByText("Free disk space before starting");
     expect(screen.getByText(/Local media needs 2.00 GiB free/)).toBeVisible();
-    expect(screen.getByRole("button",{name:"Create project & start"})).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create project & start" })).toBeDisabled();
   });
 
   it("flags a custom avatar that cannot produce avatar video, and leaves a qualified one unmarked", async () => {
@@ -2955,14 +3773,20 @@ describe("hosted product journey", () => {
   });
 
   it("defaults to Local and removes the computer blocker only for selected enabled Cloud", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
-      avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
-      styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
-      media_worker_state: "WAITING_FOR_YOUR_COMPUTER",
-      generation_provider: "KIE_FAL",
-      cloud_media: { available: true },
-      gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
-    })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
+          styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
+          media_worker_state: "WAITING_FOR_YOUR_COMPUTER",
+          generation_provider: "KIE_FAL",
+          cloud_media: { available: true },
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+        }),
+      ),
+    );
     renderHosted(<HostedCreateProjectScreen />);
     expect(await screen.findByText("Connect your computer")).toBeInTheDocument();
     const local = screen.getByRole("radio", { name: "Local" });
@@ -2980,23 +3804,35 @@ describe("hosted product journey", () => {
   });
 
   it("explains unresolved Cloud cleanup and blocks Start before uploading complete inputs", async () => {
-    const message = "An earlier project's Cloud cleanup is unconfirmed. New work is paused until cleanup is verified.";
-    const fetchMock = vi.fn(async () => Response.json({
-      avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
-      styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
-      media_worker_state: "ONLINE", generation_provider: "KIE_FAL", cloud_media: { available: false, message },
-      gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
-    }));
+    const message =
+      "An earlier project's Cloud cleanup is unconfirmed. New work is paused until cleanup is verified.";
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
+        styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
+        media_worker_state: "ONLINE",
+        generation_provider: "KIE_FAL",
+        cloud_media: { available: false, message },
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: gpuReadiness,
+      }),
+    );
     vi.stubGlobal("fetch", fetchMock);
     renderHosted(<HostedCreateProjectScreen />);
     await screen.findByText("Your computer is connected");
     fireEvent.change(screen.getByLabelText("Video title"), { target: { value: "Cloud video" } });
-    fireEvent.change(screen.getByLabelText("Final voiceover"), { target: { files: [new File(["audio"], "voice.mp3", { type: "audio/mpeg" })] } });
+    fireEvent.change(screen.getByLabelText("Final voiceover"), {
+      target: { files: [new File(["audio"], "voice.mp3", { type: "audio/mpeg" })] },
+    });
     expect(screen.getByRole("button", { name: "Create project & start" })).toBeEnabled();
     fireEvent.click(screen.getByRole("radio", { name: "Cloud" }));
     expect(screen.getByText(message)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create project & start" })).toBeDisabled();
-    expect(screen.queryByText("No connected computer is required. Capacity is checked when your video is admitted.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "No connected computer is required. Capacity is checked when your video is admitted.",
+      ),
+    ).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("radio", { name: "Local" }));
     expect(screen.getByLabelText("Video title")).toHaveValue("Cloud video");
@@ -3138,7 +3974,7 @@ describe("hosted product journey", () => {
     expect(document.querySelector("#hosted-style-select")).not.toHaveTextContent("Default");
   });
 
-  it("reuses project creation identity after a failure and rotates it when inputs change", async () => {
+  it("reuses project creation identity and fences changes after an ambiguous failure", async () => {
     const projectRequests: { readonly body: string; readonly key: string }[] = [];
     const bytes = new ArrayBuffer(44 + 640_000);
     const view = new DataView(bytes);
@@ -3199,11 +4035,13 @@ describe("hosted product journey", () => {
     await waitFor(() => expect(projectRequests).toHaveLength(2));
     expect(projectRequests[1]).toEqual(projectRequests[0]);
 
+    expect(title).toBeDisabled();
     fireEvent.change(title, { target: { value: "Second title" } });
+    expect(title).toHaveValue("First title");
     fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
     await waitFor(() => expect(projectRequests).toHaveLength(3));
-    expect(projectRequests[2]!.key).not.toBe(projectRequests[0]!.key);
-    expect(projectRequests[2]!.body).not.toBe(projectRequests[0]!.body);
+    expect(projectRequests[2]).toEqual(projectRequests[0]);
+    expect(screen.getByText(/Your original creation request is saved/u)).toBeInTheDocument();
   });
 
   it("fails closed when authenticated catalog readiness is absent", async () => {
@@ -3372,32 +4210,55 @@ describe("hosted product journey", () => {
     const projectId = "11111111-1111-4111-8111-111111111111";
     const spans = Array.from({ length: 12 }, (_, index) => ({
       id: `33333333-3333-4333-8333-${String(index + 1).padStart(12, "0")}`,
-      kind: "SPAN_AUDIO", state: index === 4 ? "RUNNING" : index === 2 ? "CANCEL_REQUESTED" : "OUTBOXED",
+      kind: "SPAN_AUDIO",
+      state: index === 4 ? "RUNNING" : index === 2 ? "CANCEL_REQUESTED" : "OUTBOXED",
     }));
-    const attempts = [...spans, { id: "asr", kind: "ASR", state: "RUNNING" },
-      { id: "render", kind: "RENDER", state: "SUCCEEDED" }];
+    const attempts = [
+      ...spans,
+      { id: "asr", kind: "ASR", state: "RUNNING" },
+      { id: "render", kind: "RENDER", state: "SUCCEEDED" },
+    ];
     const cancelled: string[] = [];
     let finishCancellation: (() => void) | undefined;
-    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const path = String(input);
-      if (path.includes("/api/v2/cpu-attempts/")) {
-        const id = path.split("/").at(-1)!;
-        cancelled.push(id);
-        expect(JSON.parse(String(init?.body))).toEqual({
-          schema_version: "videoforge-hosted-cpu-cancellation/v1", attempt_id: id, confirmation: "STOP",
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const path = String(input);
+        if (path.includes("/api/v2/cpu-attempts/")) {
+          const id = path.split("/").at(-1)!;
+          cancelled.push(id);
+          expect(JSON.parse(String(init?.body))).toEqual({
+            schema_version: "videoforge-hosted-cpu-cancellation/v1",
+            attempt_id: id,
+            confirmation: "STOP",
+          });
+          await new Promise<void>((resolve) => {
+            finishCancellation = resolve;
+          });
+          spans.find((span) => span.id === id)!.state = "CANCELLED";
+          return Response.json({ id, state: "CANCELLED" }, { status: 202 });
+        }
+        return Response.json({
+          project: {
+            id: projectId,
+            title: "Audio preparation",
+            created_at: "2026-10-02T10:00:00Z",
+            revision_id: "22222222-2222-4222-8222-222222222222",
+            revision_state: "LOCKED",
+          },
+          attempts,
+          generation: null,
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
         });
-        await new Promise<void>(resolve => { finishCancellation = resolve; });
-        spans.find(span => span.id === id)!.state = "CANCELLED";
-        return Response.json({ id, state: "CANCELLED" }, { status: 202 });
-      }
-      return Response.json({
-        project: { id: projectId, title: "Audio preparation", created_at: "2026-10-02T10:00:00Z",
-          revision_id: "22222222-2222-4222-8222-222222222222", revision_state: "LOCKED" },
-        attempts, generation: null, gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
-      });
-    }));
+      }),
+    );
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(<QueryClientProvider client={client}><HostedProjectScreen projectId={projectId} /></QueryClientProvider>);
+    render(
+      <QueryClientProvider client={client}>
+        <HostedProjectScreen projectId={projectId} />
+      </QueryClientProvider>,
+    );
     const selector = await screen.findByRole("combobox", { name: "Audio preparation job" });
     expect(selector).toHaveValue(spans[4]!.id);
     expect(within(selector).getAllByRole("option")).toHaveLength(12);
@@ -3406,46 +4267,72 @@ describe("hosted product journey", () => {
     expect(screen.queryByRole("button", { name: /assembly/u })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Stop selected audio preparation job" }));
     fireEvent.change(selector, { target: { value: spans[6]!.id } });
-    expect(screen.queryByRole("button", { name: "Confirm stop selected audio preparation job" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Confirm stop selected audio preparation job" }),
+    ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Stop selected audio preparation job" }));
     expect(cancelled).toEqual([]);
     spans[8]!.state = "RUNNING";
-    await act(async () => { await client.refetchQueries({ queryKey: ["hosted-project", projectId] }); });
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ["hosted-project", projectId] });
+    });
     expect(selector).toHaveValue(spans[6]!.id);
-    const confirm = screen.getByRole("button", { name: "Confirm stop selected audio preparation job" });
+    const confirm = screen.getByRole("button", {
+      name: "Confirm stop selected audio preparation job",
+    });
     fireEvent.click(confirm);
     fireEvent.click(confirm);
     await waitFor(() => expect(cancelled).toEqual([spans[6]!.id]));
     expect(selector).toBeDisabled();
     expect(screen.getByRole("button", { name: "Stop transcription" })).toBeDisabled();
-    await act(async () => { finishCancellation!(); });
+    await act(async () => {
+      finishCancellation!();
+    });
     await waitFor(() => expect(selector).not.toBeDisabled());
     expect(within(selector).getAllByRole("option")).toHaveLength(11);
     fireEvent.change(selector, { target: { value: spans[2]!.id } });
-    fireEvent.click(screen.getByRole("button", { name: "Finish stopping selected audio preparation job" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Finish stopping selected audio preparation job" }),
+    );
     await waitFor(() => expect(cancelled).toEqual([spans[6]!.id, spans[2]!.id]));
-    await act(async () => { finishCancellation!(); });
+    await act(async () => {
+      finishCancellation!();
+    });
   });
 
   it("releases the cancellation guard after a failed POST and requires fresh confirmation to retry", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";
     const attemptId = "33333333-3333-4333-8333-333333333333";
     const postedAttempts: string[] = [];
-    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (String(input).endsWith(`/api/v2/cpu-attempts/${attemptId}`)) {
-        const body = JSON.parse(String(init?.body));
-        expect(body).toEqual({ schema_version: "videoforge-hosted-cpu-cancellation/v1", attempt_id: attemptId, confirmation: "STOP" });
-        postedAttempts.push(body.attempt_id);
-        return postedAttempts.length === 1
-          ? Response.json({ error: { code: "TEMPORARY_FAILURE" } }, { status: 503 })
-          : Response.json({ id: attemptId, state: "CANCEL_REQUESTED" }, { status: 202 });
-      }
-      return Response.json({
-        project: { id: projectId, title: "Retry cancellation", revision_id: "revision", revision_state: "LOCKED" },
-        attempts: [{ id: attemptId, kind: "SPAN_AUDIO", state: "RUNNING" }], generation: null,
-        gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
-      });
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).endsWith(`/api/v2/cpu-attempts/${attemptId}`)) {
+          const body = JSON.parse(String(init?.body));
+          expect(body).toEqual({
+            schema_version: "videoforge-hosted-cpu-cancellation/v1",
+            attempt_id: attemptId,
+            confirmation: "STOP",
+          });
+          postedAttempts.push(body.attempt_id);
+          return postedAttempts.length === 1
+            ? Response.json({ error: { code: "TEMPORARY_FAILURE" } }, { status: 503 })
+            : Response.json({ id: attemptId, state: "CANCEL_REQUESTED" }, { status: 202 });
+        }
+        return Response.json({
+          project: {
+            id: projectId,
+            title: "Retry cancellation",
+            revision_id: "revision",
+            revision_state: "LOCKED",
+          },
+          attempts: [{ id: attemptId, kind: "SPAN_AUDIO", state: "RUNNING" }],
+          generation: null,
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+        });
+      }),
+    );
     renderHosted(<HostedProjectScreen projectId={projectId} />);
     fireEvent.click(await screen.findByRole("button", { name: "Stop audio preparation" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm stop audio preparation" }));
@@ -3955,9 +4842,7 @@ describe("hosted product journey", () => {
     expect(await within(transcription).findByText(refusal)).toBeInTheDocument();
     // Still the only stage with the control, and still no invented fraction on a stopped stage.
     expect(within(transcription).queryByText("50/100")).not.toBeInTheDocument();
-    expect(
-      screen.queryByText("Prepare project"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Prepare project")).not.toBeInTheDocument();
   });
 
   it("puts the retry inside only the failed stage, directly after its FAILED badge", async () => {
@@ -4006,7 +4891,9 @@ describe("hosted product journey", () => {
 
     // A complete stage and a stage that has not run yet carry no retry control.
     expect(screen.queryByText("Prepare project")).not.toBeInTheDocument();
-    expect(within(stageRow("Understand voiceover context")).queryByRole("button")).not.toBeInTheDocument();
+    expect(
+      within(stageRow("Understand voiceover context")).queryByRole("button"),
+    ).not.toBeInTheDocument();
     expect(within(stageRow("Plan scenes")).queryByRole("button")).not.toBeInTheDocument();
   });
 
@@ -4358,7 +5245,11 @@ describe("hosted product journey", () => {
       ],
       gpu_transport: "DISABLED_UNQUALIFIED" as const,
       gpu_readiness: gpuReadiness,
-      stages: stageList({ prepare: "COMPLETE", transcription: "COMPLETE", "voiceover-context": "FAILED" }),
+      stages: stageList({
+        prepare: "COMPLETE",
+        transcription: "COMPLETE",
+        "voiceover-context": "FAILED",
+      }),
       voiceover_context: {
         id: contextId,
         state: "UNKNOWN" as const,
@@ -4642,7 +5533,9 @@ describe("hosted product journey", () => {
     planned = true;
     fireEvent.click(screen.getByRole("button", { name: "Refresh now" }));
     await waitFor(() =>
-      expect(screen.queryByText(/generation planning could not be verified/u)).not.toBeInTheDocument(),
+      expect(
+        screen.queryByText(/generation planning could not be verified/u),
+      ).not.toBeInTheDocument(),
     );
     expect(screen.queryByRole("button", { name: "Retry planning" })).not.toBeInTheDocument();
   });
@@ -4912,78 +5805,86 @@ describe("hosted product journey", () => {
     ["FAILED", null, true],
     ["UNKNOWN", null, false],
     ["FAILED", "HOSTED_PROMPT_OUTPUT_INVALID", false],
-  ] as const)("shows Stage 5 %s progress with a safe retry only when definite", async (state, problemCode, retryable) => {
-    const projectId = "11111111-1111-4111-8111-111111111111";
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      void input;
-      return Response.json({
-        project: {
-          id: projectId,
-          title: "Private project",
-          created_at: "2026-08-17T10:00:00.000Z",
-          revision_id: "22222222-2222-4222-8222-222222222222",
-          revision_state: "LOCKED",
-        },
-        attempts: [],
-        gpu_transport: "DISABLED_UNQUALIFIED" as const,
-        gpu_readiness: gpuReadiness,
-        voiceover_context: {
-          id: "44444444-4444-4444-8444-444444444444",
-          state: "SUCCEEDED" as const,
-          transcript_hash: `sha256:${"b".repeat(64)}`,
-          context_hash: `sha256:${"c".repeat(64)}`,
-          context_document: { primary_topic: "Private project" },
-          reserved_cost_micro_usd: 10_000,
-        },
-        generation: {
-          id: "55555555-5555-4555-8555-555555555555",
-          timeline_plan_sha256: `sha256:${"f".repeat(64)}`,
-          planned_tasks: 1,
-          completed_tasks: 0,
-          failed_tasks: 1,
-          total_segments: 16,
-          image_scene_count: 16,
-          avatar_segment_count: 0,
-          stage: "FAILED" as const,
-        },
-        stages: [
-          {
-            id: "prompt-writing",
-            name: "Write image prompts",
-            status: "FAILED",
-            progress_percent: 0,
+  ] as const)(
+    "shows Stage 5 %s progress with a safe retry only when definite",
+    async (state, problemCode, retryable) => {
+      const projectId = "11111111-1111-4111-8111-111111111111";
+      const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+        void input;
+        return Response.json({
+          project: {
+            id: projectId,
+            title: "Private project",
+            created_at: "2026-08-17T10:00:00.000Z",
+            revision_id: "22222222-2222-4222-8222-222222222222",
+            revision_state: "LOCKED",
           },
-        ],
-        prompts: [],
-        prompt_progress: {
-          state,
-          problem_code: problemCode,
-          total_scenes: 16,
-          accepted_scenes: 0,
-          total_batches: 1,
-          accepted_batches: 0,
-          active_batch_ordinal: null,
-        },
+          attempts: [],
+          gpu_transport: "DISABLED_UNQUALIFIED" as const,
+          gpu_readiness: gpuReadiness,
+          voiceover_context: {
+            id: "44444444-4444-4444-8444-444444444444",
+            state: "SUCCEEDED" as const,
+            transcript_hash: `sha256:${"b".repeat(64)}`,
+            context_hash: `sha256:${"c".repeat(64)}`,
+            context_document: { primary_topic: "Private project" },
+            reserved_cost_micro_usd: 10_000,
+          },
+          generation: {
+            id: "55555555-5555-4555-8555-555555555555",
+            timeline_plan_sha256: `sha256:${"f".repeat(64)}`,
+            planned_tasks: 1,
+            completed_tasks: 0,
+            failed_tasks: 1,
+            total_segments: 16,
+            image_scene_count: 16,
+            avatar_segment_count: 0,
+            stage: "FAILED" as const,
+          },
+          stages: [
+            {
+              id: "prompt-writing",
+              name: "Write image prompts",
+              status: "FAILED",
+              progress_percent: 0,
+            },
+          ],
+          prompts: [],
+          prompt_progress: {
+            state,
+            problem_code: problemCode,
+            total_scenes: 16,
+            accepted_scenes: 0,
+            total_batches: 1,
+            accepted_batches: 0,
+            active_batch_ordinal: null,
+          },
+        });
       });
-    });
-    vi.stubGlobal("fetch", fetchMock);
-    renderHosted(<HostedProjectScreen projectId={projectId} />);
+      vi.stubGlobal("fetch", fetchMock);
+      renderHosted(<HostedProjectScreen projectId={projectId} />);
 
-    expect(await screen.findByRole("heading", { name: "Image prompts" })).toBeInTheDocument();
-    expect(screen.getByText("Prompt writing stopped")).toBeInTheDocument();
-    expect(screen.getByText("Stopped · 0 / 1 batches accepted")).toBeInTheDocument();
-    expect(screen.queryByText("Preparing batch of 1")).not.toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "No accepted prompts were saved. VideoForge stopped without redispatching the request.",
-      ),
-    ).toBeInTheDocument();
-    expect(within(stageRow("Write image prompts")).getByRole("button", { name: "Retry" }))
-      .toHaveProperty("disabled", !retryable);
-    if (problemCode === "HOSTED_PROMPT_OUTPUT_INVALID")
-      expect(screen.getAllByText(/original provider result was invalid/u).length).toBeGreaterThan(0);
-    expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(false);
-  });
+      expect(await screen.findByRole("heading", { name: "Image prompts" })).toBeInTheDocument();
+      expect(screen.getByText("Prompt writing stopped")).toBeInTheDocument();
+      expect(screen.getByText("Stopped · 0 / 1 batches accepted")).toBeInTheDocument();
+      expect(screen.queryByText("Preparing batch of 1")).not.toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "No accepted prompts were saved. VideoForge stopped without redispatching the request.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(stageRow("Write image prompts")).getByRole("button", { name: "Retry" }),
+      ).toHaveProperty("disabled", !retryable);
+      if (problemCode === "HOSTED_PROMPT_OUTPUT_INVALID")
+        expect(screen.getAllByText(/original provider result was invalid/u).length).toBeGreaterThan(
+          0,
+        );
+      expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(
+        false,
+      );
+    },
+  );
 
   it.each([
     ["all saved", 33, 327, true, true],
@@ -5015,9 +5916,7 @@ describe("hosted product journey", () => {
                 reserved_cost_micro_usd: 10_000,
               },
               generation: hasGeneration ? { id: "55555555-5555-4555-8555-555555555555" } : null,
-              stages: [
-                { id: "prompt-writing", name: "Write image prompts", status: "FAILED" },
-              ],
+              stages: [{ id: "prompt-writing", name: "Write image prompts", status: "FAILED" }],
               prompts: [],
               prompt_progress: {
                 state: "UNKNOWN",
@@ -5039,8 +5938,9 @@ describe("hosted product journey", () => {
       if (canFinish) {
         fireEvent.click(retry);
         await waitFor(() =>
-          expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/prompts")))
-            .toHaveLength(1),
+          expect(
+            fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/prompts")),
+          ).toHaveLength(1),
         );
       } else {
         expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(
@@ -5135,8 +6035,9 @@ describe("hosted product journey", () => {
     const promptRegion = screen.getByRole("region", { name: "Accepted image prompts" });
     expect(within(promptRegion).getAllByRole("listitem")).toHaveLength(2);
     expect(within(promptRegion).getByText(/A maker checks the first prototype/u)).toBeVisible();
-    expect(within(promptRegion).getByText(/This row was saved with the accepted first batch/u))
-      .toBeVisible();
+    expect(
+      within(promptRegion).getByText(/This row was saved with the accepted first batch/u),
+    ).toBeVisible();
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(false);
   });
 
@@ -5218,7 +6119,9 @@ describe("hosted product journey", () => {
     const firstPrompt = promptItems[0]!;
     const secondPrompt = promptItems[1]!;
     expect(within(firstPrompt).getByText(/A maker checks the first prototype/u)).toBeVisible();
-    expect(within(secondPrompt).getByText(/Her hands adjust the worn metal mechanism/u)).toBeVisible();
+    expect(
+      within(secondPrompt).getByText(/Her hands adjust the worn metal mechanism/u),
+    ).toBeVisible();
     expect(
       within(firstPrompt).getByText(/Documentary footage of a maker inspecting a real prototype/u),
     ).not.toBeVisible();
@@ -5230,9 +6133,7 @@ describe("hosted product journey", () => {
     ).toBeVisible();
     expect(within(firstPrompt).getByText(/text, captions, motion graphics/u)).toBeVisible();
     expect(within(secondPrompt).getByText(/logos, watermarks, interface text/u)).not.toBeVisible();
-    expect(
-      screen.getByText(/Voiceover previews are short/u),
-    ).toBeVisible();
+    expect(screen.getByText(/Voiceover previews are short/u)).toBeVisible();
     expect(
       screen.queryByRole("heading", { name: "Voiceover-to-image plan" }),
     ).not.toBeInTheDocument();
@@ -5580,9 +6481,7 @@ describe("hosted product journey", () => {
       </QueryClientProvider>,
     );
 
-    expect(
-      await screen.findByText(/Generation start could not be confirmed/u),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Generation start could not be confirmed/u)).toBeInTheDocument();
     expect(dispatches).toBe(1);
     act(() => client.setQueryData(["hosted-project", projectId], afterStart));
     await waitFor(() => {
@@ -5605,9 +6504,7 @@ describe("hosted product journey", () => {
         ),
       }),
     );
-    expect(
-      screen.queryByText(/Generation start could not be confirmed/u),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Generation start could not be confirmed/u)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Retry generation" })).not.toBeInTheDocument();
     expect(dispatches).toBe(1);
   });
@@ -6180,38 +7077,471 @@ describe("hosted product journey", () => {
 
 it("offers a credit check for paused prompts without automatic submission", async () => {
   const projectId = "11111111-1111-4111-8111-111111111111";
-  const fetchMock = vi.fn(async (_input: RequestInfo | URL) => Response.json({
-    project: { id: projectId, title: "Credit pause", created_at: "2026-08-17T10:00:00.000Z",
-      revision_id: "22222222-2222-4222-8222-222222222222", revision_state: "LOCKED" },
-    attempts: [], gpu_transport: "DISABLED_UNQUALIFIED", gpu_readiness: gpuReadiness,
-    generation: { id: "55555555-5555-4555-8555-555555555555" },
-    stages: [{ id: "prompt-writing", name: "Write image prompts", status: "BLOCKED" }],
-    prompts: [], prompt_progress: { state: "UNKNOWN", total_batches: "26", accepted_batches: "7",
-      total_scenes: "258", accepted_scenes: "70", problem_code: "HOSTED_PROMPT_PROVIDER_CREDITS_LOW" },
-  }));
+  const fetchMock = vi.fn(async (_input: RequestInfo | URL) =>
+    Response.json({
+      project: {
+        id: projectId,
+        title: "Credit pause",
+        created_at: "2026-08-17T10:00:00.000Z",
+        revision_id: "22222222-2222-4222-8222-222222222222",
+        revision_state: "LOCKED",
+      },
+      attempts: [],
+      gpu_transport: "DISABLED_UNQUALIFIED",
+      gpu_readiness: gpuReadiness,
+      generation: { id: "55555555-5555-4555-8555-555555555555" },
+      stages: [{ id: "prompt-writing", name: "Write image prompts", status: "BLOCKED" }],
+      prompts: [],
+      prompt_progress: {
+        state: "UNKNOWN",
+        total_batches: "26",
+        accepted_batches: "7",
+        total_scenes: "258",
+        accepted_scenes: "70",
+        problem_code: "HOSTED_PROMPT_PROVIDER_CREDITS_LOW",
+      },
+    }),
+  );
   vi.stubGlobal("fetch", fetchMock);
   renderHosted(<HostedProjectScreen projectId={projectId} />);
   expect(await screen.findByText("Credit pause")).toBeInTheDocument();
-  expect(within(stageRow("Write image prompts")).getByRole("button", { name: "Check again" })).toBeEnabled();
+  expect(
+    within(stageRow("Write image prompts")).getByRole("button", { name: "Check again" }),
+  ).toBeEnabled();
   expect(screen.queryByText("Scene prompts are generated automatically.")).not.toBeInTheDocument();
   expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(false);
 });
 
-it.each([null, "HOSTED_CLOUD_CLEANUP_PENDING"])("shows queue waiting truthfully for blocker %s and keeps cleanup recovery polling", async (reason) => {
-  const data = {
-    project: { id: "queue-wait", title: "Waiting video", created_at: "2026-10-01T12:15:00Z", revision_id: "revision", revision_state: "LOCKED" },
-    attempts: [], generation: null, generation_provider: "KIE_FAL" as const,
-    gpu_transport: "DISABLED_UNQUALIFIED" as const, gpu_readiness: gpuReadiness,
-    queue: { status: "WAITING", position: 3, blocked_reason: reason },
-    stages: stageList({ prepare: "COMPLETE", transcription: "COMPLETE", "voiceover-context": "COMPLETE",
-      planning: "COMPLETE", "prompt-writing": "COMPLETE", "audio-spanning": reason ? "BLOCKED" : "QUEUED" }),
+it.each([null, "HOSTED_CLOUD_CLEANUP_PENDING"])(
+  "shows queue waiting truthfully for blocker %s and keeps cleanup recovery polling",
+  async (reason) => {
+    const data = {
+      project: {
+        id: "queue-wait",
+        title: "Waiting video",
+        created_at: "2026-10-01T12:15:00Z",
+        revision_id: "revision",
+        revision_state: "LOCKED",
+      },
+      attempts: [],
+      generation: null,
+      generation_provider: "KIE_FAL" as const,
+      gpu_transport: "DISABLED_UNQUALIFIED" as const,
+      gpu_readiness: gpuReadiness,
+      queue: { status: "WAITING", position: 3, blocked_reason: reason },
+      stages: stageList({
+        prepare: "COMPLETE",
+        transcription: "COMPLETE",
+        "voiceover-context": "COMPLETE",
+        planning: "COMPLETE",
+        "prompt-writing": "COMPLETE",
+        "audio-spanning": reason ? "BLOCKED" : "QUEUED",
+      }),
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json(data)),
+    );
+    renderHosted(<HostedProjectScreen projectId="queue-wait" />);
+    expect(
+      await screen.findByText(
+        reason
+          ? /An earlier project needs confirmed Cloud cleanup/u
+          : /Waiting for an earlier project. Generation starts automatically/u,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Generation is running/u)).not.toBeInTheDocument();
+    expect(
+      within(stageRow("Audio spanning")).getByText(reason ? "BLOCKED" : "QUEUED"),
+    ).toBeInTheDocument();
+    expect(hostedProjectPollInterval(data)).toBe(2000);
+  },
+);
+
+function coverageCatalog(overrides: Record<string, unknown> = {}) {
+  return {
+    avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
+    styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
+    media_worker_state: "ONLINE",
+    generation_provider: "KIE_FAL",
+    gpu_transport: "DISABLED_UNQUALIFIED",
+    gpu_readiness: gpuReadiness,
+    video_generation: {
+      coverage_percent: 7,
+      coverage_default_percent: 7,
+      coverage_min_percent: 0,
+      coverage_max_percent: 100,
+      adjustable_coverage_supported: true,
+      usd_per_second: 0.01336,
+      resolution: "720p",
+      aspect_ratio: "16:9",
+    },
+    ...overrides,
   };
-  vi.stubGlobal("fetch", vi.fn(async () => Response.json(data)));
-  renderHosted(<HostedProjectScreen projectId="queue-wait" />);
-  expect(await screen.findByText(reason
-    ? /An earlier project needs confirmed Cloud cleanup/u
-    : /Waiting for an earlier project. Generation starts automatically/u)).toBeInTheDocument();
-  expect(screen.queryByText(/Generation is running/u)).not.toBeInTheDocument();
-  expect(within(stageRow("Audio spanning")).getByText(reason ? "BLOCKED" : "QUEUED")).toBeInTheDocument();
-  expect(hostedProjectPollInterval(data)).toBe(2000);
+}
+
+function coverageVoiceover() {
+  const bytes = new ArrayBuffer(44 + 640_000);
+  const view = new DataView(bytes);
+  const write = (offset: number, value: string) =>
+    [...value].forEach((character, index) =>
+      view.setUint8(offset + index, character.charCodeAt(0)),
+    );
+  write(0, "RIFF");
+  view.setUint32(4, bytes.byteLength - 8, true);
+  write(8, "WAVE");
+  write(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, 16_000, true);
+  view.setUint32(28, 32_000, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  write(36, "data");
+  view.setUint32(40, 640_000, true);
+  return new File([bytes], "coverage.wav", { type: "audio/wav" });
+}
+
+async function fillCoverageCreateForm() {
+  fireEvent.change(await screen.findByLabelText("Video title"), {
+    target: { value: "Coverage test" },
+  });
+  fireEvent.change(screen.getByLabelText("Final voiceover"), {
+    target: { files: [coverageVoiceover()] },
+  });
+}
+
+it.each([0, 7, 15, 25, 50, 75, 100, 23])(
+  "pins coverage %s into preflight, create and identical network retries",
+  async (coverage) => {
+    const preflights: Record<string, unknown>[] = [];
+    const creates: { body: string; key: string | null }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const path = String(input);
+        if (path.endsWith("/project-catalog")) return Response.json(coverageCatalog());
+        if (path.endsWith("/preflight")) {
+          preflights.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+          return Response.json({ ok: true, ready: true });
+        }
+        if (path.endsWith("/hosted/projects")) {
+          creates.push({
+            body: String(init?.body),
+            key: new Headers(init?.headers).get("idempotency-key"),
+          });
+          throw new TypeError("network connection lost");
+        }
+        throw new Error(`Unexpected request: ${path}`);
+      }),
+    );
+    renderHosted(<HostedCreateProjectScreen />);
+    await fillCoverageCreateForm();
+    if (coverage === 23)
+      fireEvent.change(screen.getByLabelText("Coverage percent"), { target: { value: "23" } });
+    else
+      fireEvent.click(
+        screen.getByRole("button", { name: coverage === 0 ? "Off" : `${coverage}%` }),
+      );
+    expect(screen.getByLabelText("Coverage percent")).toHaveValue(coverage);
+    expect(screen.getByLabelText("Video footage coverage slider")).toHaveValue(String(coverage));
+    await waitFor(() =>
+      expect(screen.getByLabelText("Preliminary scene footage estimate")).toHaveTextContent(
+        `${((20 * coverage) / 100).toFixed(2)}s`,
+      ),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+    await waitFor(() => expect(creates).toHaveLength(1));
+    expect(preflights[0]).toMatchObject({
+      schema_version: "videoforge-hosted-project-preflight/v2",
+      video_coverage_percent: coverage,
+    });
+    expect(JSON.parse(creates[0]!.body)).toMatchObject({
+      schema_version: "videoforge-hosted-project-create/v3",
+      video_coverage_percent: coverage,
+    });
+    expect(screen.getByLabelText("Coverage percent")).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "100%" }));
+    expect(screen.getByLabelText("Coverage percent")).toHaveValue(coverage);
+    fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+    await waitFor(() => expect(creates).toHaveLength(2));
+    expect(creates[1]).toEqual(creates[0]);
+  },
+);
+
+it.each(["", "-1", "101", "7.5"])(
+  "blocks invalid coverage input %s without preflight or create",
+  async (value) => {
+    const fetchMock = vi.fn(async () => Response.json(coverageCatalog()));
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedCreateProjectScreen />);
+    await fillCoverageCreateForm();
+    fireEvent.change(screen.getByLabelText("Coverage percent"), { target: { value } });
+    expect(screen.getByLabelText("Coverage percent")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("button", { name: "Create project & start" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Check readiness" })).toBeDisabled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  },
+);
+
+it("synchronizes keyboard slider changes and preserves custom coverage across catalog refetch and bad uploads", async () => {
+  let loads = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json(
+        coverageCatalog({
+          video_generation: {
+            ...coverageCatalog().video_generation,
+            coverage_default_percent: ++loads === 1 ? 15 : 50,
+          },
+        }),
+      ),
+    ),
+  );
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}>
+      <HostedCreateProjectScreen />
+    </QueryClientProvider>,
+  );
+  const numeric = await screen.findByLabelText("Coverage percent");
+  await waitFor(() => expect(numeric).toHaveValue(15));
+  fireEvent.change(screen.getByLabelText("Video footage coverage slider"), {
+    target: { value: "75" },
+  });
+  expect(numeric).toHaveValue(75);
+  fireEvent.change(numeric, { target: { value: "23" } });
+  fireEvent.change(screen.getByLabelText("Final voiceover"), {
+    target: { files: [new File(["bad"], "notes.txt", { type: "text/plain" })] },
+  });
+  expect(screen.getByRole("alert")).toHaveTextContent("Use a WAV or MP3");
+  await act(async () => {
+    await client.refetchQueries({ queryKey: ["hosted-project-catalog"] });
+  });
+  expect(numeric).toHaveValue(23);
 });
+
+it("invalidates completed readiness and rejects a late response after coverage edits", async () => {
+  let resolvePreflight: ((response: Response) => void) | undefined;
+  const preflights: Record<string, unknown>[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith("/project-catalog")) return Response.json(coverageCatalog());
+      if (String(input).endsWith("/preflight")) {
+        preflights.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+        return new Promise<Response>((resolve) => {
+          resolvePreflight = resolve;
+        });
+      }
+      throw new Error("Unexpected create");
+    }),
+  );
+  renderHosted(<HostedCreateProjectScreen />);
+  await fillCoverageCreateForm();
+  fireEvent.click(screen.getByRole("button", { name: "Check readiness" }));
+  await waitFor(() => expect(preflights).toHaveLength(1));
+  fireEvent.click(screen.getByRole("button", { name: "75%" }));
+  await act(async () => {
+    resolvePreflight!(Response.json({ ok: true, ready: true }));
+  });
+  expect(screen.queryByText("Ready to create")).not.toBeInTheDocument();
+  expect(await screen.findByRole("alert")).toHaveTextContent("Project inputs changed");
+  expect(screen.getByLabelText("Coverage percent")).toHaveValue(75);
+  fireEvent.click(screen.getByRole("button", { name: "Check readiness" }));
+  await waitFor(() => expect(preflights).toHaveLength(2));
+  await act(async () => {
+    resolvePreflight!(Response.json({ ok: true, ready: true }));
+  });
+  await screen.findByText("Ready to create");
+  fireEvent.click(screen.getByRole("button", { name: "100%" }));
+  expect(screen.queryByText("Ready to create")).not.toBeInTheDocument();
+  expect(preflights[1]).toMatchObject({ video_coverage_percent: 75 });
+});
+
+it("blocks positive coverage when unavailable and allows Off without scene-video readiness", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json(
+        coverageCatalog({
+          video_generation: {
+            ...coverageCatalog().video_generation,
+            adjustable_coverage_supported: false,
+          },
+        }),
+      ),
+    ),
+  );
+  renderHosted(<HostedCreateProjectScreen />);
+  await fillCoverageCreateForm();
+  expect(
+    screen.getByText("Scene video generation is currently unavailable. Choose Off or retry later."),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Create project & start" })).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: "Off" }));
+  expect(screen.getByRole("button", { name: "Create project & start" })).toBeEnabled();
+  await waitFor(() =>
+    expect(screen.getByLabelText("Preliminary scene footage estimate")).toHaveTextContent(
+      "$0 scene-video estimate",
+    ),
+  );
+});
+
+it("preserves coverage and project identity after an upload rejection", async () => {
+  const requests: { body: string; key: string | null }[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith("/project-catalog")) return Response.json(coverageCatalog());
+      if (path.endsWith("/preflight")) return Response.json({ ok: true, ready: true });
+      if (path.endsWith("/hosted/projects")) {
+        requests.push({
+          body: String(init?.body),
+          key: new Headers(init?.headers).get("idempotency-key"),
+        });
+        return Response.json({
+          project_id: "same-project",
+          state: "UPLOAD_PENDING",
+          upload: { url: "https://upload.invalid/voiceover", requiredHeaders: {} },
+        });
+      }
+      if (path === "https://upload.invalid/voiceover")
+        return new Response("upload rejected", { status: 403 });
+      throw new Error(`Unexpected request ${path}`);
+    }),
+  );
+  renderHosted(<HostedCreateProjectScreen />);
+  await fillCoverageCreateForm();
+  fireEvent.click(screen.getByRole("button", { name: "75%" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  await screen.findByRole("alert");
+  expect(screen.getByLabelText("Coverage percent")).toHaveValue(75);
+  expect(screen.getByLabelText("Coverage percent")).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  await waitFor(() => expect(requests).toHaveLength(2));
+  expect(requests[1]).toEqual(requests[0]);
+});
+
+it("allows a corrected coverage choice and new identity after a definite rejected create", async () => {
+  const requests: { body: string; key: string | null }[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith("/project-catalog")) return Response.json(coverageCatalog());
+      if (path.endsWith("/preflight")) return Response.json({ ok: true, ready: true });
+      if (path.endsWith("/hosted/projects")) {
+        requests.push({
+          body: String(init?.body),
+          key: new Headers(init?.headers).get("idempotency-key"),
+        });
+        return Response.json({ error: { message: "Create input rejected" } }, { status: 422 });
+      }
+      throw new Error(`Unexpected request ${path}`);
+    }),
+  );
+  renderHosted(<HostedCreateProjectScreen />);
+  await fillCoverageCreateForm();
+  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  await screen.findByText("Create input rejected");
+  expect(screen.getByLabelText("Coverage percent")).toBeEnabled();
+  fireEvent.click(screen.getByRole("button", { name: "100%" }));
+  fireEvent.click(screen.getByRole("button", { name: "Create project & start" }));
+  await waitFor(() => expect(requests).toHaveLength(2));
+  expect(requests[0]!.key).not.toBe(requests[1]!.key);
+  expect(JSON.parse(requests[1]!.body)).toMatchObject({ video_coverage_percent: 100 });
+});
+
+it("shows saved requested, planned and completed scene footage and fallbacks in Review", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        project: { id: "review-coverage", title: "Review coverage" },
+        attempts: [
+          { id: "render", kind: "RENDER", state: "SUCCEEDED", preview_url: "/preview.mp4" },
+        ],
+        review: {
+          scene_footage_coverage: {
+            requested_coverage_percent: 100,
+            planned_coverage_percent: 62.5,
+            actual_coverage_percent: 50,
+            eligible_coverage_percent: 62.5,
+            fallback_count: 1,
+          },
+        },
+      }),
+    ),
+  );
+  renderHosted(<HostedReviewScreen projectId="review-coverage" />);
+  expect(await screen.findByLabelText("Scene footage coverage")).toHaveTextContent(
+    "Requested up to 100% · Planned 62.5% · Completed 50%",
+  );
+  expect(screen.getByText(/1 scene uses the original image throughout/u)).toBeInTheDocument();
+  expect(screen.getByText(/Whole-scene lengths, avatar time/u)).toBeInTheDocument();
+});
+
+it.each([0, 75])(
+  "shows zero planned scenes at target %s and hides Off's scene-video stage",
+  async (target) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          project: {
+            id: "zero-coverage",
+            title: "Zero coverage",
+            revision_id: "revision",
+            revision_state: "LOCKED",
+          },
+          generation_provider: "KIE_FAL",
+          attempts: [],
+          generation: null,
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+          stages: [
+            {
+              id: "video-generation",
+              name: "Generate scene videos",
+              status: "COMPLETE",
+              progress_percent: 100,
+            },
+            { id: "render", name: "Assemble final video", status: "RUNNING" },
+          ],
+          cost: {
+            api_estimate: {
+              kie_images: 1,
+              kie_usd: 0.004,
+              fal_avatar_seconds: 0,
+              fal_usd: 0,
+              seedance_seconds: 0,
+              seedance_usd: 0,
+              seedance_coverage_percent: target,
+              seedance_planned_coverage_percent: 0,
+              seedance_actual_coverage_percent: 0,
+              seedance_fallback_count: 0,
+              pricing_checked_at: "2026-10-03",
+            },
+          },
+        }),
+      ),
+    );
+    renderHosted(<HostedProjectScreen projectId="zero-coverage" />);
+    const coverage = await screen.findByLabelText("Scene footage coverage");
+    if (target === 0) {
+      expect(coverage).toHaveTextContent("Scene footage Off");
+      expect(screen.queryByLabelText("Generate scene videos elapsed time")).not.toBeInTheDocument();
+    } else {
+      expect(coverage).toHaveTextContent("Requested up to 75% · Planned 0% · Completed 0%");
+      expect(
+        screen.getByText(
+          "No complete eligible scene fits this coverage. Scene footage is skipped.",
+        ),
+      ).toBeInTheDocument();
+    }
+  },
+);

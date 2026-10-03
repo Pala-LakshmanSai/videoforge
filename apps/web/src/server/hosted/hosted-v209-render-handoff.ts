@@ -128,7 +128,10 @@ async function materializeFalWideSourceSnapshot(input: {
   sourceSha256: string;
 }): Promise<unknown> {
   const sourceValue = await input.database.transaction(async (transaction) => {
-    await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", input.accountId]);
+    await transaction.query("SELECT set_config($1,$2,true)", [
+      "videoforge.account_id",
+      input.accountId,
+    ]);
     const result = await transaction.query<{ source: unknown }>(
       `SELECT jsonb_build_object('assetId',asset.id,'sha256',asset.binary_sha256,
           'objectKey',asset.object_key,'contentType',asset.content_type,
@@ -142,8 +145,14 @@ async function materializeFalWideSourceSnapshot(input: {
           AND asset.state IN ('VERIFIED','ACCEPTED')
           AND asset.kind IN ('AVATAR_ORIGINAL','AVATAR_RUNTIME')
           AND asset.content_type IN ('image/png','image/jpeg')`,
-      [input.accountId, input.workspaceId, input.avatarProfileVersionId,
-        input.avatarProfileHash, input.sourceAssetId, input.sourceSha256],
+      [
+        input.accountId,
+        input.workspaceId,
+        input.avatarProfileVersionId,
+        input.avatarProfileHash,
+        input.sourceAssetId,
+        input.sourceSha256,
+      ],
     );
     return result.rows[0]?.source;
   });
@@ -152,9 +161,13 @@ async function materializeFalWideSourceSnapshot(input: {
   const originalKey = text(source.objectKey);
   const length = Number(source.contentLength);
   const contentType = text(source.contentType);
-  if (source.assetId !== input.sourceAssetId || source.sha256 !== input.sourceSha256 ||
-      !Number.isSafeInteger(length) || length < 1 ||
-      !["image/png", "image/jpeg"].includes(contentType))
+  if (
+    source.assetId !== input.sourceAssetId ||
+    source.sha256 !== input.sourceSha256 ||
+    !Number.isSafeInteger(length) ||
+    length < 1 ||
+    !["image/png", "image/jpeg"].includes(contentType)
+  )
     throw new Error("HOSTED_V209_RENDER_SOURCE_DRIFT");
   const original = await input.bucket.get(originalKey);
   if (!original || original.size !== length || original.httpMetadata?.contentType !== contentType)
@@ -163,7 +176,8 @@ async function materializeFalWideSourceSnapshot(input: {
   if (bytes.byteLength !== length || (await sha256(bytes)) !== input.sourceSha256)
     throw new Error("HOSTED_V209_RENDER_SOURCE_DRIFT");
 
-  const snapshotKey = `tenant/${input.accountId}/workspace/${input.workspaceId}` +
+  const snapshotKey =
+    `tenant/${input.accountId}/workspace/${input.workspaceId}` +
     `/project/${input.projectId}/revision/${input.revisionId}` +
     `/lane/input/job/avatar-source/artifact/${input.sourceAssetId}`;
   const prior = await input.bucket.head(snapshotKey);
@@ -171,20 +185,34 @@ async function materializeFalWideSourceSnapshot(input: {
     throw new Error("HOSTED_V209_RENDER_SOURCE_SNAPSHOT_DRIFT");
   if (!prior)
     await input.bucket.put(snapshotKey, bytes, {
-      httpMetadata: { contentType }, customMetadata: { sha256: input.sourceSha256 },
+      httpMetadata: { contentType },
+      customMetadata: { sha256: input.sourceSha256 },
     });
   const readback = await input.bucket.get(snapshotKey);
-  if (!readback || readback.size !== length ||
-      readback.httpMetadata?.contentType !== contentType ||
-      (await sha256(await readback.arrayBuffer())) !== input.sourceSha256)
+  if (
+    !readback ||
+    readback.size !== length ||
+    readback.httpMetadata?.contentType !== contentType ||
+    (await sha256(await readback.arrayBuffer())) !== input.sourceSha256
+  )
     throw new Error("HOSTED_V209_RENDER_SOURCE_SNAPSHOT_DRIFT");
 
-  const receiptSha = await sha256(new TextEncoder().encode(canonicalJson({
-    kind: "fal-wide-source-snapshot/v1", revisionId: input.revisionId,
-    assetId: input.sourceAssetId, objectKey: snapshotKey, checksum: input.sourceSha256,
-  })).buffer as ArrayBuffer);
+  const receiptSha = await sha256(
+    new TextEncoder().encode(
+      canonicalJson({
+        kind: "fal-wide-source-snapshot/v1",
+        revisionId: input.revisionId,
+        assetId: input.sourceAssetId,
+        objectKey: snapshotKey,
+        checksum: input.sourceSha256,
+      }),
+    ).buffer as ArrayBuffer,
+  );
   return input.database.transaction(async (transaction) => {
-    await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", input.accountId]);
+    await transaction.query("SELECT set_config($1,$2,true)", [
+      "videoforge.account_id",
+      input.accountId,
+    ]);
     await transaction.query(
       `INSERT INTO public.artifact_reservations
          (id,account_id,workspace_id,project_id,project_revision_id,asset_id,lane,
@@ -194,8 +222,17 @@ async function materializeFalWideSourceSnapshot(input: {
           $4::uuid,$5::uuid,'INPUT','avatar-source',$5::text,$6,'PUT',$7,$8,$9,
           now()+interval '15 minutes',1,1,'COMMITTED','PROJECT',$1::uuid)
        ON CONFLICT (id) DO NOTHING`,
-      [input.accountId,input.workspaceId,input.projectId,input.revisionId,input.sourceAssetId,
-        snapshotKey,contentType,length,input.sourceSha256],
+      [
+        input.accountId,
+        input.workspaceId,
+        input.projectId,
+        input.revisionId,
+        input.sourceAssetId,
+        snapshotKey,
+        contentType,
+        length,
+        input.sourceSha256,
+      ],
     );
     await transaction.query(
       `INSERT INTO public.artifact_receipts
@@ -207,8 +244,16 @@ async function materializeFalWideSourceSnapshot(input: {
         WHERE NOT EXISTS (SELECT 1 FROM public.artifact_receipts
           WHERE id=md5('fal-wide-source-receipt:'||$3::text)::uuid)
        ON CONFLICT (id) DO NOTHING`,
-      [input.accountId,input.workspaceId,input.revisionId,snapshotKey,contentType,length,
-        input.sourceSha256,receiptSha],
+      [
+        input.accountId,
+        input.workspaceId,
+        input.revisionId,
+        snapshotKey,
+        contentType,
+        length,
+        input.sourceSha256,
+        receiptSha,
+      ],
     );
     const result = await transaction.query<{ source: unknown }>(
       `SELECT jsonb_build_object('assetId',asset.id,'sha256',asset.binary_sha256,
@@ -229,8 +274,18 @@ async function materializeFalWideSourceSnapshot(input: {
           AND receipt.object_key=$6 AND receipt.content_type=$7
           AND receipt.content_length=$8 AND receipt.checksum_sha256=$9
           AND receipt.receipt_sha256=$10 AND asset.binary_sha256=$9`,
-      [input.accountId,input.workspaceId,input.projectId,input.revisionId,input.sourceAssetId,
-        snapshotKey,contentType,length,input.sourceSha256,receiptSha],
+      [
+        input.accountId,
+        input.workspaceId,
+        input.projectId,
+        input.revisionId,
+        input.sourceAssetId,
+        snapshotKey,
+        contentType,
+        length,
+        input.sourceSha256,
+        receiptSha,
+      ],
     );
     if (result.rows[0]?.source === undefined)
       throw new Error("HOSTED_V209_RENDER_SOURCE_SNAPSHOT_DRIFT");
@@ -245,7 +300,9 @@ function artifact(
     HostedCommittedArtifact,
     "lane" | "kind" | "taskKey" | "acceptedAttemptId" | "barrierAcceptance"
   > &
-    Partial<Pick<HostedCommittedArtifact, "generationTaskId" | "retainedVoiceoverOriginRevisionId">>,
+    Partial<
+      Pick<HostedCommittedArtifact, "generationTaskId" | "retainedVoiceoverOriginRevisionId">
+    >,
 ): HostedCommittedArtifact {
   const row = record(source);
   const contentLength = Number(row.contentLength);
@@ -275,7 +332,9 @@ function artifact(
     receiptDeletedAt: null,
     acceptedAttemptId: extra.acceptedAttemptId,
     ...(extra.generationTaskId ? { generationTaskId: extra.generationTaskId } : {}),
-    ...(extra.retainedVoiceoverOriginRevisionId ? {retainedVoiceoverOriginRevisionId:extra.retainedVoiceoverOriginRevisionId} : {}),
+    ...(extra.retainedVoiceoverOriginRevisionId
+      ? { retainedVoiceoverOriginRevisionId: extra.retainedVoiceoverOriginRevisionId }
+      : {}),
     barrierAcceptance: extra.barrierAcceptance,
     kind: extra.kind,
     ...(row.sourceScopeKind === "SYSTEM"
@@ -293,12 +352,19 @@ function artifact(
 }
 
 /** A successor may reuse only the immutable voiceover receipt authorized by its ASR recovery. */
-export async function loadHostedCloudRecoveryVoiceoverOrigin(database:TransactionalSqlExecutor,
-  scope:{accountId:string;workspaceId:string;projectId:string;revisionId:string},source:unknown):Promise<string> {
-  const row=record(source);
-  return database.transaction(async transaction=>{
-    await transaction.query("SELECT set_config($1,$2,true)",["videoforge.account_id",scope.accountId]);
-    const result=await transaction.query<{origin_revision_id:string}>(`
+export async function loadHostedCloudRecoveryVoiceoverOrigin(
+  database: TransactionalSqlExecutor,
+  scope: { accountId: string; workspaceId: string; projectId: string; revisionId: string },
+  source: unknown,
+): Promise<string> {
+  const row = record(source);
+  return database.transaction(async (transaction) => {
+    await transaction.query("SELECT set_config($1,$2,true)", [
+      "videoforge.account_id",
+      scope.accountId,
+    ]);
+    const result = await transaction.query<{ origin_revision_id: string }>(
+      `
       SELECT reserved.project_revision_id::text AS origin_revision_id
         FROM cloud_media_asr_recoveries recovery
         JOIN artifact_receipts receipt ON receipt.id=recovery.source_receipt_id
@@ -314,10 +380,23 @@ export async function loadHostedCloudRecoveryVoiceoverOrigin(database:Transactio
          AND receipt.deleted_at IS NULL AND receipt.object_key=$7 AND reserved.object_key=receipt.object_key
          AND receipt.checksum_sha256=$8 AND asset.binary_sha256=receipt.checksum_sha256
          AND receipt.content_length=$9 AND receipt.content_type=$10
-         AND asset.state IN ('VERIFIED','ACCEPTED')`,[scope.accountId,scope.workspaceId,scope.projectId,scope.revisionId,
-      text(row.receiptId,UUID),text(row.assetId,UUID),text(row.objectKey),text(row.sha256,SHA256),Number(row.contentLength),text(row.contentType)]);
-    const origin=result.rows[0]?.origin_revision_id;
-    if(result.rows.length!==1 || !origin || !UUID.test(origin)) throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
+         AND asset.state IN ('VERIFIED','ACCEPTED')`,
+      [
+        scope.accountId,
+        scope.workspaceId,
+        scope.projectId,
+        scope.revisionId,
+        text(row.receiptId, UUID),
+        text(row.assetId, UUID),
+        text(row.objectKey),
+        text(row.sha256, SHA256),
+        Number(row.contentLength),
+        text(row.contentType),
+      ],
+    );
+    const origin = result.rows[0]?.origin_revision_id;
+    if (result.rows.length !== 1 || !origin || !UUID.test(origin))
+      throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
     return origin;
   });
 }
@@ -395,11 +474,14 @@ export function createHostedV209RenderHandoff(input: {
         projectId,
         revisionId,
       };
-      const rawVoiceover=record(ready.voiceover);
-      const retainedVoiceoverOriginRevisionId=text(rawVoiceover.objectKey).startsWith(revisionPrefix) ? undefined
-        : await loadHostedCloudRecoveryVoiceoverOrigin(input.database,artifactScope,rawVoiceover);
+      const rawVoiceover = record(ready.voiceover);
+      const retainedVoiceoverOriginRevisionId = text(rawVoiceover.objectKey).startsWith(
+        revisionPrefix,
+      )
+        ? undefined
+        : await loadHostedCloudRecoveryVoiceoverOrigin(input.database, artifactScope, rawVoiceover);
       const voiceover = artifact(ready.voiceover, artifactScope, {
-        ...(retainedVoiceoverOriginRevisionId ? {retainedVoiceoverOriginRevisionId} : {}),
+        ...(retainedVoiceoverOriginRevisionId ? { retainedVoiceoverOriginRevisionId } : {}),
         lane: "INPUT",
         kind: "VOICEOVER",
         taskKey: null,
@@ -459,15 +541,52 @@ export function createHostedV209RenderHandoff(input: {
         ]),
       );
       const rawVideos = ready.acceptedVideos ?? [];
-      if (!Array.isArray(rawVideos) || (rawVideos.length > 0 && !ready.videoPlan)) throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
+      const rawVideoPlan = ready.videoPlan ? record(ready.videoPlan) : null;
+      if (
+        rawVideoPlan?.replacement_policy === "WHOLE_SCENE_V2" &&
+        (typeof rawVideoPlan.coverage_percent !== "number" ||
+          !Number.isSafeInteger(rawVideoPlan.coverage_percent))
+      )
+        throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
+      const videoPolicy =
+        rawVideoPlan?.replacement_policy === "WHOLE_SCENE_V2"
+          ? {
+              coveragePercent: rawVideoPlan.coverage_percent as number,
+              replacementPolicy: "WHOLE_SCENE_V2" as const,
+              selectionSha256: text(rawVideoPlan.selection_sha256, SHA256),
+            }
+          : undefined;
+      if (
+        rawVideoPlan &&
+        rawVideoPlan.replacement_policy !== undefined &&
+        rawVideoPlan.replacement_policy !== "LEGACY_PREFIX_V1" &&
+        !videoPolicy
+      )
+        throw new Error("HOSTED_V209_RENDER_VIDEO_POLICY_INVALID");
+      if (!Array.isArray(rawVideos) || (rawVideos.length > 0 && !ready.videoPlan))
+        throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
       const acceptedVideos = rawVideos.map((value) => {
         const row = record(value);
-        if (row.lane !== "seedance_video" || row.kind !== "VIDEO" || !Number.isSafeInteger(row.videoFrameCount))
+        if (
+          row.lane !== "seedance_video" ||
+          row.kind !== "VIDEO" ||
+          !Number.isSafeInteger(row.videoFrameCount)
+        )
           throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
-        return { segmentId: text(row.segmentId), sourceTaskKey: text(row.sourceTaskKey),
-          sourceSha256: text(row.sourceSha256, SHA256), videoFrameCount: row.videoFrameCount as number,
-          artifact: artifact(row, artifactScope, { lane: "SCENE_VIDEO", kind: "VIDEO", taskKey: text(row.taskKey),
-            generationTaskId: text(row.taskId, UUID), acceptedAttemptId: text(row.acceptedAttemptId, UUID), barrierAcceptance: "ACCEPTED_CANONICAL" }) };
+        return {
+          segmentId: text(row.segmentId),
+          sourceTaskKey: text(row.sourceTaskKey),
+          sourceSha256: text(row.sourceSha256, SHA256),
+          videoFrameCount: row.videoFrameCount as number,
+          artifact: artifact(row, artifactScope, {
+            lane: "SCENE_VIDEO",
+            kind: "VIDEO",
+            taskKey: text(row.taskKey),
+            generationTaskId: text(row.taskId, UUID),
+            acceptedAttemptId: text(row.acceptedAttemptId, UUID),
+            barrierAcceptance: "ACCEPTED_CANONICAL",
+          }),
+        };
       });
       const planned = await planVNextResolvedRenderManifest({
         contractDocumentAuthority: { validateAndHash: validateAndHashContractDocument },
@@ -480,8 +599,13 @@ export function createHostedV209RenderHandoff(input: {
           kind: "VOICEOVER",
         },
         acceptedAssets: { byTaskKey: acceptedBindings },
-        videoAssets: acceptedVideos.map((video) => ({ ...video, assetId: video.artifact.assetId,
-          sha256: video.artifact.checksumSha256 as AcceptedAssetBinding["sha256"], kind: "VIDEO" as const })),
+        videoAssets: acceptedVideos.map((video) => ({
+          ...video,
+          assetId: video.artifact.assetId,
+          sha256: video.artifact.checksumSha256 as AcceptedAssetBinding["sha256"],
+          kind: "VIDEO" as const,
+        })),
+        ...(videoPolicy ? { videoPolicy } : {}),
         renderProfileVersion: "ffmpeg-render-v3",
       });
       if (!planned.ok) throw new Error("HOSTED_V209_RENDER_PLAN_INVALID");
@@ -598,6 +722,7 @@ export function createHostedV209RenderHandoff(input: {
         ...(avatarSource ? { avatarSource } : {}),
         acceptedVisuals,
         acceptedVideos,
+        ...(videoPolicy ? { videoPolicy } : {}),
         resolvedManifest: { document: planned.value.value, artifact: manifestArtifact },
         tools: record(ready.tools) as HostedRenderPlanMaterializationInput["tools"],
       };

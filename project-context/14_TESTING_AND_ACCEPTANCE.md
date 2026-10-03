@@ -398,3 +398,8 @@ VideoForge render/storage measurements. Real Chrome must prove backend selection
 with browser closed, private download and full result playback after compute termination. Measure
 placement, runtime-ready, download, render, technical checking, upload and termination separately.
 Retained-media or repeated-source fixtures do not establish fresh Kie/Fal/editorial quality.
+
+
+## Planned whole scene coverage control (2026-10-03)
+
+The combined feature must prove Create/preflight/idempotency, integer 0/custom/default/maximum coverage, exact successor inheritance, zero-job completion, whole-scene selection and native SQL/renderer rejection of partial clips. Real FFmpeg must show no still tail through every selected scene frame. Verify requested/planned/accepted coverage and generated-duration costs, legacy compatibility, tenant denial, UNKNOWN no replay, and real Chrome Create-to-Review playback. Both backend contracts need fixtures; live paid scope is separate. Implementation is pending. Details and rollout order: [combined plan](tasks/SEEDANCE_VIDEO_PLAN.md#whole-scene-replacement-follow-up).

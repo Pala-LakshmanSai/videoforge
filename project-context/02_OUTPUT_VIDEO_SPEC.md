@@ -162,3 +162,8 @@ Before delivery verify:
   resolved render manifest and final MP4. Inactive manifest versions cannot resolve new work.
 - No intermediate filename, debugging text, subtitle stream, extra audio stream, or metadata leak.
 - MP4 is seekable and plays in the user's Chrome.
+
+
+## Requested whole scene motion and selectable coverage (2026-10-03)
+
+DEC_VIDEO_SCENE_001 and DEC_VIDEO_COVERAGE_001 define the requested next behavior, still unimplemented: each accepted clip replaces a complete IMAGE_FULL scene within the user-selected finished-video coverage ceiling. Proposed Create range is integer 0–100%, default 7%; zero skips motion, high values saturate at eligible scene capacity, and avatars retain their timing/layout. Whole-scene underfill is valid; no silent overshoot. Existing revision plans remain immutable. See [the combined implementation plan](tasks/SEEDANCE_VIDEO_PLAN.md#whole-scene-replacement-follow-up).

@@ -42,8 +42,11 @@ const isRenderJobInputDocument = (value: unknown): value is RenderJobInputDocume
       "output",
       "tools",
       "cancel_token",
+      ...(value.schema_version === "render-job-input/v3" ? ["video_policy"] : []),
     ]) ||
-    !["render-job-input/v1", "render-job-input/v2"].includes(String(value.schema_version)) ||
+    !["render-job-input/v1", "render-job-input/v2", "render-job-input/v3"].includes(
+      String(value.schema_version),
+    ) ||
     !isBoundedId(value.project_revision_id) ||
     !isBoundedId(value.attempt_id) ||
     !isRecord(value.resolved_render_manifest) ||
@@ -68,6 +71,20 @@ const isRenderJobInputDocument = (value: unknown): value is RenderJobInputDocume
   ) {
     return false;
   }
+  if (value.schema_version === "render-job-input/v3") {
+    const policy = value.video_policy;
+    if (
+      !isRecord(policy) ||
+      !hasExactKeys(policy, ["coverage_percent", "replacement_policy", "selection_sha256"]) ||
+      typeof policy.coverage_percent !== "number" ||
+      !Number.isSafeInteger(policy.coverage_percent) ||
+      policy.coverage_percent < 0 ||
+      policy.coverage_percent > 100 ||
+      policy.replacement_policy !== "WHOLE_SCENE_V2" ||
+      !isSha256(policy.selection_sha256)
+    )
+      return false;
+  }
   for (const asset of value.assets) {
     if (
       !isRecord(asset) ||
@@ -76,7 +93,11 @@ const isRenderJobInputDocument = (value: unknown): value is RenderJobInputDocume
       !isSha256(asset.sha256) ||
       !isObjectUri(asset.artifact_uri) ||
       typeof asset.kind !== "string" ||
-      !(value.schema_version === "render-job-input/v2" ? ["VOICEOVER", "AVATAR_CLIP", "IMAGE", "VIDEO"] : ["VOICEOVER", "AVATAR_CLIP", "IMAGE"]).includes(asset.kind)
+      !(
+        value.schema_version !== "render-job-input/v1"
+          ? ["VOICEOVER", "AVATAR_CLIP", "IMAGE", "VIDEO"]
+          : ["VOICEOVER", "AVATAR_CLIP", "IMAGE"]
+      ).includes(asset.kind)
     ) {
       return false;
     }
@@ -355,7 +376,13 @@ export function bindHostedCpuInputDocument(
       : kind === "SPAN_AUDIO"
         ? "selected-span-audio-job/v1"
         : "render-job-input/v1";
-  if (document.schema_version !== expectedSchema && !(kind === "RENDER" && document.schema_version === "render-job-input/v2")) {
+  if (
+    document.schema_version !== expectedSchema &&
+    !(
+      kind === "RENDER" &&
+      ["render-job-input/v2", "render-job-input/v3"].includes(String(document.schema_version))
+    )
+  ) {
     throw new TypeError("Hosted CPU input document does not match its exact job kind.");
   }
   const bound = structuredClone(document);

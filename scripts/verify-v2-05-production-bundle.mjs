@@ -63,9 +63,13 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // loaded; provider/native/quarantine checks and strict no-growth ceilings remain enforced.
 // Exact relational-to-canonical video segment matching adds335 measured bytes in
 // both builds. Malformed prefixes still reject; all quarantine/CPU bounds remain.
+// Whole-scene coverage policy planning/admission adds exactly8,248 production and8,250
+// staging bytes: v3 provenance, variable ceiling and full-scene guards. Fresh measured
+// closures are2,806,527 and2,803,452; provider/generated validators stay dynamic.
+// All quarantine, CPU bounds and exact no-growth checks remain enabled.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_798_279,
-  "wrangler.staging.jsonc": 2_795_202,
+  "wrangler.production.jsonc": 2_806_527,
+  "wrangler.staging.jsonc": 2_803_452,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",

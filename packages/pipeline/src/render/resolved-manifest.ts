@@ -28,8 +28,10 @@ const CANONICAL_SEGMENT_UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u;
 
 /** Hosted persistence keys prefix canonical UUIDs; durable provider identities stay unchanged. */
 export function matchesVideoTimelineSegmentId(storedId: string, canonicalId: string): boolean {
-  return storedId === canonicalId ||
-    (CANONICAL_SEGMENT_UUID.test(canonicalId) && storedId === `segment:${canonicalId}`);
+  return (
+    storedId === canonicalId ||
+    (CANONICAL_SEGMENT_UUID.test(canonicalId) && storedId === `segment:${canonicalId}`)
+  );
 }
 
 export const SOULX_APPROVED_AVATAR_SOURCE_PROFILE = "soulx-pro-vf924u-approved-v1";
@@ -722,34 +724,101 @@ export async function planResolvedRenderManifest(
     segments.push(resolved);
   }
 
+  const policy = request.videoPolicy;
+  if (
+    policy !== undefined &&
+    (!Number.isSafeInteger(policy.coveragePercent) ||
+      policy.coveragePercent < 0 ||
+      policy.coveragePercent > 100 ||
+      policy.replacementPolicy !== "WHOLE_SCENE_V2" ||
+      !SHA256_PATTERN.test(policy.selectionSha256))
+  ) {
+    return pipelineFailure(
+      fail(
+        "RENDER_PLAN_INVALID",
+        "Video policy is not an immutable valid whole-scene plan binding.",
+        ["videoPolicy"],
+      ),
+    );
+  }
   const videoAssets = request.videoAssets ?? [];
   const videoSegments = new Set<string>();
   let videoFrames = 0;
   for (const video of videoAssets) {
-    const index = segments.findIndex((segment) => matchesVideoTimelineSegmentId(video.segmentId, segment.segment_id));
+    const index = segments.findIndex((segment) =>
+      matchesVideoTimelineSegmentId(video.segmentId, segment.segment_id),
+    );
     const segment = segments[index];
     const timelineSegment = request.timeline.value.segments[index];
-    if (!segment || !timelineSegment || segment.timeline_composition !== "IMAGE_FULL" ||
-        timelineSegment.timeline_composition !== "IMAGE_FULL" || video.kind !== "VIDEO" ||
-        videoSegments.has(segment.segment_id) || video.sourceTaskKey !== timelineSegment.required_slots.image.task_key ||
-        video.sourceSha256 !== segment.accepted_assets.image.sha256 ||
-        video.assetId === segment.accepted_assets.image.asset_id || video.sha256 === segment.accepted_assets.image.sha256 ||
-        video.sha256 === request.voiceover.sha256 || !SHA256_PATTERN.test(video.sha256) || !video.assetId ||
-        !Number.isSafeInteger(video.videoFrameCount) || video.videoFrameCount < 1 || video.videoFrameCount > 360 ||
-        video.videoFrameCount > segment.end_frame_exclusive - segment.start_frame) {
-      return pipelineFailure(fail("ASSET_KIND_MISMATCH", "Video replacement does not match its pinned image scene.", ["videoAssets"]));
+    if (
+      !segment ||
+      !timelineSegment ||
+      segment.timeline_composition !== "IMAGE_FULL" ||
+      timelineSegment.timeline_composition !== "IMAGE_FULL" ||
+      video.kind !== "VIDEO" ||
+      videoSegments.has(segment.segment_id) ||
+      video.sourceTaskKey !== timelineSegment.required_slots.image.task_key ||
+      video.sourceSha256 !== segment.accepted_assets.image.sha256 ||
+      video.assetId === segment.accepted_assets.image.asset_id ||
+      video.sha256 === segment.accepted_assets.image.sha256 ||
+      video.sha256 === request.voiceover.sha256 ||
+      !SHA256_PATTERN.test(video.sha256) ||
+      !video.assetId ||
+      !Number.isSafeInteger(video.videoFrameCount) ||
+      video.videoFrameCount < 1 ||
+      video.videoFrameCount > 360 ||
+      video.videoFrameCount > segment.end_frame_exclusive - segment.start_frame ||
+      (policy !== undefined &&
+        (video.videoFrameCount > 357 ||
+          video.videoFrameCount !== segment.end_frame_exclusive - segment.start_frame))
+    ) {
+      return pipelineFailure(
+        fail("ASSET_KIND_MISMATCH", "Video replacement does not match its pinned image scene.", [
+          "videoAssets",
+        ]),
+      );
     }
     videoSegments.add(segment.segment_id);
     videoFrames += video.videoFrameCount;
-    segments[index] = { ...segment,
-      accepted_assets: { ...segment.accepted_assets, video: { asset_id: video.assetId, sha256: video.sha256 } },
-      render: { ...segment.render, video_source_profile: "seedance-pro-fast-1248x704-v1", video_frame_count: video.videoFrameCount } };
+    segments[index] = {
+      ...segment,
+      accepted_assets: {
+        ...segment.accepted_assets,
+        video: { asset_id: video.assetId, sha256: video.sha256 },
+      },
+      render: {
+        ...segment.render,
+        video_source_profile: "seedance-pro-fast-1248x704-v1",
+        video_frame_count: video.videoFrameCount,
+      },
+    };
   }
-  if (videoFrames > Math.floor(request.timeline.value.total_frames * 7 / 100)) {
-    return pipelineFailure(fail("ASSET_KIND_MISMATCH", "Video coverage exceeds the pinned seven-percent budget.", ["videoAssets"]));
+  if (
+    videoFrames >
+    Math.floor((request.timeline.value.total_frames * (policy?.coveragePercent ?? 7)) / 100)
+  ) {
+    return pipelineFailure(
+      fail("ASSET_KIND_MISMATCH", "Video coverage exceeds the pinned percentage budget.", [
+        "videoAssets",
+      ]),
+    );
   }
   const manifest: ResolvedRenderManifestDocument = {
-    schema_version: videoAssets.length ? "resolved-render-manifest/v2" : "resolved-render-manifest/v1",
+    schema_version:
+      policy !== undefined
+        ? "resolved-render-manifest/v3"
+        : videoAssets.length
+          ? "resolved-render-manifest/v2"
+          : "resolved-render-manifest/v1",
+    ...(policy === undefined
+      ? {}
+      : {
+          video_policy: {
+            coverage_percent: policy.coveragePercent,
+            replacement_policy: policy.replacementPolicy,
+            selection_sha256: policy.selectionSha256,
+          },
+        }),
     project_revision_id: request.revision.value.project_revision_id,
     revision_config_hash: request.revision.sha256,
     timeline_plan_hash: request.timeline.sha256,

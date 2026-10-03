@@ -388,6 +388,10 @@ def compile_render_command(
                     render.get("video_source_profile") != "seedance-pro-fast-1248x704-v1"
                     or type(motion_frames) is not int
                     or not 1 <= motion_frames <= frame_count
+                    or (
+                        manifest.get("schema_version") == "resolved-render-manifest/v3"
+                        and (motion_frames > 357 or motion_frames != frame_count)
+                    )
                 ):
                     raise ValueError("invalid Seedance motion selection")
                 video_index = add_input(video["asset_id"], still=False)
@@ -519,17 +523,45 @@ def compile_chunk_mux_command(
 
     duration_seconds = total_frames / 30
     return (
-        str(ffmpeg), "-hide_banner", "-nostdin", "-n",
-        "-f", "concat", "-safe", "1", "-i", str(concat_path),
-        "-threads", "1", "-i", str(voiceover_path),
-        "-map", "0:v:0", "-map", "1:a:0",
-        "-c:v", "copy", "-af",
+        str(ffmpeg),
+        "-hide_banner",
+        "-nostdin",
+        "-n",
+        "-f",
+        "concat",
+        "-safe",
+        "1",
+        "-i",
+        str(concat_path),
+        "-threads",
+        "1",
+        "-i",
+        str(voiceover_path),
+        "-map",
+        "0:v:0",
+        "-map",
+        "1:a:0",
+        "-c:v",
+        "copy",
+        "-af",
         # loudnorm can emit padded tail samples after the first trim. Cap its
         # output as well, or long AAC muxes can exceed the video by two frames.
         f"atrim=end={duration_seconds:.6f},asetpts=PTS-STARTPTS,"
         f"{_audio_filter(input_loudness)},apad,"
         f"atrim=end={duration_seconds:.6f},asetpts=PTS-STARTPTS",
-        "-c:a", "aac", "-ar", "48000",
-        "-map_metadata", "-1", "-map_chapters", "-1", "-sn", "-dn",
-        "-movflags", "+faststart", "-threads", "2", str(output_path),
+        "-c:a",
+        "aac",
+        "-ar",
+        "48000",
+        "-map_metadata",
+        "-1",
+        "-map_chapters",
+        "-1",
+        "-sn",
+        "-dn",
+        "-movflags",
+        "+faststart",
+        "-threads",
+        "2",
+        str(output_path),
     )

@@ -332,3 +332,8 @@ all existing visual/accessibility/responsive gates remain green in real Chrome.
 ## Seedance7% integration (2026-10-03)
 
 Fresh pinned Seedance projects show Generate scene videos immediately after Generate images in the numbered Progress list. Clips start after their own source image accepts and may overlap remaining image/avatar generation. Progress exposes accepted clip counts, saved uncertainty/failure and private paginated Generated videos playback. Legacy projects keep the existing stage count and two media tabs. New Project states7% generated coverage,720p16:9 and per-second cost; projected totals include footage and actual Runware task cost remains separate from unverified Kie/Fal invoices. Local requires the qualified0.1.46 release; Cloud uses the separately qualified Linux image.
+
+
+## Planned whole scene coverage control (2026-10-03)
+
+Create adds a proposed 0–100% Video footage coverage slider/number field with presets and default 7%. The value means up to that percentage of the finished video as scene footage; avatars are separate. Coverage edits invalidate preflight and stale asynchronous responses. Show preliminary cost/seconds before scheduling, then requested/planned/accepted coverage and any whole-scene shortfall in Progress/Review. Off skips the scene-video stage. Implementation is pending. Details and rollout order: [combined plan](tasks/SEEDANCE_VIDEO_PLAN.md#whole-scene-replacement-follow-up).

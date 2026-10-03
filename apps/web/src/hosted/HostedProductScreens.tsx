@@ -55,7 +55,8 @@ const MAX_STYLE_ANALYSIS_BYTES = 30 * 1024 * 1024;
 const MAX_STYLE_REFERENCES = 8;
 const MIN_STYLE_REFERENCES = 3;
 export const HOSTED_UPLOAD_TIMEOUT_MS = 300_000;
-const HOSTED_CREATE_SCHEMA = "videoforge-hosted-project-create/v2";
+const HOSTED_CREATE_SCHEMA = "videoforge-hosted-project-create/v3";
+const VIDEO_COVERAGE_PRESETS = [0, 7, 15, 25, 50, 75, 100] as const;
 const VOICEOVER_TYPES = new Set(["audio/mpeg", "audio/wav"]);
 const MAX_HOSTED_VOICEOVER_FILENAME = 160;
 export const HOSTED_SHA256_CHUNK_BYTES = 4 * 1024 * 1024;
@@ -97,7 +98,16 @@ const SHA256_ROUND_CONSTANTS = new Uint32Array([
 
 export interface CatalogResponse {
   readonly default_image_style_version_id?: string;
-  readonly video_generation?: { readonly coverage_percent: number; readonly usd_per_second: number; readonly resolution: string; readonly aspect_ratio: string };
+  readonly video_generation?: {
+    readonly coverage_percent: number;
+    readonly coverage_default_percent?: number;
+    readonly coverage_min_percent?: number;
+    readonly coverage_max_percent?: number;
+    readonly adjustable_coverage_supported?: boolean;
+    readonly usd_per_second: number;
+    readonly resolution: string;
+    readonly aspect_ratio: string;
+  };
   readonly avatars: readonly {
     profile_id: string;
     version_id: string;
@@ -572,67 +582,126 @@ function cancellableAttemptLabel(kind: HostedAttempt["kind"]): string {
   return "assembly";
 }
 
-export function currentHostedAttempt<T extends Pick<HostedAttempt, "state" | "cloud_phase">>(attempts: readonly T[]): T | undefined {
+export function currentHostedAttempt<T extends Pick<HostedAttempt, "state" | "cloud_phase">>(
+  attempts: readonly T[],
+): T | undefined {
   const newest = [...attempts].reverse();
-  return newest.find(attempt => ["RUNNING", "RECONCILING", "CANCEL_REQUESTED"].includes(attempt.state))
-    ?? newest.find(attempt => attempt.cloud_phase === "STOPPING")
-    ?? newest.find(attempt => ["PLANNED", "OUTBOXED", "SUBMITTED"].includes(attempt.state))
-    ?? newest[0];
+  return (
+    newest.find((attempt) =>
+      ["RUNNING", "RECONCILING", "CANCEL_REQUESTED"].includes(attempt.state),
+    ) ??
+    newest.find((attempt) => attempt.cloud_phase === "STOPPING") ??
+    newest.find((attempt) => ["PLANNED", "OUTBOXED", "SUBMITTED"].includes(attempt.state)) ??
+    newest[0]
+  );
 }
 
 export function hostedMachineLabel(
   backend: "PERSONAL_WORKER" | "RUNPOD_POD" | undefined,
-  attempts: readonly Pick<HostedAttempt, "kind" | "state" | "execution_backend" | "cloud_gpu" | "cloud_cpu" | "cloud_phase" | "cloud_machine_active" | "local_machine_name" | "local_machine_active">[],
+  attempts: readonly Pick<
+    HostedAttempt,
+    | "kind"
+    | "state"
+    | "execution_backend"
+    | "cloud_gpu"
+    | "cloud_cpu"
+    | "cloud_phase"
+    | "cloud_machine_active"
+    | "local_machine_name"
+    | "local_machine_active"
+  >[],
   apiActive = false,
   queuePosition?: number | null,
   localWorker?: { readonly state: "ONLINE" | "BUSY" | "WAITING_FOR_YOUR_COMPUTER" } | null,
 ): string {
-  const active = [...attempts].reverse().find(attempt => attempt.cloud_machine_active || attempt.local_machine_active);
-  if (active?.cloud_machine_active && active.cloud_gpu) return `Cloud · RunPod · ${active.cloud_gpu}`;
-  if (active?.cloud_machine_active && active.cloud_cpu) return `Cloud · RunPod · ${active.cloud_cpu}`;
-  if (active?.local_machine_active && active.local_machine_name) return `Local · ${active.local_machine_name}`;
-  const render = [...attempts].reverse().find(attempt => attempt.kind === "RENDER");
+  const active = [...attempts]
+    .reverse()
+    .find((attempt) => attempt.cloud_machine_active || attempt.local_machine_active);
+  if (active?.cloud_machine_active && active.cloud_gpu)
+    return `Cloud · RunPod · ${active.cloud_gpu}`;
+  if (active?.cloud_machine_active && active.cloud_cpu)
+    return `Cloud · RunPod · ${active.cloud_cpu}`;
+  if (active?.local_machine_active && active.local_machine_name)
+    return `Local · ${active.local_machine_name}`;
+  const render = [...attempts].reverse().find((attempt) => attempt.kind === "RENDER");
   const cloud = (render?.execution_backend ?? backend) === "RUNPOD_POD";
-  if (render?.state === "SUCCEEDED") return cloud
-    ? render.cloud_cpu ? `Cloud · ${render.cloud_cpu} · Compute released` : `Cloud · ${render.cloud_gpu ?? "GPU not recorded"} · GPU released`
-    : `Local · ${render.local_machine_name ?? "Computer not recorded"} · Finished`;
-  const released = cloud ? [...attempts].reverse().find(attempt =>
-    attempt.execution_backend === "RUNPOD_POD" &&
-    ["CLEAN", "COMPLETE"].includes(attempt.cloud_phase ?? "") &&
-    (attempt.cloud_gpu || attempt.cloud_cpu),
-  ) : undefined;
+  if (render?.state === "SUCCEEDED")
+    return cloud
+      ? render.cloud_cpu
+        ? `Cloud · ${render.cloud_cpu} · Compute released`
+        : `Cloud · ${render.cloud_gpu ?? "GPU not recorded"} · GPU released`
+      : `Local · ${render.local_machine_name ?? "Computer not recorded"} · Finished`;
+  const released = cloud
+    ? [...attempts]
+        .reverse()
+        .find(
+          (attempt) =>
+            attempt.execution_backend === "RUNPOD_POD" &&
+            ["CLEAN", "COMPLETE"].includes(attempt.cloud_phase ?? "") &&
+            (attempt.cloud_gpu || attempt.cloud_cpu),
+        )
+    : undefined;
   const releasedMachine = released
     ? `Cloud · RunPod · ${released.cloud_gpu ?? released.cloud_cpu} · Compute released`
     : null;
   if (apiActive) {
-    if (cloud) return releasedMachine
-      ? `${releasedMachine} · Media APIs running`
-      : "Cloud · Media APIs · No active RunPod compute";
-    const connection = localWorker?.state === "ONLINE" ? "Computer online"
-      : localWorker?.state === "BUSY" ? "Computer connected · Busy" : "Waiting for computer";
+    if (cloud)
+      return releasedMachine
+        ? `${releasedMachine} · Media APIs running`
+        : "Cloud · Media APIs · No active RunPod compute";
+    const connection =
+      localWorker?.state === "ONLINE"
+        ? "Computer online"
+        : localWorker?.state === "BUSY"
+          ? "Computer connected · Busy"
+          : "Waiting for computer";
     return `Local render · ${connection} · Kie / Fal APIs generating media`;
   }
   if (releasedMachine) return releasedMachine;
-  if (!cloud && localWorker?.state === "ONLINE") return queuePosition && queuePosition > 1
-    ? "Local · Computer online · Waiting for earlier project"
-    : "Local · Computer online · Waiting for assignment";
+  if (!cloud && localWorker?.state === "ONLINE")
+    return queuePosition && queuePosition > 1
+      ? "Local · Computer online · Waiting for earlier project"
+      : "Local · Computer online · Waiting for assignment";
   if (!cloud && localWorker?.state === "BUSY") return "Local · Computer connected · Busy";
-  if (attempts.length && attempts.every(attempt => ["SUCCEEDED", "FAILED", "CANCELLED", "EXPIRED"].includes(attempt.state)))
+  if (
+    attempts.length &&
+    attempts.every((attempt) =>
+      ["SUCCEEDED", "FAILED", "CANCELLED", "EXPIRED"].includes(attempt.state),
+    )
+  )
     return cloud ? "Cloud · No active RunPod compute" : "Local · No active computer";
   if (cloud && queuePosition && queuePosition > 1) return "Cloud · Waiting for earlier project";
   return cloud ? "Cloud · Waiting for RunPod compute" : "Local · Waiting for computer";
 }
 
-export function cloudMediaPhaseLabel(phase: string | null | undefined, state: string, queuePosition?: number | null): string {
+export function cloudMediaPhaseLabel(
+  phase: string | null | undefined,
+  state: string,
+  queuePosition?: number | null,
+): string {
   if (phase === "STOPPING") return "Stopping compute";
-  if (state === "SUCCEEDED") return ["CLEAN", "COMPLETE"].includes(phase ?? "") ? "Complete" : "Saving";
+  if (state === "SUCCEEDED")
+    return ["CLEAN", "COMPLETE"].includes(phase ?? "") ? "Complete" : "Saving";
   if (state === "FAILED") return "Failed";
   if (state === "CANCELLED") return "Cancelled";
-  if ((!phase || phase === "WAITING_CAPACITY") && queuePosition && queuePosition > 1) return "Waiting for earlier project";
-  return ({ WAITING_CAPACITY: "Waiting for capacity", CREATING: "Starting", STARTING: "Starting",
-    AMBIGUOUS: "Reconciling launch", DOWNLOADING: "Downloading inputs", RENDERING: "Rendering",
-    CHECKING: "Checking video", SAVING: "Saving", STOPPING: "Stopping compute",
-    CLEAN: "Compute stopped" } as Record<string,string>)[phase ?? ""] ?? "Waiting for cloud status";
+  if ((!phase || phase === "WAITING_CAPACITY") && queuePosition && queuePosition > 1)
+    return "Waiting for earlier project";
+  return (
+    (
+      {
+        WAITING_CAPACITY: "Waiting for capacity",
+        CREATING: "Starting",
+        STARTING: "Starting",
+        AMBIGUOUS: "Reconciling launch",
+        DOWNLOADING: "Downloading inputs",
+        RENDERING: "Rendering",
+        CHECKING: "Checking video",
+        SAVING: "Saving",
+        STOPPING: "Stopping compute",
+        CLEAN: "Compute stopped",
+      } as Record<string, string>
+    )[phase ?? ""] ?? "Waiting for cloud status"
+  );
 }
 
 function hostedContinuationKey(
@@ -647,15 +716,16 @@ export function transcriptionFailureMessage(
   backend: HostedAttempt["execution_backend"] = "PERSONAL_WORKER",
 ): string {
   if (backend === "RUNPOD_POD") {
-    const cause = code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT"
-      ? "Cloud transcription stopped because temporary storage was insufficient."
-      : code === "MEDIA_EXECUTION_IO_FAILED"
-        ? "Cloud transcription could not read or save its data."
-        : code === "MEDIA_EXECUTION_CONTRACT_INVALID" || code === "ASR_RESULT_INVALID"
-          ? "Cloud transcription returned a result that failed validation."
-          : code === "MEDIA_EXECUTION_TIMEOUT"
-            ? "Cloud transcription reached its time limit."
-            : "Cloud transcription stopped before its result could be accepted.";
+    const cause =
+      code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT"
+        ? "Cloud transcription stopped because temporary storage was insufficient."
+        : code === "MEDIA_EXECUTION_IO_FAILED"
+          ? "Cloud transcription could not read or save its data."
+          : code === "MEDIA_EXECUTION_CONTRACT_INVALID" || code === "ASR_RESULT_INVALID"
+            ? "Cloud transcription returned a result that failed validation."
+            : code === "MEDIA_EXECUTION_TIMEOUT"
+              ? "Cloud transcription reached its time limit."
+              : "Cloud transcription stopped before its result could be accepted.";
     return `${cause} Your project and voiceover are saved. Check the failure details before retrying.`;
   }
   if (code === "MEDIA_EXECUTION_SUBPROCESS_FAILED") {
@@ -710,6 +780,8 @@ interface HostedCost {
     readonly seedance_reported_usd?: number;
     readonly seedance_coverage_percent?: number;
     readonly seedance_actual_coverage_percent?: number | null;
+    readonly seedance_planned_coverage_percent?: number | null;
+    readonly seedance_eligible_coverage_percent?: number | null;
     readonly seedance_fallback_count?: number;
   } | null;
 }
@@ -765,11 +837,7 @@ const HOSTED_ACTIVE_ATTEMPT_STATES = new Set([
   "RECONCILING",
   "CANCEL_REQUESTED",
 ]);
-const HOSTED_GENERATION_STAGE_IDS = new Set([
-  "image-generation",
-  "avatar-generation",
-  "render",
-]);
+const HOSTED_GENERATION_STAGE_IDS = new Set(["image-generation", "avatar-generation", "render"]);
 const CPU_CANCEL_CONFIRMATION_MS = 5_000;
 const HOSTED_TERMINAL_STAGE_STATUSES = new Set([
   "FAILED",
@@ -1027,7 +1095,72 @@ interface HostedMediaPaginationResponse {
   readonly videos?: HostedMediaPagination;
 }
 
+interface HostedSceneFootageCoverage {
+  readonly requested_coverage_percent: number;
+  readonly planned_coverage_percent: number | null;
+  readonly actual_coverage_percent: number | null;
+  readonly eligible_coverage_percent?: number | null;
+  readonly fallback_count?: number;
+}
+
+function sceneFootageCoverageFromCost(
+  cost: HostedCost | null | undefined,
+): HostedSceneFootageCoverage | null {
+  const estimate = cost?.api_estimate;
+  if (estimate?.seedance_coverage_percent === undefined) return null;
+  return {
+    requested_coverage_percent: estimate.seedance_coverage_percent,
+    planned_coverage_percent: estimate.seedance_planned_coverage_percent ?? null,
+    actual_coverage_percent: estimate.seedance_actual_coverage_percent ?? null,
+    eligible_coverage_percent: estimate.seedance_eligible_coverage_percent,
+    fallback_count: estimate.seedance_fallback_count,
+  };
+}
+
+function SceneFootageCoverage({ coverage }: { coverage: HostedSceneFootageCoverage | null }) {
+  if (!coverage) return null;
+  const percent = (value: number) => `${Number(value.toFixed(1))}%`;
+  if (coverage.requested_coverage_percent === 0)
+    return (
+      <p className="helper" aria-label="Scene footage coverage">
+        Scene footage Off · no generated scene-video cost.
+      </p>
+    );
+  return (
+    <div className="scene-footage-coverage" aria-label="Scene footage coverage">
+      <p className="helper">
+        Scene footage · Requested up to {percent(coverage.requested_coverage_percent)}
+        {coverage.planned_coverage_percent === null
+          ? " · Planning pending"
+          : ` · Planned ${percent(coverage.planned_coverage_percent)}`}
+        {coverage.actual_coverage_percent === null
+          ? " · Completed coverage pending"
+          : ` · Completed ${percent(coverage.actual_coverage_percent)}`}
+      </p>
+      {coverage.planned_coverage_percent === 0 ? (
+        <p className="helper">
+          No complete eligible scene fits this coverage. Scene footage is skipped.
+        </p>
+      ) : coverage.planned_coverage_percent !== null &&
+        coverage.planned_coverage_percent < coverage.requested_coverage_percent ? (
+        <p className="helper">
+          Whole-scene lengths, avatar time and scenes too long to animate reduce the available
+          coverage.
+        </p>
+      ) : null}
+      {(coverage.fallback_count ?? 0) > 0 ? (
+        <p className="helper">
+          {coverage.fallback_count} scene{coverage.fallback_count === 1 ? "" : "s"} use
+          {coverage.fallback_count === 1 ? "s" : ""} the original image throughout after a definite
+          video failure. Any charged generation remains in the cost.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 interface HostedReviewSnapshot {
+  readonly scene_footage_coverage?: HostedSceneFootageCoverage | null;
   readonly contact_sheet?: readonly HostedContactSheetItem[];
   readonly avatar_footage?: readonly HostedAvatarFootageItem[];
   readonly scene_footage?: readonly HostedAvatarFootageItem[];
@@ -1047,12 +1180,21 @@ interface ProjectDetailResponse {
     media_execution_backend?: "PERSONAL_WORKER" | "RUNPOD_POD";
   };
   readonly attempts: readonly HostedAttempt[];
-  readonly local_worker?: { readonly state: "ONLINE" | "BUSY" | "WAITING_FOR_YOUR_COMPUTER" } | null;
+  readonly local_worker?: {
+    readonly state: "ONLINE" | "BUSY" | "WAITING_FOR_YOUR_COMPUTER";
+  } | null;
   readonly cloud_media?: { readonly available: boolean };
   readonly generation_provider?: "KIE_FAL" | "RUNPOD";
-  readonly api_recovery?: { readonly can_resume_saved_work: boolean; readonly provider_calls_authorized: false };
-  readonly render_retry?: { readonly eligible: boolean; readonly reason: string;
-    readonly failed_attempt_id?: string; readonly attempt_limit: number };
+  readonly api_recovery?: {
+    readonly can_resume_saved_work: boolean;
+    readonly provider_calls_authorized: false;
+  };
+  readonly render_retry?: {
+    readonly eligible: boolean;
+    readonly reason: string;
+    readonly failed_attempt_id?: string;
+    readonly attempt_limit: number;
+  };
   readonly gpu_transport: "DISABLED_UNQUALIFIED" | "QUALIFIED_EXACT";
   readonly gpu_readiness: CatalogResponse["gpu_readiness"];
   readonly generation: null | {
@@ -1404,13 +1546,20 @@ function hostedGpuLanePhase(lane: HostedGpuLaneActivity, apiGeneration = false) 
   const pending = lane.provider_pending_item_count;
   const waiting = lane.waiting_to_submit_item_count;
   const submitting = lane.submitting_item_count;
-  if (typeof pending !== "number" || typeof waiting !== "number" || typeof submitting !== "number" ||
-      ![pending, waiting, submitting].every(count => Number.isSafeInteger(count) && count >= 0)) return phase;
+  if (
+    typeof pending !== "number" ||
+    typeof waiting !== "number" ||
+    typeof submitting !== "number" ||
+    ![pending, waiting, submitting].every((count) => Number.isSafeInteger(count) && count >= 0)
+  )
+    return phase;
   const detail = [
     pending > 0 ? `${pending} sent, awaiting results` : null,
     submitting > 0 ? `${submitting} sending` : null,
     waiting > 0 ? `${waiting} waiting to send` : null,
-  ].filter(Boolean).join(" · ");
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return detail ? { ...phase, detail } : phase;
 }
 
@@ -1568,7 +1717,10 @@ function HostedGpuLaneActivityPanel({
 }
 
 /** Stage 6 and Stage 7 wait for every span to be materialized on its selected backend. */
-function HostedSpanAudioPanel({ progress, backend = "PERSONAL_WORKER" }: {
+function HostedSpanAudioPanel({
+  progress,
+  backend = "PERSONAL_WORKER",
+}: {
   readonly progress: HostedSpanAudioProgress | null;
   readonly backend?: HostedAttempt["execution_backend"];
 }) {
@@ -1635,7 +1787,10 @@ function HostedSpanAudioPanel({ progress, backend = "PERSONAL_WORKER" }: {
               : ""}
           </p>
           {progress.failed > 0 ? (
-            <p className="helper gpu-lane-detail" role={backend === "RUNPOD_POD" ? "alert" : undefined}>
+            <p
+              className="helper gpu-lane-detail"
+              role={backend === "RUNPOD_POD" ? "alert" : undefined}
+            >
               {spanAudioFailureMessage(progress.failure_code ?? null, retrying > 0, backend)}
             </p>
           ) : null}
@@ -1652,16 +1807,19 @@ export function spanAudioFailureMessage(
   backend: HostedAttempt["execution_backend"] = "PERSONAL_WORKER",
 ): string {
   if (backend === "RUNPOD_POD") {
-    const cause = failureCode === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT"
-      ? "Cloud audio preparation stopped because temporary storage was insufficient."
-      : failureCode === "MEDIA_EXECUTION_IO_FAILED"
-        ? "Cloud audio preparation could not read or save the clips."
-        : failureCode === "MEDIA_EXECUTION_TIMEOUT"
-          ? "Cloud audio preparation reached its time limit."
-          : "Cloud audio preparation stopped before all clips were accepted.";
-    return `${cause} Accepted clips remain saved. ${retrying
-      ? "The remaining clips are retrying automatically."
-      : "Check the failure details; no manual replay is available."}`;
+    const cause =
+      failureCode === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT"
+        ? "Cloud audio preparation stopped because temporary storage was insufficient."
+        : failureCode === "MEDIA_EXECUTION_IO_FAILED"
+          ? "Cloud audio preparation could not read or save the clips."
+          : failureCode === "MEDIA_EXECUTION_TIMEOUT"
+            ? "Cloud audio preparation reached its time limit."
+            : "Cloud audio preparation stopped before all clips were accepted.";
+    return `${cause} Accepted clips remain saved. ${
+      retrying
+        ? "The remaining clips are retrying automatically."
+        : "Check the failure details; no manual replay is available."
+    }`;
   }
   if (failureCode === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT") {
     return retrying
@@ -2255,8 +2413,7 @@ function formatMilliseconds(value: number | null | undefined): string {
 }
 
 function formatApproximateMinutes(minMs: number, maxMs: number): string | null {
-  if (!Number.isFinite(minMs) || !Number.isFinite(maxMs) || minMs < 0 || maxMs < minMs)
-    return null;
+  if (!Number.isFinite(minMs) || !Number.isFinite(maxMs) || minMs < 0 || maxMs < minMs) return null;
   const low = Math.max(1, Math.floor(minMs / 60_000));
   const high = Math.max(low, Math.ceil(maxMs / 60_000));
   return low === high ? `~${high} min` : `~${low}–${high} min`;
@@ -2624,7 +2781,9 @@ export function HostedCreateProjectScreen() {
     queryFn: readHostedCatalog,
   });
   const [title, setTitle] = useState("");
-  const [executionBackend, setExecutionBackend] = useState<"PERSONAL_WORKER" | "RUNPOD_POD">("PERSONAL_WORKER");
+  const [executionBackend, setExecutionBackend] = useState<"PERSONAL_WORKER" | "RUNPOD_POD">(
+    "PERSONAL_WORKER",
+  );
   const [avatarVersionId, setAvatarVersionId] = useState("");
   const [styleVersionId, setStyleVersionId] = useState("");
   const [voiceover, setVoiceover] = useState<File | null>(null);
@@ -2632,6 +2791,37 @@ export function HostedCreateProjectScreen() {
   const [extraPromptKeywords, setExtraPromptKeywords] = useState("");
   const [applyExtraPromptKeywords, setApplyExtraPromptKeywords] = useState(false);
   const [userSeed, setUserSeed] = useState("");
+  const [videoCoverageInput, setVideoCoverageInput] = useState("7");
+  const coverageInitialized = useRef(false);
+  const [voiceoverDurationMs, setVoiceoverDurationMs] = useState<number | null>(null);
+  const [creationLocked, setCreationLocked] = useState(false);
+  const videoCoveragePercent = Number(videoCoverageInput);
+  const coverageValid =
+    /^\d{1,3}$/u.test(videoCoverageInput) &&
+    Number.isInteger(videoCoveragePercent) &&
+    videoCoveragePercent >= 0 &&
+    videoCoveragePercent <= 100;
+  const fingerprint = JSON.stringify([
+    title.trim(),
+    executionBackend,
+    avatarVersionId,
+    styleVersionId,
+    applyExtraPromptKeywords,
+    extraPromptKeywords.trim(),
+    userSeed.trim(),
+    videoCoverageInput,
+  ]);
+  const currentInput = useRef({ fingerprint, voiceover });
+  currentInput.current = { fingerprint, voiceover };
+  const inputMatches = (snapshot: { fingerprint: string; voiceover: File | null }) =>
+    currentInput.current.fingerprint === snapshot.fingerprint &&
+    currentInput.current.voiceover === snapshot.voiceover;
+  const changeCoverage = (value: string) => {
+    if (creationLocked) return;
+    coverageInitialized.current = true;
+    setVideoCoverageInput(value);
+    setPreflightResult(null);
+  };
   const [voiceoverMeta, setVoiceoverMeta] = useState<{
     readonly filename: string;
     readonly contentType: string;
@@ -2641,12 +2831,14 @@ export function HostedCreateProjectScreen() {
   const [preflightResult, setPreflightResult] = useState<HostedPreflightResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const createRequest = useRef<{ readonly body: string; readonly key: string } | null>(null);
+  const creationAccepted = useRef(false);
   const contentTypeForVoiceover = (file: File): string => {
     if (/\.wav$/iu.test(file.name)) return "audio/wav";
     if (/\.mp3$/iu.test(file.name)) return "audio/mpeg";
     return VOICEOVER_TYPES.has(file.type) ? file.type : "";
   };
   const selectVoiceover = (selected: File | null) => {
+    if (creationLocked) return;
     setPreflightResult(null);
     setVoiceoverMeta(null);
     if (!selected) {
@@ -2666,11 +2858,15 @@ export function HostedCreateProjectScreen() {
   const keywordsValid = extraPromptKeywords.length <= 500;
   const workerOnline = catalog.data?.media_worker_state === "ONLINE";
   const requiredDiskBytes = 2 * 1024 ** 3 + (voiceover?.size ?? 0) * 2;
-  const localDiskReady = catalog.data?.local_media_free_bytes === undefined ||
-    (catalog.data.local_media_free_bytes !== null && catalog.data.local_media_free_bytes >= requiredDiskBytes);
+  const localDiskReady =
+    catalog.data?.local_media_free_bytes === undefined ||
+    (catalog.data.local_media_free_bytes !== null &&
+      catalog.data.local_media_free_bytes >= requiredDiskBytes);
   const diskSpaceMessage = `Free disk space on your connected computer. Local media needs ${(requiredDiskBytes / 1024 ** 3).toFixed(2)} GiB free; ${catalog.data?.local_media_free_bytes == null ? "capacity is unknown" : `${(catalog.data.local_media_free_bytes / 1024 ** 3).toFixed(2)} GiB available`}.`;
-  const executionReady = executionBackend === "RUNPOD_POD"
-    ? catalog.data?.cloud_media?.available === true : workerOnline && localDiskReady;
+  const executionReady =
+    executionBackend === "RUNPOD_POD"
+      ? catalog.data?.cloud_media?.available === true
+      : workerOnline && localDiskReady;
   const inputChecklist = [
     { label: "Video title", complete: Boolean(title.trim()) },
     { label: "Voiceover", complete: Boolean(voiceover) },
@@ -2679,6 +2875,15 @@ export function HostedCreateProjectScreen() {
   ];
   useEffect(() => {
     if (!catalog.data) return;
+    if (!coverageInitialized.current) {
+      const value =
+        catalog.data.video_generation?.coverage_default_percent ??
+        catalog.data.video_generation?.coverage_percent ??
+        7;
+      if (Number.isInteger(value) && value >= 0 && value <= 100)
+        setVideoCoverageInput(String(value));
+      coverageInitialized.current = true;
+    }
     if (!avatarVersionId && catalog.data.avatars.length === 1) {
       setAvatarVersionId(catalog.data.avatars[0]!.version_id);
     }
@@ -2687,14 +2892,45 @@ export function HostedCreateProjectScreen() {
         (style) => style.version_id === catalog.data.default_image_style_version_id,
       );
       if (defaultStyle) setStyleVersionId(defaultStyle.version_id);
-      else if (catalog.data.styles.length === 1) setStyleVersionId(catalog.data.styles[0]!.version_id);
+      else if (catalog.data.styles.length === 1)
+        setStyleVersionId(catalog.data.styles[0]!.version_id);
     }
   }, [avatarVersionId, catalog.data, styleVersionId]);
+  useEffect(() => {
+    setVoiceoverDurationMs(null);
+    if (!voiceover) return;
+    let active = true;
+    void bounded(audioDurationMs(voiceover), "Voiceover duration timed out.", 15_000)
+      .then((duration) => {
+        if (active && Number.isFinite(duration) && duration > 0) setVoiceoverDurationMs(duration);
+      })
+      .catch(() => {
+        /* Readiness reports an unreadable voiceover before submission. */
+      });
+    return () => {
+      active = false;
+    };
+  }, [voiceover]);
+  const coverageSupported =
+    videoCoveragePercent === 0 ||
+    catalog.data?.video_generation?.adjustable_coverage_supported !== false;
   const canPreflight = Boolean(
-    title.trim() && avatarVersionId && styleVersionId && voiceover && keywordsValid,
+    title.trim() &&
+      avatarVersionId &&
+      styleVersionId &&
+      voiceover &&
+      keywordsValid &&
+      coverageValid &&
+      coverageSupported,
   );
   const preflightMutation = useMutation({
     mutationFn: async () => {
+      const snapshot = { fingerprint, voiceover };
+      if (!coverageValid) throw new Error("Use a whole percentage from 0 through 100.");
+      if (!coverageSupported)
+        throw new Error(
+          "Scene video generation is currently unavailable. Choose Off or retry later.",
+        );
       if (!voiceover) throw new Error("Choose a voiceover first.");
       const contentType = contentTypeForVoiceover(voiceover);
       if (!VOICEOVER_TYPES.has(contentType))
@@ -2707,11 +2943,14 @@ export function HostedCreateProjectScreen() {
         "Voiceover duration timed out. Choose a valid WAV or MP3 file and retry.",
         15_000,
       );
+      if (!inputMatches(snapshot))
+        throw new Error("Project inputs changed. Check readiness again.");
       const result = await bounded(
         readJson<HostedPreflightResponse>("/api/v2/hosted/projects/preflight", {
           method: "POST",
           body: JSON.stringify({
-            schema_version: "videoforge-hosted-project-preflight/v1",
+            schema_version: "videoforge-hosted-project-preflight/v2",
+            video_coverage_percent: videoCoveragePercent,
             execution_backend: executionBackend,
             title: title.trim(),
             avatar_profile_version_id: avatarVersionId,
@@ -2730,9 +2969,12 @@ export function HostedCreateProjectScreen() {
         }),
         "Hosted preflight timed out. Retry the readiness check.",
       );
-      return { result, filename, contentType, checksumSha256, durationMs };
+      if (!inputMatches(snapshot))
+        throw new Error("Project inputs changed. Check readiness again.");
+      return { result, filename, contentType, checksumSha256, durationMs, snapshot };
     },
-    onSuccess: ({ result, filename, contentType, checksumSha256, durationMs }) => {
+    onSuccess: ({ result, filename, contentType, checksumSha256, durationMs, snapshot }) => {
+      if (!inputMatches(snapshot)) return;
       setVoiceoverMeta({ filename, contentType, checksumSha256, durationMs });
       setPreflightResult(result);
       setError(null);
@@ -2744,12 +2986,17 @@ export function HostedCreateProjectScreen() {
   });
   const submit = useMutation({
     mutationFn: async () => {
+      const snapshot = { fingerprint, voiceover };
+      if (!coverageValid || !coverageSupported)
+        throw new Error("Choose an available whole percentage from 0 through 100.");
       if (!voiceover) throw new Error("Choose a voiceover first.");
       const checked = preflightReady(preflightResult)
         ? null
         : await preflightMutation.mutateAsync();
       if (!preflightReady(checked?.result ?? preflightResult))
         throw new Error("Project inputs are not ready. Fix the blockers below.");
+      if (!inputMatches(snapshot))
+        throw new Error("Project inputs changed. Check readiness again.");
       setError(null);
       const metadata =
         checked ??
@@ -2759,6 +3006,7 @@ export function HostedCreateProjectScreen() {
         })();
       const body = {
         schema_version: HOSTED_CREATE_SCHEMA,
+        video_coverage_percent: videoCoveragePercent,
         execution_backend: executionBackend,
         title: title.trim(),
         avatar_profile_version_id: avatarVersionId,
@@ -2775,12 +3023,17 @@ export function HostedCreateProjectScreen() {
         },
       };
       const serializedBody = JSON.stringify(body);
+      if (creationLocked && createRequest.current?.body !== serializedBody)
+        throw new Error(
+          "Creation is awaiting confirmation. Retry with the original inputs or check Projects before changing this request.",
+        );
       if (createRequest.current?.body !== serializedBody) {
         createRequest.current = {
           body: serializedBody,
           key: `browser-project-${crypto.randomUUID()}`,
         };
       }
+      setCreationLocked(true);
       const created = await bounded(
         readJson<{
           project_id: string;
@@ -2796,6 +3049,7 @@ export function HostedCreateProjectScreen() {
         }),
         "Hosted project creation timed out. Retry from Create Project.",
       );
+      creationAccepted.current = true;
       if (created.upload) await putHostedUpload(created.upload, voiceover);
       const ready = await bounded(
         readJson<{ project_id: string; cpu_submission: unknown }>(
@@ -2814,8 +3068,14 @@ export function HostedCreateProjectScreen() {
       return ready.project_id;
     },
     onSuccess: (projectId) => window.location.assign(`/projects/${projectId}`),
-    onError: (value) =>
-      setError(value instanceof Error ? value.message : "Project could not be created."),
+    onError: (value) => {
+      // Definite input/auth rejections create no project. Network, timeout, 5xx and
+      // upload/commit failures retain the original request for an identical retry.
+      const status = (value as Error & { status?: number }).status;
+      if (!creationAccepted.current && [400, 401, 403, 422].includes(status ?? 0))
+        setCreationLocked(false);
+      setError(value instanceof Error ? value.message : "Project could not be created.");
+    },
   });
 
   if (catalog.isPending)
@@ -2843,231 +3103,257 @@ export function HostedCreateProjectScreen() {
       <PageHeader title="New project" />
       <div className="layout-main hosted-project-layout">
         <Panel className="create-config-panel hosted-project-form">
-          <section className="create-section" aria-labelledby="hosted-project-video">
-            <header className="create-section-header">
-              <span className="create-section-index">01</span>
-              <div>
-                <h3 id="hosted-project-video">Video</h3>
-              </div>
-            </header>
-            <div className="create-section-grid">
-              <div className="field field-wide">
-                <label htmlFor="hosted-project-title">Video title</label>
-                <input
-                  id="hosted-project-title"
-                  className="input"
-                  value={title}
-                  maxLength={240}
-                  placeholder="Clear project title"
-                  onChange={(event) => {
-                    setTitle(event.target.value);
-                    setPreflightResult(null);
-                  }}
-                />
-              </div>
-              <div className="field field-wide">
-                <span className="field-label">Final voiceover</span>
-                <label
-                  className={`dropzone hosted-voiceover-dropzone${voiceoverDragOver ? " is-drag-over" : ""}`}
-                  onDragOver={(event) => {
-                    event.preventDefault();
-                    if (preflightMutation.isPending || submit.isPending) return;
-                    event.dataTransfer.dropEffect = "copy";
-                    setVoiceoverDragOver(true);
-                  }}
-                  onDragLeave={(event) => {
-                    if (!event.currentTarget.contains(event.relatedTarget as Node | null))
-                      setVoiceoverDragOver(false);
-                  }}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    setVoiceoverDragOver(false);
-                    if (preflightMutation.isPending || submit.isPending) return;
-                    if (event.dataTransfer.files.length > 1) {
-                      setVoiceover(null);
-                      setVoiceoverMeta(null);
-                      setPreflightResult(null);
-                      setError("Drop one WAV or MP3 voiceover.");
-                      return;
-                    }
-                    const selected = event.dataTransfer.files[0];
-                    if (selected) selectVoiceover(selected);
-                  }}
-                >
+          <fieldset className="hosted-create-inputs" disabled={submit.isPending || creationLocked}>
+            <section className="create-section" aria-labelledby="hosted-project-video">
+              <header className="create-section-header">
+                <span className="create-section-index">01</span>
+                <div>
+                  <h3 id="hosted-project-video">Video</h3>
+                </div>
+              </header>
+              <div className="create-section-grid">
+                <div className="field field-wide">
+                  <label htmlFor="hosted-project-title">Video title</label>
                   <input
-                    aria-label="Final voiceover"
-                    type="file"
-                    accept="audio/wav,audio/mpeg,.wav,.mp3"
-                    disabled={preflightMutation.isPending || submit.isPending}
-                    onClick={(event) => {
-                      event.currentTarget.value = "";
+                    id="hosted-project-title"
+                    className="input"
+                    value={title}
+                    maxLength={240}
+                    placeholder="Clear project title"
+                    onChange={(event) => {
+                      if (creationLocked) return;
+                      setTitle(event.target.value);
+                      setPreflightResult(null);
                     }}
-                    onChange={(event) => selectVoiceover(event.target.files?.[0] ?? null)}
                   />
-                  <FileAudio size={28} />
-                  <span>
-                    <strong>{voiceover?.name ?? "Choose or drop your final voiceover"}</strong>
-                    {voiceover
-                      ? `${(voiceover.size / 1_000_000).toFixed(1)} MB · ready to check`
-                      : "WAV or MP3 · 10 seconds to 60 minutes · max 1 GB"}
-                  </span>
-                </label>
-              </div>
-            </div>
-          </section>
-
-          <section className="create-section" aria-labelledby="hosted-project-look">
-            <header className="create-section-header">
-              <span className="create-section-index">02</span>
-              <div>
-                <h3 id="hosted-project-look">Look</h3>
-              </div>
-            </header>
-            <div className="create-section-grid">
-              <div className="field preset-field">
-                <VisualPresetSelect
-                  id="hosted-avatar-select"
-                  label="Avatar"
-                  options={catalog.data.avatars.map((avatar) => ({
-                    id: avatar.version_id,
-                    imageUrl: avatar.thumbnail_url ?? "",
-                    meta: `Version ${avatar.version_number}${
-                      avatar.avatar_video_source_ready === false ? " · no avatar video yet" : ""
-                    }`,
-                    name: avatar.name,
-                  }))}
-                  selectedId={avatarVersionId}
-                  onChange={(value) => {
-                    setAvatarVersionId(value);
-                    setPreflightResult(null);
-                  }}
-                />
-                <div className="preset-select-actions">
-                  <Link
-                    className="button button-secondary"
-                    to="/avatars/new"
-                    search={{ returnTo: "/projects/new" } as never}
-                  >
-                    <UserPlus size={15} /> New avatar
-                  </Link>
                 </div>
-              </div>
-              <div className="field preset-field">
-                <VisualPresetSelect
-                  id="hosted-style-select"
-                  label="Image style"
-                  options={catalog.data.styles.map((style) => ({
-                    id: style.version_id,
-                    imageUrl: style.cover_url ?? "",
-                    meta: `${style.version_id === catalog.data.default_image_style_version_id ? "Default · " : ""}Version ${style.version_number}`,
-                    name: style.name,
-                  }))}
-                  selectedId={styleVersionId}
-                  onChange={(value) => {
-                    setStyleVersionId(value);
-                    setPreflightResult(null);
-                  }}
-                />
-                <div className="preset-select-actions">
-                  <Link
-                    className="button button-secondary"
-                    to="/styles/new"
-                    search={{ returnTo: "/projects/new" } as never}
+                <div className="field field-wide">
+                  <span className="field-label">Final voiceover</span>
+                  <label
+                    className={`dropzone hosted-voiceover-dropzone${voiceoverDragOver ? " is-drag-over" : ""}`}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      if (preflightMutation.isPending || submit.isPending || creationLocked) return;
+                      event.dataTransfer.dropEffect = "copy";
+                      setVoiceoverDragOver(true);
+                    }}
+                    onDragLeave={(event) => {
+                      if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+                        setVoiceoverDragOver(false);
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      setVoiceoverDragOver(false);
+                      if (preflightMutation.isPending || submit.isPending || creationLocked) return;
+                      if (event.dataTransfer.files.length > 1) {
+                        setVoiceover(null);
+                        setVoiceoverMeta(null);
+                        setPreflightResult(null);
+                        setError("Drop one WAV or MP3 voiceover.");
+                        return;
+                      }
+                      const selected = event.dataTransfer.files[0];
+                      if (selected) selectVoiceover(selected);
+                    }}
                   >
-                    <ImagePlus size={15} /> New style
-                  </Link>
-                </div>
-              </div>
-              <Disclosure className="field field-wide create-options" summary="Optional settings">
-                <div className="stack">
-                  <label className="toggle-row">
+                    <input
+                      aria-label="Final voiceover"
+                      type="file"
+                      accept="audio/wav,audio/mpeg,.wav,.mp3"
+                      disabled={preflightMutation.isPending || submit.isPending}
+                      onClick={(event) => {
+                        event.currentTarget.value = "";
+                      }}
+                      onChange={(event) => selectVoiceover(event.target.files?.[0] ?? null)}
+                    />
+                    <FileAudio size={28} />
                     <span>
-                      <strong>Add image keywords</strong>
-                      <small>Guide scene images with extra words.</small>
+                      <strong>{voiceover?.name ?? "Choose or drop your final voiceover"}</strong>
+                      {voiceover
+                        ? `${(voiceover.size / 1_000_000).toFixed(1)} MB · ready to check`
+                        : "WAV or MP3 · 10 seconds to 60 minutes · max 1 GB"}
                     </span>
-                    <input
-                      type="checkbox"
-                      checked={applyExtraPromptKeywords}
-                      onChange={(event) => {
-                        setApplyExtraPromptKeywords(event.target.checked);
-                        setPreflightResult(null);
-                      }}
-                    />
                   </label>
-                  {applyExtraPromptKeywords ? (
-                    <div className="field">
-                      <label htmlFor="hosted-image-keywords">Image keywords</label>
-                      <textarea
-                        id="hosted-image-keywords"
-                        className="textarea"
-                        value={extraPromptKeywords}
-                        maxLength={500}
-                        rows={3}
-                        onChange={(event) => {
-                          setExtraPromptKeywords(event.target.value);
-                          setPreflightResult(null);
-                        }}
-                        placeholder="natural light, tactile materials"
-                      />
-                      <small>{extraPromptKeywords.length}/500 characters</small>
-                    </div>
-                  ) : null}
-                  <div className="field">
-                    <label htmlFor="hosted-user-seed">Variation (optional)</label>
-                    <input
-                      id="hosted-user-seed"
-                      className="input"
-                      inputMode="numeric"
-                      type="number"
-                      value={userSeed}
-                      onChange={(event) => {
-                        setUserSeed(event.target.value);
-                        setPreflightResult(null);
-                      }}
-                      placeholder="Automatic"
-                    />
+                </div>
+              </div>
+            </section>
+
+            <section className="create-section" aria-labelledby="hosted-project-look">
+              <header className="create-section-header">
+                <span className="create-section-index">02</span>
+                <div>
+                  <h3 id="hosted-project-look">Look</h3>
+                </div>
+              </header>
+              <div className="create-section-grid">
+                <div className="field preset-field">
+                  <VisualPresetSelect
+                    id="hosted-avatar-select"
+                    label="Avatar"
+                    options={catalog.data.avatars.map((avatar) => ({
+                      id: avatar.version_id,
+                      imageUrl: avatar.thumbnail_url ?? "",
+                      meta: `Version ${avatar.version_number}${
+                        avatar.avatar_video_source_ready === false ? " · no avatar video yet" : ""
+                      }`,
+                      name: avatar.name,
+                    }))}
+                    selectedId={avatarVersionId}
+                    onChange={(value) => {
+                      setAvatarVersionId(value);
+                      setPreflightResult(null);
+                    }}
+                  />
+                  <div className="preset-select-actions">
+                    <Link
+                      className="button button-secondary"
+                      to="/avatars/new"
+                      search={{ returnTo: "/projects/new" } as never}
+                    >
+                      <UserPlus size={15} /> New avatar
+                    </Link>
                   </div>
                 </div>
-              </Disclosure>
-            </div>
-          </section>
+                <div className="field preset-field">
+                  <VisualPresetSelect
+                    id="hosted-style-select"
+                    label="Image style"
+                    options={catalog.data.styles.map((style) => ({
+                      id: style.version_id,
+                      imageUrl: style.cover_url ?? "",
+                      meta: `${style.version_id === catalog.data.default_image_style_version_id ? "Default · " : ""}Version ${style.version_number}`,
+                      name: style.name,
+                    }))}
+                    selectedId={styleVersionId}
+                    onChange={(value) => {
+                      setStyleVersionId(value);
+                      setPreflightResult(null);
+                    }}
+                  />
+                  <div className="preset-select-actions">
+                    <Link
+                      className="button button-secondary"
+                      to="/styles/new"
+                      search={{ returnTo: "/projects/new" } as never}
+                    >
+                      <ImagePlus size={15} /> New style
+                    </Link>
+                  </div>
+                </div>
+                <Disclosure className="field field-wide create-options" summary="Optional settings">
+                  <div className="stack">
+                    <label className="toggle-row">
+                      <span>
+                        <strong>Add image keywords</strong>
+                        <small>Guide scene images with extra words.</small>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={applyExtraPromptKeywords}
+                        onChange={(event) => {
+                          setApplyExtraPromptKeywords(event.target.checked);
+                          setPreflightResult(null);
+                        }}
+                      />
+                    </label>
+                    {applyExtraPromptKeywords ? (
+                      <div className="field">
+                        <label htmlFor="hosted-image-keywords">Image keywords</label>
+                        <textarea
+                          id="hosted-image-keywords"
+                          className="textarea"
+                          value={extraPromptKeywords}
+                          maxLength={500}
+                          rows={3}
+                          onChange={(event) => {
+                            setExtraPromptKeywords(event.target.value);
+                            setPreflightResult(null);
+                          }}
+                          placeholder="natural light, tactile materials"
+                        />
+                        <small>{extraPromptKeywords.length}/500 characters</small>
+                      </div>
+                    ) : null}
+                    <div className="field">
+                      <label htmlFor="hosted-user-seed">Variation (optional)</label>
+                      <input
+                        id="hosted-user-seed"
+                        className="input"
+                        inputMode="numeric"
+                        type="number"
+                        value={userSeed}
+                        onChange={(event) => {
+                          setUserSeed(event.target.value);
+                          setPreflightResult(null);
+                        }}
+                        placeholder="Automatic"
+                      />
+                    </div>
+                  </div>
+                </Disclosure>
+              </div>
+            </section>
+          </fieldset>
         </Panel>
 
         <Panel className="create-run-panel hosted-project-summary" heading="Cost & readiness">
-          <fieldset className="field media-execution-field" aria-describedby="media-execution-help"
-            disabled={preflightMutation.isPending || submit.isPending}>
+          <fieldset
+            className="field media-execution-field"
+            aria-describedby="media-execution-help"
+            disabled={preflightMutation.isPending || submit.isPending || creationLocked}
+          >
             <legend>Media execution</legend>
             <div className="media-execution-options">
-              {([["PERSONAL_WORKER", "Local"], ["RUNPOD_POD", "Cloud"]] as const).map(([backend, label]) => (
+              {(
+                [
+                  ["PERSONAL_WORKER", "Local"],
+                  ["RUNPOD_POD", "Cloud"],
+                ] as const
+              ).map(([backend, label]) => (
                 <label key={backend}>
-                  <input type="radio" name="media-execution-backend" value={backend}
+                  <input
+                    type="radio"
+                    name="media-execution-backend"
+                    value={backend}
                     checked={executionBackend === backend}
                     onChange={() => {
                       setExecutionBackend(backend);
                       setPreflightResult(null);
-                    }} />
+                    }}
+                  />
                   <span>{label}</span>
                 </label>
               ))}
             </div>
-            <small id="media-execution-help">Local uses your connected computer. Cloud adds compute cost.</small>
+            <small id="media-execution-help">
+              Local uses your connected computer. Cloud adds compute cost.
+            </small>
           </fieldset>
           <div className={`run-readiness ${executionReady ? "ready" : "blocked"}`} role="status">
             {executionReady ? <Check size={18} /> : <AlertTriangle size={18} />}
             <span>
               <strong>
                 {executionBackend === "RUNPOD_POD"
-                  ? executionReady ? "Cloud execution is enabled" : "Cloud execution is unavailable"
-                  : workerOnline ? localDiskReady ? "Your computer is connected" : "Free disk space before starting" : "Connect your computer"}
+                  ? executionReady
+                    ? "Cloud execution is enabled"
+                    : "Cloud execution is unavailable"
+                  : workerOnline
+                    ? localDiskReady
+                      ? "Your computer is connected"
+                      : "Free disk space before starting"
+                    : "Connect your computer"}
               </strong>
               <small>
                 {executionBackend === "RUNPOD_POD"
                   ? executionReady
                     ? "No connected computer is required. Capacity is checked when your video is admitted."
-                    : catalog.data.cloud_media?.message ?? "Cloud access is not enabled for your account."
-                  : workerOnline && !localDiskReady ? diskSpaceMessage : workerOnline
-                  ? "Ready when inputs are complete."
-                  : "Connect your media worker in Settings."}
+                    : (catalog.data.cloud_media?.message ??
+                      "Cloud access is not enabled for your account.")
+                  : workerOnline && !localDiskReady
+                    ? diskSpaceMessage
+                    : workerOnline
+                      ? "Ready when inputs are complete."
+                      : "Connect your media worker in Settings."}
               </small>
             </span>
           </div>
@@ -3124,7 +3410,85 @@ export function HostedCreateProjectScreen() {
             </p>
           ) : null}
           {catalog.data.video_generation ? (
-            <p className="helper">Includes {catalog.data.video_generation.coverage_percent}% generated video · 720p · 16:9 · ${catalog.data.video_generation.usd_per_second.toFixed(5)}/generated second.</p>
+            <fieldset
+              className="video-coverage-control"
+              disabled={submit.isPending || creationLocked}
+              aria-describedby="video-coverage-help"
+            >
+              <legend>Video footage coverage</legend>
+              <div className="video-coverage-presets" aria-label="Coverage presets">
+                {VIDEO_COVERAGE_PRESETS.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`button button-secondary${coverageValid && videoCoveragePercent === value ? " is-selected" : ""}`}
+                    aria-pressed={coverageValid && videoCoveragePercent === value}
+                    onClick={() => changeCoverage(String(value))}
+                  >
+                    {value === 0 ? "Off" : `${value}%`}
+                  </button>
+                ))}
+              </div>
+              <div className="video-coverage-inputs">
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  aria-label="Video footage coverage slider"
+                  value={coverageValid ? videoCoveragePercent : 0}
+                  onChange={(event) => changeCoverage(event.target.value)}
+                />
+                <label htmlFor="video-coverage-percent">Coverage percent</label>
+                <input
+                  id="video-coverage-percent"
+                  className="input"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={videoCoverageInput}
+                  aria-invalid={!coverageValid}
+                  onChange={(event) => changeCoverage(event.target.value)}
+                />
+              </div>
+              <p id="video-coverage-help" className="helper">
+                {coverageValid
+                  ? videoCoveragePercent === 0
+                    ? "Off · no generated scene-video jobs or charges."
+                    : `Up to ${videoCoveragePercent}% of the finished video. Video replaces each selected scene completely.`
+                  : "Use a whole percentage from 0 through 100."}
+              </p>
+              <p className="helper">
+                Whole-scene lengths, avatar time and clip availability can reduce coverage. 100%
+                animates every eligible full-screen image scene.
+              </p>
+              {!coverageSupported ? (
+                <p className="validation validation-danger">
+                  Scene video generation is currently unavailable. Choose Off or retry later.
+                </p>
+              ) : null}
+              {coverageValid && voiceoverDurationMs !== null ? (
+                <p className="helper" aria-label="Preliminary scene footage estimate">
+                  Target ceiling ·{" "}
+                  {(((voiceoverDurationMs / 1000) * videoCoveragePercent) / 100).toFixed(2)}s scene
+                  footage
+                  {videoCoveragePercent === 0
+                    ? " · $0 scene-video estimate"
+                    : ` · Preliminary footage-only base estimate ${formatUsd((((voiceoverDurationMs / 1000) * videoCoveragePercent) / 100) * catalog.data.video_generation.usd_per_second)}`}
+                  {videoCoveragePercent > 0
+                    ? ". Exact planning accounts for complete scenes and billed clip-duration allowances."
+                    : "."}
+                </p>
+              ) : null}
+            </fieldset>
+          ) : null}
+          {creationLocked ? (
+            <p className="helper" role="status">
+              Your original creation request is saved. Retry with these inputs to confirm it; check
+              Projects before starting another video.
+            </p>
           ) : null}
           {voiceoverMeta ? (
             <p className="helper">Voiceover · {formatMilliseconds(voiceoverMeta.durationMs)}</p>
@@ -3138,8 +3502,19 @@ export function HostedCreateProjectScreen() {
             </p>
           ) : null}
           <Button
+            variant="secondary"
+            disabled={
+              !canPreflight || preflightMutation.isPending || submit.isPending || creationLocked
+            }
+            onClick={() => preflightMutation.mutate()}
+          >
+            Check readiness
+          </Button>
+          <Button
             busy={preflightMutation.isPending || submit.isPending}
             disabled={
+              !coverageValid ||
+              !coverageSupported ||
               (!canPreflight && !preflightReady(preflightResult)) ||
               preflightMutation.isPending ||
               submit.isPending ||
@@ -4532,7 +4907,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           section === "images" ? mergeHostedMedia(current.images, nextImages) : current.images,
         avatar:
           section === "avatar" ? mergeHostedMedia(current.avatar, nextAvatar) : current.avatar,
-        videos: section === "videos" ? mergeHostedMedia(current.videos, nextVideos) : current.videos,
+        videos:
+          section === "videos" ? mergeHostedMedia(current.videos, nextVideos) : current.videos,
       }));
       setMediaPage((current) => ({ ...current, [section]: nextPage }));
     } catch (error) {
@@ -4689,10 +5065,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     (attempt) => attempt.kind === "RENDER",
   );
   const render = renderAttempts.at(-1);
-  const latestCloudAttempt = currentHostedAttempt((query.data?.attempts ?? [])
-    .filter(attempt => attempt.execution_backend === "RUNPOD_POD"));
-  const renderRetryBackend = render?.execution_backend === "RUNPOD_POD"
-    ? "RUNPOD_POD" : "PERSONAL_WORKER";
+  const latestCloudAttempt = currentHostedAttempt(
+    (query.data?.attempts ?? []).filter((attempt) => attempt.execution_backend === "RUNPOD_POD"),
+  );
+  const renderRetryBackend =
+    render?.execution_backend === "RUNPOD_POD" ? "RUNPOD_POD" : "PERSONAL_WORKER";
   const automaticContextAttempt = useRef<string | null>(null);
   const automaticContextReconciliationAttempt = useRef<string | null>(null);
   const automaticPromptAttempt = useRef<string | null>(null);
@@ -4702,7 +5079,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     readonly attemptId: string;
     readonly attemptState: string;
   } | null>(null);
-  const [selectedCancellationJobs, setSelectedCancellationJobs] = useState<Partial<Record<HostedAttempt["kind"], string>>>({});
+  const [selectedCancellationJobs, setSelectedCancellationJobs] = useState<
+    Partial<Record<HostedAttempt["kind"], string>>
+  >({});
   const cancellationInFlight = useRef(false);
   const asrHandoff = useMutation({
     mutationFn: async () => {
@@ -4794,14 +5173,18 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     mutationFn: (failedAttemptId: string) =>
       readJson(`/api/v2/hosted/projects/${projectId}/render-retry`, {
         method: "POST",
-        body: JSON.stringify(renderRetryBackend === "RUNPOD_POD" ? {
-          schema_version: "videoforge-hosted-render-retry/v2",
-          failed_attempt_id: failedAttemptId,
-          execution_backend: "RUNPOD_POD",
-        } : {
-          schema_version: "videoforge-hosted-render-disk-retry/v1",
-          failed_attempt_id: failedAttemptId,
-        }),
+        body: JSON.stringify(
+          renderRetryBackend === "RUNPOD_POD"
+            ? {
+                schema_version: "videoforge-hosted-render-retry/v2",
+                failed_attempt_id: failedAttemptId,
+                execution_backend: "RUNPOD_POD",
+              }
+            : {
+                schema_version: "videoforge-hosted-render-disk-retry/v1",
+                failed_attempt_id: failedAttemptId,
+              },
+        ),
       }),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
   });
@@ -4952,7 +5335,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         }),
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
-    onSettled: () => { cancellationInFlight.current = false; },
+    onSettled: () => {
+      cancellationInFlight.current = false;
+    },
   });
   const armedAttemptCurrentState = armedCancellation
     ? query.data?.attempts.find((attempt) => attempt.id === armedCancellation.attemptId)?.state
@@ -5027,19 +5412,26 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     : fallbackHostedStages(asr, render, query.data.generation, query.data.voiceover_context);
   const cloudStageAttempts: Readonly<Record<string, HostedAttempt | undefined>> = {
     transcription: asr,
-    "audio-spanning": currentHostedAttempt(query.data.attempts.filter(attempt => attempt.kind === "SPAN_AUDIO")),
+    "audio-spanning": currentHostedAttempt(
+      query.data.attempts.filter((attempt) => attempt.kind === "SPAN_AUDIO"),
+    ),
     render,
     "technical-check": render,
   };
   // Stored attempts retain their original backend; a missing legacy field means Local.
   const spanAudioBackend = cloudStageAttempts["audio-spanning"]
-    ? cloudStageAttempts["audio-spanning"].execution_backend ?? "PERSONAL_WORKER"
-    : query.data.project.media_execution_backend ?? "PERSONAL_WORKER";
-  const isCloudMediaStage = (id: string) => id in cloudStageAttempts &&
-    (cloudStageAttempts[id]?.execution_backend ?? query.data.project.media_execution_backend) === "RUNPOD_POD";
-  const cloudFinalPhasePending = render?.execution_backend === "RUNPOD_POD" &&
+    ? (cloudStageAttempts["audio-spanning"].execution_backend ?? "PERSONAL_WORKER")
+    : (query.data.project.media_execution_backend ?? "PERSONAL_WORKER");
+  const isCloudMediaStage = (id: string) =>
+    id in cloudStageAttempts &&
+    (cloudStageAttempts[id]?.execution_backend ?? query.data.project.media_execution_backend) ===
+      "RUNPOD_POD";
+  const cloudFinalPhasePending =
+    render?.execution_backend === "RUNPOD_POD" &&
     !["CLEAN", "COMPLETE"].includes(render.cloud_phase ?? "");
-  const cloudCleanupPending = render?.execution_backend === "RUNPOD_POD" && render.state === "SUCCEEDED" &&
+  const cloudCleanupPending =
+    render?.execution_backend === "RUNPOD_POD" &&
+    render.state === "SUCCEEDED" &&
     !["CLEAN", "COMPLETE"].includes(render.cloud_phase ?? "");
   const uiStages = hostedProjectStages(
     stages,
@@ -5047,20 +5439,31 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     query.data.generation_provider === "KIE_FAL",
   ).map((stage) => ({
     ...stage,
-    status: cloudCleanupPending && ["render", "technical-check"].includes(stage.id) ? "RUNNING" : stage.status,
-    detail:
-      isCloudMediaStage(stage.id)
-        ? cloudMediaPhaseLabel(cloudStageAttempts[stage.id]?.cloud_phase, cloudStageAttempts[stage.id]?.state ?? "WAITING", query.data.queue?.position)
-        : stage.status === "COMPLETE" && stage.id !== "video-generation"
+    status:
+      cloudCleanupPending && ["render", "technical-check"].includes(stage.id)
+        ? "RUNNING"
+        : stage.status,
+    detail: isCloudMediaStage(stage.id)
+      ? cloudMediaPhaseLabel(
+          cloudStageAttempts[stage.id]?.cloud_phase,
+          cloudStageAttempts[stage.id]?.state ?? "WAITING",
+          query.data.queue?.position,
+        )
+      : stage.status === "COMPLETE" && stage.id !== "video-generation"
         ? "Complete"
         : stage.status === "PENDING" && stage.detail === "Waiting for an authoritative update."
           ? "Waiting"
           : stage.detail,
   }));
   // Preparation and final validation remain authoritative internal work, not numbered steps.
-  const pipelineStages = uiStages.filter((stage) =>
-    !["prepare", "technical-check"].includes(stage.id) &&
-    !["Prepare", "Prepare project", "Technical check"].includes(stage.label),
+  const pipelineStages = uiStages.filter(
+    (stage) =>
+      !(
+        stage.id === "video-generation" &&
+        query.data.cost?.api_estimate?.seedance_coverage_percent === 0
+      ) &&
+      !["prepare", "technical-check"].includes(stage.id) &&
+      !["Prepare", "Prepare project", "Technical check"].includes(stage.label),
   );
   const promptStage = uiStages.find((stage) => stage.id === "prompt-writing");
   const contextStage = uiStages.find(
@@ -5122,9 +5525,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const timing = query.data.timing;
   const cost = query.data.cost;
   const queue = query.data.queue;
-  const firstIncompleteStageIndex = pipelineStages.findIndex((stage) => stage.status !== "COMPLETE");
+  const firstIncompleteStageIndex = pipelineStages.findIndex(
+    (stage) => stage.status !== "COMPLETE",
+  );
   const activeStageIndex =
-    firstIncompleteStageIndex < 0 ? Math.max(0, pipelineStages.length - 1) : firstIncompleteStageIndex;
+    firstIncompleteStageIndex < 0
+      ? Math.max(0, pipelineStages.length - 1)
+      : firstIncompleteStageIndex;
   const activeStage = pipelineStages[activeStageIndex];
   const overallProgress = Math.round(
     pipelineStages.reduce(
@@ -5183,26 +5590,26 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               : hasRunning
                 ? "Running"
                 : "Waiting";
-  const apiTimeEstimate = query.data.generation_provider === "KIE_FAL"
-    ? query.data.time_estimate
-    : null;
+  const apiTimeEstimate =
+    query.data.generation_provider === "KIE_FAL" ? query.data.time_estimate : null;
   const apiEstimateRange = apiTimeEstimate
-    ? formatApproximateMinutes(
-        apiTimeEstimate.remaining_min_ms,
-        apiTimeEstimate.remaining_max_ms,
-      )
+    ? formatApproximateMinutes(apiTimeEstimate.remaining_min_ms, apiTimeEstimate.remaining_max_ms)
     : null;
   const estimateStopped = hasFailed || hasActionRequired || terminalBlocked || terminalCancelled;
   const estimatedTimeValue =
     query.data.generation_provider !== "KIE_FAL"
-      ? formatMilliseconds(stages.find((stage, index) => (stage.id ?? `stage-${index + 1}`) === activeStage?.id)?.eta_ms ?? queue?.estimated_wait_ms)
+      ? formatMilliseconds(
+          stages.find((stage, index) => (stage.id ?? `stage-${index + 1}`) === activeStage?.id)
+            ?.eta_ms ?? queue?.estimated_wait_ms,
+        )
       : estimateStopped
         ? "Unavailable"
         : render?.state === "SUCCEEDED"
           ? "Ready"
           : apiTimeEstimate?.overrun
             ? "Taking longer"
-            : apiEstimateRange ?? (query.data.generation ? "No reliable estimate" : "After scene plan");
+            : (apiEstimateRange ??
+              (query.data.generation ? "No reliable estimate" : "After scene plan"));
   const estimatedTimeDetail =
     query.data.generation_provider !== "KIE_FAL"
       ? "remaining"
@@ -5211,13 +5618,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         : render?.state === "SUCCEEDED"
           ? "ready for review"
           : apiTimeEstimate?.overrun
-        ? apiTimeEstimate?.basis === "RECENT_FULL_RENDER"
-          ? "than the recent full render; times vary"
-          : "than recent short runs; API and render times vary"
+            ? apiTimeEstimate?.basis === "RECENT_FULL_RENDER"
+              ? "than the recent full render; times vary"
+              : "than recent short runs; API and render times vary"
             : apiEstimateRange
-          ? apiTimeEstimate?.basis === "RECENT_FULL_RENDER"
-            ? "remaining · based on the recent full render; times vary"
-            : "remaining · based on live progress and recent short runs; times vary"
+              ? apiTimeEstimate?.basis === "RECENT_FULL_RENDER"
+                ? "remaining · based on the recent full render; times vary"
+                : "remaining · based on live progress and recent short runs; times vary"
               : query.data.generation
                 ? "provider timing varies"
                 : "timing available after planning";
@@ -5248,13 +5655,25 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const latestArtifact =
     stableRenderPreviewUrl ??
     (latestContactSheetItem
-      ? stableHostedMediaUrl(mediaUrlCacheRef.current, mediaContext, "images", latestContactSheetItem)
+      ? stableHostedMediaUrl(
+          mediaUrlCacheRef.current,
+          mediaContext,
+          "images",
+          latestContactSheetItem,
+        )
       : null);
   const contactSheet = mergeHostedMedia(firstContactSheet, additionalMedia.images);
   const avatarFootage = mergeHostedMedia(firstAvatarFootage, additionalMedia.avatar);
   const mediaPagination = query.data.media_pagination ?? query.data.review?.media_pagination;
   const mediaTotals: ProjectMediaReviewTotals = {
-    ...(firstSceneFootage ? { videos: Math.max(sceneFootage.length, Number(mediaPagination?.videos?.total_accepted ?? 0)) } : {}),
+    ...(firstSceneFootage
+      ? {
+          videos: Math.max(
+            sceneFootage.length,
+            Number(mediaPagination?.videos?.total_accepted ?? 0),
+          ),
+        }
+      : {}),
     images: Math.max(
       contactSheet.length,
       Number.isSafeInteger(Number(mediaPagination?.images.total_accepted))
@@ -5301,12 +5720,15 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     label: item.label ?? `Avatar clip ${index + 1}`,
     detail: "Accepted Stage 7 avatar footage",
   }));
-  const sceneVideos: ProjectMediaReviewItem[] | undefined = firstSceneFootage === undefined ? undefined : sceneFootage.map((item, index) => ({
-    id: item.id,
-    url: stableHostedMediaUrl(mediaUrlCacheRef.current, mediaContext, "videos", item),
-    label: item.label ?? `Generated video ${index + 1}`,
-    detail: "Seedance · 720p · 16:9",
-  }));
+  const sceneVideos: ProjectMediaReviewItem[] | undefined =
+    firstSceneFootage === undefined
+      ? undefined
+      : sceneFootage.map((item, index) => ({
+          id: item.id,
+          url: stableHostedMediaUrl(mediaUrlCacheRef.current, mediaContext, "videos", item),
+          label: item.label ?? `Generated video ${index + 1}`,
+          detail: "Seedance · 720p · 16:9",
+        }));
   const videoStage = uiStages.find((stage) => stage.id === "video-generation");
   const imageStage = uiStages.find(
     (stage) => stage.id === "image-generation" || stage.label === "Generate images",
@@ -5318,15 +5740,30 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       stage.label === "Generate avatar",
   );
   const stageMediaActions = {
-    ...(videoStage && (videoStage.status === "COMPLETE" || (sceneVideos && sceneVideos.length > 0)) ? {
-      [videoStage.id]: <>
-        {videoStage.status === "COMPLETE" && videoStage.detail ? <p className="helper">{videoStage.detail}</p> : null}
-        {sceneVideos && sceneVideos.length > 0 ? <ProjectMediaReview launcher="videos" images={generatedImages}
-        avatarVideos={avatarVideos} sceneVideos={sceneVideos} mediaTotals={mediaTotals}
-        mediaHasMore={mediaHasMore} onLoadMore={(section) => void loadMoreMedia(section)}
-        loadingMore={mediaLoadingSection} loadMoreError={mediaLoadError} /> : null}
-      </>,
-    } : {}),
+    ...(videoStage && (videoStage.status === "COMPLETE" || (sceneVideos && sceneVideos.length > 0))
+      ? {
+          [videoStage.id]: (
+            <>
+              {videoStage.status === "COMPLETE" && videoStage.detail ? (
+                <p className="helper">{videoStage.detail}</p>
+              ) : null}
+              {sceneVideos && sceneVideos.length > 0 ? (
+                <ProjectMediaReview
+                  launcher="videos"
+                  images={generatedImages}
+                  avatarVideos={avatarVideos}
+                  sceneVideos={sceneVideos}
+                  mediaTotals={mediaTotals}
+                  mediaHasMore={mediaHasMore}
+                  onLoadMore={(section) => void loadMoreMedia(section)}
+                  loadingMore={mediaLoadingSection}
+                  loadMoreError={mediaLoadError}
+                />
+              ) : null}
+            </>
+          ),
+        }
+      : {}),
     ...(imageStage && generatedImages.length > 0
       ? {
           [imageStage.id]: (
@@ -5379,14 +5816,23 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const cancellableAttempts = query.data.attempts.filter((attempt) =>
     ["OUTBOXED", "SUBMITTED", "RUNNING", "RECONCILING", "CANCEL_REQUESTED"].includes(attempt.state),
   );
-  const cancellationGroups = [...new Set(cancellableAttempts.map(attempt => attempt.kind))].map(kind => {
-    const attempts = cancellableAttempts.filter(attempt => attempt.kind === kind);
-    const attempt = attempts.find(candidate => candidate.id === selectedCancellationJobs[kind])
-      ?? attempts.find(candidate => candidate.state === "RUNNING")
-      ?? currentHostedAttempt(attempts)!;
-    const label = cancellableAttemptLabel(kind);
-    return { kind, attempts, attempt, label, scope: attempts.length > 1 ? `selected ${label} job` : label };
-  });
+  const cancellationGroups = [...new Set(cancellableAttempts.map((attempt) => attempt.kind))].map(
+    (kind) => {
+      const attempts = cancellableAttempts.filter((attempt) => attempt.kind === kind);
+      const attempt =
+        attempts.find((candidate) => candidate.id === selectedCancellationJobs[kind]) ??
+        attempts.find((candidate) => candidate.state === "RUNNING") ??
+        currentHostedAttempt(attempts)!;
+      const label = cancellableAttemptLabel(kind);
+      return {
+        kind,
+        attempts,
+        attempt,
+        label,
+        scope: attempts.length > 1 ? `selected ${label} job` : label,
+      };
+    },
+  );
   const queueState = String(query.data.queue?.status ?? "").toUpperCase();
   const generationProviderAttempts = query.data.attempts.filter(
     (attempt) => attempt.kind === "MAGE_IMAGE" || attempt.kind === "SOULX_AVATAR",
@@ -5435,29 +5881,35 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   // backgrounded tab throttles the poll, and a writer task switches states before the next response
   // lands. The live panel beside it already knows prompt writing is running, so the numbered stage
   // must agree instead of reporting the previous "not started" status.
-  const planningFailed = asr?.state === "SUCCEEDED" && contextComplete &&
-    !render && !query.data.generation && renderHandoff.isError;
+  const planningFailed =
+    asr?.state === "SUCCEEDED" &&
+    contextComplete &&
+    !render &&
+    !query.data.generation &&
+    renderHandoff.isError;
   const displayedStages = pipelineStages.map((stage) =>
     stage.id === "planning" && planningFailed
       ? { ...stage, status: "FAILED" as const, detail: renderHandoff.error.message }
       : stage.id === "planning" && renderHandoff.isPending && !query.data.generation
         ? { ...stage, status: "RUNNING" as const }
-      : stage.id === "voiceover-context" && contextAutoStartError
-      ? // The automatic request never reached a provider task, so nothing about it is running: the
-        // server projection only knows that asr succeeded and no context row exists, which reads
-        // RUNNING forever. The row must carry the same truth as the notice below it -- the reason the
-        // request failed -- and the control that can send it again.
-        { ...stage, status: "FAILED" as const, detail: contextExtraction.error.message }
-      : stage.id === "prompt-writing" &&
-          promptWritingActive &&
-          !["COMPLETE", "FAILED", "CANCELLED"].includes(stage.status)
-        ? { ...stage, status: "RUNNING" as const }
-        : stage,
+        : stage.id === "voiceover-context" && contextAutoStartError
+          ? // The automatic request never reached a provider task, so nothing about it is running: the
+            // server projection only knows that asr succeeded and no context row exists, which reads
+            // RUNNING forever. The row must carry the same truth as the notice below it -- the reason the
+            // request failed -- and the control that can send it again.
+            { ...stage, status: "FAILED" as const, detail: contextExtraction.error.message }
+          : stage.id === "prompt-writing" &&
+              promptWritingActive &&
+              !["COMPLETE", "FAILED", "CANCELLED"].includes(stage.status)
+            ? { ...stage, status: "RUNNING" as const }
+            : stage,
   );
   const stageTimings = stages.map((stage, index) => {
     const id = stage.id ?? `stage-${index + 1}`;
     const running = !["COMPLETE", "FAILED", "CANCELLED", "PENDING", "QUEUED"].includes(
-      displayedStages.find(item => item.id === id)?.status ?? uiStages.find(item => item.id === id)?.status ?? "PENDING",
+      displayedStages.find((item) => item.id === id)?.status ??
+        uiStages.find((item) => item.id === id)?.status ??
+        "PENDING",
     );
     const apiLane =
       query.data.generation_provider === "KIE_FAL" &&
@@ -5479,15 +5931,20 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   });
   // Wall time counts concurrent stages once and includes queue/handoff waits. Human review
   // happens after production and must not extend the saved production duration.
-  const elapsedStopped = estimateStopped || render?.state === "SUCCEEDED" ||
-    uiStages.some(stage => stage.id === "render" && stage.status === "COMPLETE") || allComplete;
+  const elapsedStopped =
+    estimateStopped ||
+    render?.state === "SUCCEEDED" ||
+    uiStages.some((stage) => stage.id === "render" && stage.status === "COMPLETE") ||
+    allComplete;
   const elapsedUntil = render?.render_only_run
     ? render.terminal_at
     : render?.state === "SUCCEEDED"
       ? render.terminal_at
-      : stageTimings.filter(stage => stage.id !== "review").map(stage => stage.until)
-        .filter((value): value is string => !!value && Number.isFinite(Date.parse(value)))
-        .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null;
+      : (stageTimings
+          .filter((stage) => stage.id !== "review")
+          .map((stage) => stage.until)
+          .filter((value): value is string => !!value && Number.isFinite(Date.parse(value)))
+          .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null);
   // Every failed row owns a Retry control. Only a server-bounded recovery is enabled; a failed
   // provider lane cannot be sent again from the browser because its charge may already exist.
   const stageRetryButton = (busy: boolean, run: () => void, label = "Retry") => (
@@ -5507,7 +5964,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       return "The connected computer has exhausted this span's automatic retries. Check the local worker, then refresh progress; no manual replay is available.";
     if (stageId === "image-generation" || stageId === "avatar-generation")
       return "This provider attempt is terminal or its result is uncertain. Accepted media is saved, but another paid request cannot be sent from this project.";
-    if (stageId === "prompt-writing" && promptProgress?.problem_code === "HOSTED_PROMPT_OUTPUT_INVALID")
+    if (
+      stageId === "prompt-writing" &&
+      promptProgress?.problem_code === "HOSTED_PROMPT_OUTPUT_INVALID"
+    )
       return "The original provider result was invalid and its known cost is settled. Saved prompts remain available; this project cannot send another paid prompt request automatically.";
     if (stageId === "prompt-writing" && promptProgress?.state === "UNKNOWN")
       return "The prompt request's result is uncertain. A fresh paid request is blocked until the existing attempt is resolved.";
@@ -5515,8 +5975,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       return "The context response failed validation. A fresh provider request is not authorized for this run.";
     if (stageId === "render" && query.data.render_retry?.reason === "WORKER_UPDATE_REQUIRED")
       return "Update the connected worker before retrying this validation failure. Your saved media stays available.";
-    if (stageId === "render" && query.data.render_retry?.reason === "RETRY_LIMIT_REACHED" &&
-      renderRetryBackend === "RUNPOD_POD")
+    if (
+      stageId === "render" &&
+      query.data.render_retry?.reason === "RETRY_LIMIT_REACHED" &&
+      renderRetryBackend === "RUNPOD_POD"
+    )
       return "This project has reached its bounded Cloud render retry limit. Saved media stays available; contact support for the remaining blocker.";
     if (stageId === "render" && query.data.render_retry?.reason === "RETRY_LIMIT_REACHED")
       return "This project has reached its five local render attempts. Saved media stays available; contact support for the remaining blocker.";
@@ -5536,8 +5999,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       unavailableRetryReason(stageId)
     );
   const failedStageIds = new Set(
-    displayedStages.filter((stage) => stage.status === "FAILED" ||
-      (stage.id === "prompt-writing" && promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"))
+    displayedStages
+      .filter(
+        (stage) =>
+          stage.status === "FAILED" ||
+          (stage.id === "prompt-writing" &&
+            promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"),
+      )
       .map((stage) => stage.id),
   );
   const savedUnknownPromptsCanFinish =
@@ -5590,17 +6058,24 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           (renderAttempts.length === 3 &&
             renderAttempts[0]?.error_code === "MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT" &&
             renderAttempts[1]?.error_code === "MEDIA_EXECUTION_IO_FAILED"))) ||
-      processRenderRecoveryEligible || signalRenderRecoveryEligible || outputRenderRecoveryEligible);
+      processRenderRecoveryEligible ||
+      signalRenderRecoveryEligible ||
+      outputRenderRecoveryEligible);
   const renderRecoveryEligible = query.data.render_retry
-    ? query.data.render_retry.eligible && render?.state === "FAILED" &&
+    ? query.data.render_retry.eligible &&
+      render?.state === "FAILED" &&
       query.data.render_retry.failed_attempt_id === render.id
     : legacyRenderRecoveryEligible;
-  const apiRetrievalRetryEligible = query.data.generation_provider === "KIE_FAL" &&
+  const apiRetrievalRetryEligible =
+    query.data.generation_provider === "KIE_FAL" &&
     query.data.api_recovery?.can_resume_saved_work === true;
   const stageRetries: Record<string, ReturnType<typeof stageRetryButton>> = {
     ...(apiRetrievalRetryEligible
-      ? Object.fromEntries(["image-generation","video-generation","avatar-generation"].filter(id=>failedStageIds.has(id))
-        .map(id=>[id,stageRetryButton(gpuDispatch.isPending,()=>gpuDispatch.mutate())]))
+      ? Object.fromEntries(
+          ["image-generation", "video-generation", "avatar-generation"]
+            .filter((id) => failedStageIds.has(id))
+            .map((id) => [id, stageRetryButton(gpuDispatch.isPending, () => gpuDispatch.mutate())]),
+        )
       : {}),
     ...(failedStageIds.has("planning") && planningFailed && asr
       ? { planning: stageRetryButton(renderHandoff.isPending, () => renderHandoff.mutate(asr.id)) }
@@ -5640,22 +6115,29 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               }
             : {}
       : {}),
-    ...(failedStageIds.has("prompt-writing") && query.data.generation?.id &&
-    (promptProgress?.state !== "UNKNOWN" || savedUnknownPromptsCanFinish ||
+    ...(failedStageIds.has("prompt-writing") &&
+    query.data.generation?.id &&
+    (promptProgress?.state !== "UNKNOWN" ||
+      savedUnknownPromptsCanFinish ||
       promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW") &&
     promptProgress?.problem_code !== "HOSTED_PROMPT_OUTPUT_INVALID"
       ? {
           "prompt-writing": stageRetryButton(
             promptWriting.isPending,
             () => promptWriting.mutate(),
-            savedUnknownPromptsCanFinish ? "Finish saved prompts" :
-              promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW" ? "Check again" : "Retry",
+            savedUnknownPromptsCanFinish
+              ? "Finish saved prompts"
+              : promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
+                ? "Check again"
+                : "Retry",
           ),
         }
       : {}),
     ...(renderRecoveryEligible && render
       ? {
-          render: stageRetryButton(renderDiskRetry.isPending, () => renderDiskRetry.mutate(render.id)),
+          render: stageRetryButton(renderDiskRetry.isPending, () =>
+            renderDiskRetry.mutate(render.id),
+          ),
         }
       : {}),
   };
@@ -5668,8 +6150,16 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   // A refused press has to say why inside the stage that was pressed. The server's sentence used to
   // land only in the notice below the pipeline, so a spent retry budget read as "nothing happened".
   const stageRetryNotices = {
-    ...(apiRetrievalRetryEligible ? Object.fromEntries(["image-generation","avatar-generation"]
-      .filter(id=>failedStageIds.has(id)).map(id=>[id,"Retry retrieves already-submitted results. Saved outputs are reused; no new paid request is sent."])) : {}),
+    ...(apiRetrievalRetryEligible
+      ? Object.fromEntries(
+          ["image-generation", "avatar-generation"]
+            .filter((id) => failedStageIds.has(id))
+            .map((id) => [
+              id,
+              "Retry retrieves already-submitted results. Saved outputs are reused; no new paid request is sent.",
+            ]),
+        )
+      : {}),
     ...(planningFailed ? { planning: renderHandoff.error.message } : {}),
     ...Object.fromEntries(
       [...failedStageIds]
@@ -5755,17 +6245,29 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           ) : undefined
         }
       />
+      <SceneFootageCoverage coverage={sceneFootageCoverageFromCost(cost)} />
       <section className="progress-hero" aria-label="Live video progress">
         {cloudFinalPhasePending ? (
-          <div className="run-readiness" role="status" aria-label="Cloud media phase" aria-live="polite">
+          <div
+            className="run-readiness"
+            role="status"
+            aria-label="Cloud media phase"
+            aria-live="polite"
+          >
             <strong>{cloudMediaPhaseLabel(render.cloud_phase, render.state)}</strong>
           </div>
-        ) : <ProgressRing value={overallProgress} label="Overall video progress" detail="complete" />}
+        ) : (
+          <ProgressRing value={overallProgress} label="Overall video progress" detail="complete" />
+        )}
         <div className="progress-hero-body">
           <div className="progress-hero-heading">
             <div>
               <p className="eyebrow">Happening now</p>
-              <h2>{cloudCleanupPending ? cloudMediaPhaseLabel(render.cloud_phase, render.state) : activeStage?.label ?? "Preparing project"}</h2>
+              <h2>
+                {cloudCleanupPending
+                  ? cloudMediaPhaseLabel(render.cloud_phase, render.state)
+                  : (activeStage?.label ?? "Preparing project")}
+              </h2>
             </div>
             <Badge tone={statusToneValue}>{overallStatus}</Badge>
           </div>
@@ -5775,11 +6277,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               value={`${String(activeStageIndex + 1).padStart(2, "0")}/${String(pipelineStages.length).padStart(2, "0")}`}
               tone="info"
             />
-            <Metric
-              label="Estimated"
-              value={estimatedTimeValue}
-              detail={estimatedTimeDetail}
-            />
+            <Metric label="Estimated" value={estimatedTimeValue} detail={estimatedTimeDetail} />
             <Metric
               label="Projected cost"
               value={
@@ -5794,7 +6292,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               detail={
                 query.data.generation_provider === "KIE_FAL"
                   ? cost?.api_estimate
-                    ? `${cost.api_estimate.kie_images} Kie images + ${cost.api_estimate.fal_avatar_seconds.toFixed(1)}s Fal avatar${cost.api_estimate.seedance_seconds === undefined ? "" : ` + ${cost.api_estimate.seedance_seconds.toFixed(1)}s Seedance (7%)`} · published-rate estimate`
+                    ? `${cost.api_estimate.kie_images} Kie images + ${cost.api_estimate.fal_avatar_seconds.toFixed(1)}s Fal avatar${cost.api_estimate.seedance_seconds === undefined ? "" : ` + ${cost.api_estimate.seedance_seconds.toFixed(1)}s scene footage${cost.api_estimate.seedance_coverage_percent === undefined ? "" : ` (up to ${cost.api_estimate.seedance_coverage_percent}%)`}`} · published-rate estimate`
                     : "Calculated when planning finishes"
                   : cost?.cap_usd == null
                     ? undefined
@@ -5806,7 +6304,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               label={render?.render_only_run ? "Wall elapsed" : "Total elapsed"}
               value={
                 <HostedElapsed
-                  since={render?.render_only_run ? render.created_at : query.data.project.created_at}
+                  since={
+                    render?.render_only_run ? render.created_at : query.data.project.created_at
+                  }
                   until={elapsedStopped ? elapsedUntil : null}
                   running={!elapsedStopped}
                   label={render?.render_only_run ? "Wall elapsed time" : "Total elapsed time"}
@@ -5816,10 +6316,23 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             />
           </div>
           <p className="muted" aria-label="Rendering machine">
-            <strong>Machine: </strong>{hostedMachineLabel(query.data.project.media_execution_backend, query.data.attempts,
-              uiStages.some(stage => ["image-generation", "avatar-generation", "video-generation"].includes(stage.id) && stage.status === "RUNNING"), queue?.position, query.data.local_worker)}
+            <strong>Machine: </strong>
+            {hostedMachineLabel(
+              query.data.project.media_execution_backend,
+              query.data.attempts,
+              uiStages.some(
+                (stage) =>
+                  ["image-generation", "avatar-generation", "video-generation"].includes(
+                    stage.id,
+                  ) && stage.status === "RUNNING",
+              ),
+              queue?.position,
+              query.data.local_worker,
+            )}
           </p>
-          {cloudFinalPhasePending ? null : <ProgressBar value={overallProgress} label="Overall video progress" />}
+          {cloudFinalPhasePending ? null : (
+            <ProgressBar value={overallProgress} label="Overall video progress" />
+          )}
         </div>
       </section>
 
@@ -5879,7 +6392,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         <div className="progress-pipeline-column">
           <Panel className="pipeline-panel" eyebrow="Pipeline" heading="Video production stages">
             <StageTimeline
-              stages={displayedStages.map(stage => isCloudMediaStage(stage.id) ? {...stage, total: 0} : stage)}
+              stages={displayedStages.map((stage) =>
+                isCloudMediaStage(stage.id) ? { ...stage, total: 0 } : stage,
+              )}
               actions={stageMediaActions}
               retries={visibleStageRetries}
               retryNotices={stageRetryNotices}
@@ -5902,22 +6417,30 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                 ]),
               )}
             />
-
           </Panel>
           <Panel eyebrow="Activity" heading="Current run">
             <div className="detail-facts">
               {latestCloudAttempt ? (
                 <span>
                   <small>Cloud phase</small>
-                  <strong>{cloudMediaPhaseLabel(latestCloudAttempt.cloud_phase, latestCloudAttempt.state, queue?.position)}</strong>
+                  <strong>
+                    {cloudMediaPhaseLabel(
+                      latestCloudAttempt.cloud_phase,
+                      latestCloudAttempt.state,
+                      queue?.position,
+                    )}
+                  </strong>
                 </span>
               ) : null}
               <span>
                 <small>Queue</small>
                 <strong>
-                  {queue?.position ? `Position ${queue.position}`
-                    : (render?.execution_backend ?? query.data.project.media_execution_backend) === "RUNPOD_POD"
-                      ? "Cloud media execution" : "Local media execution"}
+                  {queue?.position
+                    ? `Position ${queue.position}`
+                    : (render?.execution_backend ?? query.data.project.media_execution_backend) ===
+                        "RUNPOD_POD"
+                      ? "Cloud media execution"
+                      : "Local media execution"}
                 </strong>
               </span>
               <span>
@@ -5941,57 +6464,60 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               <div className="current-run-actions">
                 {cancellationGroups.map(({ kind, attempts, attempt, label, scope }) => (
                   <Fragment key={kind}>
-                  {attempts.length > 1 ? (
-                    <label className="field">
-                      <span>{label[0]!.toUpperCase() + label.slice(1)} job</span>
-                      <select
-                        className="input"
-                        value={attempt.id}
-                        disabled={cancel.isPending}
-                        onChange={event => {
-                          setSelectedCancellationJobs(previous => ({ ...previous, [kind]: event.target.value }));
+                    {attempts.length > 1 ? (
+                      <label className="field">
+                        <span>{label[0]!.toUpperCase() + label.slice(1)} job</span>
+                        <select
+                          className="input"
+                          value={attempt.id}
+                          disabled={cancel.isPending}
+                          onChange={(event) => {
+                            setSelectedCancellationJobs((previous) => ({
+                              ...previous,
+                              [kind]: event.target.value,
+                            }));
+                            setArmedCancellation(null);
+                          }}
+                        >
+                          {attempts.map((job, index) => (
+                            <option key={job.id} value={job.id}>
+                              Job {index + 1} · {job.state.toLowerCase().replaceAll("_", " ")}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
+                    <Button
+                      key={attempt.id}
+                      variant="danger"
+                      disabled={cancel.isPending}
+                      busy={cancel.isPending && cancel.variables === attempt.id}
+                      onClick={() => {
+                        if (cancellationInFlight.current) return;
+                        if (
+                          attempt.state === "CANCEL_REQUESTED" ||
+                          (armedCancellation?.attemptId === attempt.id &&
+                            armedCancellation.attemptState === attempt.state)
+                        ) {
                           setArmedCancellation(null);
-                        }}
-                      >
-                        {attempts.map((job, index) => (
-                          <option key={job.id} value={job.id}>
-                            Job {index + 1} · {job.state.toLowerCase().replaceAll("_", " ")}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  ) : null}
-                  <Button
-                    key={attempt.id}
-                    variant="danger"
-                    disabled={cancel.isPending}
-                    busy={cancel.isPending && cancel.variables === attempt.id}
-                    onClick={() => {
-                      if (cancellationInFlight.current) return;
-                      if (
-                        attempt.state === "CANCEL_REQUESTED" ||
-                        (armedCancellation?.attemptId === attempt.id &&
-                          armedCancellation.attemptState === attempt.state)
-                      ) {
-                        setArmedCancellation(null);
-                        cancellationInFlight.current = true;
-                        cancel.mutate(attempt.id);
-                        return;
-                      }
-                      setArmedCancellation({
-                        attemptId: attempt.id,
-                        attemptState: attempt.state,
-                      });
-                    }}
-                  >
-                    <X size={15} />
-                    {attempt.state === "CANCEL_REQUESTED"
-                      ? `Finish stopping ${scope}`
-                      : armedCancellation?.attemptId === attempt.id &&
-                          armedCancellation.attemptState === attempt.state
-                        ? `Confirm stop ${scope}`
-                        : `Stop ${scope}`}
-                  </Button>
+                          cancellationInFlight.current = true;
+                          cancel.mutate(attempt.id);
+                          return;
+                        }
+                        setArmedCancellation({
+                          attemptId: attempt.id,
+                          attemptState: attempt.state,
+                        });
+                      }}
+                    >
+                      <X size={15} />
+                      {attempt.state === "CANCEL_REQUESTED"
+                        ? `Finish stopping ${scope}`
+                        : armedCancellation?.attemptId === attempt.id &&
+                            armedCancellation.attemptState === attempt.state
+                          ? `Confirm stop ${scope}`
+                          : `Stop ${scope}`}
+                    </Button>
                   </Fragment>
                 ))}
               </div>
@@ -6150,9 +6676,12 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               )}
             </Panel>
           ) : null}
-        </div>        <div className="progress-media-column">
-
-          <HostedSpanAudioPanel progress={query.data.span_audio ?? null} backend={spanAudioBackend} />
+        </div>{" "}
+        <div className="progress-media-column">
+          <HostedSpanAudioPanel
+            progress={query.data.span_audio ?? null}
+            backend={spanAudioBackend}
+          />
           <HostedGpuLaneActivityPanel
             lanes={query.data.gpu_lanes ?? []}
             apiGeneration={query.data.generation_provider === "KIE_FAL"}
@@ -6184,7 +6713,6 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             </div>
           </Panel>
         </div>
-
       </div>
       {!asr ? (
         <div className="notice" role="status">
@@ -6279,9 +6807,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                           : "Waiting for GPU qualification."
                         : promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
                           ? "Prompt writing is paused for provider credits."
-                        : promptAutoStartError
-                          ? "Automatic image prompt writing could not start."
-                          : "Writing image prompts…"
+                          : promptAutoStartError
+                            ? "Automatic image prompt writing could not start."
+                            : "Writing image prompts…"
                   : "Transcription complete; generation planning is starting."}
           </strong>
           {renderHandoff.isError && !query.data.generation ? (
@@ -6310,9 +6838,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           query.data.generation &&
           promptStage?.status !== "COMPLETE" ? (
             <>
-              <span>{promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
-                ? "Saved prompts remain intact. Check again after provider credits are available."
-                : "Scene prompts are generated automatically."}</span>
+              <span>
+                {promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
+                  ? "Saved prompts remain intact. Check again after provider credits are available."
+                  : "Scene prompts are generated automatically."}
+              </span>
               {promptAutoStartError ? <span>{promptWriting.error.message}</span> : null}
               {promptAutoStartError ? (
                 <Button
@@ -6449,6 +6979,11 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
         }
       />
       <Panel className="review-player" eyebrow="Private candidate" heading="Final output">
+        <SceneFootageCoverage
+          coverage={
+            review?.scene_footage_coverage ?? sceneFootageCoverageFromCost(query.data?.cost)
+          }
+        />
         <div className="review-player-frame">
           <video controls preload="metadata" src={candidate.preview_url} />
         </div>

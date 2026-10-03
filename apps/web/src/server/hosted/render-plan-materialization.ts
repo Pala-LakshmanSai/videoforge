@@ -113,6 +113,11 @@ export interface HostedRenderPlanMaterializationInput {
   readonly voiceover: HostedCommittedArtifact;
   readonly avatarSource?: HostedCommittedArtifact;
   readonly acceptedVisuals: readonly HostedCommittedArtifact[];
+  readonly videoPolicy?: {
+    readonly coveragePercent: number;
+    readonly replacementPolicy: "WHOLE_SCENE_V2";
+    readonly selectionSha256: string;
+  };
   readonly acceptedVideos?: readonly {
     readonly artifact: HostedCommittedArtifact;
     readonly segmentId: string;
@@ -198,9 +203,14 @@ function exactScope(
     match[1] !== input.accountId ||
     match[2] !== input.workspaceId ||
     match[3] !== input.revision.projectId ||
-    match[4] !== (browserVoiceover && artifact.barrierAcceptance==="COMMITTED_INPUT" &&
-      artifact.acceptedAttemptId===null && artifact.retainedVoiceoverOriginRevisionId && UUID.test(artifact.retainedVoiceoverOriginRevisionId)
-        ? artifact.retainedVoiceoverOriginRevisionId : input.revision.projectRevisionId) ||
+    match[4] !==
+      (browserVoiceover &&
+      artifact.barrierAcceptance === "COMMITTED_INPUT" &&
+      artifact.acceptedAttemptId === null &&
+      artifact.retainedVoiceoverOriginRevisionId &&
+      UUID.test(artifact.retainedVoiceoverOriginRevisionId)
+        ? artifact.retainedVoiceoverOriginRevisionId
+        : input.revision.projectRevisionId) ||
     match[5] !== expectedLane ||
     (match[7] !== artifact.assetId && !browserVoiceover && !apiVisual) ||
     (artifact.acceptedAttemptId !== null && match[6] !== artifact.acceptedAttemptId) ||
@@ -245,7 +255,8 @@ function exactAvatarSourceScope(
         snapshotMatch[5] !== artifact.assetId ||
         system !== undefined ||
         !input.resolvedManifest.document.segments.some(
-          (segment) => segment.timeline_composition !== "IMAGE_FULL" &&
+          (segment) =>
+            segment.timeline_composition !== "IMAGE_FULL" &&
             segment.render.avatar_source_profile === FAL_WIDE_SOURCE_PROFILE,
         ))) ||
     (match !== null &&
@@ -355,7 +366,9 @@ function validateManifestSegments(
         !artifact ||
         segment.accepted_assets.avatar.asset_id !== artifact.assetId ||
         segment.accepted_assets.avatar.sha256 !== artifact.checksumSha256 ||
-        ([SOULX_SOURCE_PROFILE, FAL_WIDE_SOURCE_PROFILE].includes(segment.render.avatar_source_profile) &&
+        ([SOULX_SOURCE_PROFILE, FAL_WIDE_SOURCE_PROFILE].includes(
+          segment.render.avatar_source_profile,
+        ) &&
           (segment.accepted_assets.source_background?.asset_id !== avatarSource?.assetId ||
             segment.accepted_assets.source_background?.sha256 !== avatarSource?.checksumSha256))
       ) {
@@ -418,14 +431,21 @@ function validateSoulxCropApproval(
       const render = segment.render;
       const wide = render.avatar_source_profile === FAL_WIDE_SOURCE_PROFILE;
       if (
-        render.avatar_crop !== (wide
-          ? segment.timeline_composition === "AVATAR_FULL" ? "1920:1080:0:0" : "960:1080:480:0"
-          : segment.timeline_composition === "AVATAR_FULL" ? "512:288:0:112" : "256:288:128:112") ||
+        render.avatar_crop !==
+          (wide
+            ? segment.timeline_composition === "AVATAR_FULL"
+              ? "1920:1080:0:0"
+              : "960:1080:480:0"
+            : segment.timeline_composition === "AVATAR_FULL"
+              ? "512:288:0:112"
+              : "256:288:128:112") ||
         render.avatar_scale !==
           (segment.timeline_composition === "AVATAR_FULL" ? "1920:1080" : "960:1080") ||
         render.avatar_fps !== "30:round=near" ||
-        (wide && (input.avatarSource?.assetId !== input.revisionDocument.avatar_binding.runtime_source_asset_id ||
-          input.avatarSource?.checksumSha256 !== input.revision.avatarRuntimeSourceSha256)) ||
+        (wide &&
+          (input.avatarSource?.assetId !==
+            input.revisionDocument.avatar_binding.runtime_source_asset_id ||
+            input.avatarSource?.checksumSha256 !== input.revision.avatarRuntimeSourceSha256)) ||
         (!wide && input.avatarSource !== undefined)
       )
         reject("SOULX_CROP_PROFILE_UNQUALIFIED");
@@ -601,34 +621,80 @@ export async function materializeHostedRenderPlan(
     reject("HOSTED_RENDER_ARTIFACT_BARRIER_PARTIAL");
   }
   validateManifestSegments(timeline.value, manifest.value, accepted, input.avatarSource);
+  const policy = input.videoPolicy;
+  const wholeScene = manifest.value.schema_version === "resolved-render-manifest/v3";
+  if (
+    wholeScene !== (policy !== undefined) ||
+    (policy !== undefined &&
+      (!Number.isSafeInteger(policy.coveragePercent) ||
+        policy.coveragePercent < 0 ||
+        policy.coveragePercent > 100 ||
+        policy.replacementPolicy !== "WHOLE_SCENE_V2" ||
+        !SHA256.test(policy.selectionSha256) ||
+        manifest.value.video_policy?.coverage_percent !== policy.coveragePercent ||
+        manifest.value.video_policy?.replacement_policy !== policy.replacementPolicy ||
+        manifest.value.video_policy?.selection_sha256 !== policy.selectionSha256))
+  ) {
+    reject("HOSTED_RENDER_VIDEO_POLICY_DRIFT");
+  }
   const videoBySegment = new Map<string, HostedCommittedArtifact>();
   let selectedVideoFrames = 0;
   for (const video of input.acceptedVideos ?? []) {
     const artifact = video.artifact;
     exactScope(artifact, input);
     const source = accepted.get(video.sourceTaskKey);
-    const index = timeline.value.segments.findIndex((segment) => matchesVideoTimelineSegmentId(video.segmentId, segment.segment_id));
+    const index = timeline.value.segments.findIndex((segment) =>
+      matchesVideoTimelineSegmentId(video.segmentId, segment.segment_id),
+    );
     const timelineSegment = timeline.value.segments[index];
     const segment = manifest.value.segments[index];
-    if (!segment || !timelineSegment || timelineSegment.timeline_composition !== "IMAGE_FULL" ||
-        segment.timeline_composition !== "IMAGE_FULL" || manifest.value.schema_version !== "resolved-render-manifest/v2" ||
-        videoBySegment.has(segment.segment_id) || artifact.kind !== "VIDEO" || artifact.lane !== "SCENE_VIDEO" ||
-        artifact.contentType !== "video/mp4" || artifact.barrierAcceptance !== "ACCEPTED_CANONICAL" ||
-        artifact.acceptedAttemptId === null || !UUID.test(artifact.acceptedAttemptId) ||
-        artifact.taskKey !== `video:${video.segmentId}` || !source || source.kind !== "IMAGE" ||
-        source.checksumSha256 !== video.sourceSha256 || video.sourceTaskKey !== timelineSegment.required_slots.image.task_key ||
-        !Number.isSafeInteger(video.videoFrameCount) || video.videoFrameCount < 1 || video.videoFrameCount > 360 ||
-        video.videoFrameCount > segment.end_frame_exclusive - segment.start_frame ||
-        segment.accepted_assets.video?.asset_id !== artifact.assetId || segment.accepted_assets.video?.sha256 !== artifact.checksumSha256 ||
-        segment.render.video_source_profile !== "seedance-pro-fast-1248x704-v1" || segment.render.video_frame_count !== video.videoFrameCount) {
+    if (
+      !segment ||
+      !timelineSegment ||
+      timelineSegment.timeline_composition !== "IMAGE_FULL" ||
+      segment.timeline_composition !== "IMAGE_FULL" ||
+      !["resolved-render-manifest/v2", "resolved-render-manifest/v3"].includes(
+        manifest.value.schema_version,
+      ) ||
+      videoBySegment.has(segment.segment_id) ||
+      artifact.kind !== "VIDEO" ||
+      artifact.lane !== "SCENE_VIDEO" ||
+      artifact.contentType !== "video/mp4" ||
+      artifact.barrierAcceptance !== "ACCEPTED_CANONICAL" ||
+      artifact.acceptedAttemptId === null ||
+      !UUID.test(artifact.acceptedAttemptId) ||
+      artifact.taskKey !== `video:${video.segmentId}` ||
+      !source ||
+      source.kind !== "IMAGE" ||
+      source.checksumSha256 !== video.sourceSha256 ||
+      video.sourceTaskKey !== timelineSegment.required_slots.image.task_key ||
+      !Number.isSafeInteger(video.videoFrameCount) ||
+      video.videoFrameCount < 1 ||
+      video.videoFrameCount > 360 ||
+      video.videoFrameCount > segment.end_frame_exclusive - segment.start_frame ||
+      (wholeScene &&
+        (video.videoFrameCount > 357 ||
+          video.videoFrameCount !== segment.end_frame_exclusive - segment.start_frame)) ||
+      segment.accepted_assets.video?.asset_id !== artifact.assetId ||
+      segment.accepted_assets.video?.sha256 !== artifact.checksumSha256 ||
+      segment.render.video_source_profile !== "seedance-pro-fast-1248x704-v1" ||
+      segment.render.video_frame_count !== video.videoFrameCount
+    ) {
       reject("HOSTED_RENDER_VIDEO_BINDING_DRIFT");
     }
     videoBySegment.set(segment.segment_id, artifact);
     selectedVideoFrames += video.videoFrameCount;
   }
-  if (selectedVideoFrames > Math.floor(timeline.value.total_frames * 7 / 100) ||
-      manifest.value.segments.some((segment) => segment.timeline_composition === "IMAGE_FULL" &&
-        segment.accepted_assets.video !== undefined && !videoBySegment.has(segment.segment_id))) {
+  if (
+    selectedVideoFrames >
+      Math.floor((timeline.value.total_frames * (policy?.coveragePercent ?? 7)) / 100) ||
+    manifest.value.segments.some(
+      (segment) =>
+        segment.timeline_composition === "IMAGE_FULL" &&
+        segment.accepted_assets.video !== undefined &&
+        !videoBySegment.has(segment.segment_id),
+    )
+  ) {
     reject("HOSTED_RENDER_VIDEO_COVERAGE_DRIFT");
   }
 
@@ -668,7 +734,12 @@ export async function materializeHostedRenderPlan(
     project_revision_id: input.revision.projectRevisionId,
     kind: "RENDER",
     input_document: {
-      schema_version: videoBySegment.size ? "render-job-input/v2" : "render-job-input/v1",
+      schema_version: wholeScene
+        ? "render-job-input/v3"
+        : videoBySegment.size
+          ? "render-job-input/v2"
+          : "render-job-input/v1",
+      ...(wholeScene ? { video_policy: manifest.value.video_policy } : {}),
       project_revision_id: input.revision.projectRevisionId,
       attempt_id: input.revision.projectRevisionId,
       resolved_render_manifest: {

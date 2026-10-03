@@ -237,3 +237,8 @@ billing remain unmeasured; no reliability/capacity guarantee follows from the li
 ## Seedance7% integration (2026-10-03)
 
 Seedance1.0ProFast bytedance:2@2,720p16:9: published Runware rate verified2026-10-02 is USD0.01336/generated second. Seven percent of30minutes is126motion seconds, nominalUSD1.68336; API minimum1.2seconds and0.1second rounding can generate a small unused tail. Planning uses generated duration for projected cost; exact task cost is recorded before media acceptance, including charged invalid outputs. Implementation qualification cap isUSD4 provider/compute, with no30minute paid benchmark. Four inference jobs may be outstanding; result acceptance is serial to fit Worker memory. Parallel stage durations are not added to wall-clock elapsed time.
+
+
+## Planned whole scene coverage control (2026-10-03)
+
+The planned coverage control changes the motion ceiling from fixed 7% to the per-revision user choice; default stays 7%. Projected motion cost uses actual selected padded provider-request durations and configured rate metadata. Pre-timeline estimates are preliminary. Off has no Seedance calls/charges; definite failed clips retain actual charges and reduce accepted coverage. Higher coverage preserves the existing four-job concurrency bound. No new paid test authority is inferred from the earlier USD4 run. Implementation is pending. Details and rollout order: [combined plan](tasks/SEEDANCE_VIDEO_PLAN.md#whole-scene-replacement-follow-up).

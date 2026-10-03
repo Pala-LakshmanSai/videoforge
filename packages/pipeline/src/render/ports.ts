@@ -14,6 +14,11 @@ export interface RenderPlanRequest {
   readonly voiceover: AcceptedAssetBinding;
   readonly acceptedAssets: AcceptedAssetResolution;
   readonly renderProfileVersion: string;
+  readonly videoPolicy?: {
+    readonly coveragePercent: number;
+    readonly replacementPolicy: "WHOLE_SCENE_V2";
+    readonly selectionSha256: string;
+  };
   readonly videoAssets?: readonly {
     readonly segmentId: string;
     readonly sourceTaskKey: string;

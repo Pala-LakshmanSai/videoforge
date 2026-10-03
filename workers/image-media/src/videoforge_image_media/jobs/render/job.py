@@ -56,20 +56,22 @@ AVATAR_SOURCE_PROFILES = {
     "fal-flashhead-512x512p25-wide-v2": (512, 512, 25, 1),
 }
 SOULX_SOURCE_SHA256 = "sha256:37f07580badf2c459db496e0a74a15e524534b91432478d5e84e8f084e6b1e83"
-FAL_WIDE_SAFE_REASONS = frozenset({
-    "One Fal clip has conflicting source images",
-    "Fal source image is unreadable",
-    "Fal square clip is unreadable",
-    "Fal square clip has no alignment frame or wrong frame rate",
-    "Fal square clip geometry drifted",
-    "Fal crop has no source features",
-    "Fal crop has too few source matches",
-    "Fal crop source geometry is uncertain",
-    "Fal crop maps outside the pinned source",
-    "Fal square clip decode lost too many frames",
-    "Fal prepared source identity drifted",
-    "Fal prepared source checksum mismatched",
-})
+FAL_WIDE_SAFE_REASONS = frozenset(
+    {
+        "One Fal clip has conflicting source images",
+        "Fal source image is unreadable",
+        "Fal square clip is unreadable",
+        "Fal square clip has no alignment frame or wrong frame rate",
+        "Fal square clip geometry drifted",
+        "Fal crop has no source features",
+        "Fal crop has too few source matches",
+        "Fal crop source geometry is uncertain",
+        "Fal crop maps outside the pinned source",
+        "Fal square clip decode lost too many frames",
+        "Fal prepared source identity drifted",
+        "Fal prepared source checksum mismatched",
+    }
+)
 WINDOWS_COMMAND_LINE_LIMIT = 32_767
 MAX_SEGMENTS_PER_RENDER = 8
 
@@ -214,7 +216,8 @@ def _expected_assets(manifest: Mapping[str, Any]) -> dict[str, ExpectedAsset]:
         if composition == "AVATAR_FULL":
             bindings = ((accepted["avatar"], "AVATAR_CLIP"),)
             if render["avatar_source_profile"] in (
-                "soulx-pro-vf924u-approved-v1", "fal-flashhead-512x512p25-wide-v2"
+                "soulx-pro-vf924u-approved-v1",
+                "fal-flashhead-512x512p25-wide-v2",
             ):
                 bindings = (*bindings, (accepted["source_background"], "IMAGE"))
         elif composition == "IMAGE_FULL":
@@ -279,9 +282,7 @@ def _expected_assets(manifest: Mapping[str, Any]) -> dict[str, ExpectedAsset]:
     return expected
 
 
-def _probe_frame_rate(
-    stream: Mapping[str, Any], *, nominal: bool = False
-) -> tuple[int, int]:
+def _probe_frame_rate(stream: Mapping[str, Any], *, nominal: bool = False) -> tuple[int, int]:
     fields = ("r_frame_rate",) if nominal else ("avg_frame_rate", "r_frame_rate")
     for field in fields:
         value = stream.get(field)
@@ -531,8 +532,7 @@ class RenderJob:
             self._check_cancelled(token)
             chunk = segments[first : first + MAX_SEGMENTS_PER_RENDER]
             chunk_frames = sum(
-                cast(int, segment["end_frame_exclusive"])
-                - cast(int, segment["start_frame"])
+                cast(int, segment["end_frame_exclusive"]) - cast(int, segment["start_frame"])
                 for segment in chunk
             )
             chunk_manifest = dict(manifest, segments=chunk, total_frames=chunk_frames)
@@ -719,6 +719,53 @@ class RenderJob:
                 "Resolved render manifest belongs to another project revision.",
                 retryable=False,
             )
+        whole_scene = manifest["schema_version"] == "resolved-render-manifest/v3"
+        if whole_scene != (document["schema_version"] == "render-job-input/v3") or (
+            whole_scene and document.get("video_policy") != manifest.get("video_policy")
+        ):
+            raise _RenderFailure(
+                "RENDER_INPUT_INVALID",
+                "Render video policy binding does not match its manifest.",
+                retryable=False,
+            )
+        if whole_scene:
+            policy = manifest["video_policy"]
+            selected_frames = 0
+            next_frame = 0
+            seen_ids: set[str] = set()
+            for segment in manifest["segments"]:
+                frames = segment["end_frame_exclusive"] - segment["start_frame"]
+                if (
+                    segment["start_frame"] != next_frame
+                    or frames <= 0
+                    or segment["segment_id"] in seen_ids
+                ):
+                    raise _RenderFailure(
+                        "RENDER_INPUT_INVALID", "Whole-scene timeline is invalid.", retryable=False
+                    )
+                seen_ids.add(segment["segment_id"])
+                next_frame = segment["end_frame_exclusive"]
+                if segment["accepted_assets"].get("video") is not None:
+                    if (
+                        segment["timeline_composition"] != "IMAGE_FULL"
+                        or frames > 357
+                        or segment["render"].get("video_frame_count") != frames
+                    ):
+                        raise _RenderFailure(
+                            "RENDER_INPUT_INVALID",
+                            "Whole-scene video cannot cover a partial scene.",
+                            retryable=False,
+                        )
+                    selected_frames += frames
+            if (
+                next_frame != manifest["total_frames"]
+                or selected_frames > manifest["total_frames"] * policy["coverage_percent"] // 100
+            ):
+                raise _RenderFailure(
+                    "RENDER_INPUT_INVALID",
+                    "Whole-scene video exceeds its pinned budget.",
+                    retryable=False,
+                )
         render_profile_version = manifest["render_profile_version"]
         if render_profile_version not in {
             LEGACY_RENDER_PROFILE_VERSION,
@@ -905,11 +952,9 @@ class RenderJob:
                     width, height, fps_num, fps_den = expected_profile
                     if video.get("width") != width or video.get("height") != height:
                         raise ValueError("Avatar input geometry does not match its source profile")
-                    fal_flashhead = (
-                        binding.renderer_source_profile in (
-                            "fal-flashhead-512x512p25-v1",
-                            "fal-flashhead-512x512p25-wide-v2",
-                        )
+                    fal_flashhead = binding.renderer_source_profile in (
+                        "fal-flashhead-512x512p25-v1",
+                        "fal-flashhead-512x512p25-wide-v2",
                     )
                     if fal_flashhead:
                         for segment in manifest["segments"]:
@@ -951,15 +996,19 @@ class RenderJob:
     ) -> ProbeFacts:
         if self._dependencies.technical_observer is None:
             return self._probe_output_checked(
-                tools=tools, output_path=output_path,
-                expected_total_frames=expected_total_frames, token=token,
+                tools=tools,
+                output_path=output_path,
+                expected_total_frames=expected_total_frames,
+                token=token,
             )
         started = time.monotonic_ns()
         self._observe_technical("CHECKING_VIDEO", None)
         try:
             return self._probe_output_checked(
-                tools=tools, output_path=output_path,
-                expected_total_frames=expected_total_frames, token=token,
+                tools=tools,
+                output_path=output_path,
+                expected_total_frames=expected_total_frames,
+                token=token,
             )
         finally:
             self._observe_technical(
@@ -1022,7 +1071,12 @@ class RenderJob:
                                     continue
                                 kind = stream.get("codec_type")
                                 if kind in ("video", "audio"):
-                                    for key in ("duration", "start_time", "nb_read_frames", "avg_frame_rate"):
+                                    for key in (
+                                        "duration",
+                                        "start_time",
+                                        "nb_read_frames",
+                                        "avg_frame_rate",
+                                    ):
                                         value = stream.get(key)
                                         if isinstance(value, str) and len(value) <= 64:
                                             fields[f"{kind}_{key}"] = value
@@ -1072,9 +1126,8 @@ class RenderJob:
             key, separator, value = line.partition("=")
             if separator:
                 progress_fields[key.strip()] = value.strip()
-        if (
-            progress_fields.get("progress") != "end"
-            or progress_fields.get("frame") != str(expected_total_frames)
+        if progress_fields.get("progress") != "end" or progress_fields.get("frame") != str(
+            expected_total_frames
         ):
             raise _RenderFailure(
                 "RENDER_OUTPUT_INVALID",
@@ -1142,12 +1195,17 @@ class RenderJob:
             # number of avatar clips; every clip retains its own mutable state.
             prepared_source: PreparedFalSource | None = None
             try:
-                for ordinal, segment in enumerate(cast(list[dict[str, Any]], manifest["segments"]), 1):
+                for ordinal, segment in enumerate(
+                    cast(list[dict[str, Any]], manifest["segments"]), 1
+                ):
                     self._check_cancelled(token)
                     try:
                         if segment["timeline_composition"] == "IMAGE_FULL":
                             continue
-                        if segment["render"]["avatar_source_profile"] != "fal-flashhead-512x512p25-wide-v2":
+                        if (
+                            segment["render"]["avatar_source_profile"]
+                            != "fal-flashhead-512x512p25-wide-v2"
+                        ):
                             continue
                         accepted = cast(dict[str, dict[str, str]], segment["accepted_assets"])
                         avatar_id = accepted["avatar"]["asset_id"]
@@ -1159,14 +1217,18 @@ class RenderJob:
                             source_path = asset_paths[source_id]
                             source_checksum = accepted["source_background"]["sha256"]
                             if prepared_source is None or prepared_source.identity != (
-                                source_path.resolve(), source_checksum.removeprefix("sha256:")
+                                source_path.resolve(),
+                                source_checksum.removeprefix("sha256:"),
                             ):
                                 prepared_source = prepare_fal_source(
                                     source_path, source_sha256=source_checksum
                                 )
                             wide_path = Path(directory) / f"{len(wide_sources)}.mp4"
                             compose_fal_wide(
-                                asset_paths[avatar_id], source_path, wide_path, tools.ffmpeg,
+                                asset_paths[avatar_id],
+                                source_path,
+                                wide_path,
+                                tools.ffmpeg,
                                 prepared_source=prepared_source,
                             )
                             render_paths[avatar_id] = wide_path
