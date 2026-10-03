@@ -1,4 +1,4 @@
-Voiceover-based MP4 download naming is locally validated; see `voiceover_download_filename_2026_10_03` in CURRENT_STATE.yaml. Prior scene-video recovery and native pins remain.
+Voiceover-based MP4 naming is published at `756d3f22` / Worker `502858ce`; Review and Library headers verified. See `voiceover_download_filename_2026_10_03` in CURRENT_STATE.yaml. Prior scene-video recovery and native pins remain.
 
 Cloud audio save recovery retains bounded uploads and truthful failures. Read `cloud_audio_save_repair_2026_10_03` in CURRENT_STATE.yaml.
 
