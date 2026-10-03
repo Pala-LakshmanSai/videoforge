@@ -15,6 +15,7 @@ import {
   type TransactionalSqlExecutor,
 } from "@videoforge/control-plane";
 import { PGlite } from "@electric-sql/pglite";
+import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 import { describe, expect, it } from "vitest";
 
 import type { HostedR2BucketBinding } from "../hosted/configuration.js";
@@ -305,9 +306,12 @@ function artifactDatabase(
 
 describe("hosted ordinary-output SQL adapter", () => {
   it("attests the exact migrated catalog contract", async () => {
-    const pglite = new PGlite();
+    const pglite = new PGlite({ extensions: { pgcrypto } });
+    const migrationPrerequisites = new Map<string, string>();
     const executor: TransactionalSqlExecutor = {
       async execute(sql) {
+        const prerequisite = migrationPrerequisites.get(sql);
+        if (prerequisite) await pglite.exec(prerequisite);
         await pglite.exec(sql);
       },
       async query<Row extends Record<string, unknown>>(sql: string, parameters = []) {
@@ -318,6 +322,8 @@ describe("hosted ordinary-output SQL adapter", () => {
         return pglite.transaction(async (transaction) =>
           work({
             async execute(sql) {
+              const prerequisite = migrationPrerequisites.get(sql);
+              if (prerequisite) await transaction.exec(prerequisite);
               await transaction.exec(sql);
             },
             async query<Row extends Record<string, unknown>>(sql: string, parameters = []) {
@@ -332,6 +338,12 @@ describe("hosted ordinary-output SQL adapter", () => {
       },
     };
     try {
+      // Production provisions these roles and pgcrypto before the migration chain.
+      await pglite.exec(`
+        CREATE EXTENSION pgcrypto;
+        CREATE ROLE videoforge_v209_runtime_dc9612d6 NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+        CREATE ROLE videoforge_v209_reconciler_dc9612d6 NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+      `);
       const sources = await Promise.all(
         MIGRATION_MANIFEST.map(async (entry) => ({
           ...entry,
@@ -344,6 +356,26 @@ describe("hosted ordinary-output SQL adapter", () => {
           ),
         })),
       );
+      // The retained ledger omits these deployed prerequisites; use their exact SQL
+      // before the grant migration, as the control-plane native fixture does.
+      const continuationGrants = sources.find((source) => source.version === 195);
+      if (!continuationGrants) throw new Error("Continuation grant migration is missing");
+      const prerequisites = await Promise.all(
+        [
+          "0160_hosted_continuation_heartbeats.sql",
+          "0162_hosted_continuation_tenant_scoped_sweeps.sql",
+          "0163_hosted_continuation_heartbeat_sequence.sql",
+        ].map((filename) =>
+          readFile(
+            new URL(
+              `../../../../../packages/control-plane/migrations/${filename}`,
+              import.meta.url,
+            ),
+            "utf8",
+          ),
+        ),
+      );
+      migrationPrerequisites.set(continuationGrants.sql, prerequisites.join("\n"));
       await applyMigrations(executor, sources);
       await expect(
         new HostedSqlOutputBarrierRepository(executor, scope).schemaReady(),

@@ -164,6 +164,62 @@ async function seedRecoveryMetadata(executor, payload) {
   );
 }
 
+async function seedFootageMetadata(executor) {
+  const requestId = uuid(40_009),
+    jobId = uuid(40_010),
+    claimId = uuid(40_011);
+  await executor.transaction(async (transaction) => {
+    await transaction.query("SELECT set_config('videoforge.account_id',$1,true)", [IDS.accountA]);
+    const selections = [
+      {
+        segmentId: "restore-video-scene",
+        sourceTaskKey: "restore-smoke:image:1",
+        videoFrameCount: 150,
+        durationSeconds: 5.1,
+      },
+    ];
+    await transaction.query(
+      `INSERT INTO hosted_video_plans(account_id,workspace_id,project_revision_id,coverage_percent,replacement_policy,selections,selection_sha256,planned_at)
+      VALUES($1,$2,$3,75,'WHOLE_SCENE_V2',$4::jsonb,'sha256:'||encode(sha256(convert_to(videoforge_canonical_jsonb($4::jsonb),'UTF8')),'hex'),$5)`,
+      [IDS.accountA, IDS.workspaceA, IDS.revisionA, JSON.stringify(selections), FIXED_TIME],
+    );
+    await transaction.query(
+      `INSERT INTO generation_requests(id,account_id,workspace_id,project_id,project_revision_id,created_by_user_id,state,queue_order,available_at,idempotency_key,created_at,updated_at)
+      VALUES($1,$2,$3,$4,$5,$6,'WAITING',1,$7,'restore-smoke:video-request',$7,$7)`,
+      [requestId, IDS.accountA, IDS.workspaceA, IDS.projectA, IDS.revisionA, IDS.userA, FIXED_TIME],
+    );
+    await transaction.query(
+      `INSERT INTO hosted_video_jobs(id,account_id,workspace_id,project_id,project_revision_id,generation_request_id,segment_id,source_task_key,video_frame_count,duration_seconds,state,claim_id,input_manifest,input_sha256,output_object_key,created_at,updated_at)
+      VALUES($1,$2,$3,$4,$5,$6,'restore-video-scene','restore-smoke:image:1',150,5.1,'UNKNOWN_NO_RETRY',$7,$8::jsonb,$9,$10,$11,$11)`,
+      [
+        jobId,
+        IDS.accountA,
+        IDS.workspaceA,
+        IDS.projectA,
+        IDS.revisionA,
+        requestId,
+        claimId,
+        JSON.stringify({ taskUUID: jobId }),
+        sha256("restore-smoke:video-input"),
+        `tenant/${IDS.accountA}/workspace/${IDS.workspaceA}/project/${IDS.projectA}/revision/${IDS.revisionA}/lane/scene-video/job/${jobId}/artifact/${jobId}`,
+        FIXED_TIME,
+      ],
+    );
+    await transaction.query("SELECT set_config('videoforge.account_id',$1,true)", [IDS.accountB]);
+    await transaction.query(
+      "INSERT INTO hosted_video_plans(account_id,workspace_id,project_revision_id,created_at) VALUES($1,$2,$3,$4)",
+      [IDS.accountB, IDS.workspaceB, IDS.revisionB, FIXED_TIME],
+    );
+  });
+}
+
+async function footageMetadata(executor) {
+  const result = await executor.query(`SELECT jsonb_build_object(
+    'plans',(SELECT jsonb_agg(to_jsonb(plan) ORDER BY project_revision_id) FROM hosted_video_plans plan),
+    'jobs',(SELECT jsonb_agg(to_jsonb(job) ORDER BY id) FROM hosted_video_jobs job)) AS value`);
+  return result.rows[0].value;
+}
+
 function expectSnapshotError(error, code) {
   assert.ok(error instanceof MetadataSnapshotError);
   assert.equal(error.code, code);
@@ -183,6 +239,18 @@ const RESERVED_SCOPE_ROW_FILTER = Object.freeze({
   users: " WHERE id <> 'ffffffff-ffff-4fff-8fff-000000000021'",
   memberships: " WHERE id <> 'ffffffff-ffff-4fff-8fff-000000000031'",
   global_generation_capacity: " WHERE false",
+  ...Object.fromEntries(
+    [
+      "assets",
+      "avatar_profiles",
+      "avatar_profile_versions",
+      "avatar_profile_assets",
+      "avatar_compatibility_assessments",
+      "image_styles",
+      "image_style_versions",
+      "image_style_references",
+    ].map((table) => [table, " WHERE account_id <> 'ffffffff-ffff-4fff-8fff-000000000001'"]),
+  ),
 });
 
 async function totalDataRows(executor) {
@@ -204,6 +272,8 @@ test("the same metadata snapshot restores exactly, resumes idempotently, and rem
   let destination = await createMigratedDatabase(destinationData);
   try {
     await seedRecoveryMetadata(source.executor);
+    await seedFootageMetadata(source.executor);
+    const originalFootage = await footageMetadata(source.executor);
     await source.executor.query(
       `INSERT INTO public.media_worker_connect_commands
          (id,account_id,workspace_id,token_sha256,expires_at)
@@ -236,6 +306,8 @@ test("the same metadata snapshot restores exactly, resumes idempotently, and rem
       "outbox",
       "workflow_instances",
       "workflow_events",
+      "hosted_video_plans",
+      "hosted_video_jobs",
     ]) {
       assert.ok(first.tables.find((table) => table.tableName === requiredTable).rowCount > 0);
     }
@@ -261,8 +333,32 @@ test("the same metadata snapshot restores exactly, resumes idempotently, and rem
       alreadyRestored: true,
     });
 
+    assert.deepEqual(await footageMetadata(destination.executor), originalFootage);
+    const restoredVideo = (await footageMetadata(destination.executor)).jobs[0];
+    assert.equal(restoredVideo.state, "UNKNOWN_NO_RETRY");
+    assert.equal(restoredVideo.id, uuid(40_010));
+    assert.equal(restoredVideo.claim_id, uuid(40_011));
+    await destination.executor.query("SELECT set_config('videoforge.account_id',$1,false)", [
+      IDS.accountA,
+    ]);
+    await assert.rejects(
+      destination.executor.query(
+        "UPDATE hosted_video_plans SET coverage_percent=100 WHERE project_revision_id=$1",
+        [IDS.revisionA],
+      ),
+      /immutable/,
+    );
+    await assert.rejects(
+      destination.executor.query(
+        "UPDATE hosted_video_jobs SET state='PREPARED',claim_id=NULL,input_manifest=NULL,input_sha256=NULL WHERE id=$1",
+        [uuid(40_010)],
+      ),
+      /immutable.*cannot replay/,
+    );
+    await destination.executor.query("SELECT set_config('videoforge.account_id','',false)");
     await destination.database.close();
     destination = await createMigratedDatabase(destinationData);
+    assert.deepEqual(await footageMetadata(destination.executor), originalFootage);
     const repositories = createPGliteControlPlaneRepositories(destination.executor);
     const revision = await repositories.projects.resolveExactRevision(SCOPE, {
       projectId: IDS.projectA,
