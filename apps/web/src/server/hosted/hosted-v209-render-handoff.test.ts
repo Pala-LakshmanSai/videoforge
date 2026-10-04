@@ -118,10 +118,17 @@ it("accepts retained voiceover origin only after the exact durable recovery refe
     projectId:"33333333-3333-4333-8333-333333333333",revisionId:"44444444-4444-4444-8444-444444444444"};
   const source={receiptId:"55555555-5555-4555-8555-555555555555",assetId:"66666666-6666-4666-8666-666666666666",
     objectKey:"exact-private-input",sha256:`sha256:${"a".repeat(64)}`,contentLength:100,contentType:"audio/mpeg"};
-  const query=vi.fn(async (sql:string)=>({rows:sql.includes("cloud_media_asr_recoveries")?[{origin_revision_id:"77777777-7777-4777-8777-777777777777"}]:[],affectedRows:0}));
+  const query=vi.fn(async (sql:string, _values?:readonly unknown[])=>{
+    if(sql.includes("FROM cloud_media_asr_recoveries")) throw new Error("permission denied for table cloud_media_asr_recoveries");
+    return {rows:sql.includes("videoforge_read_cloud_asr_recovery_voiceover_origin")?[{origin_revision_id:"77777777-7777-4777-8777-777777777777" as string|null}]:[],affectedRows:0};
+  });
   const database={transaction:async (work:(sql:unknown)=>unknown)=>work({query})} as unknown as import("@videoforge/control-plane").TransactionalSqlExecutor;
   expect(await loadHostedCloudRecoveryVoiceoverOrigin(database,ids,source)).toBe("77777777-7777-4777-8777-777777777777");
-  expect(query.mock.calls[1]?.[0]).toContain("asset.id=revision.voiceover_asset_id");
+  expect(query.mock.calls[1]?.[0]).toContain("public.videoforge_read_cloud_asr_recovery_voiceover_origin");
+  expect(query.mock.calls[1]?.[1]).toEqual([ids.accountId,ids.workspaceId,ids.projectId,ids.revisionId,
+    source.receiptId,source.assetId,source.objectKey,source.sha256,source.contentLength,source.contentType]);
+  query.mockResolvedValue({rows:[{origin_revision_id:null}],affectedRows:0});
+  await expect(loadHostedCloudRecoveryVoiceoverOrigin(database,ids,source)).rejects.toThrow("HOSTED_V209_RENDER_INPUT_INVALID");
   query.mockResolvedValue({rows:[],affectedRows:0});
   await expect(loadHostedCloudRecoveryVoiceoverOrigin(database,ids,source)).rejects.toThrow("HOSTED_V209_RENDER_INPUT_INVALID");
 });

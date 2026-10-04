@@ -364,23 +364,9 @@ export async function loadHostedCloudRecoveryVoiceoverOrigin(
       scope.accountId,
     ]);
     const result = await transaction.query<{ origin_revision_id: string }>(
-      `
-      SELECT reserved.project_revision_id::text AS origin_revision_id
-        FROM cloud_media_asr_recoveries recovery
-        JOIN artifact_receipts receipt ON receipt.id=recovery.source_receipt_id
-          AND receipt.account_id=recovery.account_id AND receipt.workspace_id=recovery.workspace_id
-        JOIN artifact_reservations reserved ON reserved.id=receipt.reservation_id
-          AND reserved.account_id=receipt.account_id AND reserved.workspace_id=receipt.workspace_id
-        JOIN assets asset ON asset.id=reserved.asset_id AND asset.account_id=reserved.account_id AND asset.workspace_id=reserved.workspace_id
-        JOIN project_revisions revision ON revision.id=recovery.project_revision_id
-          AND revision.account_id=recovery.account_id AND revision.workspace_id=recovery.workspace_id
-       WHERE recovery.account_id=$1 AND recovery.workspace_id=$2 AND recovery.project_id=$3 AND recovery.project_revision_id=$4
-         AND receipt.id=$5 AND asset.id=$6 AND asset.id=revision.voiceover_asset_id AND asset.kind='VOICEOVER'
-         AND reserved.project_id=recovery.project_id AND reserved.lane='INPUT' AND reserved.state='COMMITTED'
-         AND receipt.deleted_at IS NULL AND receipt.object_key=$7 AND reserved.object_key=receipt.object_key
-         AND receipt.checksum_sha256=$8 AND asset.binary_sha256=receipt.checksum_sha256
-         AND receipt.content_length=$9 AND receipt.content_type=$10
-         AND asset.state IN ('VERIFIED','ACCEPTED')`,
+      `SELECT public.videoforge_read_cloud_asr_recovery_voiceover_origin(
+        $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6::uuid,
+        $7::text,$8::text,$9::bigint,$10::text)::text AS origin_revision_id`,
       [
         scope.accountId,
         scope.workspaceId,

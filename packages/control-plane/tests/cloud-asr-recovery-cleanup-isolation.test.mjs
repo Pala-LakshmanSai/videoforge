@@ -28,6 +28,7 @@ test('failed Cloud ASR recovery isolates only unrelated strictly fenced cleanup 
   await db.exec('BEGIN');await executor.execute(compatibility);await db.exec('ROLLBACK');
   assert.deepEqual(await functionFacts(),originalFunction);
   await executor.execute(compatibility);
+  await executor.execute(readFileSync(new URL('../migrations/0266_cloud_asr_recovery_voiceover_reader.sql',import.meta.url),'utf8'));
   assert.deepEqual((await functionFacts()).proacl,originalFunction.proacl);
   assert.equal((await functionFacts()).prosecdef,true);
 
@@ -149,11 +150,16 @@ test('failed Cloud ASR recovery isolates only unrelated strictly fenced cleanup 
   assert.equal((await db.query(inputSql,[IDS.accountA,IDS.workspaceA,[id(4003)],id(4000),first,'RENDER'])).rows.length,1);
   assert.equal((await db.query(inputSql,[IDS.accountB,IDS.workspaceB,[id(4003)],id(4000),first,'ASR'])).rows.length,0);
   const handoff=readFileSync(new URL('../../../apps/web/src/server/hosted/hosted-v209-render-handoff.ts',import.meta.url),'utf8');
-  const originStart=handoff.indexOf('`\n      SELECT reserved.project_revision_id');
+  const originStart=handoff.lastIndexOf('`',handoff.indexOf('SELECT public.videoforge_read_cloud_asr_recovery_voiceover_origin('));
+  assert(originStart>=0);
   const originSql=handoff.slice(originStart+1,handoff.indexOf('`',originStart+1));
   const facts=[IDS.accountA,IDS.workspaceA,id(4000),first,id(4003),voice.voiceover_asset_id,objectKey,voice.voiceover_binary_sha256,100,'audio/mpeg'];
-  assert.deepEqual((await db.query(originSql,facts)).rows,[{origin_revision_id:id(4001)}]);
-  assert.equal((await db.query(originSql,[...facts.slice(0,7),hash,...facts.slice(8)])).rows.length,0);
+  for(const role of ['videoforge_v209_runtime_dc9612d6','videoforge_v209_reconciler_dc9612d6']) {
+    await db.exec('SET ROLE '+role);
+    assert.deepEqual((await db.query(originSql,facts)).rows,[{origin_revision_id:id(4001)}]);
+    assert.deepEqual((await db.query(originSql,[...facts.slice(0,7),hash,...facts.slice(8)])).rows,[{origin_revision_id:null}]);
+    await db.exec('RESET ROLE');
+  }
 
 
   await seedAttempt(id(4007),first,'OUTBOXED');
