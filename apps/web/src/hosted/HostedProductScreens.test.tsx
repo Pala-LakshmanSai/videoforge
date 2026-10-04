@@ -1791,24 +1791,34 @@ it.each(["STOPPING", "SAVING", "CLEAN"] as const)(
 );
 
 it.each([
-  [true, "ELIGIBLE", "MEDIA_EXECUTION_TIMEOUT"],
-  [false, "WORKER_UPDATE_REQUIRED", "RENDER_INPUT_INVALID"],
-  [false, "RETRY_LIMIT_REACHED", "RENDER_PROCESS_FAILED"],
+  [true, "ELIGIBLE", "MEDIA_EXECUTION_TIMEOUT", "PERSONAL_WORKER"],
+  [false, "WORKER_UPDATE_REQUIRED", "RENDER_INPUT_INVALID", "PERSONAL_WORKER"],
+  [false, "WORKER_UPDATE_REQUIRED", "RENDER_OUTPUT_INVALID", "RUNPOD_POD"],
+  [false, "RETRY_LIMIT_REACHED", "RENDER_PROCESS_FAILED", "PERSONAL_WORKER"],
 ] as const)(
   "uses server retry eligibility %s (%s) without replaying API outputs",
-  async (eligible, reason, errorCode) => {
+  async (eligible, reason, errorCode, backend) => {
     const projectId = "11111111-1111-4111-8111-111111111111";
     const failedId = "11111111-1111-4111-8111-111111111112";
     const detail = {
       project: {
         id: projectId,
         title: "Bounded retry",
+        media_execution_backend: backend,
         created_at: "2026-09-26T05:00:00Z",
         revision_id: "22222222-2222-4222-8222-222222222222",
         revision_state: "LOCKED",
       },
       generation_provider: "KIE_FAL",
-      attempts: [{ id: failedId, kind: "RENDER", state: "FAILED", error_code: errorCode }],
+      attempts: [
+        {
+          id: failedId,
+          kind: "RENDER",
+          state: "FAILED",
+          error_code: errorCode,
+          execution_backend: backend,
+        },
+      ],
       generation: null,
       gpu_transport: "DISABLED_UNQUALIFIED",
       gpu_readiness: gpuReadiness,
@@ -1836,7 +1846,9 @@ it.each([
     } else
       expect(within(row).getByRole("alert")).toHaveTextContent(
         reason === "WORKER_UPDATE_REQUIRED"
-          ? /Update the connected worker/
+          ? backend === "RUNPOD_POD"
+            ? /Cloud renderer needs an update/
+            : /Update the connected worker/
           : /five local render attempts/,
       );
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/gpu-dispatch"))).toBe(
@@ -7966,9 +7978,7 @@ it("blocks positive coverage when unavailable and allows Off without scene-video
   fireEvent.click(screen.getByRole("button", { name: "Off" }));
   expect(screen.getByRole("button", { name: "Create video" })).toBeEnabled();
   await waitFor(() =>
-    expect(screen.getByLabelText("Preliminary scene footage estimate")).toHaveTextContent(
-      "$0",
-    ),
+    expect(screen.getByLabelText("Preliminary scene footage estimate")).toHaveTextContent("$0"),
   );
 });
 
@@ -8119,11 +8129,7 @@ it.each([0, 75])(
       expect(screen.queryByLabelText("Generate scene videos elapsed time")).not.toBeInTheDocument();
     } else {
       expect(coverage).toHaveTextContent("Requested up to 75% · Planned 0% · Completed 0%");
-      expect(
-        screen.getByText(
-          "No full scene fits. Scene footage skipped.",
-        ),
-      ).toBeInTheDocument();
+      expect(screen.getByText("No full scene fits. Scene footage skipped.")).toBeInTheDocument();
     }
   },
 );

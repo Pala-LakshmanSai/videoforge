@@ -6053,7 +6053,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     if (stageId === "voiceover-context" && contextValidationFailed)
       return "The context response failed validation. A fresh provider request is not authorized for this run.";
     if (stageId === "render" && query.data.render_retry?.reason === "WORKER_UPDATE_REQUIRED")
-      return "Update the connected worker before retrying this validation failure. Your saved media stays available.";
+      return renderRetryBackend === "RUNPOD_POD"
+        ? "The Cloud renderer needs an update before this validation failure can be retried. Your saved media stays available."
+        : "Update the connected worker before retrying this validation failure. Your saved media stays available.";
     if (
       stageId === "render" &&
       query.data.render_retry?.reason === "RETRY_LIMIT_REACHED" &&
