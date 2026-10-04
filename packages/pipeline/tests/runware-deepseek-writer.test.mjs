@@ -672,7 +672,7 @@ test("advisory hosted output repairs harmless field and continuity formatting de
       (request) =>
         success(request, {
           change: (rows) => {
-            rows[0].literal_subject = " \u0000 ";
+            rows[0].literal_subject = "  Hands\u0000 beside the irrigation valve  ";
             rows[0].action = `demonstrating ${"a".repeat(300)}`;
             rows[0].environment = "ordinary\u0001 irrigation valve area";
             rows[0].lighting_context = "";
@@ -712,7 +712,7 @@ test("advisory hosted output repairs harmless field and continuity formatting de
   );
 });
 
-test("advisory mode repairs forbidden provider prose before compiled prompt use", async () => {
+test("advisory mode preserves compatibility-only prose but rejects forbidden required facts", async () => {
   const coreOnly = writer(
     [
       (request) =>
@@ -745,13 +745,91 @@ test("advisory mode repairs forbidden provider prose before compiled prompt use"
     0.01,
     "advisory",
   );
-  const repaired = await compiledFields.value.write(makeBatch(1));
+  await expectInvalid(() => compiledFields.value.write(makeBatch(1)));
   assert.equal(compiledFields.transport.requests.length, 1);
-  assert.equal(compiledFields.evidence[0].validationDisposition, "accepted");
-  assert.equal(repaired.scenes[0].literal_subject, "the narration-supported physical subject");
-  assert.equal(repaired.scenes[0].action, "depicting the narration-supported visible moment");
-  assert.deepEqual(repaired.scenes[0].continuity_tags, []);
+  assert.equal(compiledFields.evidence[0].validationDisposition, "rejected");
+  assert.equal(compiledFields.evidence[0].validationDiagnostic.reason, "scene_quality");
 });
+
+for (const [field, invalidValue] of [
+  ["action", "Pointing at a blueprint layout of a residential development"],
+  ["literal_subject", "the narration-supported physical subject"],
+  ["action", "depicting the narration-supported visible moment"],
+  ["environment", "the narration-supported physical environment"],
+  ["literal_subject", " \u0000 "],
+  ["action", ""],
+  ["environment", "   "],
+]) {
+  for (const mode of ["advisory", "enforce"]) {
+    test(`${mode} rejects unusable required ${field}: ${JSON.stringify(invalidValue)}`, async () => {
+      const setup = writer(
+        [
+          (request) =>
+            success(request, {
+              change: (rows) => {
+                rows[0][field] = invalidValue;
+                return rows;
+              },
+            }),
+        ],
+        0.01,
+        mode,
+      );
+      await expectInvalid(() => setup.value.write(makeBatch(1)));
+      assert.equal(setup.transport.requests.length, 1, "writer must not dispatch a retry");
+      assert.equal(setup.evidence[0].validationDisposition, "rejected");
+      assert.deepEqual(setup.evidence[0].acceptedSceneIds, []);
+      assert.deepEqual(setup.evidence[0].validationDiagnostic, {
+        category: "scene_quality",
+        reason: "scene_quality",
+        requestedSceneCount: 1,
+        returnedSceneCount: 1,
+        locallyValidSceneCount: 0,
+        unresolvedSceneCount: 1,
+      });
+    });
+  }
+}
+
+for (const facts of [
+  {
+    literal_subject: "A gardener's two hands",
+    action: "holding a clay flowerpot by its rim",
+    environment: "a garden workbench outdoors",
+  },
+  {
+    literal_subject: "Two gardeners beside a workbench",
+    action: "lifting a clay flowerpot together",
+    environment: "a garden workbench outdoors",
+  },
+]) {
+  test(`advisory preserves ordinary human interaction: ${facts.literal_subject}`, async () => {
+    const setup = writer(
+      [
+        (request) =>
+          success(request, {
+            change: (rows) => {
+              Object.assign(rows[0], facts);
+              rows[0].lighting_context = "visible logo";
+              rows[0].continuity_tags = ["visible logo", "same garden"];
+              return rows;
+            },
+          }),
+      ],
+      0.01,
+      "advisory",
+    );
+    const result = await setup.value.write(makeBatch(1));
+    assert.equal(setup.transport.requests.length, 1);
+    for (const [field, value] of Object.entries(facts))
+      assert.equal(result.scenes[0][field], value);
+    assert.equal(
+      result.scenes[0].lighting_context,
+      "lighting consistent with the supplied scene context",
+    );
+    assert.deepEqual(result.scenes[0].continuity_tags, ["same garden"]);
+  });
+}
 
 test("scene relevance accepts a matching action field prefixed by its subject", async () => {
   const base = makeBatch(1);

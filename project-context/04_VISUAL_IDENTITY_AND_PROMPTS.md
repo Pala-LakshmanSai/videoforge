@@ -376,3 +376,7 @@ Reject or revise a prompt that:
 - Copies a reference person, exact place, logo, watermark, character, or other content merely because it recurred in the style references.
 
 An image passes when a viewer can hear the phrase and immediately understand why the image is on screen, and the image clearly belongs to the selected style. For the documentary default, it must also look plausibly photographed; mild grain, uneven exposure, ordinary composition, and contextual clutter can help. Any malformed anatomy, pseudo-text, copied logo, unrelated scenery, or accidental style mismatch fails.
+
+## Required scene facts — 2026-10-04
+
+Empty, forbidden or generic-placeholder subject/action/environment fields must fail prompt validation, including hosted advisory mode. Do not replace required visible meaning with `depicting the narration-supported visible moment` or another abstract fallback. Harmless formatting, audit-only lighting and compatibility-only prompt_core normalization remain. Existing accepted prompt bytes and provider request identities remain authoritative. Verified terminal invalid results use the existing bounded distinct replacement and cost rules; uncertain submissions are never replayed. This validation protects scene meaning, not image anatomy. See [the investigation and production gate plan](IMAGE_QUALITY_PLAN.md).

@@ -947,74 +947,92 @@ describe("hosted Runware prompt writer", () => {
     );
   });
 
-  it("repairs a locally forbidden scene field without retry and reports its known cost", async () => {
-    const authority = hostedPromptAuthority({
-      plan: plan(),
-      identity,
-      reservedCostMicroUsd: 40_000,
-    });
-    const batch = buildPromptBatch({
-      batchId: `${authority.taskId}:batch:1`,
-      projectTitle: authority.projectTitle,
-      imageStyleVersionId: authority.imageStyleVersionId,
-      styleProfileHash: authority.styleProfileHash,
-      styleTreatment: authority.styleTreatment,
-      plannerGuidance: authority.plannerGuidance,
-      storyContext: authority.storyContext,
-      continuityTags: authority.continuityTags,
-      scenes: authority.scenes,
-    });
-    const fetcher = vi.fn(async (_url: unknown, init?: RequestInit) => {
-      const request = JSON.parse(String(init?.body)) as Array<Record<string, unknown>>;
-      const task = request[0]!;
-      const messages = task.messages as Array<{ content: string }>;
-      const payload = JSON.parse(messages[0]!.content) as {
-        batch_id: string;
-        story_context: string;
-        scenes: PromptFixtureScene[];
-      };
-      return Response.json({
-        data: [
-          {
-            taskUUID: task.taskUUID,
-            text: JSON.stringify({
-              batch_id: payload.batch_id,
-              scenes: payload.scenes.map((scene, index) =>
-                groundedPromptFixtureScene(
-                  scene,
-                  index === 0 ? { action: "show a visible logo" } : {},
-                  payload.story_context,
-                ),
-              ),
-            }),
-            usage: {
-              promptTokens: 100,
-              completionTokens: 100,
-              totalTokens: 200,
-              cachedInputTokens: 0,
-            },
-            cost: 0.00001,
-            finishReason: "stop",
-            model: "google:gemini@3.5-flash",
-          },
-        ],
+  it.each([
+    "show a visible logo",
+    "Pointing at a blueprint layout of a residential development",
+    "depicting the narration-supported visible moment",
+  ])(
+    "rejects unusable required action without retry and reports known cost: %s",
+    async (action) => {
+      const authority = hostedPromptAuthority({
+        plan: plan(),
+        identity,
+        reservedCostMicroUsd: 40_000,
       });
-    });
+      const batch = buildPromptBatch({
+        batchId: `${authority.taskId}:batch:1`,
+        projectTitle: authority.projectTitle,
+        imageStyleVersionId: authority.imageStyleVersionId,
+        styleProfileHash: authority.styleProfileHash,
+        styleTreatment: authority.styleTreatment,
+        plannerGuidance: authority.plannerGuidance,
+        storyContext: authority.storyContext,
+        continuityTags: authority.continuityTags,
+        scenes: authority.scenes,
+      });
+      const fetcher = vi.fn(async (_url: unknown, init?: RequestInit) => {
+        const request = JSON.parse(String(init?.body)) as Array<Record<string, unknown>>;
+        const task = request[0]!;
+        const messages = task.messages as Array<{ content: string }>;
+        const payload = JSON.parse(messages[0]!.content) as {
+          batch_id: string;
+          story_context: string;
+          scenes: PromptFixtureScene[];
+        };
+        return Response.json({
+          data: [
+            {
+              taskUUID: task.taskUUID,
+              text: JSON.stringify({
+                batch_id: payload.batch_id,
+                scenes: payload.scenes.map((scene, index) =>
+                  groundedPromptFixtureScene(
+                    scene,
+                    index === 0 ? { action } : {},
+                    payload.story_context,
+                  ),
+                ),
+              }),
+              usage: {
+                promptTokens: 100,
+                completionTokens: 100,
+                totalTokens: 200,
+                cachedInputTokens: 0,
+              },
+              cost: 0.00001,
+              finishReason: "stop",
+              model: "google:gemini@3.5-flash",
+            },
+          ],
+        });
+      });
 
-    const result = await new HostedRunwarePromptWriter(
-      "configured-test-key-value",
-      adaptivePlan(batch),
-      fetcher,
-    ).write(batch);
-    expect(fetcher).toHaveBeenCalledTimes(adaptivePlan(batch).batchCount);
-    expect(result.output.scenes).toHaveLength(25);
-    expect(result.output.scenes[0]?.action).toBe(
-      "depicting the narration-supported visible moment",
-    );
-    expect(result.attempts[0]?.reportedCostMicroUsd).toBe(adaptivePlan(batch).batchCount * 10);
-  });
+      const onBatchAccepted = vi.fn();
+      await expect(
+        new HostedRunwarePromptWriter(
+          "configured-test-key-value",
+          adaptivePlan(batch),
+          fetcher,
+          onBatchAccepted,
+        ).write(batch),
+      ).rejects.toMatchObject({
+        name: "HostedPromptExecutionError",
+        problemCode: "HOSTED_PROMPT_OUTPUT_INVALID",
+        terminalState: "FAILED",
+        providerMayHaveCharged: false,
+        additionalKnownCostMicroUsd: 10,
+        validationDiagnostic: {
+          category: "scene_quality",
+          reason: "scene_quality",
+          unresolvedSceneCount: 1,
+        },
+      });
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(onBatchAccepted).not.toHaveBeenCalled();
+    },
+  );
 
-  it("persists both adaptive batches when the second output needs local repair", async () => {
+  it("preserves accepted prefix and known invalid cost before distinct bounded replacement", async () => {
     const batch = buildPromptBatch({
       batchId: `${ids.task}:batch:multi`,
       projectTitle: "Hydrogen peroxide",
@@ -1090,24 +1108,26 @@ describe("hosted Runware prompt writer", () => {
     });
     const onBatchAccepted = vi.fn();
 
-    const result = await new HostedRunwarePromptWriter(
-      "configured-test-key-value",
-      planned,
-      fetcher,
-      onBatchAccepted,
-    ).write(batch);
+    await expect(
+      new HostedRunwarePromptWriter(
+        "configured-test-key-value",
+        planned,
+        fetcher,
+        onBatchAccepted,
+      ).write(batch),
+    ).rejects.toMatchObject({
+      problemCode: "HOSTED_PROMPT_OUTPUT_INVALID",
+      terminalState: "FAILED",
+      providerMayHaveCharged: false,
+      additionalKnownCostMicroUsd: 10,
+      validationDiagnostic: { category: "scene_quality", reason: "scene_quality" },
+    });
     expect(fetcher).toHaveBeenCalledTimes(2);
-    expect(onBatchAccepted).toHaveBeenCalledTimes(2);
+    expect(onBatchAccepted).toHaveBeenCalledTimes(1);
     expect(onBatchAccepted.mock.calls[0]?.[0].reportedCostMicroUsd).toBe(10);
     expect(onBatchAccepted.mock.calls[0]?.[0].scenes).toHaveLength(
       planned.batches[0]!.sceneIds.length,
     );
-    expect(onBatchAccepted.mock.calls[1]?.[0].reportedCostMicroUsd).toBe(10);
-    expect(onBatchAccepted.mock.calls[1]?.[0].scenes).toHaveLength(
-      planned.batches[1]!.sceneIds.length,
-    );
-    expect(result.output.scenes).toHaveLength(20);
-    expect(result.attempts[0]?.reportedCostMicroUsd).toBe(20);
 
     const first = onBatchAccepted.mock.calls[0]![0] as HostedAcceptedPromptBatch;
     const originalTask = JSON.parse(first.requestBytes)[0] as { taskUUID: string };
@@ -1450,10 +1470,26 @@ describe("hosted Runware prompt writer", () => {
     ).rejects.toMatchObject({ problemCode: "HOSTED_PROMPT_EXECUTION_UNKNOWN" });
     expect(fetcher).not.toHaveBeenCalled();
 
-    await expect(new HostedRunwarePromptWriter("configured-test-key-value", planned, fetcher,
-      undefined, undefined, { acceptedBatches: [recovered], beforeBatchSubmit: async () => {
-        throw new HostedPromptExecutionError("HOSTED_PROMPT_PROVIDER_CREDITS_LOW", "UNKNOWN", true, null);
-      } }).write(batch)).rejects.toMatchObject({ problemCode: "HOSTED_PROMPT_PROVIDER_CREDITS_LOW" });
+    await expect(
+      new HostedRunwarePromptWriter(
+        "configured-test-key-value",
+        planned,
+        fetcher,
+        undefined,
+        undefined,
+        {
+          acceptedBatches: [recovered],
+          beforeBatchSubmit: async () => {
+            throw new HostedPromptExecutionError(
+              "HOSTED_PROMPT_PROVIDER_CREDITS_LOW",
+              "UNKNOWN",
+              true,
+              null,
+            );
+          },
+        },
+      ).write(batch),
+    ).rejects.toMatchObject({ problemCode: "HOSTED_PROMPT_PROVIDER_CREDITS_LOW" });
     expect(fetcher).not.toHaveBeenCalled();
 
     await expect(

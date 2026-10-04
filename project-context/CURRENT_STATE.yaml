@@ -1,3 +1,20 @@
+image_quality_2026_10_04:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  read_profile: v2_09_image_quality
+  status: QUALIFIED_PROMPT_SAFEGUARD_READY_FOR_PUBLICATION
+  branch: codex/image-anatomy-quality
+  base_source: ac1323b5
+  authority: User_approves_separate_API_tests_and_needed_limits_through_production;finite_investigation_USD5;no_GPU_or_retained_volume.
+  diagnosis: Three_hand_image_already_had_required_anatomy_text;forbidden_blueprint_action_replaced_by_generic_filler;12_of380_prompts_have_fallback;car_REACTION_RESULT_has_no_body_framing.
+  repair: Reject_empty_forbidden_or_placeholder_required_facts;preserve_request_bytes_versions_UUIDs_saved_acceptance_and_bounded_existing_replacement.
+  experiments: Forty_zimage_outputs_complete_32credits;initial_compact_framing_not_promoted;rear_body_compositions_promising_but_not_general_qualification.
+  provider_spend: Finite_USD5_cap;40images_at0_8credits_each_32credits_estimatedUSD0_16;vision_calibration_in_progress;settled_invoice_unverified.
+  paid_compute_shutdown: No_Pods_endpoints_GPU_or_Workflow_instances_created_by_investigation.
+  validation: Focused236_tests_Web_Worker_types_both_builds_firewalls_context_format_secret_scan_and_independent_diff_review_PASS.
+  remaining_gates: Production_publication_and_Chrome_readback;vision_checker_disagrees_on_valid_occlusion_and_is_not_qualified;durable_visual_acceptance_gate_not_implemented;no_perfect_anatomy_claim.
+  plan: IMAGE_QUALITY_PLAN.md
+
 asr_timing_recovery_2026_10_04:
   checkpoint: V2-09
   selected_task: VF-10-09
@@ -2408,7 +2425,7 @@ updated_at: "2026-09-19T04:41:41Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: J1TTS_voiceover_Hub
+current_milestone: Image_quality_prevention
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -2418,8 +2435,8 @@ provider_calls_authorized: true
 read_only_provider_calls_authorized: false
 remote_or_cloud_mutations_authorized: true
 credential_access_authorized: true
-gpu_use_authorized: true
-maximum_external_spend_usd: 1
+gpu_use_authorized: false
+maximum_external_spend_usd: 5
 
 v2_09_stage6_7_autonomous_mvp_repair_2026_09_13:
   status: "ACCEPTED_DEPLOYED_ZERO_COMPUTE"
@@ -6941,17 +6958,17 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/asr-timing-recovery
-  branch_upstream: origin/codex/asr-timing-recovery
-  branch_published: true
-  current_source_head: "569948f3b65ec052f0dc6ccb0143e0ae64ea6584"
-  current_source_head_semantics: published_application_source_voiceover_progress_local_ASR_repair_pending
+  branch: codex/image-anatomy-quality
+  branch_upstream: origin/codex/image-anatomy-quality
+  branch_published: false
+  current_source_head: "65d28fab257353d54f25bfdf1c9d344dd5484e97"
+  current_source_head_semantics: production_baseline_for_image_quality_safeguard
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Resolve Git HEAD for local ASR timing repair; published application remains voiceover Progress source569948f3. Main unrelated work is preserved."
+  current_source_head_note: "Resolve Git HEAD for image-quality safeguard; baseline production is ASR repair65d28fab. Main unrelated work is preserved."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
-  working_tree_expected: clean_tracked_after_ASR_timing_repair_handoff_commit
+  working_tree_expected: clean_tracked_after_image_quality_handoff_commit
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
 live_development:
@@ -6965,8 +6982,8 @@ live_development:
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
   provider_mode: production
   provider_calls_authorized: true
-  authorized_spend_usd: 1
-  provider_authority_scope: user_approved_J1TTS_feature_tests_and_production_agent_bounded_acceptance1usd
+  authorized_spend_usd: 5
+  provider_authority_scope: user_approved_image_quality_API_tests_and_production_prevention_agent_bounded5usd
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -9187,45 +9204,44 @@ v2_09_historical_consumed_native_authority:
 
 provider_authority: &v2_09_provider_authority_current
   mode: paid
-  provider: J1TTS_and_existing_Kie_Fal_RunPod
-  model_id: user_selected_J1TTS_voice_and_existing_private_render_pipeline
-  cap_usd: 1
+  provider: Kie_and_Runware
+  model_id: z_image_and_google_gemini_3_1_flash_lite
+  cap_usd: 5
   non_transferable: true
   authorized_by_user_at: "2026-10-04"
-  resources: [j1tts_subscription, kie_z_image, fal_flashhead_audio_to_video, videoforge_qualified_cloud_media_runtime, videoforge_production_worker]
-  authorized_operations: [bounded_qualification, additive_migration, server_secret_provisioning, production_deploy]
-  allowed_operations: [bounded_qualification, additive_migration, server_secret_provisioning, production_deploy]
+  resources: [kie_z_image, runware_gemini_vision, videoforge_production_worker, neon_production_read_only]
+  authorized_operations: [bounded_qualification, production_deploy]
+  allowed_operations: [bounded_qualification, production_deploy]
   rate_snapshot:
-    - resource_id: existing_qualified_cloud_media_runtime
-      billing_unit: configured_machine_hour_ceiling
-      usd_per_unit: 0.8
+    - resource_id: kie_z_image
+      billing_unit: image
+      usd_per_unit: 0.004
       checked_at: "2026-10-04"
-      evidence: preserved_production_machine_rate_ceiling;live_offering_must_pass_existing_preflight_before_launch
-  subscription_usage: J1TTS_limit0_remainingnull_and_supplied_unlimited_dashboard;per_call_price_and_invoice_not_verified
+      evidence: forty_isolated_calls_each_reported0_8credits;conversion_estimate_not_invoice
 
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: J1TTS_voiceover_Hub
-  status: RELEASING_VERIFIED_FEATURE
-  dependency_status: production_baseline_d64015aa_and_native_migration250_verified
-  authorization_status: user_explicitly_approved_full_feature_testing_and_production_no_questions;agent_bounded_acceptance_cap1usd
+  milestone: Image_quality_prevention
+  status: QUALIFIED_PROMPT_SAFEGUARD_AND_VISUAL_GATE_PLAN
+  dependency_status: production65d28fab_Workerfe1af150_verified
+  authorization_status: user_explicitly_approved_API_testing_and_prevention_through_production;finiteUSD5
   task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current
-  read_profile: v2_09_j1tts_voiceover
+  read_profile: v2_09_image_quality
   task_brief: tasks/VF-10-09.md
-  goal: Implement_J1TTS_voiceover_Hub_and_verify_production_release
+  goal: Publish_required_scene_fact_safeguard_and_qualify_durable_visual_acceptance_gate
   provider_mode: fixture
   provider_calls_authorized: true
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 1
+  maximum_external_spend_usd: 5
   remote_or_cloud_mutations_authorized: true
   credential_access_authorized: true
   credential_value_read_authorized: true
   model_downloads_authorized: false
   sample_output_publication_authorized: true
   worker_image_publication_authorized: true
-  gpu_use_authorized: true
+  gpu_use_authorized: false
   retained_volume_mutation_authorized: false
   application_code_changes_authorized: true
   spend_usd: 0

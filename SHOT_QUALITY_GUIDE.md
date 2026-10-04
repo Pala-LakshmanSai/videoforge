@@ -62,3 +62,9 @@ instructions are 5,937 bytes / 691 words, down from 9,820 bytes / 1,360 words. A
 grounding, style, shot-quality, no-text and exact-output rules remain. The eight-field contract,
 validation, retries, recovery and output budget are unchanged. These are measured text savings;
 actual billed-token savings and equal generated-image quality remain unmeasured.
+
+## 4 October anatomy investigation
+
+The exact provider prompt behind a three-hand image already included the required hand-count/wrist instruction. Its specific blueprint-pointing action had been replaced locally by generic filler. Required subject/action/environment facts must now survive validation or the writer result is rejected; never sanitize away the action and approve the remainder.
+
+Forty isolated z-image outputs also show that adding a generic head/torso/hand-count sentence is insufficient. Explicit rear/side placement improved visible body connection in these two scenes, but a framing policy cannot be promoted from two scenarios. Preserve narrated participants and meaningful actions; do not convert every human scene to a solo rear portrait. Structural media checks do not establish visual correctness. See `project-context/IMAGE_QUALITY_PLAN.md` and the dated experiment evidence for the staged production path and remaining visual-review gate.

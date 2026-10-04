@@ -789,35 +789,16 @@ const normalizeReturnedScene = (
   const row = asRecord(candidate);
   if (!row || !hasSceneOutputShape(candidate)) return null;
 
-  const phraseFallback = boundedProviderText(
-    expected.phrase,
-    240,
-    "the narration-supported physical subject",
-  );
-  const sentenceFallback = boundedProviderText(expected.sentenceContext, 240, phraseFallback);
   const lightingFallback = boundedProviderText(
     batch.styleTreatment?.lighting ?? "",
     120,
     "lighting consistent with the supplied scene context",
   );
-  const literalSubject = safeBoundedProviderText(
-    row.literal_subject as string,
-    240,
-    phraseFallback,
-    "the narration-supported physical subject",
-  );
-  const action = safeBoundedProviderText(
-    row.action as string,
-    240,
-    phraseFallback,
-    "depicting the narration-supported visible moment",
-  );
-  const environment = safeBoundedProviderText(
-    row.environment as string,
-    240,
-    sentenceFallback,
-    "the narration-supported physical environment",
-  );
+  // Required facts have passed validation before normalization. Do not replace a
+  // rejected action with filler: the compiler would send that filler to images.
+  const literalSubject = boundedProviderText(row.literal_subject as string, 240, "");
+  const action = boundedProviderText(row.action as string, 240, "");
+  const environment = boundedProviderText(row.environment as string, 240, "");
   const lightingContext = safeBoundedProviderText(
     row.lighting_context as string,
     120,
@@ -883,6 +864,22 @@ const singleSceneValidation = (
   candidate: JsonValue,
   semanticQualityMode: "advisory" | "enforce",
 ): PromptWriterSceneOutput | null => {
+  const row = asRecord(candidate);
+  if (!row || !hasSceneOutputShape(candidate)) return null;
+  for (const field of ["literal_subject", "action", "environment"] as const) {
+    const source = row[field] as string;
+    const normalized = stripProviderControls(source.normalize("NFKC")).replace(/\s+/gu, " ").trim();
+    // These former local fallbacks contain no drawable scene facts. Treat them
+    // like empty/forbidden required output, including in advisory production mode.
+    if (
+      normalized.length === 0 ||
+      /\b(?:the narration-supported physical (?:subject|environment)|depicting the narration-supported visible moment)\b/iu.test(
+        normalized,
+      ) ||
+      hasHardPromptConflict(source)
+    )
+      return null;
+  }
   if (semanticQualityMode === "advisory") return normalizeReturnedScene(batch, expected, candidate);
   try {
     const validated = validatePromptWriterOutput(
