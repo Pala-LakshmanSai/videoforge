@@ -2,13 +2,13 @@ asr_timing_recovery_2026_10_04:
   checkpoint: V2-09
   selected_task: VF-10-09
   read_profile: v2_09_j1tts_voiceover
-  state: LOCAL_VERIFIED_NOT_PUBLISHED
+  state: APPROVED_RELEASE_QUALIFICATION
   branch: codex/asr-timing-recovery
   base_source: 2da0f945
   root_cause: Accepted_Whisper_words_24220ms_and27300ms_exceeded7000ms_scene_limit;planner_retry_could_not_repair_missing_speech_timing.
   behavior: Bounded_same_model_redecode_of_affected_chunk_before_receipt;legacy_timing_guard_before_planning;truthful_Progress_without_futile_planning_retry.
   validation: 37_transcription215_pipeline249_web_tests_PASS;full1136509ms_source_local_ASR_and250_scene_plan_PASS;real_Chrome_synthetic_fixture_PASS.
-  provider_spend: USD0;no_provider_mutation_or_paid_compute.
+  provider_spend: USD0_started;user_approved_publication_and_one900s_Cloud_transcription_recovery_finite_USD1_cap_no_retained_volume_stop_before_new_image_avatar_generation.
   paid_compute_shutdown: Read_only_complete_RunPod_inventory_zero_Pods;original_ASR_reservation_CLEAN.
   remaining_gates: Cloud_Linux_and_native_Desktop_runtime_qualification_publication;application_publication;guarded_same_project_immutable_successor_and_fresh_ASR_recovery;production_Chrome_acceptance.
   evidence: evidence/acceptance/VF-10-09/2026-10-04-asr-timing-recovery.md

@@ -171,6 +171,13 @@ jobs:
             -e PYTHONPATH=/opt/videoforge/packages/contracts/python:/opt/videoforge/workers/image-media/src:/opt/videoforge/workers/media-local/src:/worker-tests \
             -v "$GITHUB_WORKSPACE/workers/media-local/tests:/worker-tests:ro" \
             vf-cloud-qualified -m unittest test_runpod_job test_personal_worker
+      - name: Verify transcription timing recovery inside the exact Linux candidate
+        run: |
+          set -euo pipefail
+          docker run --rm --network=none --entrypoint python \
+            -e PYTHONPATH=/opt/videoforge/packages/contracts/python:/opt/videoforge/workers/image-media/src:/transcription-tests \
+            -v "$GITHUB_WORKSPACE/workers/image-media/tests/jobs/transcribe:/transcription-tests:ro" \
+            vf-cloud-qualified -m unittest test_job
       - name: Record qualified release configuration
         run: |
           set -euo pipefail
