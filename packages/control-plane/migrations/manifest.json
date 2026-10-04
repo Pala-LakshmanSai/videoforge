@@ -1362,6 +1362,12 @@
       "name": "hosted_script_intake_fifo",
       "filename": "0264_hosted_script_intake_fifo.sql",
       "sha256": "sha256:8bef6cf9ae965908d416352dfeef434c351c9e724c9c9abfade571da9e57e6ad"
+    },
+    {
+      "version": 265,
+      "name": "cloud_asr_recovery_cleanup_isolation",
+      "filename": "0265_cloud_asr_recovery_cleanup_isolation.sql",
+      "sha256": "sha256:6c15c7cd9b2516cf675c9f90f2b7fbe8abd6783122e675a3aab24e30c7b37b64"
     }
   ]
 }
