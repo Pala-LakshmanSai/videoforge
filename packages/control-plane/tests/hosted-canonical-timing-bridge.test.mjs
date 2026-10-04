@@ -448,7 +448,11 @@ test("atomically appends, exactly replays, rejects drift, and survives populated
         });
       }
     }
-    const payload = appendPayload(IDS.accountA, preparedTranscript, preparedTimeline, tasks);
+    const payload = structuredClone(
+      appendPayload(IDS.accountA, preparedTranscript, preparedTimeline, tasks),
+    );
+    payload.timeline.asset.metadata.planning_started_at = "2026-08-25T12:00:01.000Z";
+    payload.timeline.asset.metadata.planning_completed_at = "2026-08-25T12:00:02.000Z";
     const prefix =
       `tenant/${IDS.accountA}/workspace/${IDS.workspaceA}/project/${IDS.projectA}` +
       `/revision/${IDS.revisionA}/lane/input/job/${attemptId}/artifact/`;
@@ -516,6 +520,21 @@ test("atomically appends, exactly replays, rejects drift, and survives populated
       );
     assert.deepEqual((await append(payload)).rows, [{ replayed: false }]);
     assert.deepEqual((await append(payload)).rows, [{ replayed: true }]);
+    const laterCaller = structuredClone(payload);
+    laterCaller.timeline.asset.metadata.planning_started_at = "2026-08-25T12:00:03.000Z";
+    laterCaller.timeline.asset.metadata.planning_completed_at = "2026-08-25T12:00:04.000Z";
+    assert.deepEqual((await append(laterCaller)).rows, [{ replayed: true }]);
+    const retained = await source.executor.query(
+      "SELECT append_payload FROM hosted_canonical_timing_bridges WHERE hosted_asr_attempt_id=$1",
+      [attemptId],
+    );
+    assert.deepEqual(retained.rows[0].append_payload, payload);
+    const changedMetadata = structuredClone(laterCaller);
+    changedMetadata.timeline.asset.metadata.scheduler_version = "changed";
+    await expectDatabaseError(() => append(changedMetadata), "23505");
+    const changedWord = structuredClone(laterCaller);
+    changedWord.transcript.words[0].text = "changed";
+    await expectDatabaseError(() => append(changedWord), "23505");
     for (const drift of [
       (candidate) => {
         candidate.transcript.asset.byte_size += 1;
