@@ -1,0 +1,124 @@
+{
+  "checkpoint": "V2-09 / VF-10-09",
+  "source": "2086a71c7351eb5006121d73beb122f74c043acc",
+  "worker_version": "d86e7757-8f10-461d-b675-99fdb4493de8",
+  "traffic_percent": 100,
+  "migrations": [
+    253,
+    254,
+    255
+  ],
+  "public_assets": 29,
+  "bindings": 53,
+  "secrets_count": 26,
+  "workflow_identities": 3,
+  "native_pins_preserved": true,
+  "artifacts": {
+    "script": {
+      "at": "2026-10-04T05:34:27.438Z",
+      "project": "63aed0ae-faa6-4140-9f11-68777e439fa6",
+      "attempt": "acaaf843-9190-4c5a-9185-13be18b65d08",
+      "bytes": 3823125,
+      "sha256": "sha256:57befc64f66a068b97063a14a9da6137ee260ed850bdedcf215d4b1165abe938",
+      "ownerPreview": 200,
+      "range": 206,
+      "foreignPreview": 404,
+      "decode": {
+        "full_decode_exit": 0,
+        "stderr": "",
+        "ffprobe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "h264",
+              "width": 1920,
+              "height": 1080,
+              "r_frame_rate": "30/1"
+            },
+            {
+              "codec_name": "aac",
+              "sample_rate": "48000",
+              "r_frame_rate": "0/0"
+            }
+          ],
+          "format": {
+            "duration": "18.033008",
+            "size": "3823125"
+          }
+        }
+      },
+      "chrome_playback": {
+        "duration": 18.033008,
+        "ended": true,
+        "error": null,
+        "height": 1080,
+        "paused": true,
+        "ready": 4,
+        "time": 18.033008,
+        "width": 1920
+      },
+      "review_approved": true,
+      "download_status": 200
+    },
+    "upload": {
+      "at": "2026-10-04T05:34:30.706Z",
+      "project": "1059deb2-418d-4908-9596-5248f22537f7",
+      "attempt": "e77dff77-da3c-43ac-9351-62c4037fa945",
+      "bytes": 3902339,
+      "sha256": "sha256:4da99c27815f874c80e220a8f1891e02552a4d704b062b07d7fdc446f6fb5aad",
+      "ownerPreview": 200,
+      "range": 206,
+      "foreignPreview": 404,
+      "decode": {
+        "full_decode_exit": 0,
+        "stderr": "",
+        "ffprobe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "h264",
+              "width": 1920,
+              "height": 1080,
+              "r_frame_rate": "30/1"
+            },
+            {
+              "codec_name": "aac",
+              "sample_rate": "48000",
+              "r_frame_rate": "0/0"
+            }
+          ],
+          "format": {
+            "duration": "19.100000",
+            "size": "3902339"
+          }
+        }
+      },
+      "chrome_playback": {
+        "duration": 19.1,
+        "ended": true,
+        "error": null,
+        "height": 1080,
+        "paused": true,
+        "ready": 4,
+        "time": 19.1,
+        "width": 1920
+      },
+      "review_approved": true,
+      "download_status": 200
+    }
+  },
+  "cleanup": {
+    "clean_reservations": 7,
+    "active_leases": 0,
+    "complete_provider_inventory_zero_pods": true,
+    "conservative_cloud_estimate_usd": 0.09785185185185184,
+    "invoice_verified": false
+  },
+  "limits": [
+    "Script canary required operator recovery after the reproduced pre-fix render deadlock; no fresh uninterrupted script run afterward.",
+    "Live Create used authorized operator API; connected Chrome account lacked a ready avatar. Fixture Create and production controls/preview are separate browser evidence.",
+    "No fresh full Local device run, long-form quality/performance benchmark, invoice reconciliation or whole-repository CI claim."
+  ]
+}
