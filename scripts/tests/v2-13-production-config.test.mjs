@@ -467,29 +467,53 @@ test("bundle firewall still rejects Worker GPU lifecycle controls", async () => 
 test("bundle firewall confines Cloud GPU vocabulary to the isolated dynamic server adapter", async () => {
   const cloudKey = "src/server/hosted/runpod-media.ts";
   for (const scenario of ["isolated", "static", "client", "other-chunk", "manual-pod"]) {
-    const directory = await productionBundle("const worker = true;\n",
-      scenario === "client" ? 'const gpu = "NVIDIA RTX A6000";\n' : "const client = true;\n", {
+    const directory = await productionBundle(
+      "const worker = true;\n",
+      scenario === "client" ? 'const gpu = "NVIDIA RTX A6000";\n' : "const client = true;\n",
+      {
         mutateManifest(manifest) {
-          manifest[cloudKey] = { file: "assets/runpod-media.js", isDynamicEntry: true, imports: ["_worker-common.js"] };
+          manifest[cloudKey] = {
+            file: "assets/runpod-media.js",
+            isDynamicEntry: true,
+            imports: ["_worker-common.js"],
+          };
           manifest["_worker-common.js"].dynamicImports.push(cloudKey);
           if (scenario === "static") manifest["_worker-common.js"].imports = [cloudKey];
-          if (scenario === "other-chunk") manifest["other.ts"] = { file: "assets/other.js", isDynamicEntry: true };
+          if (scenario === "other-chunk")
+            manifest["other.ts"] = { file: "assets/other.js", isDynamicEntry: true };
         },
         extraAssets: {
-          "runpod-media.js": scenario === "manual-pod" ? 'const forbidden = "startPod";\n' : 'const gpu = "NVIDIA RTX A6000";\n',
-          ...(scenario === "other-chunk" ? { "other.js": 'const gpu = "NVIDIA RTX A6000";\n' } : {}),
+          "runpod-media.js":
+            scenario === "manual-pod"
+              ? 'const forbidden = "startPod";\n'
+              : 'const gpu = "NVIDIA RTX A6000";\n',
+          ...(scenario === "other-chunk"
+            ? { "other.js": 'const gpu = "NVIDIA RTX A6000";\n' }
+            : {}),
         },
-      });
+      },
+    );
     try {
-      const result = spawnSync(process.execPath, [bundleVerifier], { cwd: root, encoding: "utf8",
-        env: { ...process.env, VIDEOFORGE_BUNDLE_DIR: path.basename(directory) } });
+      const result = spawnSync(process.execPath, [bundleVerifier], {
+        cwd: root,
+        encoding: "utf8",
+        env: { ...process.env, VIDEOFORGE_BUNDLE_DIR: path.basename(directory) },
+      });
       if (scenario === "isolated") assert.equal(result.status, 0, result.stderr);
       else {
         assert.notEqual(result.status, 0, scenario);
-        assert.match(result.stderr, scenario === "static" ? /Cloud media adapter must remain a dynamic server entry/u
-          : scenario === "manual-pod" ? /contains startPod/u : /contains NVIDIA RTX A6000/u);
+        assert.match(
+          result.stderr,
+          scenario === "static"
+            ? /Cloud media adapter must remain a dynamic server entry/u
+            : scenario === "manual-pod"
+              ? /contains startPod/u
+              : /contains NVIDIA RTX A6000/u,
+        );
       }
-    } finally { await rm(directory, { recursive: true, force: true }); }
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   }
 });
 
@@ -639,4 +663,28 @@ test("bundle firewall rejects an unknown config instead of selecting a looser ba
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test("provider routing toggle is optional strict boolean and account catalogue never enters vars", () => {
+  const base = parseProductionConfig(
+    readFileSync(path.join(root, "apps/web/wrangler.production.jsonc"), "utf8"),
+  );
+  delete base.vars.VIDEOFORGE_PROVIDER_ACCOUNT_ROUTING_ENABLED;
+  validateProductionConfig(base, { mode: "template" });
+  for (const value of ["false", "true"]) {
+    const config = structuredClone(base);
+    config.vars.VIDEOFORGE_PROVIDER_ACCOUNT_ROUTING_ENABLED = value;
+    validateProductionConfig(config, { mode: "template" });
+  }
+  for (const value of ["yes", true, ""]) {
+    const config = structuredClone(base);
+    config.vars.VIDEOFORGE_PROVIDER_ACCOUNT_ROUTING_ENABLED = value;
+    assert.throws(
+      () => validateProductionConfig(config, { mode: "template" }),
+      /variables drifted/,
+    );
+  }
+  const secret = structuredClone(base);
+  secret.vars.VIDEOFORGE_API_ACCOUNT_CREDENTIALS_JSON = "{}";
+  assert.throws(() => validateProductionConfig(secret, { mode: "template" }));
 });

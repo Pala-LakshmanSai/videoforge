@@ -1,6 +1,7 @@
 import type { SqlPrimitive, TransactionalSqlExecutor } from "@videoforge/control-plane";
 
 import { hostedRuntimeConfiguration, type HostedRuntimeEnvironment } from "./configuration";
+import type { ProviderAccountIdentity } from "./provider-account-credentials";
 import { HostedR2Signer } from "./r2";
 import { advanceHostedVideoGeneration } from "./hosted-video-generation";
 import { KieZImageClient, KieZImageError } from "../providers/kie-z-image";
@@ -41,6 +42,7 @@ type Job = {
   outputObjectKey: string;
   providerTaskId: string | null;
   failureCode: string | null;
+  providerAccount?: ProviderAccountIdentity;
 };
 
 function object(value: unknown): Record<string, unknown> {
@@ -105,11 +107,18 @@ export async function callHostedApiGeneration(
   functionName: string,
   args: readonly SqlPrimitive[],
 ): Promise<unknown> {
-  if (!/^videoforge_[a-z_]+$/u.test(functionName))
+  if (!/^videoforge_[a-z0-9_]+$/u.test(functionName))
     throw new Error("HOSTED_API_GENERATION_SQL_INVALID");
   return database.transaction(async (tx) => {
     await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", accountId]);
-    const placeholders = args.map((_, index) => `$${index + 1}`).join(",");
+    const placeholders = args
+      .map((_, index) => {
+        const argument = `$${index + 1}`;
+        return functionName === "videoforge_claim_hosted_api_job_v2" && index === 5
+          ? `ARRAY(SELECT jsonb_array_elements_text(${argument}::jsonb))`
+          : argument;
+      })
+      .join(",");
     const result = await tx.query<{ value: unknown }>(
       `SELECT public.${functionName}(${placeholders}) AS value`,
       [...args],
@@ -118,7 +127,11 @@ export async function callHostedApiGeneration(
   });
 }
 
-function jobs(value: unknown, scope: HostedApiGenerationScope): Job[] {
+function jobs(
+  value: unknown,
+  scope: HostedApiGenerationScope,
+  parseAccountIdentity: typeof import("./provider-account-credentials").providerAccountIdentity,
+): Job[] {
   const result = object(value);
   if (result.generationRequestId !== scope.generationRequestId || !Array.isArray(result.jobs))
     throw new Error("HOSTED_API_GENERATION_RESPONSE_INVALID");
@@ -140,6 +153,7 @@ function jobs(value: unknown, scope: HostedApiGenerationScope): Job[] {
       outputObjectKey: string(row.outputObjectKey),
       providerTaskId: typeof row.providerTaskId === "string" ? row.providerTaskId : null,
       failureCode: typeof row.failureCode === "string" ? row.failureCode : null,
+      providerAccount: parseAccountIdentity(row.providerAccount),
     };
   });
 }
@@ -215,15 +229,19 @@ export async function advanceHostedApiGeneration(
   const config = hostedRuntimeConfiguration(environment);
   if (!config.apiGeneration || !environment.PRIVATE_ARTIFACTS)
     throw new Error("HOSTED_API_GENERATION_BINDING_MISSING");
+  const { providerAccountCredentials, providerAccountIdentity } = await import(
+    "./provider-account-credentials"
+  );
   const base = [scope.accountId, scope.workspaceId, scope.generationRequestId] as const;
   const current = jobs(
     await callHostedApiGeneration(
       database,
       scope.accountId,
-      "videoforge_read_hosted_api_jobs",
+      "videoforge_read_hosted_api_jobs_v2",
       base,
     ),
     scope,
+    providerAccountIdentity,
   );
   const outcome = (
     state: "WAITING" | "PROGRESSED" | "READY_TO_RENDER" | "ACTION_REQUIRED",
@@ -260,8 +278,7 @@ export async function advanceHostedApiGeneration(
   const failed = current.find((job) => job.state === "FAILED");
   const bucket = environment.PRIVATE_ARTIFACTS;
   const signer = new HostedR2Signer(config.r2);
-  const kieClient = new KieZImageClient(config.apiGeneration.kieApiKey);
-  const falClient = new FalFlashheadClient(config.apiGeneration.falApiKey);
+  const credentials = providerAccountCredentials(config);
   const submissionStopped = { value: false };
   const capacityStopped = new Set<Job["lane"]>();
   const submitPreparedJob = async (job: Job): Promise<"PROGRESSED" | "WAITING"> => {
@@ -269,6 +286,7 @@ export async function advanceHostedApiGeneration(
     const jobArgs = [...base, job.generationTaskId] as const;
     const claimId = crypto.randomUUID();
     let claimWasNotSelected = false;
+    let claimedAccount: ProviderAccountIdentity | undefined;
     const claimSubmission = async () => {
       if (submissionStopped.value || capacityStopped.has(job.lane)) {
         claimWasNotSelected = true;
@@ -278,11 +296,19 @@ export async function advanceHostedApiGeneration(
         await callHostedApiGeneration(
           database,
           scope.accountId,
-          "videoforge_claim_hosted_api_job",
-          [...jobArgs, claimId],
+          "videoforge_claim_hosted_api_job_v2",
+          [
+            ...jobArgs,
+            claimId,
+            JSON.stringify(credentials.availableAccountIds(job.lane === "IMAGE" ? "KIE" : "FAL")),
+          ],
         ),
       );
       const selected = claimed.state === "SUBMITTING" && claimed.claimId === claimId;
+      if (selected) {
+        claimedAccount = providerAccountIdentity(claimed.providerAccount);
+        if (!claimedAccount) throw new Error("PROVIDER_ACCOUNT_IDENTITY_MISSING");
+      }
       if (!selected) {
         claimWasNotSelected = true;
         // A still-prepared claim is normal shared capacity waiting for this provider.
@@ -322,7 +348,10 @@ export async function advanceHostedApiGeneration(
       if (job.lane === "IMAGE") {
         const submission = await submitKieImageJob({
           manifest: { prompt: string(job.inputManifest.prompt), aspectRatio: "16:9" },
-          client: kieClient,
+          client: {
+            create: (manifest) =>
+              new KieZImageClient(credentials.apiKeyFor("KIE", claimedAccount)).create(manifest),
+          },
           claimSubmission,
           persistTaskId,
           markSubmissionUnknown,
@@ -330,7 +359,9 @@ export async function advanceHostedApiGeneration(
           markRateLimited: async (retryAfterMs) => {
             capacityStopped.add(job.lane);
             await callHostedApiGeneration(
-              database, scope.accountId, "videoforge_defer_hosted_api_job",
+              database,
+              scope.accountId,
+              "videoforge_defer_hosted_api_job",
               [...jobArgs, claimId, retryAfterMs],
             );
           },
@@ -353,7 +384,10 @@ export async function advanceHostedApiGeneration(
       const submission = await submitFalAvatarJob({
         imageUrl,
         audioUrl,
-        client: falClient,
+        client: {
+          submit: (manifest) =>
+            new FalFlashheadClient(credentials.apiKeyFor("FAL", claimedAccount)).submit(manifest),
+        },
         claimSubmission,
         persistRequestId: persistTaskId,
         markSubmissionUnknown,
@@ -361,7 +395,9 @@ export async function advanceHostedApiGeneration(
         markRateLimited: async (retryAfterMs) => {
           capacityStopped.add(job.lane);
           await callHostedApiGeneration(
-            database, scope.accountId, "videoforge_defer_hosted_api_job",
+            database,
+            scope.accountId,
+            "videoforge_defer_hosted_api_job",
             [...jobArgs, claimId, retryAfterMs],
           );
         },
@@ -375,6 +411,7 @@ export async function advanceHostedApiGeneration(
   const observeSubmittedJob = async (job: Job): Promise<"PROGRESSED" | "WAITING"> => {
     if (!job.providerTaskId) throw new Error("HOSTED_API_PROVIDER_ID_MISSING");
     const jobArgs = [...base, job.generationTaskId] as const;
+    if (!job.providerAccount) throw new Error("PROVIDER_ACCOUNT_IDENTITY_MISSING");
     let result:
       | Awaited<ReturnType<typeof observeKieImageJob>>
       | Awaited<ReturnType<typeof observeFalAvatarJob>>;
@@ -384,13 +421,13 @@ export async function advanceHostedApiGeneration(
           ? await observeKieImageJob({
               taskId: job.providerTaskId,
               objectKey: job.outputObjectKey,
-              client: kieClient,
+              client: new KieZImageClient(credentials.apiKeyFor("KIE", job.providerAccount)),
               bucket,
             })
           : await observeFalAvatarJob({
               requestId: job.providerTaskId,
               objectKey: job.outputObjectKey,
-              client: falClient,
+              client: new FalFlashheadClient(credentials.apiKeyFor("FAL", job.providerAccount)),
               bucket,
             });
     } catch (error) {
@@ -523,7 +560,7 @@ export async function advanceHostedApiGeneration(
   // Rate slots include their tail interval, so completed work can advance immediately.
   return outcome(
     submissionsProgressed ||
-    observations.some((result) => result.status === "fulfilled" && result.value === "PROGRESSED")
+      observations.some((result) => result.status === "fulfilled" && result.value === "PROGRESSED")
       ? "PROGRESSED"
       : "WAITING",
   );
@@ -564,14 +601,16 @@ export async function ensureHostedApiGenerationWorkflow(
         ? (status as Record<string, unknown>).status
         : null;
     if (["complete", "errored", "terminated"].includes(String(state))) {
+      const { providerAccountIdentity } = await import("./provider-account-credentials");
       const current = jobs(
         await callHostedApiGeneration(
           database,
           input.accountId,
-          "videoforge_read_hosted_api_jobs",
+          "videoforge_read_hosted_api_jobs_v2",
           [input.accountId, input.workspaceId, input.generationRequestId],
         ),
         input,
+        providerAccountIdentity,
       );
       // The footage lane may outlive all image/avatar jobs. Restart from its
       // durable states too; no current feature flag or default changes its plan.

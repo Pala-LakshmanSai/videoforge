@@ -4,16 +4,75 @@ import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { PGlite } from "@electric-sql/pglite";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   CONTEXT_REDISPATCH_BUDGET,
   CONTEXT_REDISPATCHABLE_PROBLEM_CODES,
-  DUE_QUERY,
+  continuationDueQuery,
   continuationOutcome,
   PLAN_STAGE_REVISION_CONFIG_SCHEMA_VERSION,
   PROMPT_REDISPATCHABLE_PROBLEM_CODES,
+  restartPendingImageRegenerationWorkflows,
 } from "./stage-continuation-sweep";
+
+const DUE_QUERY = await continuationDueQuery();
+
+it("restarts only completed saved regeneration workflows inside their tenant scope", async () => {
+  const account = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const workspace = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const id = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+  const query = vi.fn(async (sql: string) => ({
+    rows: sql.includes("read_pending_hosted_api")
+      ? [{ value: [{ id, accountId: account, workspaceId: workspace }] }]
+      : [],
+  }));
+  const pool = {
+    query: vi.fn(async () => ({ rows: [{ account_id: account }] })),
+    connect: async () => ({ query, release: vi.fn() }),
+  };
+  const restart = vi.fn(async () => {});
+  const status = vi.fn(async () => ({ status: "complete" }));
+  const get = vi.fn(async () => ({ status, restart }));
+  const environment = { HOSTED_PAIR_WORKFLOW: { get } };
+  expect(
+    await restartPendingImageRegenerationWorkflows(environment as never, pool as never),
+  ).toEqual({ dispatched: [`${id}:image-regeneration`], failures: [] });
+  expect(get).toHaveBeenCalledWith(`image-regen-${id}`);
+  expect(query).toHaveBeenCalledWith("SELECT set_config($1,$2,true)", [
+    "videoforge.account_id",
+    account,
+  ]);
+  status.mockResolvedValue({ status: "running" });
+  await restartPendingImageRegenerationWorkflows(environment as never, pool as never);
+  expect(restart).toHaveBeenCalledOnce();
+});
+
+it("refuses a mismatched regeneration tenant before looking up its workflow", async () => {
+  const query = vi.fn(async (sql: string) => ({
+    rows: sql.includes("read_pending_hosted_api")
+      ? [
+          {
+            value: [
+              { id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", accountId: "other", workspaceId: "w" },
+            ],
+          },
+        ]
+      : [],
+  }));
+  const pool = {
+    query: async () => ({ rows: [{ account_id: "a" }] }),
+    connect: async () => ({ query, release: vi.fn() }),
+  };
+  const get = vi.fn();
+  const result = await restartPendingImageRegenerationWorkflows(
+    { HOSTED_PAIR_WORKFLOW: { get } } as never,
+    pool as never,
+  );
+  expect(result.dispatched).toEqual([]);
+  expect(result.failures[0]).toContain("PENDING_SCOPE_INVALID");
+  expect(get).not.toHaveBeenCalled();
+});
 import {
   HOSTED_CONTEXT_REDISPATCH_BUDGET,
   HOSTED_CONTEXT_RETRYABLE_PROBLEM_CODES,
@@ -24,12 +83,18 @@ import {
 } from "./hosted-prompt-route";
 
 it("never counts queued admission as started work while preserving successful stage handoffs", async () => {
-  expect(await continuationOutcome(Response.json({ state: "WAITING" }, { status: 202 })))
-    .toEqual({ ok: false, waiting: true, detail: "202:WAITING" });
-  expect(await continuationOutcome(Response.json({ state: "PREPARING_INPUTS" }, { status: 202 })))
-    .toEqual({ ok: true, detail: "202" });
-  expect(await continuationOutcome(Response.json({ state: "COMPLETE" })))
-    .toEqual({ ok: true, detail: "200" });
+  expect(await continuationOutcome(Response.json({ state: "WAITING" }, { status: 202 }))).toEqual({
+    ok: false,
+    waiting: true,
+    detail: "202:WAITING",
+  });
+  expect(
+    await continuationOutcome(Response.json({ state: "PREPARING_INPUTS" }, { status: 202 })),
+  ).toEqual({ ok: true, detail: "202" });
+  expect(await continuationOutcome(Response.json({ state: "COMPLETE" }))).toEqual({
+    ok: true,
+    detail: "200",
+  });
 });
 
 const accountId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -233,8 +298,51 @@ it("retries one queued or admitted API generation only before any span or provid
   }
 });
 
+it("resumes capacity-waiting saved media but excludes ambiguous, failed and cancelled work", async () => {
+  const database = await seededDatabase({
+    state: "SUCCEEDED",
+    hash: "accepted",
+    problemCode: null,
+    redispatchCount: 0,
+  });
+  try {
+    await database.exec(`
+      INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}');
+      INSERT INTO public.hosted_prompt_runs VALUES
+        ('55555555-5555-4555-8555-555555555555','${revisionId}','SUCCEEDED','accepted',now(),now(),NULL,0,1);
+      INSERT INTO public.generation_requests VALUES
+        ('66666666-6666-4666-8666-666666666666','${revisionId}','ACTIVE');
+      INSERT INTO public.hosted_api_generation_jobs VALUES
+        ('77777777-7777-4777-8777-777777777777','${revisionId}','PREPARED');
+    `);
+    for (const state of ["PREPARED", "SUBMITTED"]) {
+      await database.exec(`UPDATE public.hosted_api_generation_jobs SET state='${state}'`);
+      expect(await nextSteps(database)).toEqual(["dispatch"]);
+    }
+    for (const state of ["SUBMITTING", "UNKNOWN_NO_RETRY", "FAILED", "SUCCEEDED"]) {
+      await database.exec(`UPDATE public.hosted_api_generation_jobs SET state='${state}'`);
+      expect(await nextSteps(database)).toEqual([]);
+    }
+    await database.exec(
+      "UPDATE public.hosted_api_generation_jobs SET state='PREPARED'; UPDATE public.generation_requests SET state='CANCELLED'",
+    );
+    expect(await nextSteps(database)).toEqual([]);
+    await database.exec(`UPDATE public.generation_requests SET state='ACTIVE';
+      INSERT INTO public.hosted_cpu_job_attempts VALUES
+        ('88888888-8888-4888-8888-888888888888','${revisionId}','SPAN_AUDIO','FAILED',now())`);
+    expect(await nextSteps(database)).toEqual([]);
+  } finally {
+    await database.close();
+  }
+});
+
 it("recovers unfinished saved footage after all image/avatar jobs finish, without admitting settled work", async () => {
-  const database = await seededDatabase({ state: "SUCCEEDED", hash: "accepted", problemCode: null, redispatchCount: 0 });
+  const database = await seededDatabase({
+    state: "SUCCEEDED",
+    hash: "accepted",
+    problemCode: null,
+    redispatchCount: 0,
+  });
   try {
     await database.exec(`
       INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}');
@@ -257,15 +365,26 @@ it("recovers unfinished saved footage after all image/avatar jobs finish, withou
       await database.exec(`UPDATE public.hosted_video_jobs SET state='${state}'`);
       expect(await nextSteps(database)).toEqual([]);
     }
-    await database.exec("UPDATE public.hosted_video_jobs SET state='SUBMITTED'; UPDATE public.generation_requests SET state='SUCCEEDED'");
+    await database.exec(
+      "UPDATE public.hosted_video_jobs SET state='SUBMITTED'; UPDATE public.generation_requests SET state='SUCCEEDED'",
+    );
     expect(await nextSteps(database)).toEqual([]);
-    await database.exec("UPDATE public.generation_requests SET state='ACTIVE'; UPDATE public.hosted_api_generation_jobs SET state='FAILED'");
+    await database.exec(
+      "UPDATE public.generation_requests SET state='ACTIVE'; UPDATE public.hosted_api_generation_jobs SET state='FAILED'",
+    );
     expect(await nextSteps(database)).toEqual([]);
-    await database.exec("UPDATE public.hosted_api_generation_jobs SET state='SUCCEEDED'; UPDATE public.projects SET status='ARCHIVED'");
+    await database.exec(
+      "UPDATE public.hosted_api_generation_jobs SET state='SUCCEEDED'; UPDATE public.projects SET status='ARCHIVED'",
+    );
     expect(await nextSteps(database)).toEqual([]);
     await database.exec("UPDATE public.projects SET status='ACTIVE'");
-    expect((await database.query(DUE_QUERY, ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', null, null, null])).rows).toEqual([]);
-  } finally { await database.close(); }
+    expect(
+      (await database.query(DUE_QUERY, ["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", null, null, null]))
+        .rows,
+    ).toEqual([]);
+  } finally {
+    await database.close();
+  }
 });
 
 describe("hosted continuation sweep stage-3 recovery", () => {
@@ -531,11 +650,17 @@ describe("hosted continuation sweep stage-3 recovery", () => {
       expect(await nextSteps(database)).toEqual([]);
       // A user-requested project handoff can retrieve its existing claim before media admission.
       const target = await database.query<{ next_step: string }>(DUE_QUERY, [
-        accountId, "11111111-1111-4111-8111-111111111111", "prompts", revisionId,
+        accountId,
+        "11111111-1111-4111-8111-111111111111",
+        "prompts",
+        revisionId,
       ]);
       expect(target.rows.map((row) => row.next_step)).toEqual(["prompts"]);
       const wrongRevision = await database.query(DUE_QUERY, [
-        accountId, "11111111-1111-4111-8111-111111111111", "prompts", userId,
+        accountId,
+        "11111111-1111-4111-8111-111111111111",
+        "prompts",
+        userId,
       ]);
       expect(wrongRevision.rows).toEqual([]);
       await database.exec(`INSERT INTO public.generation_requests VALUES

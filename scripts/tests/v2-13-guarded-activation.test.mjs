@@ -1446,3 +1446,11 @@ test("guarded prequalification verifier proves manifest, receipt CAS, pgcrypto, 
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test("optional provider account catalogue fingerprint is closed-world and never required", () => {
+  const value = authority();
+  value.secret_sha256.VIDEOFORGE_API_ACCOUNT_CREDENTIALS_JSON = fingerprint;
+  assert.equal(Object.keys(validateAuthority(value).secret_sha256).length, SECRET_NAMES.length + 1);
+  value.secret_sha256.UNRECOGNIZED_SECRET = fingerprint;
+  assert.throws(() => validateAuthority(value), /secret fingerprint allowlist/);
+});

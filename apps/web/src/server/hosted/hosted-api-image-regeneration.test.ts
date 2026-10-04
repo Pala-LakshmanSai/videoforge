@@ -8,17 +8,38 @@ const fixtures = vi.hoisted(() => ({
   events: [] as string[],
   result: { state: "PENDING" } as Record<string, unknown>,
   observe: vi.fn(),
+  claimAccount: undefined as Record<string, string> | undefined,
+  availableAccountIds: vi.fn(),
+  apiKeyFor: vi.fn(),
+  useRealCredentials: false,
 }));
 
+vi.mock("./provider-account-credentials", async (importOriginal) => {
+  const original = await importOriginal<typeof import("./provider-account-credentials")>();
+  return { ...original, providerAccountCredentials: (config: Parameters<typeof original.providerAccountCredentials>[0]) =>
+    fixtures.useRealCredentials ? original.providerAccountCredentials(config) : {
+      availableAccountIds: fixtures.availableAccountIds, apiKeyFor: fixtures.apiKeyFor,
+    } };
+});
+
 vi.mock("./configuration", () => ({
-  hostedRuntimeConfiguration: () => ({ apiGeneration: { kieApiKey: "test-key", falApiKey: "fal-test-key" } }),
+  hostedRuntimeConfiguration: () => ({ apiGeneration: { kieApiKey: "test-key", falApiKey: "fal-test-key",
+    accountRoutingEnabled: false,
+    apiAccountCredentialsJson: '[{"id":"fal-retired","provider":"FAL","credentialVersion":"v3","apiKey":"historical-key"}]',
+  } }),
 }));
 vi.mock("./hosted-image-regeneration-store", () => ({
   HostedSqlImageRegenerationStore: class {
     async loadApi() { return fixtures.row; }
-    async claimApi(_id: string, claimId: string) {
+    async claimApi(_id: string, claimId: string, availableAccounts: string[]) {
       fixtures.events.push("claim");
-      fixtures.row = { ...fixtures.row, state: "SUBMITTING", claimId };
+      expect(availableAccounts).toEqual(["available-account"]);
+      fixtures.row = { ...fixtures.row, state: "SUBMITTING", claimId,
+        providerAccount: fixtures.claimAccount ?? {
+          id: (fixtures.row.inputManifest as Record<string, unknown>).provider === "FAL_Z_IMAGE" ? "fal-legacy" : "kie-legacy",
+          provider: (fixtures.row.inputManifest as Record<string, unknown>).provider === "FAL_Z_IMAGE" ? "FAL" : "KIE",
+          credentialVersion: "v1",
+        } };
       return fixtures.row;
     }
     async recordApiTask(_id: string, _claim: string, taskId: string) {
@@ -61,8 +82,13 @@ describe("hosted API image regeneration", () => {
       inputManifest: { prompt: "A documentary photograph. Avoid visible text." },
       outputObjectKey: `tenant/${params.accountId}/workspace/${params.workspaceId}/artifact/${params.requestId}`,
       providerTaskId: null,
+      providerAccount: { id: "kie-legacy", provider: "KIE", credentialVersion: "v1" },
     };
     fixtures.events = [];
+    fixtures.claimAccount = undefined;
+    fixtures.useRealCredentials = false;
+    fixtures.availableAccountIds.mockReset().mockReturnValue(["available-account"]);
+    fixtures.apiKeyFor.mockReset().mockImplementation((provider) => provider === "FAL" ? "fal-test-key" : "test-key");
     fixtures.observe.mockReset().mockImplementation(async () => {
       fixtures.events.push("observe");
       return fixtures.result;
@@ -182,5 +208,72 @@ describe("hosted API image regeneration", () => {
       observeHostedImageRegeneration(environment as never, {} as TransactionalSqlExecutor, params),
     ).rejects.toThrow("HOSTED_IMAGE_REGENERATION_PROVIDER_INVALID");
     expect(post).not.toHaveBeenCalled();
+  });
+
+  it("uses the account selected by the claim for submission and later observation", async () => {
+    const identity = { id: "kie-second", provider: "KIE", credentialVersion: "v2" };
+    fixtures.row.providerAccount = { ...identity, id: "kie-stale" };
+    fixtures.claimAccount = identity;
+    fixtures.apiKeyFor.mockImplementation((_provider, pin) => {
+      expect(pin).toEqual(identity);
+      expect(fixtures.events).toContain("claim");
+      return "selected-key";
+    });
+    const post = vi.fn(async (_url, init) => {
+      expect(init.headers.Authorization).toBe("Bearer selected-key");
+      return new Response(JSON.stringify({ code: 200, data: { taskId: "kie-task-2" } }));
+    });
+    vi.stubGlobal("fetch", post);
+    await observeHostedImageRegeneration(environment as never, {} as TransactionalSqlExecutor, params);
+    fixtures.claimAccount = undefined;
+    fixtures.availableAccountIds.mockReturnValue([]);
+    await observeHostedImageRegeneration(environment as never, {} as TransactionalSqlExecutor, params);
+    expect(fixtures.apiKeyFor).toHaveBeenCalledTimes(3);
+    expect(post).toHaveBeenCalledOnce();
+  });
+
+  it("preserves a submitted job when its exact pinned credentials are missing", async () => {
+    fixtures.row = { ...fixtures.row, state: "SUBMITTED", providerTaskId: "paid-task",
+      providerAccount: { id: "removed-account", provider: "KIE", credentialVersion: "v1" } };
+    fixtures.apiKeyFor.mockImplementation(() => { throw new Error("PROVIDER_ACCOUNT_CREDENTIALS_MISSING"); });
+    const post = vi.fn();
+    vi.stubGlobal("fetch", post);
+    await expect(observeHostedImageRegeneration(environment as never, {} as TransactionalSqlExecutor, params))
+      .rejects.toThrow("PROVIDER_ACCOUNT_CREDENTIALS_MISSING");
+    expect(fixtures.row.state).toBe("SUBMITTED");
+    expect(fixtures.events).toEqual([]);
+    expect(fixtures.observe).not.toHaveBeenCalled();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("never falls back to legacy credentials when a submitted v2 response has no account pin", async () => {
+    fixtures.row = { ...fixtures.row, state: "SUBMITTED", providerTaskId: "paid-task", providerAccount: null };
+    const post = vi.fn();
+    vi.stubGlobal("fetch", post);
+    await expect(observeHostedImageRegeneration(environment as never, {} as TransactionalSqlExecutor, params))
+      .rejects.toThrow("PROVIDER_ACCOUNT_IDENTITY_MISSING");
+    expect(fixtures.apiKeyFor).not.toHaveBeenCalled();
+    expect(fixtures.observe).not.toHaveBeenCalled();
+    expect(post).not.toHaveBeenCalled();
+    expect(fixtures.row.state).toBe("SUBMITTED");
+  });
+
+  it("observes a historical extra Fal account with routing disabled using real credentials", async () => {
+    fixtures.useRealCredentials = true;
+    fixtures.row = { ...fixtures.row, state: "SUBMITTED", providerTaskId: "764cabcf-b745-4b3e-ae38-1200304cf45b",
+      inputManifest: { provider: "FAL_Z_IMAGE", model: "fal-ai/z-image/turbo" },
+      providerAccount: { id: "fal-retired", provider: "FAL", credentialVersion: "v3" } };
+    const fetcher = vi.fn(async (_url, init) => {
+      expect(init.headers.Authorization).toBe("Key historical-key");
+      return new Response(JSON.stringify({ status: "IN_PROGRESS", request_id: fixtures.row.providerTaskId }));
+    });
+    vi.stubGlobal("fetch", fetcher);
+    fixtures.observe.mockImplementationOnce(async ({ client, taskId }) => {
+      expect(await client.get(taskId)).toMatchObject({ state: "generating" });
+      return { state: "PENDING" };
+    });
+    await observeHostedImageRegeneration(environment as never, {} as TransactionalSqlExecutor, params);
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(fixtures.row.state).toBe("SUBMITTED");
   });
 });

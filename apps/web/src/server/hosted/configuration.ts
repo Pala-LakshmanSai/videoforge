@@ -103,6 +103,8 @@ export interface HostedRuntimeEnvironment {
   /** Explicit API-generation switch. Both provider credentials are secret bindings. */
   readonly VIDEOFORGE_GENERATION_PROVIDER?: string;
   readonly KIE_API_KEY?: string;
+  readonly VIDEOFORGE_API_ACCOUNT_CREDENTIALS_JSON?: string;
+  readonly VIDEOFORGE_PROVIDER_ACCOUNT_ROUTING_ENABLED?: string;
   readonly FAL_API_KEY?: string;
   readonly RUNPOD_API_BASE_URL?: string;
   readonly VIDEOFORGE_CLOUD_MEDIA_ENABLED?: string;
@@ -172,6 +174,8 @@ export interface HostedRuntimeConfiguration {
   readonly apiGeneration?: Readonly<{
     readonly kieApiKey: string;
     readonly falApiKey: string;
+    readonly apiAccountCredentialsJson?: string;
+    readonly accountRoutingEnabled?: boolean;
   }>;
   toJSON(): {
     readonly schemaVersion: "videoforge-hosted-configuration/v1";
@@ -470,6 +474,8 @@ export function hostedRuntimeConfiguration(
       ? Object.freeze({
           kieApiKey: source.KIE_API_KEY?.trim() ?? "",
           falApiKey: source.FAL_API_KEY?.trim() ?? "",
+          apiAccountCredentialsJson: source.VIDEOFORGE_API_ACCOUNT_CREDENTIALS_JSON,
+          accountRoutingEnabled: source.VIDEOFORGE_PROVIDER_ACCOUNT_ROUTING_ENABLED === "true",
         })
       : undefined;
   if (apiGeneration && (!apiGeneration.kieApiKey || !apiGeneration.falApiKey)) {

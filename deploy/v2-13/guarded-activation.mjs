@@ -47,6 +47,21 @@ const SECRET_NAMES = Object.freeze([
   "VIDEOFORGE_SOULX_ENDPOINT_ID_SHA256",
   "VIDEOFORGE_V213_WORKFLOW_OPERATOR_TOKEN",
 ]);
+// Optional credential catalogue remains a secret binding, never a required legacy input.
+const OPTIONAL_SECRET_NAMES = Object.freeze(["VIDEOFORGE_API_ACCOUNT_CREDENTIALS_JSON"]);
+function validSecretNames(names) {
+  return (
+    Array.isArray(names) &&
+    new Set(names).size === names.length &&
+    SECRET_NAMES.every((name) => names.includes(name)) &&
+    names.every((name) => SECRET_NAMES.includes(name) || OPTIONAL_SECRET_NAMES.includes(name))
+  );
+}
+function authoritySecretNames(authority) {
+  const names = Object.keys(authority.secret_sha256 ?? {});
+  if (!validSecretNames(names)) fail("secret fingerprint allowlist is not exact");
+  return names.sort();
+}
 const HASH = /^sha256:[0-9a-f]{64}$/u;
 const PREDECESSOR_MAGE_SOURCE_COMMIT = "15af5e20ce3c80eb61d5d1e807a87e8840ed9685";
 const SUCCESSOR_SOULX_SOURCE_COMMIT = "417e84d4f021699337e9bd411753777d689728d7";
@@ -871,7 +886,8 @@ function validateAuthority(value) {
   )
     fail("SoulX crop approval identity, media, or geometry pins are not exact");
   if (
-    !exactKeys(value.secret_sha256, SECRET_NAMES) ||
+    !value.secret_sha256 ||
+    !validSecretNames(Object.keys(value.secret_sha256)) ||
     Object.values(value.secret_sha256).some((item) => !HASH.test(item))
   )
     fail("secret fingerprint allowlist is not exact");
@@ -1238,7 +1254,7 @@ function plan(authority) {
       "wrangler deploy dry-run",
       "recheck exact Worker/workflow absence, existing R2 binding, and unconfigured route",
       "create only the exact disabled Worker plus two exact Workflows and read back all bindings",
-      `require empty secret set, put ${SECRET_NAMES.length} exact allowlisted names from mode-0600 files`,
+      `require empty secret set, put ${authoritySecretNames(authority).length} exact allowlisted names from mode-0600 files`,
       "read back exact secret names",
       "deploy and read back exact still-disabled rendered config",
     ],
@@ -1250,7 +1266,7 @@ function plan(authority) {
       `${authority.cloudflare.workflow_name}-pair`,
     ],
     new_paid_retained_resources: 0,
-    secret_names: SECRET_NAMES,
+    secret_names: authoritySecretNames(authority),
     secret_values_in_plan: false,
   };
 }
@@ -1273,10 +1289,10 @@ function prevalidateEvidencePath(path) {
 function protectedSecrets(directory, authority) {
   mode(directory, "directory", 0o700, "secret input directory");
   const entries = readdirSync(directory).sort();
-  if (JSON.stringify(entries) !== JSON.stringify([...SECRET_NAMES].sort()))
+  if (JSON.stringify(entries) !== JSON.stringify(authoritySecretNames(authority)))
     fail("secret input directory is not the exact closed-world allowlist");
   const values = new Map();
-  for (const name of SECRET_NAMES) {
+  for (const name of authoritySecretNames(authority)) {
     const path = join(directory, name);
     mode(path, "file", 0o600, name);
     const value = readFileSync(path, "utf8");
@@ -2650,7 +2666,7 @@ async function cloudflareActivation(args, authority, values, environment, databa
       fail("new quarantine unexpectedly inherited secret bindings");
     await databaseStage();
     await secretMutationTransaction({
-      names: SECRET_NAMES,
+      names: authoritySecretNames(authority),
       put(name) {
         wrangler(environment, ["secret", "put", name, "--config", config], {
           input: values.get(name),
@@ -2670,7 +2686,7 @@ async function cloudflareActivation(args, authority, values, environment, databa
       verify() {
         if (
           JSON.stringify(cloudflareSecretNames(config, environment, authority)) !==
-          JSON.stringify([...SECRET_NAMES].sort())
+          JSON.stringify(authoritySecretNames(authority))
         )
           fail("Cloudflare secret-name post-readback is not the exact closed-world allowlist");
       },
@@ -2692,7 +2708,7 @@ async function cloudflareActivation(args, authority, values, environment, databa
         await assertQuarantineRoute(authority, true);
         if (
           JSON.stringify(cloudflareSecretNames(config, environment, authority)) !==
-          JSON.stringify([...SECRET_NAMES].sort())
+          JSON.stringify(authoritySecretNames(authority))
         )
           fail("final disabled version lost the exact secret-name set");
       },
@@ -2830,7 +2846,7 @@ async function main() {
     approval_sha256: authority.authority.approval_sha256,
     activation_authority_sha256: sha256(authorityBytes),
     commit: authority.release.commit,
-    secret_names: SECRET_NAMES,
+    secret_names: authoritySecretNames(authority),
     secret_values_written_to_evidence: false,
     external_spend_cap_usd: 0,
     exact_product_resource_creation_authorized: true,
@@ -2858,7 +2874,7 @@ async function main() {
       commit: authority.release.commit,
       migration_ledger: "49/49 exact",
       role_acl_readback: "exact",
-      secret_name_readback: `${SECRET_NAMES.length}/${SECRET_NAMES.length} exact`,
+      secret_name_readback: `${authoritySecretNames(authority).length}/${authoritySecretNames(authority).length} exact`,
       secret_value_fingerprints: "matched authority before mutation",
       deployment_attempted: true,
       exact_product_resources_created: 3,
@@ -2871,7 +2887,7 @@ async function main() {
       disabled_version_sha256: sha256(activationReadback.disabledVersionId),
       migration_ledger: "49/49 exact",
       role_acl_readback: "exact",
-      secret_name_readback: `${SECRET_NAMES.length}/${SECRET_NAMES.length} exact`,
+      secret_name_readback: `${authoritySecretNames(authority).length}/${authoritySecretNames(authority).length} exact`,
       partial_secret_cleanup_required: false,
     });
     process.stdout.write(`${JSON.stringify(result)}\n`);
@@ -2909,6 +2925,8 @@ export {
   readCloudflareWorkersDevOrigin,
   refreshWranglerOAuthReadback,
   SECRET_NAMES,
+  OPTIONAL_SECRET_NAMES,
+  validSecretNames,
   plan,
   protectedSecrets,
   recoverQuarantineCreation,

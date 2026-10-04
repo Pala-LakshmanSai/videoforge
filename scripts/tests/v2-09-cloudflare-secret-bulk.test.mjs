@@ -130,3 +130,20 @@ test("request signal expires at authority deadline", async (t) => {
   };
   await assert.rejects(executeV209SecretBulk(f.args, f.deps), /OUTCOME_UNKNOWN/);
 });
+
+test("optional provider account credential catalogue is accepted only as an explicit sealed secret", async (t) => {
+  const f = fixture(t),
+    name = "VIDEOFORGE_API_ACCOUNT_CREDENTIALS_JSON";
+  const bytes = Buffer.from('{"schema":"fixture-only"}');
+  f.args.secretInputs[name] = {
+    bytes,
+    sha256: `sha256:${createHash("sha256").update(bytes).digest("hex")}`,
+  };
+  assert.equal((await executeV209SecretBulk(f.args, f.deps)).secret_count, SECRET_NAMES.length + 1);
+  const body = JSON.parse(f.calls[2].options.body);
+  assert.equal(body.secrets[name].type, "secret_text");
+  const bad = fixture(t);
+  bad.args.secretInputs.UNRECOGNIZED_SECRET = f.args.secretInputs[name];
+  await assert.rejects(executeV209SecretBulk(bad.args, bad.deps), /INPUT_INVALID/);
+  assert.equal(bad.calls.length, 0);
+});

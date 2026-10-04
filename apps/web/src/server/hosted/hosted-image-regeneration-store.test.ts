@@ -23,6 +23,15 @@ const make = () => {
   return { executor: { query, transaction } as unknown as TransactionalSqlExecutor, query };
 };
 describe("HostedSqlImageRegenerationStore", () => {
+  it("loads account identity and sends available credentials to the v2 claim as JSON", async () => {
+    const x = make();
+    const s = new HostedSqlImageRegenerationStore(x.executor, "a", "w");
+    await s.loadApi("r");
+    await s.claimApi("r", "claim", ["fal-primary", "fal-secondary"]);
+    expect(x.query).toHaveBeenCalledWith(expect.stringContaining("videoforge_load_hosted_api_image_regeneration_v2"), ["r", "w"]);
+    expect(x.query).toHaveBeenCalledWith(expect.stringContaining("jsonb_array_elements_text($3::jsonb)"),
+      ["r", "claim", '["fal-primary","fal-secondary"]']);
+  });
   it("uses scoped transactions and security-definer create", async () => {
     const x = make();
     const s = new HostedSqlImageRegenerationStore(x.executor, "a", "w");

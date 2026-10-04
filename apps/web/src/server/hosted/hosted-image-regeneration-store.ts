@@ -118,15 +118,15 @@ export class HostedSqlImageRegenerationStore implements HostedImageRegenerationS
   }
   async loadApi(requestId: string): Promise<Row | null> {
     const value = await this.query(
-      "SELECT public.videoforge_load_hosted_api_image_regeneration($1,$2) AS value",
+      "SELECT public.videoforge_load_hosted_api_image_regeneration_v2($1,$2) AS value",
       [requestId, this.workspaceId],
     );
     return value === null ? null : record(value);
   }
-  async claimApi(requestId: string, claimId: string): Promise<Row> {
+  async claimApi(requestId: string, claimId: string, availableAccountIds: readonly string[]): Promise<Row> {
     return record(await this.query(
-      "SELECT public.videoforge_claim_hosted_api_image_regeneration($1,$2) AS value",
-      [requestId, claimId],
+      "SELECT public.videoforge_claim_hosted_api_image_regeneration_v2($1,$2,ARRAY(SELECT jsonb_array_elements_text($3::jsonb))) AS value",
+      [requestId, claimId, JSON.stringify(availableAccountIds)],
     ));
   }
   async recordApiTask(requestId: string, claimId: string, providerTaskId: string): Promise<Row> {

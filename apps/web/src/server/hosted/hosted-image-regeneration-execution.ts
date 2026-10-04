@@ -12,7 +12,11 @@ import { readImageRegenerationCost } from "./hosted-image-regeneration-cost";
 import { hostedPairProductionBindingState } from "./hosted-pair-production-composition";
 import { KieZImageClient, KieZImageError } from "../providers/kie-z-image";
 import { FalZImageClient, FAL_Z_IMAGE_MODEL } from "../providers/fal-z-image";
-import { KieImageJobError, observeKieImageJob, submitKieImageJob } from "../providers/kie-image-job";
+import {
+  KieImageJobError,
+  observeKieImageJob,
+  submitKieImageJob,
+} from "../providers/kie-image-job";
 export interface ImageRegenerationParameters {
   schema_version: "videoforge-image-regeneration-workflow/v1";
   accountId: string;
@@ -36,10 +40,17 @@ async function observeApiImageRegeneration(
     !(manifest.provider === "FAL_Z_IMAGE" && manifest.model === FAL_Z_IMAGE_MODEL)
   )
     throw new Error("HOSTED_IMAGE_REGENERATION_PROVIDER_INVALID");
-  const client =
-    manifest.provider === "FAL_Z_IMAGE"
-      ? new FalZImageClient(config.apiGeneration.falApiKey)
-      : new KieZImageClient(config.apiGeneration.kieApiKey);
+  const provider = manifest.provider === "FAL_Z_IMAGE" ? "FAL" : "KIE";
+  const { providerAccountCredentials, providerAccountIdentity } = await import(
+    "./provider-account-credentials"
+  );
+  const credentials = providerAccountCredentials(config);
+  const clientFor = (saved: Record<string, unknown>) => {
+    const identity = providerAccountIdentity(saved.providerAccount);
+    if (!identity) throw new Error("PROVIDER_ACCOUNT_IDENTITY_MISSING");
+    const key = credentials.apiKeyFor(provider, identity);
+    return provider === "FAL" ? new FalZImageClient(key) : new KieZImageClient(key);
+  };
   if (row.state === "PREPARED") {
     const claimId = crypto.randomUUID();
     try {
@@ -48,15 +59,23 @@ async function observeApiImageRegeneration(
           prompt: String((row.inputManifest as Record<string, unknown>).prompt),
           aspectRatio: "16:9",
         },
-        client,
+        // Resolve from the claim result only after its durable account selection.
+        client: { create: (input) => clientFor(row).create(input) },
         claimSubmission: async () => {
-          const claimed = await store.claimApi(requestId, claimId);
+          const claimed = await store.claimApi(
+            requestId,
+            claimId,
+            credentials.availableAccountIds(provider),
+          );
+          row = claimed;
           return claimed.state === "SUBMITTING" && claimed.claimId === claimId;
         },
         persistTaskId: (taskId) => store.recordApiTask(requestId, claimId, taskId).then(() => {}),
-        markRequestRejected: () => store.failApi(requestId, "PROVIDER_REQUEST_REJECTED").then(() => {}),
+        markRequestRejected: () =>
+          store.failApi(requestId, "PROVIDER_REQUEST_REJECTED").then(() => {}),
         markSubmissionUnknown: () => store.markApiUnknown(requestId, claimId).then(() => {}),
-        markRateLimited: (retryAfterMs) => store.deferApi(requestId, claimId, retryAfterMs).then(() => {}),
+        markRateLimited: (retryAfterMs) =>
+          store.deferApi(requestId, claimId, retryAfterMs).then(() => {}),
       });
     } catch {
       // Database state retains the exact claim or definite failure. Never replay this POST.
@@ -67,12 +86,13 @@ async function observeApiImageRegeneration(
     const updatedAt = Date.parse(String(row.updatedAt));
     if (!Number.isFinite(updatedAt) || typeof row.claimId !== "string")
       throw new Error("HOSTED_IMAGE_REGENERATION_API_CLAIM_INVALID");
-    if (Date.now() - updatedAt > 180_000)
-      row = await store.markApiUnknown(requestId, row.claimId);
+    if (Date.now() - updatedAt > 180_000) row = await store.markApiUnknown(requestId, row.claimId);
   }
   if (row.state === "SUBMITTED") {
     if (typeof row.providerTaskId !== "string")
       throw new Error("HOSTED_IMAGE_REGENERATION_API_TASK_INVALID");
+    // Missing historical credentials must not fail or replay an already paid job.
+    const client = clientFor(row);
     try {
       const result = await observeKieImageJob({
         taskId: row.providerTaskId,
@@ -80,19 +100,20 @@ async function observeApiImageRegeneration(
         client,
         bucket: environment.PRIVATE_ARTIFACTS,
       });
-      if (result.state === "FAILED")
-        row = await store.failApi(requestId, "PROVIDER_TASK_FAILED");
+      if (result.state === "FAILED") row = await store.failApi(requestId, "PROVIDER_TASK_FAILED");
       else if (result.state === "SUCCEEDED")
         row = await store.commitApi(requestId, result.artifact);
     } catch (error) {
       if (
         (error instanceof KieZImageError && error.code === "RESPONSE_INVALID") ||
         (error instanceof KieImageJobError && error.code === "RESULT_MEDIA_INVALID")
-      ) row = await store.failApi(requestId, "PROVIDER_OUTPUT_INVALID");
+      )
+        row = await store.failApi(requestId, "PROVIDER_OUTPUT_INVALID");
       else if (
         !(error instanceof KieZImageError && error.code === "STATUS_UNKNOWN") &&
         !(error instanceof KieImageJobError && error.code === "RESULT_DOWNLOAD_FAILED")
-      ) throw error;
+      )
+        throw error;
     }
   }
   const released = ["SUCCEEDED", "FAILED"].includes(String(row.state));
@@ -113,8 +134,13 @@ export async function observeHostedImageRegeneration(
   const api = await store.loadApi(params.requestId);
   if (api) return observeApiImageRegeneration(environment, store, api);
   if (hostedPairProductionBindingState(environment).state === "DISABLED_UNQUALIFIED")
-    return { requestId: params.requestId, state: "DISABLED_UNQUALIFIED",
-      providerJobId: null, replaced: false, leaseReleased: false };
+    return {
+      requestId: params.requestId,
+      state: "DISABLED_UNQUALIFIED",
+      providerJobId: null,
+      replaced: false,
+      leaseReleased: false,
+    };
   let row = await store.load(params.requestId);
   if (row.account_id !== params.accountId || row.workspace_id !== params.workspaceId)
     throw new Error("HOSTED_IMAGE_REGENERATION_SCOPE_INVALID");

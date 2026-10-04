@@ -1,6 +1,6 @@
 import { constants, openSync, fstatSync, readFileSync, closeSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { refreshWranglerOAuthReadback, SECRET_NAMES } from "../v2-13/guarded-activation.mjs";
+import { refreshWranglerOAuthReadback, validSecretNames } from "../v2-13/guarded-activation.mjs";
 
 const fail = (code) => {
   throw new Error(`V2_09_CLOUDFLARE_SECRET_BULK_${code}`);
@@ -83,7 +83,7 @@ export async function executeV209SecretBulk(
     !expectedOauthScopes.includes("account:read") ||
     !expectedOauthScopes.includes("workers_scripts:write") ||
     !secretInputs ||
-    !same(Object.keys(secretInputs), SECRET_NAMES) ||
+    !validSecretNames(Object.keys(secretInputs)) ||
     typeof expiresAt !== "string" ||
     !Number.isFinite(Date.parse(expiresAt)) ||
     typeof beforeDispatch !== "function"
@@ -91,7 +91,7 @@ export async function executeV209SecretBulk(
     fail("INPUT_INVALID");
   const scopes = [...expectedOauthScopes];
   const secrets = {};
-  for (const name of SECRET_NAMES) {
+  for (const name of Object.keys(secretInputs)) {
     const input = secretInputs[name];
     if (
       !input ||
@@ -156,5 +156,5 @@ export async function executeV209SecretBulk(
   } catch {
     fail("OUTCOME_UNKNOWN");
   }
-  return Object.freeze({ secret_count: SECRET_NAMES.length });
+  return Object.freeze({ secret_count: Object.keys(secretInputs).length });
 }

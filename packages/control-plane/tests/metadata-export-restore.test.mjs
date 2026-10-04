@@ -494,3 +494,23 @@ test("secret-shaped outbox payloads fail closed instead of entering metadata bac
     await source.database.close();
   }
 });
+
+test("pooled provider identity forces native backup and blocks portable export/restore", async () => {
+  const source = await createMigratedDatabase();
+  try {
+    const legacy = serializeMetadataSnapshot(await exportMetadataSnapshot(source.executor));
+    await source.executor
+      .execute(`INSERT INTO provider_api_policies(provider,max_inflight,min_start_interval_ms) VALUES('KIE:kie-extra',1,60000);
+      INSERT INTO provider_accounts VALUES('kie-extra','KIE','v1','KIE:kie-extra',false,false,false);`);
+    for (const work of [
+      () => exportMetadataSnapshot(source.executor),
+      () => restoreMetadataSnapshot(source.executor, legacy),
+    ]) {
+      await assert.rejects(work(), (error) =>
+        expectSnapshotError(error, "METADATA_PROVIDER_ROUTING_NOT_PORTABLE"),
+      );
+    }
+  } finally {
+    await source.database.close();
+  }
+});

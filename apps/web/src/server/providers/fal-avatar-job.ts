@@ -36,7 +36,7 @@ type FetchPort = (input: string | URL | Request, init?: RequestInit) => Promise<
 export async function submitFalAvatarJob(input: {
   readonly imageUrl: string;
   readonly audioUrl: string;
-  readonly client: FalFlashheadClient;
+  readonly client: Pick<FalFlashheadClient, "submit">;
   readonly claimSubmission: () => Promise<boolean>;
   readonly persistRequestId: (requestId: string) => Promise<void>;
   readonly markSubmissionFailed: () => Promise<void>;

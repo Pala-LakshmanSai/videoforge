@@ -1350,6 +1350,18 @@
       "name": "hosted_prompt_capacity_read",
       "filename": "0262_hosted_prompt_capacity_read.sql",
       "sha256": "sha256:d39b1c2863798dfc640f54381c664ee6239ccbbf62fcf18db44d2b0ab567a9cb"
+    },
+    {
+      "version": 263,
+      "name": "provider_account_routing",
+      "filename": "0263_provider_account_routing.sql",
+      "sha256": "sha256:abf914182f2e168ca2888fea4af513735f26598686ff630408c0c0cd31ff94b5"
+    },
+    {
+      "version": 264,
+      "name": "hosted_script_intake_fifo",
+      "filename": "0264_hosted_script_intake_fifo.sql",
+      "sha256": "sha256:8bef6cf9ae965908d416352dfeef434c351c9e724c9c9abfade571da9e57e6ad"
     }
   ]
 }

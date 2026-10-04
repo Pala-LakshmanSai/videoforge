@@ -138,7 +138,7 @@ async function readApiJobs(
   return database.transaction(async (transaction) => {
     await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", identity.accountId]);
     const result = await transaction.query<{ jobs: unknown }>(
-      "SELECT public.videoforge_read_hosted_api_jobs($1::uuid,$2::uuid,$3::uuid) AS jobs",
+      "SELECT public.videoforge_read_hosted_api_jobs_v2($1::uuid,$2::uuid,$3::uuid) AS jobs",
       [identity.accountId, identity.workspaceId, generationRequestId],
     );
     return apiJobs(result.rows[0]?.jobs, generationRequestId);

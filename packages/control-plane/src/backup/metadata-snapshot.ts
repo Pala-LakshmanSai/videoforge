@@ -59,6 +59,10 @@ const DEFERRED_COLUMNS = Object.freeze({
   image_styles: Object.freeze(["active_version_id", "cover_asset_id"]),
 } satisfies Partial<Record<RelationalTableName, readonly string[]>>);
 
+// Provider routing aliases/pins/preferences and their quota policies are deliberately
+// NON_PORTABLE: restore native PITR, then reconcile exact paid tasks and credentials.
+// Fresh configuration must install policies before provider_accounts (gate_provider FK).
+// Portable metadata restore never reconstructs a missing route as the legacy account.
 const RESTORE_INSERT_ORDER = Object.freeze([
   "users",
   "accounts",
@@ -258,6 +262,7 @@ if (
 }
 
 type SnapshotErrorCode =
+  | "METADATA_PROVIDER_ROUTING_NOT_PORTABLE"
   | "METADATA_DESTINATION_NOT_CLEAN"
   | "METADATA_RESTORE_FAILED"
   | "METADATA_RESTORE_VERIFICATION_FAILED"
@@ -591,10 +596,24 @@ async function assertNoUnportableV209Dispatch(executor: SqlExecutor): Promise<vo
   }
 }
 
+async function assertPortableProviderRouting(executor: SqlExecutor): Promise<void> {
+  const result = await executor.query<{ readonly blocked: boolean }>(
+    `SELECT EXISTS(SELECT 1 FROM public.provider_accounts WHERE NOT is_legacy) AS blocked`,
+  );
+  if (result.rows[0]?.blocked === true) {
+    throw snapshotProblem(
+      "METADATA_PROVIDER_ROUTING_NOT_PORTABLE",
+      "Provider account routing and paid task account pins cannot be preserved by portable metadata export or restore.",
+      "Use native backup/PITR; restore quota policies before account aliases, reconcile exact task identities, and install matching credential versions before observations or allocations.",
+    );
+  }
+}
+
 async function exportFromExecutor(executor: SqlExecutor): Promise<MetadataSnapshot> {
   await configureStableSession(executor);
   await assertExpectedSchema(executor);
   await assertNoUnportableV209Dispatch(executor);
+  await assertPortableProviderRouting(executor);
   const migrationLedger = await readMigrationLedger(executor);
   const tables: MetadataTableSnapshot[] = [];
   for (const [ordinal, tableName] of RELATIONAL_TABLE_NAMES.entries()) {
@@ -1055,6 +1074,7 @@ export async function restoreMetadataSnapshot(
       await configureStableSession(transaction);
       await transaction.execute("SET CONSTRAINTS ALL DEFERRED");
       await assertExpectedSchema(transaction);
+      await assertPortableProviderRouting(transaction);
       await readMigrationLedger(transaction);
       const existingRows = await countDataRows(transaction);
       if (existingRows > 0) {

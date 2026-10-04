@@ -221,6 +221,10 @@ const REQUIRED_HARDENING_FOREIGN_KEYS = [
 // owner-controlled SECURITY DEFINER functions and intentionally have no tenant write guard.
 const OPERATOR_ONLY_TABLES = [
   "provider_api_policies",
+  "provider_accounts",
+  "provider_submission_attempt_accounts",
+  "provider_task_routes",
+  "generation_provider_preferences",
   "provider_api_waiters",
   "provider_api_account_turns",
   "provider_api_rejections",

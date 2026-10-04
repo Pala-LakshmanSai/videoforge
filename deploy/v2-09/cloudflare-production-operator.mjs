@@ -28,6 +28,8 @@ import {
   cloudflareOAuthApiResponse,
   extractSingleActiveVersion,
   SECRET_NAMES,
+  OPTIONAL_SECRET_NAMES,
+  validSecretNames,
   WORKERS_SUBDOMAIN_PATH,
   WORKFLOW_INVENTORY_PATH,
 } from "../v2-13/guarded-activation.mjs";
@@ -39,6 +41,13 @@ import {
 
 import { hashV209DryOutputBundle } from "./dry-output-bundle.mjs";
 import { executeV209SecretBulk } from "./cloudflare-secret-bulk.mjs";
+
+const ALLOWED_SECRET_NAMES = Object.freeze([...SECRET_NAMES, ...OPTIONAL_SECRET_NAMES]);
+function configuredSecretNames(configuration) {
+  const names = Object.keys(configuration.secretFiles ?? {});
+  if (!validSecretNames(names)) fail("SECRET_FILE_SET_INVALID");
+  return names.sort();
+}
 
 const LEGACY_PREDECESSOR_SECRET_NAMES = Object.freeze(
   SECRET_NAMES.filter((name) => !["KIE_API_KEY", "FAL_API_KEY"].includes(name)),
@@ -150,7 +159,7 @@ function privateFile(path, { mayNotExist = false } = {}) {
 function sealSecretInputs(configuration) {
   return Object.freeze(
     Object.fromEntries(
-      SECRET_NAMES.map((name) => {
+      configuredSecretNames(configuration).map((name) => {
         const path = configuration.secretFiles[name];
         let descriptor;
         let before;
@@ -261,7 +270,7 @@ function assertCurrentAuthority(authority, configuration, now) {
     !HASH.test(authority.production?.config_sha256 ?? "") ||
     !HASH.test(authority.production?.worker_bundle_sha256 ?? "") ||
     !HASH.test(authority.production?.secret_allowlist_sha256 ?? "") ||
-    authority.production?.secret_count !== SECRET_NAMES.length
+    authority.production?.secret_count !== configuredSecretNames(configuration).length
   )
     fail("AUTHORITY_NOT_CURRENT");
   return observed;
@@ -281,7 +290,7 @@ function assertCleanupAuthorityBase(authority, configuration, now) {
     !HASH.test(authority.proposal_sha256 ?? "") ||
     authority.production?.worker_name !== configuration.workerName ||
     !HASH.test(authority.production?.secret_allowlist_sha256 ?? "") ||
-    authority.production?.secret_count !== SECRET_NAMES.length ||
+    authority.production?.secret_count !== configuredSecretNames(configuration).length ||
     authority.scope?.cleanup_only_recovery !== true ||
     authority.scope?.allow_redispatch !== false ||
     !Array.isArray(authority.scope?.operations) ||
@@ -317,7 +326,8 @@ function isPreRenderCleanupAuthority(authority, configuration, now) {
   if (
     !HASH.test(authority.production.chrome_bootstrap_plan_sha256 ?? "") ||
     !HASH.test(authority.production.materialization_input_sha256 ?? "") ||
-    authority.production.secret_allowlist_sha256 !== sha256(canonical([...SECRET_NAMES].sort()))
+    authority.production.secret_allowlist_sha256 !==
+      sha256(canonical(configuredSecretNames(configuration)))
   )
     fail("CLEANUP_AUTHORITY_INVALID");
   return true;
@@ -380,9 +390,8 @@ function assertConfiguration(value) {
   for (const path of [value.disabledConfigPath, value.bootstrapConfigPath, value.journalPath])
     privateFile(path, { mayNotExist: true });
   if (
-    JSON.stringify(Object.keys(value.secretFiles ?? {}).sort()) !==
-      JSON.stringify([...SECRET_NAMES].sort()) ||
-    new Set(Object.values(value.secretFiles)).size !== SECRET_NAMES.length
+    !validSecretNames(Object.keys(value.secretFiles ?? {})) ||
+    new Set(Object.values(value.secretFiles)).size !== Object.keys(value.secretFiles).length
   )
     fail("SECRET_FILE_SET_INVALID");
   if (JSON.stringify(value.expectedOauthScopes) !== JSON.stringify(APPROVED_WRANGLER_OAUTH_SCOPES))
@@ -672,7 +681,9 @@ function validateJournal(value, authority, configuration) {
     value.config_sha256 !== authority.production.config_sha256 ||
     !Array.isArray(value.events) ||
     !Array.isArray(value.introduced_secret_names) ||
-    value.introduced_secret_names.some((name) => !SECRET_NAMES.includes(name)) ||
+    value.introduced_secret_names.some(
+      (name) => !configuredSecretNames(configuration).includes(name),
+    ) ||
     value.retained_r2_deleted !== false
   )
     fail("JOURNAL_INVALID");
@@ -1177,7 +1188,7 @@ function normalizedVersionProjection(
         add(variables, descriptorName, value);
       else extras.push(`var:${item.name}`);
     } else if (descriptorName !== null && /secret/iu.test(descriptorType ?? "")) {
-      if (SECRET_NAMES.includes(descriptorName)) secrets.push(descriptorName);
+      if (ALLOWED_SECRET_NAMES.includes(descriptorName)) secrets.push(descriptorName);
       else extras.push(`secret:${item.name}`);
     } else {
       const explicitBinding = typeof item.binding === "string";
@@ -1593,13 +1604,14 @@ async function verifyRelocatedPredecessorBundle(runtime, authority, context, qua
   }
 }
 
-function possiblyIntroducedSecrets(journal) {
+function possiblyIntroducedSecrets(journal, configuration) {
   const names = new Set(journal.introduced_secret_names);
   for (const event of journal.events) {
     if (event.kind === "SECRET_PUT" && typeof event.name === "string") names.add(event.name);
-    if (event.kind === "SECRET_BULK_PUT") for (const name of SECRET_NAMES) names.add(name);
+    if (event.kind === "SECRET_BULK_PUT")
+      for (const name of configuredSecretNames(configuration)) names.add(name);
   }
-  return [...names].filter((name) => SECRET_NAMES.includes(name)).sort();
+  return [...names].filter((name) => configuredSecretNames(configuration).includes(name)).sort();
 }
 
 async function reconcileFailure(runtime, authority, context, journal) {
@@ -1654,7 +1666,7 @@ async function reconcileFailure(runtime, authority, context, journal) {
     { cleanup: context.cleanupOnly === true },
   );
   const observedSecretNames = await exactSecretNames(runtime, authority, context);
-  const attributableNames = possiblyIntroducedSecrets(journal);
+  const attributableNames = possiblyIntroducedSecrets(journal, runtime.configuration);
   if (observedSecretNames.some((name) => !attributableNames.includes(name)))
     fail("CLEANUP_SECRET_ATTRIBUTION_DRIFT");
   await verifyDisabled(runtime, authority, context, journal, observedSecretNames);
@@ -1800,7 +1812,7 @@ async function deployDisabled(runtime, context) {
 async function uploadSecrets(runtime, context) {
   return guardedRun(runtime, context, "upload-cloudflare-production-secrets", async (journal) => {
     materializeDisabled(runtime.configuration, context.authority);
-    const allowlistSha256 = sha256(canonical([...SECRET_NAMES].sort()));
+    const allowlistSha256 = sha256(canonical(configuredSecretNames(runtime.configuration)));
     const suppliedSecretSha256s = context.secretInputSha256s;
     if (
       context.authority.production.secret_allowlist_sha256 !== allowlistSha256 ||
@@ -1836,7 +1848,8 @@ async function uploadSecrets(runtime, context) {
         beforeDispatch,
         expiresAt: context.authority.expires_at,
       });
-      if (result?.secret_count !== SECRET_NAMES.length) fail("SECRET_BULK_FAILED");
+      if (result?.secret_count !== configuredSecretNames(runtime.configuration).length)
+        fail("SECRET_BULK_FAILED");
       record(journal, runtime.configuration, {
         status: "COMMITTED",
         kind: "SECRET_BULK_PUT",
@@ -1853,12 +1866,12 @@ async function uploadSecrets(runtime, context) {
       if (FAILURE_CODES.has(error?.message)) throw error;
       fail("SECRET_BULK_FAILED");
     }
-    journal.introduced_secret_names = [...SECRET_NAMES];
+    journal.introduced_secret_names = configuredSecretNames(runtime.configuration);
     saveJournal(journal, runtime.configuration);
     await verifyCommittedSecretPut(runtime, context.authority, context, journal);
     if (
       JSON.stringify(await exactSecretNames(runtime, context.authority, context)) !==
-      JSON.stringify([...SECRET_NAMES].sort())
+      JSON.stringify(configuredSecretNames(runtime.configuration))
     )
       fail("SECRET_CLOSED_WORLD_DRIFT");
     await mutate(
@@ -1881,7 +1894,7 @@ async function uploadSecrets(runtime, context) {
     await verifyDisabled(runtime, context.authority, context, journal);
     if (
       JSON.stringify(await exactSecretNames(runtime, context.authority, context)) !==
-      JSON.stringify([...SECRET_NAMES].sort())
+      JSON.stringify(configuredSecretNames(runtime.configuration))
     )
       fail("SECRET_FINAL_CLOSED_WORLD_DRIFT");
     return {
@@ -1889,8 +1902,8 @@ async function uploadSecrets(runtime, context) {
       operation_id: context.operationId,
       worker: runtime.configuration.workerName,
       secret_allowlist_sha256: allowlistSha256,
-      secret_count: SECRET_NAMES.length,
-      secret_put_count: SECRET_NAMES.length,
+      secret_count: configuredSecretNames(runtime.configuration).length,
+      secret_put_count: configuredSecretNames(runtime.configuration).length,
       deploy_count: 1,
       mutation_count: 2,
       transaction_count: 1,
@@ -1931,7 +1944,7 @@ async function deployQualified(runtime, context) {
           .VIDEOFORGE_GPU_TRANSPORT,
         true,
         context,
-        SECRET_NAMES,
+        configuredSecretNames(runtime.configuration),
       );
       await readRoute(
         runtime,
@@ -1979,7 +1992,7 @@ async function readbackQualified(runtime, context) {
       .VIDEOFORGE_GPU_TRANSPORT,
     true,
     context,
-    SECRET_NAMES,
+    configuredSecretNames(runtime.configuration),
   );
   if (version.versionId !== journal.active_version_id) fail("QUALIFIED_VERSION_CHANGED");
   const configuredTransport = qualifiedConfiguration(runtime.configuration, context.authority).value
@@ -2033,7 +2046,10 @@ function sanitizedConfigurationIdentity(configuration, secretInputSha256s) {
       oauth_scopes_sha256: sha256(canonical(configuration.expectedOauthScopes)),
       environment_sha256: sha256(canonical(configuration.environment)),
       secret_path_sha256s: Object.fromEntries(
-        SECRET_NAMES.map((name) => [name, sha256(configuration.secretFiles[name])]),
+        configuredSecretNames(configuration).map((name) => [
+          name,
+          sha256(configuration.secretFiles[name]),
+        ]),
       ),
       secret_input_sha256s: secretInputSha256s,
     }),
@@ -2044,7 +2060,9 @@ function createProductionRuntime(inputConfiguration, dependencies = {}) {
   const configuration = assertConfiguration(inputConfiguration);
   const secretInputs = sealSecretInputs(configuration);
   const secretInputSha256s = Object.freeze(
-    Object.fromEntries(SECRET_NAMES.map((name) => [name, secretInputs[name].sha256])),
+    Object.fromEntries(
+      configuredSecretNames(configuration).map((name) => [name, secretInputs[name].sha256]),
+    ),
   );
   const injectedNames = Object.keys(dependencies).filter((name) => name !== "testOnly");
   if (injectedNames.length > 0 && dependencies.testOnly !== true)
@@ -2190,7 +2208,7 @@ export function createV209CloudflareReplacementCapabilities(configuration, depen
     transport,
     sourceRuntime = runtime,
     cpuLimitMode = "required",
-    expectedSecretNames = SECRET_NAMES,
+    expectedSecretNames = configuredSecretNames(runtime.configuration),
   ) => {
     const ctx = context(authority);
     const names = await exactSecretNames(
@@ -2264,9 +2282,11 @@ export function createV209CloudflareReplacementCapabilities(configuration, depen
         oldAuthority,
         context(oldAuthority),
       );
-      const expectedPredecessorSecrets = [SECRET_NAMES, LEGACY_PREDECESSOR_SECRET_NAMES].find(
-        (expected) => canonical(predecessorSecretNames) === canonical([...expected].sort()),
-      );
+      const expectedPredecessorSecrets = [
+        configuredSecretNames(runtime.configuration),
+        SECRET_NAMES,
+        LEGACY_PREDECESSOR_SECRET_NAMES,
+      ].find((expected) => canonical(predecessorSecretNames) === canonical([...expected].sort()));
       if (expectedPredecessorSecrets === undefined) fail("SECRET_LIST_DRIFT");
       await verifyRelocatedPredecessorBundle(
         oldRuntime,

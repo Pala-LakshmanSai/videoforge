@@ -204,6 +204,11 @@ export type SchemaRegistryTableName = (typeof SCHEMA_REGISTRY_TABLE_NAMES)[numbe
 export const NON_PORTABLE_TABLE_NAMES = [
   // Operational quota/cooldown and unsent fairness state require native PITR or fresh configuration.
   "provider_api_policies",
+  // Credential aliases and paid task account pins require exact native PITR/reconciliation.
+  "provider_accounts",
+  "provider_submission_attempt_accounts",
+  "provider_task_routes",
+  "generation_provider_preferences",
   "provider_api_waiters",
   "provider_api_account_turns",
   // Ephemeral enrollment authority and bounded cron diagnostics belong to native backup/PITR.

@@ -1977,3 +1977,36 @@ test("replacement verifies a bundled predecessor from relocated bytes before rea
   const cpuLimitedObserved = await primitive.predecessor(approved, cpuLimitedPredecessor);
   assert.equal(cpuLimitedObserved.versionIdSha256, hash(predecessor.versionId));
 });
+
+test("optional account credential catalogue stays in the exact approved secret upload and readback", async () => {
+  const value = fixture(),
+    name = "VIDEOFORGE_API_ACCOUNT_CREDENTIALS_JSON";
+  try {
+    const secretPath = resolve(value.directory, "provider-account-secret");
+    writeFileSync(secretPath, '{"fixture":"sealed"}', { mode: 0o600 });
+    value.configuration.secretFiles[name] = secretPath;
+    const approved = authority(value),
+      names = Object.keys(value.configuration.secretFiles).sort();
+    approved.production.secret_count = names.length;
+    approved.production.secret_allowlist_sha256 = hash(canonical(names));
+    const mock = harness(value);
+    const operator = createV209CloudflareProductionOperator(value.configuration, {
+      testOnly: true,
+      runChild: mock.runChild,
+      fetchImpl: mock.fetchImpl,
+      oauthApiResponse: mock.oauthApiResponse,
+      snapshotUploadArtifact: mock.snapshotUploadArtifact,
+      secretBulk: async (input) => {
+        const result = await mock.secretBulk(input);
+        mock.secrets.add(name);
+        return { secret_count: result.secret_count + 1 };
+      },
+      now: () => new Date("2026-09-06T22:00:00Z"),
+    });
+    const result = await executeThroughQualified(operator, approved);
+    assert.equal(result.secrets.secret_count, names.length);
+    assert.deepEqual([...mock.secrets].sort(), names);
+  } finally {
+    rmSync(value.directory, { recursive: true, force: true });
+  }
+});

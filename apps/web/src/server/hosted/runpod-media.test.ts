@@ -788,12 +788,16 @@ describe("cloud terminal admission settlement", () => {
     expect((await runCloudMediaObservation(environment, config, scope)).state).toBe("FINALIZATION_PENDING");
     expect(reservation.state).toBe("CLEAN"); expect(reservation.failure_settled_at).toBeUndefined();
   });
-  it("settles expired unreserved ASR without a rental and waits for the durable SQL decision", async () => {
-    noReservation = true; attempt.kind = "ASR"; attempt.state = "PLANNED"; attempt.deadline_at = new Date(0).toISOString(); cpuSettled = false;
+  it.each(["PLANNED", "OUTBOXED"])("settles 24-hour expired queued %s ASR without rental or identity replacement", async state => {
+    const queuedAt = Date.now() - 24 * 60 * 60 * 1000 - 1;
+    const deadline = new Date(queuedAt + 24 * 60 * 60 * 1000).toISOString();
+    noReservation = true; attempt.kind = "ASR"; attempt.state = state; attempt.deadline_at = deadline; cpuSettled = false;
     expect((await runCloudMediaObservation(environment, config, scope)).state).toBe("FINALIZATION_PENDING");
     expect(attempt.state).toBe("EXPIRED"); expect(fixture.transport).not.toHaveBeenCalled();
+    expect(attempt.id).toBe(attemptId); expect(attempt.deadline_at).toBe(deadline);
     cpuSettled = true;
     expect((await runCloudMediaObservation(environment, config, scope)).state).toBe("EXPIRED");
+    expect(fixture.transport).not.toHaveBeenCalled();
   });
 });
 

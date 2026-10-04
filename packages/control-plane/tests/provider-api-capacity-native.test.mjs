@@ -15,7 +15,7 @@ const connectionString = process.env.VIDEOFORGE_CAPACITY_NATIVE_POSTGRES_URL;
 
 // Requires a disposable local database. Ordinary test runs cannot contact any database.
 test(
-  "native PostgreSQL 259-261: ten simultaneous sessions, same-job race, rollback isolation and no over-admission",
+  "native PostgreSQL 259-263: pooled seven/ten-session capacity, exact ownership and rollback",
   {
     skip: !connectionString,
     timeout: 120000,
@@ -75,7 +75,33 @@ test(
           : {}),
       });
       const executor = wrap(direct);
-      await applyMigrationSliceThrough(executor, 261, sources);
+      await applyMigrationSliceThrough(executor, 262, sources);
+      const routingMigration = sources.find((m) => m.version === 263);
+      assert.ok(routingMigration);
+      await admin.query("BEGIN");
+      await admin.query(routingMigration.sql);
+      assert.equal(
+        (await admin.query("SELECT to_regclass('public.provider_task_routes')::text AS value"))
+          .rows[0].value,
+        "provider_task_routes",
+      );
+      await admin.query("ROLLBACK");
+      assert.equal(
+        (await admin.query("SELECT to_regclass('public.provider_task_routes')::text AS value"))
+          .rows[0].value,
+        null,
+        "rolled-back migration leaves legacy schema intact",
+      );
+      await admin.query(routingMigration.sql);
+      await admin.query(
+        "INSERT INTO videoforge_schema_migrations(version,name,filename,sha256) VALUES($1,$2,$3,$4)",
+        [
+          routingMigration.version,
+          routingMigration.name,
+          routingMigration.filename,
+          routingMigration.sha256,
+        ],
+      );
       const accounts = [];
       const seed = async (table, sql, args) => {
         await admin.query(`ALTER TABLE ${table} DISABLE TRIGGER ALL`);
@@ -262,17 +288,195 @@ test(
         held.client.release();
         blocked.client.release();
       }
+      // Account-aware claims share each actual credential quota, not a combined invented quota.
+      await reset();
+      await admin.query(
+        "INSERT INTO provider_api_policies(provider,max_inflight,min_start_interval_ms) VALUES('KIE:kie-native-extra',3,0); INSERT INTO provider_accounts VALUES('kie-native-extra','KIE','v1','KIE:kie-native-extra',true,false,true,'-infinity'); UPDATE provider_api_policies SET max_inflight=2 WHERE provider='KIE'",
+      );
+      const pooledSql =
+        "SELECT videoforge_claim_hosted_api_job_v2($1,$2,$3,$4,$5,$6::text[]) AS value";
+      const pooledArgs = (a) => [...args(a), ["kie-legacy", "kie-native-extra"]];
+      const poolWave = async (count) => {
+        const clients = await Promise.all(accounts.slice(0, count).map(prepare));
+        assert.equal(new Set(clients.map((c) => c.pid)).size, count);
+        return Promise.all(
+          clients.map(async (s) => {
+            try {
+              const r = (await s.client.query(pooledSql, pooledArgs(s.a))).rows[0].value;
+              await s.client.query("COMMIT");
+              return r;
+            } catch (e) {
+              await s.client.query("ROLLBACK");
+              throw e;
+            } finally {
+              s.client.release();
+            }
+          }),
+        );
+      };
+      const seven = await poolWave(7);
+      assert.equal(seven.filter((r) => r.state === "SUBMITTING").length, 5);
+      assert.equal(seven.filter((r) => r.state === "PREPARED").length, 2);
+      let pooledSequence = 0;
+      const releaseUnaccepted = async (results) => {
+        for (const r of results.filter((r) => r.state === "SUBMITTING")) {
+          const a = accounts.find((a) => a.j === r.id),
+            c = await prepare(a);
+          try {
+            await c.client.query("SELECT videoforge_defer_hosted_api_job($1,$2,$3,$4,$5,0)", [
+              a.accountId,
+              a.workspaceId,
+              a.g,
+              a.t,
+              r.claimId,
+            ]);
+            await c.client.query("COMMIT");
+          } finally {
+            c.client.release();
+          }
+        }
+        await admin.query(
+          "DELETE FROM provider_api_waiters; UPDATE provider_api_policies SET cooldown_until='-infinity',next_start_at='-infinity' WHERE provider IN('KIE','KIE:kie-native-extra')",
+        );
+        pooledSequence++;
+        accounts.forEach((a, i) => {
+          a.claim = uuid(263800 + pooledSequence * 100 + i);
+        });
+      };
+      await releaseUnaccepted(seven);
+      const ten = await poolWave(10);
+      assert.equal(ten.filter((r) => r.state === "SUBMITTING").length, 5);
+      assert.equal(ten.filter((r) => r.state === "PREPARED").length, 5);
+      const pins = (
+        await admin.query(
+          "SELECT a.provider_account_id,count(*)::int AS n FROM provider_task_routes r JOIN provider_accounts a USING(provider_account_id) GROUP BY a.provider_account_id",
+        )
+      ).rows;
+      assert.equal(pins.find((p) => p.provider_account_id === "kie-legacy").n, 2);
+      assert.equal(pins.find((p) => p.provider_account_id === "kie-native-extra").n, 3);
+      assert.equal(
+        (await admin.query("SELECT count(*)::int AS n FROM provider_submission_attempt_accounts"))
+          .rows[0].n,
+        10,
+        "five accepted claims per wave retain ten immutable attempt accounts",
+      );
+      const foreign = await prepare(accounts[0]);
+      try {
+        assert.equal(
+          (
+            await foreign.client.query(
+              "SELECT videoforge_read_hosted_api_jobs_v2($1,$2,$3) AS value",
+              [accounts[0].accountId, accounts[1].workspaceId, accounts[1].g],
+            )
+          ).rows[0].value,
+          null,
+          "runtime cannot read foreign project task/account identity",
+        );
+        for (const [forbidden, parameters] of [
+          ["SELECT * FROM provider_accounts", []],
+          ["SELECT * FROM provider_task_routes", []],
+          [
+            "SELECT videoforge_claim_hosted_api_job_v2($1,$2,$3,$4,$5,$6::text[])",
+            pooledArgs(accounts[1]),
+          ],
+          ["SELECT videoforge_defer_hosted_api_job($1,$2,$3,$4,$5,1000)", args(accounts[1])],
+          ["SELECT videoforge_provider_api_active_count('KIE')", []],
+        ]) {
+          await foreign.client.query("SAVEPOINT tenant_permission");
+          await assert.rejects(
+            foreign.client.query(forbidden, parameters),
+            (e) => e.code === "42501",
+          );
+          await foreign.client.query("ROLLBACK TO SAVEPOINT tenant_permission");
+        }
+        await foreign.client.query("ROLLBACK");
+      } finally {
+        foreign.client.release();
+      }
+      await releaseUnaccepted(ten);
+      const routedHeld = await prepare(accounts[0]),
+        routedBlocked = await prepare(accounts[1]);
+      let routedRollbackResult;
+      try {
+        assert.equal(
+          (await routedHeld.client.query(pooledSql, pooledArgs(routedHeld.a))).rows[0].value.state,
+          "SUBMITTING",
+        );
+        assert.equal(
+          (await admin.query("SELECT count(*)::int AS n FROM provider_task_routes")).rows[0].n,
+          0,
+          "uncommitted account pin is invisible",
+        );
+        const waiting = routedBlocked.client.query(pooledSql, pooledArgs(routedBlocked.a));
+        let lockSeen = false;
+        for (let i = 0; i < 20; i++) {
+          if (
+            (
+              await admin.query("SELECT wait_event_type FROM pg_stat_activity WHERE pid=$1", [
+                routedBlocked.pid,
+              ])
+            ).rows[0]?.wait_event_type === "Lock"
+          ) {
+            lockSeen = true;
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 20));
+        }
+        assert.equal(lockSeen, true);
+        await routedHeld.client.query("ROLLBACK");
+        routedRollbackResult = (await waiting).rows[0].value;
+        assert.equal(routedRollbackResult.state, "SUBMITTING");
+        await routedBlocked.client.query("COMMIT");
+        assert.equal(
+          (await admin.query("SELECT count(*)::int AS n FROM provider_task_routes")).rows[0].n,
+          1,
+          "rollback removes failed pin, next owner acquires one slot",
+        );
+      } finally {
+        await routedHeld.client.query("ROLLBACK");
+        await routedBlocked.client.query("ROLLBACK");
+        routedHeld.client.release();
+        routedBlocked.client.release();
+      }
+      await releaseUnaccepted([routedRollbackResult]);
+      const pooledRacers = await Promise.all(
+        [accounts[0], { ...accounts[0], claim: uuid(263999) }].map(prepare),
+      );
+      const pooledResults = await Promise.all(
+        pooledRacers.map(async (s) => {
+          try {
+            const r = (await s.client.query(pooledSql, pooledArgs(s.a))).rows[0].value;
+            await s.client.query("COMMIT");
+            return r;
+          } finally {
+            s.client.release();
+          }
+        }),
+      );
+      assert.equal(new Set(pooledResults.map((r) => r.claimId)).size, 1);
+      assert.equal(new Set(pooledResults.map((r) => r.providerAccount.id)).size, 1);
+      assert.equal(
+        (await admin.query("SELECT count(*)::int AS n FROM provider_task_routes")).rows[0].n,
+        1,
+        "same-job concurrent claims create one paid account pin",
+      );
       console.info(
         JSON.stringify({
           schema_version: "videoforge-native-provider-capacity-proof/v1",
           postgres: (await admin.query("SELECT version() AS value")).rows[0].value,
-          migrationVersions: [259, 260, 261],
+          migrationVersions: [259, 260, 261, 262, 263],
           simultaneousSessions: 10,
           configuredCap: 3,
           admitted: 3,
           waiting: 7,
           sameJobOwners: 1,
           rollbackLockObserved: true,
+          pooledSevenAdmitted: 5,
+          pooledTenAdmitted: 5,
+          pooledAccountCaps: [2, 3],
+          pooledSameJobOwners: 1,
+          pooledRollbackLockObserved: true,
+          migrationRollbackVerified: true,
           paidCalls: 0,
         }),
       );

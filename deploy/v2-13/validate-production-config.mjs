@@ -224,6 +224,9 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
     ...(Object.hasOwn(config.vars ?? {}, "VIDEOFORGE_GENERATION_PROVIDER")
       ? ["VIDEOFORGE_GENERATION_PROVIDER"]
       : []),
+    ...(Object.hasOwn(config.vars ?? {}, "VIDEOFORGE_PROVIDER_ACCOUNT_ROUTING_ENABLED")
+      ? ["VIDEOFORGE_PROVIDER_ACCOUNT_ROUTING_ENABLED"]
+      : []),
     "VIDEOFORGE_GPU_TRANSPORT",
     "VIDEOFORGE_PROVIDER_MODE",
     "VIDEOFORGE_PUBLIC_ORIGIN",
@@ -238,6 +241,8 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
     config.vars.VIDEOFORGE_GPU_TRANSPORT !==
       (mode === "qualified" && !apiGeneration ? "QUALIFIED_EXACT" : "DISABLED_UNQUALIFIED") ||
     (Object.hasOwn(config.vars, "VIDEOFORGE_GENERATION_PROVIDER") && !apiGeneration) ||
+    (Object.hasOwn(config.vars, "VIDEOFORGE_PROVIDER_ACCOUNT_ROUTING_ENABLED") &&
+      !["true", "false"].includes(config.vars.VIDEOFORGE_PROVIDER_ACCOUNT_ROUTING_ENABLED)) ||
     config.vars.VIDEOFORGE_R2_REGION !== "auto"
   )
     fail("production variables drifted");
@@ -257,6 +262,7 @@ export function validateProductionConfig(config, { mode = "template" } = {}) {
       fail(`forbidden production token: ${token}`);
   }
   for (const secret of [
+    "VIDEOFORGE_API_ACCOUNT_CREDENTIALS_JSON",
     "DATABASE_URL",
     "BETTER_AUTH_SECRET",
     "GOOGLE_CLIENT_SECRET",
