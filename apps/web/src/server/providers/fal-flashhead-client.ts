@@ -1,3 +1,5 @@
+import { isFalCapacityRefusal, providerRetryAfterMs } from "./provider-throttle";
+
 /** Server-only queue client for the audio-driven FlashHead endpoint. */
 const MODEL_URL = "https://queue.fal.run/fal-ai/flashhead/audio-to-video";
 // Fal submits to the audio endpoint but returns job URLs under the parent model path.
@@ -9,11 +11,13 @@ export class FalFlashheadError extends Error {
     readonly code:
       | "INPUT_INVALID"
       | "SUBMIT_REJECTED"
+      | "RATE_LIMITED"
       | "SUBMIT_UNKNOWN"
       | "STATUS_UNKNOWN"
       | "RESULT_UNKNOWN"
       | "RESULT_INVALID"
       | "CANCEL_UNKNOWN",
+    readonly retryAfterMs?: number,
   ) {
     super(code);
     this.name = "FalFlashheadError";
@@ -83,6 +87,8 @@ export class FalFlashheadClient {
       console.warn("fal_flashhead_submit_unknown", { phase: "transport" });
       throw new FalFlashheadError("SUBMIT_UNKNOWN");
     }
+    if (await isFalCapacityRefusal(response))
+      throw new FalFlashheadError("RATE_LIMITED", providerRetryAfterMs(response.headers.get("Retry-After")));
     if ([400, 401, 402, 403, 422].includes(response.status))
       throw new FalFlashheadError("SUBMIT_REJECTED");
     if (!response.ok) {

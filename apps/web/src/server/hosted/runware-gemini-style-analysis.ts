@@ -7,6 +7,9 @@ import {
   type TrustedStyleProfile,
 } from "@videoforge/pipeline";
 import { parseJsonStrict } from "@videoforge/contracts";
+import { canonicalizeJson } from "@videoforge/contracts";
+import { exactRunwareCapacityRefusal, type RunwareCapacityRefusal } from "../providers/runware-http-transport";
+import { providerRetryAfterMs } from "../providers/provider-throttle";
 
 export const RUNWARE_GEMINI_STYLE_MODEL = "google:gemini@3.1-flash-lite" as const;
 export const RUNWARE_GEMINI_STYLE_MAX_OUTPUT_TOKENS = 6_000 as const;
@@ -197,6 +200,7 @@ export async function analyzeStyleWithRunwareGemini(input: {
   readonly images: readonly RunwareGeminiStyleImage[];
   readonly taskUUID?: string;
   readonly fetcher?: typeof fetch;
+  readonly onCapacityRefused?: (value: RunwareCapacityRefusal) => Promise<void>;
 }): Promise<RunwareGeminiStyleAnalysisResult> {
   if (input.apiKey.trim().length === 0) throw new RunwareGeminiStyleAnalysisError("UNAVAILABLE");
   const totalBytes = input.images.reduce((sum, image) => sum + image.bytes.byteLength, 0);
@@ -290,6 +294,11 @@ export async function analyzeStyleWithRunwareGemini(input: {
     throw new RunwareGeminiStyleAnalysisError("AMBIGUOUS");
   }
   if (!response.ok) {
+    const errorBody = await response.clone().json().catch(() => null);
+    if (response.status === 429 && exactRunwareCapacityRefusal(errorBody, taskUUID))
+      await input.onCapacityRefused?.({ taskUUID,
+        responseHash: await sha256(canonicalizeJson(errorBody as never)) as `sha256:${string}`,
+        retryAfterMs: providerRetryAfterMs(response.headers.get("retry-after")) });
     const problem = providerProblem(
       await response
         .clone()

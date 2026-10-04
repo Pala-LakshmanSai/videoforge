@@ -41,6 +41,19 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
+it("keeps a queued narration locked and observes it without creating another request", async () => {
+  const job = { id: "queued-voice", state: "WAITING", script: "Saved narration script.",
+    voice_id: "alice", filename: "saved.mp3", audio_url: null };
+  const fetcher = vi.fn(async (url: RequestInfo | URL) =>
+    Response.json(String(url).endsWith("/voices") ? { voices } : { job }));
+  vi.stubGlobal("fetch", fetcher);
+  wrap(<ScriptVoiceover disabled={false} onReady={vi.fn()} onInvalidate={vi.fn()} />);
+  await screen.findByText("Waiting for voiceover capacity… You can return later.");
+  expect(screen.getByLabelText("Voiceover script")).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Generate voiceover" })).toBeDisabled();
+  await waitFor(() => expect(fetcher.mock.calls.some(([url]) =>
+    String(url).endsWith("/jobs/queued-voice"))).toBe(true));
+});
 it("shows private saved voices and saves a star through authenticated API", async () => {
   const fetcher = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
     if (init?.method === "POST") return Response.json({ saved: true, starred: true });

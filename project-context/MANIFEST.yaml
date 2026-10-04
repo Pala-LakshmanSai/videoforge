@@ -4,7 +4,7 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-09-06"
 source_of_truth: project-context
 
-current_selected_profile: v2_09_media_review_count
+current_selected_profile: v2_09_api_capacity
 current_selected_brief: tasks/VF-10-09.md
 
 mandatory_read:
@@ -25,6 +25,10 @@ conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
 target_profile_word_budget: 15000
 
 read_profiles:
+  v2_09_api_capacity:
+    - tasks/VF-10-09.md
+    - API_CAPACITY_PLAN.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
   v2_09_media_review_count:
     - tasks/VF-10-09.md
     - 19_IMPLEMENTATION_PLAYBOOK.md
@@ -250,6 +254,7 @@ historical_runpod_invariants:
   - final_two_lane_smoke_and_independent_zero_worker_drain_required_for_runpod_release
 
 approved_decisions:
+  DEC_API_CAPACITY_001: shared_durable_provider_gates_and_confirmed_refusal_cooldowns_preserve_uncertain_paid_identity
   DEC_VOICEOVER_001: audio_upload_or_explicit_J1TTS_script_generation_private_Hub_saved_starred_and_no_replay
   DEC_CLOUD_BILLING_001: ordinary_Cloud_follows_current_and_future_VideoForge_admission_no_separate_account_allowlist_pay_per_use_cost_accounting_and_finite_machine_shutdown_preserved
   DEC_CLOUD_CLEANUP_ISOLATION_001: fenced_terminal_early_failure_allows_Local_and_Cloud_VIDEO_unknown_cleanup_and_global_resource_capacity_retained
@@ -283,7 +288,7 @@ approved_decisions:
   DEC_OUTPUT_002: hard_cuts_no_graphics_text_or_transitions
   DEC_OUTPUT_003: immediate_centered_zoom_faster_both_layouts
   DEC_QUEUE_001: postgres_authoritative_api_generation_with_runpod_history
-  DEC_QUEUE_003: fair_one_per_account_two_global_admission
+  DEC_QUEUE_003: fair_one_per_account_no_cross_account_ordinary_video_cap
   DEC_RENDER_001: superseded_cloud_run_render_decision_history
   DEC_RENDER_002: no_remotion_or_hyperframes
   DEC_PERSONAL_WORKER_001: optional_local_or_qualified_runpod_media_execution

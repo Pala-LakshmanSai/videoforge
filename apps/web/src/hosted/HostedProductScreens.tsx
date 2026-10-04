@@ -6201,6 +6201,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   // atomic batch-progress commit, so both belong in the live viewer.
   const acceptedPrompts = prompts;
   const promptProgress = query.data.prompt_progress;
+  const promptCapacityHeld = promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT";
   const promptWritingActive =
     promptWriting.isPending ||
     ["STARTING", "RUNNING", "RETRYING"].includes(promptStage?.status ?? "");
@@ -6293,6 +6294,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       promptProgress?.problem_code === "HOSTED_PROMPT_OUTPUT_INVALID"
     )
       return "The original provider result was invalid and its known cost is settled. Saved prompts remain available; this project cannot send another paid prompt request automatically.";
+    if (stageId === "prompt-writing" && promptCapacityHeld)
+      return "The prompt provider was busy. Contact support to review this held request; saved prompts remain intact and no new request will be sent automatically.";
     if (stageId === "prompt-writing" && promptProgress?.state === "UNKNOWN")
       return "The prompt request's result is uncertain. A fresh paid request is blocked until the existing attempt is resolved.";
     if (stageId === "voiceover-context" && contextValidationFailed)
@@ -6330,7 +6333,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         (stage) =>
           stage.status === "FAILED" ||
           (stage.id === "prompt-writing" &&
-            promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"),
+            (promptCapacityHeld || promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW")),
       )
       .map((stage) => stage.id),
   );
@@ -6945,7 +6948,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                     ? `Writing ${promptBatchStatus.toLowerCase()}.`
                     : "Writing prompt batches."
                   : promptWritingStopped
-                    ? promptProgress?.problem_code === "HOSTED_PROMPT_OUTPUT_INVALID"
+                    ? promptCapacityHeld
+                      ? "The prompt provider was busy. Saved prompts remain intact; contact support before continuing."
+                      : promptProgress?.problem_code === "HOSTED_PROMPT_OUTPUT_INVALID"
                       ? "The original provider result was invalid. Saved prompts are intact; another paid batch will not be sent automatically."
                       : promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
                         ? "Prompt writing is paused while provider credits are unavailable. Saved prompts remain intact."
@@ -7126,7 +7131,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               : renderHandoff.isPending
                 ? "Saving scene plan…"
                 : query.data.generation
-                  ? generationStopped
+                  ? promptCapacityHeld
+                    ? "Prompt writing needs review."
+                    : generationStopped
                     ? "Generation stopped."
                     : generationWaitingForGpu
                       ? query.data.generation_provider === "KIE_FAL"
@@ -7172,7 +7179,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           promptStage?.status !== "COMPLETE" ? (
             <>
               <span>
-                {promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
+                {promptCapacityHeld
+                  ? "Saved prompts remain intact. Contact support to review this held request; no new request will be sent automatically."
+                  : promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
                   ? "Saved prompts remain intact. Check again after provider credits are available."
                   : "Scene prompts are generated automatically."}
               </span>

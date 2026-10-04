@@ -171,12 +171,17 @@ export async function submitKieImageJob(input: {
   readonly persistTaskId: (taskId: string) => Promise<void>;
   readonly markRequestRejected: () => Promise<void>;
   readonly markSubmissionUnknown: () => Promise<void>;
+  readonly markRateLimited?: (retryAfterMs: number) => Promise<void>;
 }): Promise<{ readonly state: "NOT_CLAIMED" | "SUBMITTED"; readonly taskId?: string }> {
   if (!(await input.claimSubmission())) return { state: "NOT_CLAIMED" };
   let taskId: string;
   try {
     taskId = await input.client.create(input.manifest);
   } catch (error) {
+    if (error instanceof KieZImageError && error.code === "RATE_LIMITED" && input.markRateLimited) {
+      await input.markRateLimited(error.retryAfterMs ?? 30_000);
+      return { state: "NOT_CLAIMED" };
+    }
     if (
       error instanceof KieZImageError &&
       (error.code === "REQUEST_REJECTED" || error.code === "INPUT_INVALID")

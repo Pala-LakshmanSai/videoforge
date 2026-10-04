@@ -10,6 +10,7 @@ const fixture = vi.hoisted(() => ({
   jobs: [] as Record<string, unknown>[],
   videoSnapshot: null as Record<string, unknown> | null,
   renderPending: false,
+  capacityDenied: false,
   events: [] as string[],
   observeImage: vi.fn(),
   observeAvatar: vi.fn(),
@@ -70,8 +71,12 @@ const database = {
           };
         const job = fixture.jobs.find((row) => row.generationTaskId === args[3])!;
         if (name === "videoforge_claim_hosted_api_job") {
+          if (fixture.capacityDenied) return { rows: [{ value: job }] };
           job.state = "SUBMITTING";
           job.claimId = args[4];
+        } else if (name === "videoforge_defer_hosted_api_job") {
+          job.state = "PREPARED";
+          job.claimId = null;
         } else if (name === "videoforge_mark_hosted_api_unknown") {
           job.state = "UNKNOWN_NO_RETRY";
         } else if (name === "videoforge_fail_hosted_api_job") {
@@ -105,6 +110,7 @@ describe("hosted API batch execution", () => {
     fixture.jobs = jobs("PREPARED");
     fixture.videoSnapshot = null;
     fixture.renderPending = false;
+    fixture.capacityDenied = false;
     fixture.events = [];
     fixture.observeImage.mockReset();
     fixture.observeAvatar.mockReset();
@@ -112,6 +118,38 @@ describe("hosted API batch execution", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it("observes existing paid work when every new claim waits for shared capacity", async () => {
+    fixture.jobs = [...jobs("PREPARED"), { ...jobs("SUBMITTED")[0]!, id: "paid-job", generationTaskId: "paid-task" }];
+    fixture.capacityDenied = true;
+    fixture.observeImage.mockResolvedValue({ state: "PENDING" });
+    const post = vi.fn();
+    vi.stubGlobal("fetch", post);
+    const startedAt = Date.now();
+    const pending = advanceHostedApiGeneration(environment, database, scope);
+    await vi.runAllTimersAsync();
+    expect((await pending).state).toBe("WAITING");
+    expect(Date.now() - startedAt).toBeLessThan(1050);
+    expect(post).not.toHaveBeenCalled();
+    expect(fixture.observeImage).toHaveBeenCalledTimes(1);
+    expect(fixture.jobs[0]!.state).toBe("PREPARED");
+  });
+
+  it("defers confirmed429 with the exact claim while continuing paid result observation", async () => {
+    fixture.jobs = [jobs("PREPARED")[0]!, jobs("SUBMITTED")[1]!];
+    fixture.observeImage.mockResolvedValue({ state: "PENDING" });
+    const post = vi.fn(async () => new Response("rate limited", { status: 429, headers: { "Retry-After": "30" } }));
+    vi.stubGlobal("fetch", post);
+    const pending = advanceHostedApiGeneration(environment, database, scope);
+    await vi.runAllTimersAsync();
+    expect((await pending).state).toBe("WAITING");
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(fixture.events).toContain("videoforge_defer_hosted_api_job");
+    expect(fixture.events).not.toContain("videoforge_mark_hosted_api_unknown");
+    expect(fixture.events).not.toContain("videoforge_fail_hosted_api_job");
+    expect(fixture.jobs[0]!.state).toBe("PREPARED");
+    expect(fixture.observeImage).toHaveBeenCalledTimes(1);
   });
 
   it.each(["unknown", "rejected"])(

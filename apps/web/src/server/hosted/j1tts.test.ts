@@ -90,3 +90,18 @@ describe("J1TTS provider boundary", () => {
     expect(JSON.stringify(data)).not.toContain("private-provider-id");
   });
 });
+
+it("retains explicit long Retry-After for confirmed throttling", async () => {
+  await expect(
+    j1Fetch(
+      "fixture",
+      "/v1/tts",
+      { method: "POST" },
+      async () =>
+        new Response(null, {
+          status: 429,
+          headers: { "retry-after": "7200" },
+        }),
+    ),
+  ).rejects.toMatchObject({ code: "J1TTS_RATE_LIMITED", ambiguous: false, retryAfterMs: 7200000 });
+});

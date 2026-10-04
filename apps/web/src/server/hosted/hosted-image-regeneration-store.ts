@@ -141,6 +141,9 @@ export class HostedSqlImageRegenerationStore implements HostedImageRegenerationS
       [requestId, claimId],
     ));
   }
+  async deferApi(requestId: string, claimId: string, retryAfterMs: number): Promise<Row> {
+    return record(await this.query("SELECT public.videoforge_defer_hosted_api_image_regeneration($1,$2,$3) AS value", [requestId, claimId, retryAfterMs]));
+  }
   async failApi(requestId: string, failureCode: string): Promise<Row> {
     return record(await this.query(
       "SELECT public.videoforge_fail_hosted_api_image_regeneration($1,$2) AS value",

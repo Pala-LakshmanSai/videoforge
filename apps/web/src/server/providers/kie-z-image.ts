@@ -1,3 +1,5 @@
+import { providerRetryAfterMs } from "./provider-throttle";
+
 const KIE_BASE_URL = "https://api.kie.ai";
 const MAX_PROMPT_LENGTH = 800;
 const ASPECT_RATIOS = ["1:1", "4:3", "3:4", "16:9", "9:16"] as const;
@@ -13,9 +15,11 @@ export class KieZImageError extends Error {
     readonly code:
       | "INPUT_INVALID"
       | "REQUEST_REJECTED"
+      | "RATE_LIMITED"
       | "SUBMISSION_UNKNOWN"
       | "STATUS_UNKNOWN"
       | "RESPONSE_INVALID",
+    readonly retryAfterMs?: number,
   ) {
     super(code);
     this.name = "KieZImageError";
@@ -92,6 +96,8 @@ export class KieZImageClient {
     } catch {
       throw new KieZImageError("SUBMISSION_UNKNOWN");
     }
+    if (response.status === 429)
+      throw new KieZImageError("RATE_LIMITED", providerRetryAfterMs(response.headers.get("Retry-After")));
     if (!response.ok) {
       throw new KieZImageError(response.status >= 500 ? "SUBMISSION_UNKNOWN" : "REQUEST_REJECTED");
     }

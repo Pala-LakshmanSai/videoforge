@@ -187,6 +187,7 @@ export const RELATIONAL_TABLE_NAMES = [
   "hosted_api_fourth_render_output_recoveries",
   "hosted_api_local_render_recoveries",
   "hosted_render_only_runs",
+  "provider_api_rejections",
 ] as const;
 
 export type RelationalTableName = (typeof RELATIONAL_TABLE_NAMES)[number];
@@ -201,6 +202,10 @@ export type SchemaRegistryTableName = (typeof SCHEMA_REGISTRY_TABLE_NAMES)[numbe
 
 /** Hosted auth rows contain credentials/tokens and rely on Neon native backup/PITR. */
 export const NON_PORTABLE_TABLE_NAMES = [
+  // Operational quota/cooldown and unsent fairness state require native PITR or fresh configuration.
+  "provider_api_policies",
+  "provider_api_waiters",
+  "provider_api_account_turns",
   // Ephemeral enrollment authority and bounded cron diagnostics belong to native backup/PITR.
   "media_worker_connect_commands",
   "hosted_continuation_heartbeats",

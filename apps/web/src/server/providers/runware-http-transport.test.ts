@@ -47,6 +47,36 @@ const jsonResponse = (item: Record<string, unknown>, status = 200) =>
   });
 
 describe("Runware server HTTP transport", () => {
+  it.each([200, 429])("retains uncertain HTTP %s capacity identity and persists cooldown only for an exact uncharged refusal", async (status) => {
+    const request = promptRequest();
+    const rejection = { code: "concurrentRequestLimitExceeded", taskType: "textInference", taskUUID: request.request.taskUUID };
+    for (const [body, confirmed] of [
+      [{ errors: [rejection] }, true],
+      [{ errors: [{ ...rejection, taskUUID: crypto.randomUUID() }] }, false],
+      [{ errors: [rejection], data: [] }, false],
+      [{ errors: [{ ...rejection, cost: 0.001 }] }, false],
+      [{ errors: [rejection, rejection] }, false],
+      [{ error: "busy" }, false],
+    ] as const) {
+      const ledger = new RunwareSpendLedger(0.2);
+      const onCapacityRefused = vi.fn(async () => {});
+      const fetcher = vi.fn(async () => new Response(JSON.stringify(body), {
+        status, headers: { "retry-after": "60" },
+      }));
+      const transport = new RunwarePromptHttpTransport({
+        apiKey: "runware-test-key-at-least-twenty-characters", ledger,
+        maximumRequestCostUsd: 0.1, fetch: fetcher, onCapacityRefused,
+      });
+      await expect(transport.dispatch(request)).resolves.toMatchObject({ status: "ambiguous" });
+      await expect(transport.dispatch(request)).resolves.toMatchObject({ status: "ambiguous" });
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(onCapacityRefused).toHaveBeenCalledTimes(confirmed ? 1 : 0);
+      expect(ledger.snapshot().reservedUsd).toBe(confirmed ? 0 : 0.1);
+      if (confirmed) expect(onCapacityRefused).toHaveBeenCalledWith({
+        taskUUID: request.request.taskUUID, responseHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/u), retryAfterMs: 60_000,
+      });
+    }
+  });
   it("checks credits without inference and recognizes only an exact archived admission rejection", async () => {
     const apiKey = "runware-test-key-at-least-twenty-characters";
     for (const balance of [0.23815, { amount: 0.23815, currency: "USD" }]) {

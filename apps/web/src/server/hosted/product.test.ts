@@ -425,6 +425,7 @@ import {
   hostedGpuProductState,
   hostedProjectConflictProblem,
   hostedPromptWritingState,
+  hostedPromptProgressForCapacityHold,
   hostedStyleConflictProblem,
   HOSTED_LEGACY_QUALIFIED_SOULX_SYSTEM_PROFILE_ID,
   recentFullRenderDurationMs,
@@ -2564,6 +2565,21 @@ describe("hosted product route contract", () => {
     expect(
       planning.indexOf("ORDER BY revision.revision_number DESC, revision.id DESC"),
     ).toBeLessThan(planning.indexOf("LIMIT 1`"));
+  });
+
+  it("shows persisted prompt capacity refusal as a support hold after Progress is reopened", () => {
+    const projected = hostedPromptProgressForCapacityHold({
+      state: "DISPATCHING", problem_code: null, capacity_hold: true,
+      accepted_scenes: 25, total_scenes: 100, active_batch_ordinal: 2,
+    });
+    expect(projected).toMatchObject({ state: "UNKNOWN", action_required: true, can_retry: false,
+      active_batch_ordinal: null, accepted_scenes: 25 });
+    expect(hostedPromptWritingState("RUNNING", true, { acceptedScenes: 25, totalScenes: 100,
+      problemCode: projected?.problem_code })).toMatchObject({ status: "ACTION_REQUIRED",
+      progressPercent: 25, detail: expect.stringContaining("Contact support") });
+    expect(hostedPromptProgressForCapacityHold(null)).toBeNull();
+    expect(hostedPromptProgressForCapacityHold({ state: "SUCCEEDED", capacity_hold: true }))
+      .toEqual({ state: "SUCCEEDED", capacity_hold: true });
   });
 
   it("does not report image prompts complete merely because a timeline exists", () => {

@@ -657,7 +657,7 @@ export function ScriptVoiceover({
   const status = useQuery({
     queryKey: ["voiceover-job", activeJob?.id],
     queryFn: () => voiceoverJson<{ job: VoiceoverJob }>(`/api/v2/voiceovers/jobs/${activeJob!.id}`),
-    enabled: Boolean(activeJob && ["PROCESSING", "SUBMITTING"].includes(activeJob.state)),
+    enabled: Boolean(activeJob && ["WAITING", "PROCESSING", "SUBMITTING"].includes(activeJob.state)),
     retry: false,
     refetchInterval: 3_000,
   });
@@ -754,7 +754,7 @@ export function ScriptVoiceover({
     busy ||
     !jobs.isFetchedAfterMount ||
     Boolean(
-      activeJob && ["PROCESSING", "SUBMITTING", "UNKNOWN_NO_RETRY"].includes(activeJob.state),
+      activeJob && ["WAITING", "PROCESSING", "SUBMITTING", "UNKNOWN_NO_RETRY"].includes(activeJob.state),
     );
   const inputLocked = locked || unconfirmed;
   return (
@@ -839,8 +839,8 @@ export function ScriptVoiceover({
           Check this generation before changing the script; its response is unconfirmed.
         </p>
       )}
-      {activeJob && ["PROCESSING", "SUBMITTING"].includes(activeJob.state) && (
-        <p role="status">Creating voiceover… You can return later.</p>
+      {activeJob && ["WAITING", "PROCESSING", "SUBMITTING"].includes(activeJob.state) && (
+        <p role="status">{activeJob.state === "WAITING" ? "Waiting for voiceover capacity… You can return later." : "Creating voiceover… You can return later."}</p>
       )}
       {activeJob?.state === "UNKNOWN_NO_RETRY" && (
         <p role="alert">

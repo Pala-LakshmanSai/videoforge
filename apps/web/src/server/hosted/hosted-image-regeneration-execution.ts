@@ -56,6 +56,7 @@ async function observeApiImageRegeneration(
         persistTaskId: (taskId) => store.recordApiTask(requestId, claimId, taskId).then(() => {}),
         markRequestRejected: () => store.failApi(requestId, "PROVIDER_REQUEST_REJECTED").then(() => {}),
         markSubmissionUnknown: () => store.markApiUnknown(requestId, claimId).then(() => {}),
+        markRateLimited: (retryAfterMs) => store.deferApi(requestId, claimId, retryAfterMs).then(() => {}),
       });
     } catch {
       // Database state retains the exact claim or definite failure. Never replay this POST.

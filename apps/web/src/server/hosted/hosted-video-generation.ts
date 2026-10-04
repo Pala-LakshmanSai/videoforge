@@ -206,6 +206,10 @@ export async function advanceHostedVideoGeneration(
           persistRequestId: async (id) => {
             await call("videoforge_record_hosted_video_task", [...base, item.id, batchClaim, id]);
           },
+          markRateLimited: async (retryAfterMs) => {
+            stopped = true;
+            await call("videoforge_defer_hosted_video_job", [...base, item.id, batchClaim, retryAfterMs]);
+          },
           markSubmissionFailed: async () => {
             stopped = true;
             await fail("SEEDANCE_SUBMIT_REJECTED");
@@ -224,7 +228,7 @@ export async function advanceHostedVideoGeneration(
         }
         if (
           error instanceof RunwareSeedanceJobError &&
-          ["SUBMIT_UNKNOWN", "SUBMIT_REJECTED"].includes(error.code)
+          ["SUBMIT_UNKNOWN", "SUBMIT_REJECTED", "RATE_LIMITED"].includes(error.code)
         ) {
           if (error.submissionDiagnostic)
             console.warn("SEEDANCE_SUBMISSION_DIAGNOSTIC", {
@@ -238,6 +242,7 @@ export async function advanceHostedVideoGeneration(
       }
     },
     250,
+    () => !stopped,
   );
   const observations = await settleHostedApiJobsBounded(
     pending,

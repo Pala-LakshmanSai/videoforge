@@ -220,6 +220,10 @@ const REQUIRED_HARDENING_FOREIGN_KEYS = [
 // These authority/evidence tables carry tenant identity for lineage, but are written only by
 // owner-controlled SECURITY DEFINER functions and intentionally have no tenant write guard.
 const OPERATOR_ONLY_TABLES = [
+  "provider_api_policies",
+  "provider_api_waiters",
+  "provider_api_account_turns",
+  "provider_api_rejections",
   "hosted_full_live_manifest_read_claims",
   "hosted_full_live_materialization_challenge_assignments",
   "hosted_full_live_materialization_selections",

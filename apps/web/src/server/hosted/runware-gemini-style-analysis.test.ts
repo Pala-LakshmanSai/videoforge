@@ -75,6 +75,22 @@ async function output() {
 }
 
 describe("Runware Gemini hosted style analysis", () => {
+  it("shares cooldown only for an exact uncharged 429 and never repeats style inference", async () => {
+    const taskUUID = "11111111-1111-4111-8111-111111111111";
+    for (const matching of [true, false]) {
+      const onCapacityRefused = vi.fn(async () => {});
+      const fetcher = vi.fn(async () => new Response(JSON.stringify({ errors: [{
+        code: "concurrentRequestLimitExceeded", taskType: "textInference",
+        taskUUID: matching ? taskUUID : crypto.randomUUID(),
+      }] }), { status: 429, headers: { "retry-after": "45" } }));
+      await expect(analyzeStyleWithRunwareGemini({ apiKey: "test-runware-key", baseUrl: "https://api.runware.ai/v1",
+        images, taskUUID, fetcher, onCapacityRefused })).rejects.toMatchObject({ code: "AMBIGUOUS" });
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(onCapacityRefused).toHaveBeenCalledTimes(matching ? 1 : 0);
+      if (matching) expect(onCapacityRefused).toHaveBeenCalledWith({ taskUUID,
+        responseHash: expect.stringMatching(/^sha256:/u), retryAfterMs: 45_000 });
+    }
+  });
   it("accepts a browser-normalized WebP carrying an ICC color profile", () => {
     expect(inspectNormalizedWebp(webpWithIccProfile(1376, 768))).toEqual({
       width: 1376,

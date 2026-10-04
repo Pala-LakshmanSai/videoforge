@@ -3025,6 +3025,12 @@ async function styleAnalyze(
       const runId = await stableHostedUuid(
         `hosted-style-analysis:${scope.account_id}:${String(target.version_id)}:${requestHash}`,
       );
+      const capacity = await transaction.query<{ gate: { acquired?: boolean; retryAt?: string } }>(
+        "SELECT public.videoforge_acquire_runware_text($1,$2,$3::uuid) AS gate",
+        ["google:gemini@3.1-flash-lite", "STYLE", rowString(target, "version_id")],
+      );
+      if (capacity.rows[0]?.gate?.acquired !== true)
+        return { ...target, capacity_wait: true, retry_at: capacity.rows[0]?.gate?.retryAt ?? null };
       const reservation = await transaction.query<HostedPresetRow>(
         `SELECT * FROM public.videoforge_reserve_hosted_style_analysis($1,$2,$3)`,
         [rowString(target, "version_id"), requestHash, runId],
@@ -3072,6 +3078,10 @@ async function styleAnalyze(
       );
     const preparedRow = prepared as HostedPresetRow;
     preparedVersionId = rowString(preparedRow, "version_id");
+    if (preparedRow.capacity_wait === true)
+      return response({ error: { code: "STYLE_ANALYSIS_CAPACITY_WAIT",
+        message: "The style provider is busy. Try Analyze again after the shared cooldown." },
+        state: "DRAFT", retry_at: preparedRow.retry_at }, 429);
     if (preparedRow.already_analyzed === true) {
       const profile = plainRecord(preparedRow.profile_payload);
       return response({
@@ -3135,6 +3145,13 @@ async function styleAnalyze(
       baseUrl: config.styleAnalysis.baseUrl,
       images,
       taskUUID: preparedRunId,
+      onCapacityRefused: async (value) => {
+        await createNeonExecutor(pool).transaction(async (transaction) => {
+          await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", scope.account_id]);
+          await transaction.query("SELECT public.videoforge_record_runware_text_capacity($1,$2,$3,$4,$5,$6)",
+            ["STYLE", preparedVersionId, preparedRunId, rowString(preparedRow, "request_hash"), value.responseHash, value.retryAfterMs]);
+        });
+      },
     });
     const reportedCostMicroUsd = runwareGeminiStyleActualCostMicroUsd(providerResult.costUsd);
     const analyzed = await createNeonExecutor(pool).transaction(async (transaction) => {
@@ -4880,6 +4897,21 @@ const PROMPT_WRITER_STATES: ReadonlyMap<
   ["PENDING", "RUNNING"],
 ]);
 
+/** Project detail projects a persisted refusal as a hold without rewriting paid identity. */
+export function hostedPromptProgressForCapacityHold(
+  progress: Record<string, unknown> | null,
+): Record<string, unknown> | null {
+  if (!progress || progress.state === "SUCCEEDED" || progress.capacity_hold !== true) return progress;
+  return {
+    ...progress,
+    state: "UNKNOWN",
+    problem_code: "HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT",
+    active_batch_ordinal: null,
+    action_required: true,
+    can_retry: false,
+  };
+}
+
 export function hostedPromptWritingState(
   promptTaskState: unknown,
   planExists: boolean,
@@ -4889,11 +4921,19 @@ export function hostedPromptWritingState(
     readonly problemCode?: unknown;
   },
 ): {
-  readonly status: "COMPLETE" | "FAILED" | "BLOCKED" | "RETRY_WAIT" | "RUNNING" | "WAITING";
+  readonly status: "COMPLETE" | "FAILED" | "BLOCKED" | "RETRY_WAIT" | "RUNNING" | "WAITING" | "ACTION_REQUIRED";
   readonly progressPercent: number;
   readonly detail: string;
 } {
   const taskState = typeof promptTaskState === "string" ? promptTaskState : "";
+  if (progress?.problemCode === "HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT") {
+    return {
+      status: "ACTION_REQUIRED",
+      progressPercent: progress.totalScenes > 0
+        ? Math.min(99, Math.floor((progress.acceptedScenes / progress.totalScenes) * 100)) : 0,
+      detail: `The prompt provider was busy. ${progress.acceptedScenes} saved prompts remain intact. Contact support to review this held request before continuing; no new request will be sent automatically.`,
+    };
+  }
   if (progress?.problemCode === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW") {
     return {
       status: "BLOCKED",
@@ -6293,6 +6333,12 @@ export async function createVoiceoverContext(
         "videoforge.account_id",
         scope.account_id,
       ]);
+      const capacity = await transaction.query<{ gate: { acquired?: boolean; retryAt?: string } }>(
+        "SELECT public.videoforge_acquire_runware_text($1,$2,$3::uuid) AS gate",
+        ["google:gemma@4-31b", "CONTEXT", projectId],
+      );
+      if (capacity.rows[0]?.gate?.acquired !== true)
+        return { created: false, capacity_wait: true, retry_at: capacity.rows[0]?.gate?.retryAt ?? null };
       const result = await transaction.query<{ prepared: unknown }>(
         `SELECT public.${
           redispatchable
@@ -6322,6 +6368,9 @@ export async function createVoiceoverContext(
       );
       return plainRecord(result.rows[0]?.prepared);
     });
+    if (claimed?.capacity_wait === true)
+      return response({ schema_version: "videoforge-hosted-context-response/v1",
+        state: "WAITING", retry_at: claimed.retry_at, replayed: false }, 202);
     if (!claimed || claimed.created !== true)
       return response({ error: { code: "HOSTED_CONTEXT_ALREADY_CLAIMED" } }, 409);
     // A redispatch reuses the existing revision context row, so the authoritative id is the one the
@@ -6333,6 +6382,13 @@ export async function createVoiceoverContext(
     const result = await extractHostedVoiceoverContext({
       prepared: preparedRequest,
       apiKey: config.styleAnalysis.apiKey,
+      onCapacityRefused: async (value) => {
+        await createNeonExecutor(pool).transaction(async (transaction) => {
+          await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", scope.account_id]);
+          await transaction.query("SELECT public.videoforge_record_runware_text_capacity($1,$2,$3,$4,$5,$6)",
+            ["CONTEXT", projectId, identity.attemptId, preparedRequest.requestHash, value.responseHash, value.retryAfterMs]);
+        });
+      },
     });
     const completed = await createNeonExecutor(pool).transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1, $2, true)", [
@@ -7551,6 +7607,10 @@ async function projectDetail(
       );
       const promptProgress = await transaction.query(
         `SELECT run.state, run.problem_code, run.started_at, run.finished_at,
+                EXISTS(SELECT 1 FROM repository_mutation_receipts refusal
+                  WHERE refusal.workspace_id=run.workspace_id
+                    AND refusal.operation='hosted_prompt_capacity_rejected'
+                    AND refusal.result_payload->>'run_id'=run.id::text) AS capacity_hold,
                 COALESCE(run.planned_scene_count, expected.scene_count) AS total_scenes,
                 count(DISTINCT scene.id) AS accepted_scenes,
                 run.planned_batch_count AS total_batches,
@@ -8088,7 +8148,7 @@ async function projectDetail(
         voiceoverContext: voiceoverContext.rows[0] ?? null,
         generation: generation.rows[0] ?? null,
         prompts: prompts.rows,
-        promptProgress: promptProgress.rows[0] ?? null,
+        promptProgress: hostedPromptProgressForCapacityHold(promptProgress.rows[0] ?? null),
         queue: queue.rows[0] ?? null,
         cleanupPending:
           queue.rows[0]?.state === "WAITING" &&

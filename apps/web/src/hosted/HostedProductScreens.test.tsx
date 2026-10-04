@@ -6065,6 +6065,7 @@ describe("hosted product journey", () => {
     ["FAILED", null, true],
     ["UNKNOWN", null, false],
     ["FAILED", "HOSTED_PROMPT_OUTPUT_INVALID", false],
+    ["UNKNOWN", "HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT", false],
   ] as const)(
     "shows Stage 5 %s progress with a safe retry only when definite",
     async (state, problemCode, retryable) => {
@@ -6105,7 +6106,7 @@ describe("hosted product journey", () => {
             {
               id: "prompt-writing",
               name: "Write image prompts",
-              status: "FAILED",
+              status: problemCode === "HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT" ? "ACTION_REQUIRED" : "FAILED",
               progress_percent: 0,
             },
           ],
@@ -6136,6 +6137,10 @@ describe("hosted product journey", () => {
       expect(
         within(stageRow("Write image prompts")).getByRole("button", { name: "Retry" }),
       ).toHaveProperty("disabled", !retryable);
+      if (problemCode === "HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT") {
+        expect(screen.getAllByText(/contact support/iu).length).toBeGreaterThan(0);
+        expect(screen.queryByText("Writing image prompts…")).not.toBeInTheDocument();
+      }
       if (problemCode === "HOSTED_PROMPT_OUTPUT_INVALID")
         expect(screen.getAllByText(/original provider result was invalid/u).length).toBeGreaterThan(
           0,

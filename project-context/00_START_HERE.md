@@ -1,3 +1,5 @@
+Shared API capacity work: follow `api_capacity_2026_10_04` in CURRENT_STATE.yaml and API_CAPACITY_PLAN.md. Existing release evidence below remains historical; no capacity release is claimed yet.
+
 Media review count repair: read `media_review_accepted_2026_10_04` in CURRENT_STATE.yaml for source, validation and production status.
 
 Image quality prevention: read `image_quality_2026_10_04` in CURRENT_STATE.yaml and the selected brief. The sanitizer safeguard is released; versioned hand-role eligibility and physical-placement prompts have targeted API evidence. Eighty image tests still contain anatomy/framing failures; automatic visual acceptance remains unqualified and unimplemented.

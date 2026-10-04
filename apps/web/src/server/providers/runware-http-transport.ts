@@ -7,6 +7,7 @@ import {
   type RunwareStyleTransportResult,
 } from "@videoforge/pipeline";
 import { canonicalizeJson } from "@videoforge/contracts";
+import { providerRetryAfterMs } from "./provider-throttle";
 
 const DEFAULT_ENDPOINT = "https://api.runware.ai/v1";
 
@@ -114,6 +115,25 @@ interface RunwareHttpClientOptions {
   readonly endpoint?: string;
   readonly timeoutMs?: number;
   readonly onDiagnostic?: (diagnostic: RunwareSafeDiagnostic) => void;
+  /** Persist shared cooldown only for an exact, uncharged admission refusal. */
+  readonly onCapacityRefused?: (value: RunwareCapacityRefusal) => Promise<void>;
+}
+
+export interface RunwareCapacityRefusal {
+  readonly taskUUID: string;
+  readonly responseHash: `sha256:${string}`;
+  readonly retryAfterMs: number;
+}
+
+/** Unscoped or malformed 429 responses never establish that inference did not run. */
+export function exactRunwareCapacityRefusal(value: unknown, taskUUID: string): boolean {
+  const body = record(value);
+  if (!body || "data" in body || "response" in body || "cost" in body) return false;
+  const errors = Array.isArray(body.errors) ? body.errors : [];
+  if (errors.length !== 1) return false;
+  const error = record(errors[0]);
+  return error?.taskUUID === taskUUID && error.taskType === "textInference" &&
+    error.code === "concurrentRequestLimitExceeded" && !("cost" in error);
 }
 
 export interface RunwareSafeDiagnostic {
@@ -463,8 +483,11 @@ class RunwareHttpClient {
     if (!response.ok) {
       let providerCode: string | null = null;
       let providerParameter: string | null = null;
+      let errorBody: NativeData | null = null;
+      let responseBytes = "";
       try {
-        const errorBody = record(JSON.parse(await response.text()));
+        responseBytes = await response.text();
+        errorBody = record(JSON.parse(responseBytes));
         const errorItems = Array.isArray(errorBody?.errors)
           ? errorBody.errors.map(record).filter(Boolean)
           : [];
@@ -481,6 +504,16 @@ class RunwareHttpClient {
         providerCode,
         providerParameter,
       });
+      if (response.status === 429) {
+        if (exactRunwareCapacityRefusal(errorBody, taskUUID)) {
+          this.options.ledger.release(reservationUsd);
+          await this.options.onCapacityRefused?.({ taskUUID,
+            responseHash: await sha256(canonicalizeJson(errorBody as never)),
+            retryAfterMs: providerRetryAfterMs(response.headers.get("retry-after")) });
+        }
+        // Keep the original identity for archive reconciliation. Never treat throttling as bad output.
+        return { disposition: "ambiguous", item: null };
+      }
       if (response.status >= 400 && response.status < 500) {
         this.options.ledger.release(reservationUsd);
         return { disposition: "failed", item: null };
@@ -497,7 +530,6 @@ class RunwareHttpClient {
     const errors = Array.isArray(body?.errors) ? body.errors.map(record).filter(Boolean) : [];
     if (errors.length > 0) {
       const first = errors[0];
-      this.options.ledger.release(reservationUsd);
       this.options.onDiagnostic?.({
         stage: "response",
         httpStatus: response.status,
@@ -505,8 +537,21 @@ class RunwareHttpClient {
         providerParameter:
           typeof first?.parameter === "string" ? first.parameter.slice(0, 80) : null,
       });
-      // Reconcile temporary admission refusals by exact archive identity before replacing a task.
-      return { disposition: first?.code === "concurrentRequestLimitExceeded" ? "ambiguous" : "failed", item: null };
+      // Native errors may arrive with HTTP 200. Persist only the same exact,
+      // uncharged refusal accepted by the HTTP 429 path; keep its UUID for review.
+      if (first?.code === "concurrentRequestLimitExceeded") {
+        if (exactRunwareCapacityRefusal(body, taskUUID)) {
+          this.options.ledger.release(reservationUsd);
+          await this.options.onCapacityRefused?.({
+            taskUUID,
+            responseHash: await sha256(canonicalizeJson(body as never)),
+            retryAfterMs: providerRetryAfterMs(response.headers.get("retry-after")),
+          });
+        }
+        return { disposition: "ambiguous", item: null };
+      }
+      this.options.ledger.release(reservationUsd);
+      return { disposition: "failed", item: null };
     }
     const data = Array.isArray(body?.data) ? body.data.map(record).filter(Boolean) : [];
     const item = data.find((candidate) => candidate?.taskUUID === taskUUID) ?? null;

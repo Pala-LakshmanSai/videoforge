@@ -195,7 +195,7 @@ end
 
 authority = recommended_task["provider_authority"] || {}
 top_authority = state["provider_authority"] || {}
-%w[mode provider cap_usd non_transferable resources authorized_operations allowed_operations].each do |field|
+%w[mode provider cap_usd non_transferable resources authorized_operations allowed_operations paid_generation_authorized].each do |field|
   errors << "CURRENT_STATE top-level and recommended provider authority differ for #{field}" unless top_authority[field] == authority[field]
 end
 
@@ -216,7 +216,7 @@ when true
   cap = recommended_task["maximum_external_spend_usd"]
   external_v2_checkpoint = recommended_checkpoint.match?(/\AV2-(?:0[6-9]|1[0-3])\z/)
   errors << "CURRENT_STATE provider calls are allowed only for external V2-06 through V2-13 checkpoints" unless external_v2_checkpoint
-  errors << "CURRENT_STATE provider authority mode must be read_only or paid" unless %w[read_only paid].include?(mode)
+  errors << "CURRENT_STATE provider authority mode must be read_only, deployment, or paid" unless %w[read_only deployment paid].include?(mode)
   errors << "CURRENT_STATE provider task requires an exact provider" unless authority["provider"].is_a?(String) && !authority["provider"].empty?
   errors << "CURRENT_STATE provider authority must be explicitly non-transferable" unless authority["non_transferable"] == true
   errors << "CURRENT_STATE provider cap disagrees with provider_authority" unless authority["cap_usd"] == cap
@@ -245,6 +245,20 @@ when true
     errors << "CURRENT_STATE top-level implementation authority disagrees with read-only task stage" unless state["implementation_authorized_in_current_task"] == expected_application_authority
     %w[remote_or_cloud_mutations_authorized model_downloads_authorized worker_image_publication_authorized sample_output_publication_authorized gpu_use_authorized retained_volume_mutation_authorized].each do |field|
       errors << "CURRENT_STATE read-only provider task cannot authorize #{field}" unless recommended_task[field] == false
+    end
+  elsif mode == "deployment"
+    # Application publication is distinct from authority to generate paid provider media.
+    deployment_operations = %w[metadata_migration application_deploy configuration_readback artifact_verification quota_lookup resource_identity_lookup]
+    errors << "CURRENT_STATE deployment requires a numeric zero inference-spend cap" unless cap.is_a?(Numeric) && cap.zero?
+    errors << "CURRENT_STATE deployment requires exact unique resources" unless resources.any? && exact_strings.call(resources)
+    errors << "CURRENT_STATE deployment requires exact matching allowed operations" unless allowed_operations.any? && exact_strings.call(allowed_operations) && authorized_operations.sort == allowed_operations.sort && (allowed_operations - deployment_operations).empty?
+    errors << "CURRENT_STATE deployment must prohibit paid generation" unless authority["paid_generation_authorized"] == false
+    errors << "CURRENT_STATE deployment provider reads must remain read-only" unless recommended_task["read_only_provider_calls_authorized"] == true
+    errors << "CURRENT_STATE deployment requires bounded mutation stage" unless recommended_task["task_stage"] == "bounded_mutation"
+    errors << "CURRENT_STATE deployment requires implementation authority" unless recommended_task["application_code_changes_authorized"] == true && state["implementation_authorized_in_current_task"] == true
+    errors << "CURRENT_STATE deployment requires credential and remote publication authority" unless recommended_task["credential_access_authorized"] == true && recommended_task["remote_or_cloud_mutations_authorized"] == true
+    %w[model_downloads_authorized worker_image_publication_authorized sample_output_publication_authorized gpu_use_authorized retained_volume_mutation_authorized].each do |field|
+      errors << "CURRENT_STATE deployment cannot authorize #{field}" unless recommended_task[field] == false
     end
   elsif mode == "paid"
     errors << "CURRENT_STATE paid provider task cannot authorize read-only-only mode" unless recommended_task["read_only_provider_calls_authorized"] == false

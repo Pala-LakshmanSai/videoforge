@@ -9,6 +9,7 @@ import {
   sessionScope,
 } from "./hosted-product-route-common";
 import { sha256 } from "./crypto";
+import { providerRetryAfterMs } from "../providers/provider-throttle";
 
 const BASE = "https://api.j1tts.com";
 const ID = /^[A-Za-z0-9_-]{1,160}$/u;
@@ -25,6 +26,7 @@ export class J1Error extends Error {
   constructor(
     readonly code: string,
     readonly ambiguous = false,
+    readonly retryAfterMs = 60_000,
   ) {
     super(code);
   }
@@ -52,6 +54,7 @@ export async function j1Fetch(
             ? "J1TTS_ACCESS_REJECTED"
             : "J1TTS_UNAVAILABLE",
         init.method === "POST" && result.status >= 500,
+        providerRetryAfterMs(result.headers.get("retry-after")),
       );
     return result;
   } catch (error) {
@@ -104,6 +107,9 @@ export interface Job {
   failure_code: string | null;
   created_at: string;
   script?: string;
+  submit_claim_id?: string;
+  submission_started_at?: string;
+  next_attempt_at?: string;
 }
 export function publicVoiceoverJob(job: Job | null) {
   if (!job) return null;
@@ -125,13 +131,66 @@ export async function observeJ1Voiceover(
   const pool = createNeonPool(env.DATABASE_URL!);
   try {
     const args = [target.accountId, target.workspaceId, target.jobId];
-    const job = (
+    let job = (
       await pool.query<{ job: Job }>(
         "WITH bound AS (SELECT set_config('videoforge.account_id',($1::uuid)::text,true)) SELECT public.videoforge_read_voiceover_job($1,$2,$3) AS job FROM bound",
         args,
       )
     ).rows[0]?.job;
     if (!job) return "MISSING";
+    if (job.state === "WAITING") {
+      const claimId = crypto.randomUUID();
+      const claimed = (
+        await pool.query<{ job: Job | null }>(
+          "WITH bound AS (SELECT set_config('videoforge.account_id',($1::uuid)::text,true)) SELECT public.videoforge_claim_voiceover_submission($1,$2,$3,$4) AS job FROM bound",
+          [...args, claimId],
+        )
+      ).rows[0]?.job;
+      if (!claimed) return "WAITING";
+      const finish = async (
+        state: string,
+        providerId: string | null,
+        code: string | null,
+        retry: number | null = null,
+      ) =>
+        (
+          await pool.query<{ job: Job }>(
+            "WITH bound AS (SELECT set_config('videoforge.account_id',($1::uuid)::text,true)) SELECT public.videoforge_finish_voiceover_submission($1,$2,$3,$4,$5,$6,$7,$8) AS job FROM bound",
+            [...args, claimId, state, providerId, code, retry],
+          )
+        ).rows[0]?.job;
+      // The durable claim precedes the network call. A crash never authorizes replay.
+      try {
+        const result = plainRecord(
+          await (
+            await j1Fetch(env.J1TTS_API_KEY!, "/v1/tts", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                text: claimed.script,
+                voice_id: claimed.voice_id,
+                file_name: claimed.filename,
+              }),
+            })
+          ).json(),
+        );
+        if (!result || typeof result.id !== "string" || !ID.test(result.id))
+          throw new J1Error("J1TTS_INVALID_RESPONSE", true);
+        job = (await finish("PROCESSING", result.id, null)) ?? claimed;
+      } catch (error) {
+        const limited =
+          error instanceof J1Error && error.code === "J1TTS_RATE_LIMITED" && !error.ambiguous;
+        const uncertain = !(error instanceof J1Error) || error.ambiguous;
+        job =
+          (await finish(
+            limited ? "WAITING" : uncertain ? "UNKNOWN_NO_RETRY" : "FAILED",
+            null,
+            error instanceof J1Error ? error.code : "J1TTS_NETWORK_UNCERTAIN",
+            limited ? error.retryAfterMs : null,
+          )) ?? claimed;
+      }
+      return job.state;
+    }
     if (job.provider_job_id && ["PROCESSING", "UNKNOWN_NO_RETRY"].includes(job.state)) {
       const result = plainRecord(
         await (
@@ -153,7 +212,10 @@ export async function observeJ1Voiceover(
         return state;
       }
     }
-    if (job.state === "SUBMITTING" && Date.now() - Date.parse(job.created_at) > 120_000) {
+    if (
+      job.state === "SUBMITTING" &&
+      Date.now() - Date.parse(job.submission_started_at ?? job.created_at) > 120_000
+    ) {
       await pool.query(
         "WITH bound AS (SELECT set_config('videoforge.account_id',($1::uuid)::text,true)) SELECT public.videoforge_record_voiceover_job($1,$2,$3,'UNKNOWN_NO_RETRY',NULL,'J1TTS_NETWORK_UNCERTAIN') FROM bound",
         args,
@@ -338,19 +400,6 @@ export async function handleJ1Voiceover(
         ...owner,
         id,
       ])) ?? null;
-    const record = async (
-      id: string,
-      state: string,
-      providerId: string | null,
-      code: string | null,
-    ) =>
-      await sql<Job>("SELECT public.videoforge_record_voiceover_job($1,$2,$3,$4,$5,$6) AS value", [
-        ...owner,
-        id,
-        state,
-        providerId,
-        code,
-      ]);
     if (path === "/api/v2/voiceovers/jobs" && request.method === "POST") {
       const parsed = await parseHostedJson(request, "SCRIPT_INVALID", 450_000);
       if (parsed instanceof Response) return parsed;
@@ -386,7 +435,7 @@ export async function handleJ1Voiceover(
       let started: { claimed: boolean; job: Job } | undefined;
       try {
         started = await sql(
-          "SELECT public.videoforge_start_voiceover_job($1,$2,$3,$4,$5,$6,$7) AS value",
+          "SELECT public.videoforge_queue_voiceover_job($1,$2,$3,$4,$5,$6,$7) AS value",
           [...owner, b.id, hash, b.script, b.voice_id, b.filename],
         );
       } catch (e) {
@@ -408,26 +457,11 @@ export async function handleJ1Voiceover(
       await ensureVoiceoverObserver(env, scope.account_id, scope.workspace_id, b.id);
       if (!started?.claimed)
         return response({ job: publicVoiceoverJob(started?.job ?? null) }, 200);
-      try {
-        const result = plainRecord(
-          await (
-            await j1Fetch(key, "/v1/tts", {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({ text: b.script, voice_id: b.voice_id, file_name: b.filename }),
-            })
-          ).json(),
-        );
-        if (!result || typeof result.id !== "string" || !ID.test(result.id))
-          throw new J1Error("J1TTS_INVALID_RESPONSE", true);
-        const job = await record(b.id, "PROCESSING", result.id, null);
-        return response({ job: publicVoiceoverJob(job ?? started.job) }, 202);
-      } catch (error) {
-        const uncertain = !(error instanceof J1Error) || error.ambiguous;
-        const code = error instanceof J1Error ? error.code : "J1TTS_NETWORK_UNCERTAIN";
-        const job = await record(b.id, uncertain ? "UNKNOWN_NO_RETRY" : "FAILED", null, code);
-        return response({ job: publicVoiceoverJob(job ?? started.job) }, 202);
-      }
+      await observeJ1Voiceover(
+        { ...env, DATABASE_URL: config.neon.databaseUrl },
+        { accountId: scope.account_id, workspaceId: scope.workspace_id, jobId: b.id },
+      );
+      return response({ job: publicVoiceoverJob(await read(b.id)) }, 202);
     }
     if (request.method === "GET" && (path === "/api/v2/voiceovers/jobs" || match)) {
       let job = await read(match?.[1] ?? null);
@@ -455,21 +489,12 @@ export async function handleJ1Voiceover(
           },
         });
       }
-      if (job.provider_job_id && !["COMPLETED", "FAILED"].includes(job.state)) {
-        const status = plainRecord(
-          await (await j1Fetch(key, `/v1/tts/${encodeURIComponent(job.provider_job_id)}`)).json(),
+      if (["WAITING", "SUBMITTING", "PROCESSING", "UNKNOWN_NO_RETRY"].includes(job.state)) {
+        await observeJ1Voiceover(
+          { ...env, DATABASE_URL: config.neon.databaseUrl },
+          { accountId: scope.account_id, workspaceId: scope.workspace_id, jobId: job.id },
         );
-        if (status?.id !== job.provider_job_id) throw new J1Error("J1TTS_INVALID_RESPONSE");
-        if (status.status === "completed" || status.status === "failed")
-          job =
-            (await record(
-              job.id,
-              status.status === "completed" ? "COMPLETED" : "FAILED",
-              job.provider_job_id,
-              status.status === "failed" ? "J1TTS_GENERATION_FAILED" : null,
-            )) ?? job;
-      } else if (job.state === "SUBMITTING" && Date.now() - Date.parse(job.created_at) > 120_000) {
-        job = (await record(job.id, "UNKNOWN_NO_RETRY", null, "J1TTS_NETWORK_UNCERTAIN")) ?? job;
+        job = (await read(job.id)) ?? job;
       }
       return response({ job: publicVoiceoverJob(job) });
     }
@@ -505,7 +530,7 @@ export async function reconcilePendingVoiceovers(env: HostedRuntimeEnvironment):
   } finally {
     await pool.end();
   }
-  for (const job of jobs.slice(0, 2)) {
+  for (const job of jobs) {
     try {
       await observeJ1Voiceover(env, job);
     } catch {

@@ -79,8 +79,10 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // Script-first narration adds 2,286 production and 623 staging bytes for the durable Workflow
 // branch and trusted ASR handoff. J1TTS, audio parsing, and project materialization remain dynamic.
 // These measured ceilings retain every provider, validator, fixture, and CPU quarantine check.
+// Shared API capacity adds 11 measured production bytes for WAITING narration observation;
+// staging stays within its existing ceiling. Provider implementations remain dynamic.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_813_301,
+  "wrangler.production.jsonc": 2_813_312,
   "wrangler.staging.jsonc": 2_806_268,
 })[wranglerConfig];
 const workerForbidden = [

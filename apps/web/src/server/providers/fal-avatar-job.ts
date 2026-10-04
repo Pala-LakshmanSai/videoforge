@@ -41,12 +41,17 @@ export async function submitFalAvatarJob(input: {
   readonly persistRequestId: (requestId: string) => Promise<void>;
   readonly markSubmissionFailed: () => Promise<void>;
   readonly markSubmissionUnknown: () => Promise<void>;
+  readonly markRateLimited?: (retryAfterMs: number) => Promise<void>;
 }): Promise<{ readonly state: "NOT_CLAIMED" | "SUBMITTED"; readonly requestId?: string }> {
   if (!(await input.claimSubmission())) return { state: "NOT_CLAIMED" };
   let requestId: string;
   try {
     requestId = await input.client.submit({ imageUrl: input.imageUrl, audioUrl: input.audioUrl });
   } catch (error) {
+    if (error instanceof FalFlashheadError && error.code === "RATE_LIMITED" && input.markRateLimited) {
+      await input.markRateLimited(error.retryAfterMs ?? 30_000);
+      return { state: "NOT_CLAIMED" };
+    }
     if (
       error instanceof FalFlashheadError &&
       (error.code === "SUBMIT_REJECTED" || error.code === "INPUT_INVALID")

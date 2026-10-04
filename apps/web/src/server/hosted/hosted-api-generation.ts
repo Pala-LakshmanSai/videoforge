@@ -64,6 +64,7 @@ export async function settleHostedApiJobsBounded<T, R>(
   concurrency: number,
   operation: (item: T) => Promise<R>,
   startIntervalMs = 0,
+  shouldContinue: () => boolean = () => true,
 ): Promise<PromiseSettledResult<R>[]> {
   if (!Number.isInteger(concurrency) || concurrency < 1)
     throw new RangeError("HOSTED_API_GENERATION_CONCURRENCY_INVALID");
@@ -80,11 +81,12 @@ export async function settleHostedApiJobsBounded<T, R>(
     if (startAt > now) await new Promise<void>((resolve) => setTimeout(resolve, startAt - now));
   };
   const worker = async () => {
-    while (true) {
+    while (shouldContinue()) {
       const index = next++;
       if (index >= items.length) return;
       try {
         await waitForStartSlot();
+        if (!shouldContinue()) return;
         results[index] = { status: "fulfilled", value: await operation(items[index]!) };
       } catch (reason) {
         results[index] = { status: "rejected", reason };
@@ -92,9 +94,9 @@ export async function settleHostedApiJobsBounded<T, R>(
     }
   };
   await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
-  if (nextStartAt > Date.now())
+  if (shouldContinue() && nextStartAt > Date.now())
     await new Promise<void>((resolve) => setTimeout(resolve, nextStartAt - Date.now()));
-  return results as PromiseSettledResult<R>[];
+  return results.filter((result): result is PromiseSettledResult<R> => result !== undefined);
 }
 
 export async function callHostedApiGeneration(
@@ -261,13 +263,14 @@ export async function advanceHostedApiGeneration(
   const kieClient = new KieZImageClient(config.apiGeneration.kieApiKey);
   const falClient = new FalFlashheadClient(config.apiGeneration.falApiKey);
   const submissionStopped = { value: false };
+  const capacityStopped = new Set<Job["lane"]>();
   const submitPreparedJob = async (job: Job): Promise<"PROGRESSED" | "WAITING"> => {
-    if (submissionStopped.value) return "WAITING";
+    if (submissionStopped.value || capacityStopped.has(job.lane)) return "WAITING";
     const jobArgs = [...base, job.generationTaskId] as const;
     const claimId = crypto.randomUUID();
     let claimWasNotSelected = false;
     const claimSubmission = async () => {
-      if (submissionStopped.value) {
+      if (submissionStopped.value || capacityStopped.has(job.lane)) {
         claimWasNotSelected = true;
         return false;
       }
@@ -282,9 +285,10 @@ export async function advanceHostedApiGeneration(
       const selected = claimed.state === "SUBMITTING" && claimed.claimId === claimId;
       if (!selected) {
         claimWasNotSelected = true;
-        // A claim miss is a durable state change or a concurrent workflow. Stop the local
-        // snapshot before another queued item can make a paid POST against stale state.
-        submissionStopped.value = true;
+        // A still-prepared claim is normal shared capacity waiting for this provider.
+        // Other providers and already paid observations can continue.
+        if (claimed.state === "PREPARED") capacityStopped.add(job.lane);
+        else submissionStopped.value = true;
       }
       return selected;
     };
@@ -323,6 +327,13 @@ export async function advanceHostedApiGeneration(
           persistTaskId,
           markSubmissionUnknown,
           markRequestRejected: markSubmissionFailed,
+          markRateLimited: async (retryAfterMs) => {
+            capacityStopped.add(job.lane);
+            await callHostedApiGeneration(
+              database, scope.accountId, "videoforge_defer_hosted_api_job",
+              [...jobArgs, claimId, retryAfterMs],
+            );
+          },
         });
         return submission.state === "SUBMITTED" ? "PROGRESSED" : "WAITING";
       }
@@ -347,10 +358,17 @@ export async function advanceHostedApiGeneration(
         persistRequestId: persistTaskId,
         markSubmissionUnknown,
         markSubmissionFailed,
+        markRateLimited: async (retryAfterMs) => {
+          capacityStopped.add(job.lane);
+          await callHostedApiGeneration(
+            database, scope.accountId, "videoforge_defer_hosted_api_job",
+            [...jobArgs, claimId, retryAfterMs],
+          );
+        },
       });
       return submission.state === "SUBMITTED" ? "PROGRESSED" : "WAITING";
     } catch {
-      if (!claimWasNotSelected) submissionStopped.value = true;
+      if (!claimWasNotSelected && !capacityStopped.has(job.lane)) submissionStopped.value = true;
       return "WAITING";
     }
   };
@@ -436,6 +454,7 @@ export async function advanceHostedApiGeneration(
     failed || blocked || video.problemCode
       ? []
       : selectHostedApiGenerationJobIndices(current, observation);
+  let submissionsProgressed = false;
   if (indices.length > 0) {
     const imageIndices = indices.filter((index) => current[index]!.lane === "IMAGE");
     const avatarIndices = indices.filter((index) => current[index]!.lane === "AVATAR");
@@ -445,19 +464,24 @@ export async function advanceHostedApiGeneration(
         1,
         (index) => submitPreparedJob(current[index]!),
         API_KIE_SUBMISSION_START_INTERVAL_MS,
+        () => !submissionStopped.value && !capacityStopped.has("IMAGE"),
       ),
-      settleHostedApiJobsBounded(avatarIndices, API_FAL_SUBMISSION_CONCURRENCY, (index) =>
-        submitPreparedJob(current[index]!),
+      settleHostedApiJobsBounded(
+        avatarIndices,
+        API_FAL_SUBMISSION_CONCURRENCY,
+        (index) => submitPreparedJob(current[index]!),
+        250,
+        () => !submissionStopped.value && !capacityStopped.has("AVATAR"),
       ),
     ]);
     const submissions = [...imageSubmissions, ...avatarSubmissions];
-    return outcome(
-      submissions.some((result) => result.status === "fulfilled" && result.value === "PROGRESSED")
-        ? "PROGRESSED"
-        : "WAITING",
+    submissionsProgressed = submissions.some(
+      (result) => result.status === "fulfilled" && result.value === "PROGRESSED",
     );
+    // Capacity waiting must never starve observation of already paid submissions.
   }
   const submittedJobs = current.filter((job) => job.state === "SUBMITTED");
+  if (submittedJobs.length === 0 && submissionsProgressed) return outcome("PROGRESSED");
   if (submittedJobs.length === 0 && blocked)
     return outcome(
       video.active ? "WAITING" : "ACTION_REQUIRED",
@@ -484,6 +508,7 @@ export async function advanceHostedApiGeneration(
   }
   if (submittedJobs.length === 0 && !video.complete)
     return outcome(video.progressed ? "PROGRESSED" : "WAITING");
+  if (submittedJobs.length === 0 && indices.length > 0) return outcome("WAITING");
   if (submittedJobs.length === 0) return outcome("ACTION_REQUIRED", "HOSTED_API_JOB_STATE_INVALID");
   const observations = await settleHostedApiJobsBounded(
     submittedJobs,
@@ -497,6 +522,7 @@ export async function advanceHostedApiGeneration(
   if (rejected) throw rejected.reason;
   // Rate slots include their tail interval, so completed work can advance immediately.
   return outcome(
+    submissionsProgressed ||
     observations.some((result) => result.status === "fulfilled" && result.value === "PROGRESSED")
       ? "PROGRESSED"
       : "WAITING",

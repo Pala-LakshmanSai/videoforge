@@ -1,3 +1,4 @@
+import { providerRetryAfterMs } from "./provider-throttle";
 import type { HostedR2BucketBinding } from "../hosted/configuration";
 import { sha256Bytes } from "../hosted/crypto";
 import { inspectMp4 } from "./fal-avatar-job";
@@ -16,10 +17,11 @@ export interface RunwareSeedanceSubmissionDiagnostic {
 }
 
 export class RunwareSeedanceJobError extends Error {
-  constructor(readonly code: "INPUT_INVALID" | "SUBMIT_REJECTED" | "SUBMIT_UNKNOWN" |
+  constructor(readonly code: "INPUT_INVALID" | "SUBMIT_REJECTED" | "SUBMIT_UNKNOWN" | "RATE_LIMITED" |
     "POLL_UNAVAILABLE" | "RESPONSE_INVALID" | "OUTPUT_KEY_INVALID" | "RESULT_DOWNLOAD_FAILED" |
     "RESULT_MP4_INVALID" | "RESULT_STORAGE_UNKNOWN" | "RESULT_PRICE_CHANGED",
-    readonly submissionDiagnostic?: RunwareSeedanceSubmissionDiagnostic) {
+    readonly submissionDiagnostic?: RunwareSeedanceSubmissionDiagnostic,
+    readonly retryAfterMs?: number) {
     super(code);
     this.name = "RunwareSeedanceJobError";
   }
@@ -103,6 +105,7 @@ export async function submitRunwareSeedanceJob(input: {
   readonly persistRequestId: (requestId: string) => Promise<void>;
   readonly markSubmissionFailed: () => Promise<void>;
   readonly markSubmissionUnknown: () => Promise<void>;
+  readonly markRateLimited?: (retryAfterMs: number) => Promise<void>;
   readonly fetchPort?: FetchPort;
 }): Promise<{ readonly state: "NOT_CLAIMED" | "SUBMITTED"; readonly requestId?: string }> {
   if (!UUID.test(input.taskUUID) || input.apiKey.trim().length < 20 || !validHttps(input.imageUrl) ||
@@ -122,7 +125,14 @@ export async function submitRunwareSeedanceJob(input: {
     catch {
       throw new RunwareSeedanceJobError("SUBMIT_UNKNOWN", { kind: "RESPONSE_SHAPE", httpStatus: response.status });
     }
-    // 5xx, rate limits, malformed acknowledgments and lost replies never authorize another POST.
+    // Retry only a positively scoped queue rejection, never an unscoped gateway error or paid result.
+    if (response.status === 429 && data.length === 0 && errors.length > 0 &&
+        errors.every((error) => error.taskUUID === input.taskUUID &&
+          error.taskType === "videoInference" && error.code === "concurrentRequestLimitExceeded" &&
+          (error.cost === undefined || error.cost === 0)))
+      throw new RunwareSeedanceJobError("RATE_LIMITED", undefined,
+        providerRetryAfterMs(response.headers.get("Retry-After")));
+    // 5xx, unconfirmed rate limits, malformed acknowledgments and lost replies remain uncertain.
     if (errors.length > 0 && data.length === 0 && [400, 401, 402, 403, 404].includes(response.status) &&
         errors.every((error) => error.taskUUID === input.taskUUID || error.taskType === "authentication"))
       throw new RunwareSeedanceJobError("SUBMIT_REJECTED");
@@ -136,6 +146,10 @@ export async function submitRunwareSeedanceJob(input: {
         (data[0]?.model !== undefined && data[0]?.model !== SEEDANCE_MODEL))
       throw new RunwareSeedanceJobError("SUBMIT_UNKNOWN", { kind: "ACK_IDENTITY", httpStatus: response.status });
   } catch (error) {
+    if (error instanceof RunwareSeedanceJobError && error.code === "RATE_LIMITED" && input.markRateLimited) {
+      await input.markRateLimited(error.retryAfterMs ?? 30_000);
+      return { state: "NOT_CLAIMED" };
+    }
     if (error instanceof RunwareSeedanceJobError && error.code === "SUBMIT_REJECTED") {
       await input.markSubmissionFailed();
       throw error;

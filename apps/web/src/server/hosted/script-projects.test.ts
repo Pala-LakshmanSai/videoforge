@@ -15,10 +15,10 @@ const fixture = vi.hoisted(() => ({
 const query = vi.hoisted(() =>
   vi.fn(async (sql: string, args: unknown[] = []) => {
     if (sql.includes("SELECT s.*")) return { rows: [{ ...fixture.intake }] };
-    if (sql.includes("videoforge_start_voiceover_job")) {
+    if (sql.includes("videoforge_queue_voiceover_job")) {
       if (fixture.busy) throw new Error("VOICEOVER_CAPACITY_BUSY");
       const claimed = fixture.job === null;
-      fixture.job ??= { id: args[2], state: "SUBMITTING", provider_job_id: null };
+      fixture.job ??= { id: args[2], state: "WAITING", provider_job_id: null };
       return { rows: [{ value: { claimed, job: fixture.job } }] };
     }
     if (sql.includes("videoforge_record_voiceover_job")) {
@@ -69,8 +69,14 @@ vi.mock("./j1tts", async () => {
   const actual = await vi.importActual<typeof import("./j1tts")>("./j1tts");
   return {
     ...actual,
-    observeJ1Voiceover: async () =>
-      fixture.job?.state === "UNKNOWN_NO_RETRY" ? "UNKNOWN_NO_RETRY" : fixture.observed,
+    observeJ1Voiceover: async () => {
+      if (fixture.job?.state === "WAITING") {
+        fixture.posts++;
+        fixture.job.state = fixture.uncertain ? "UNKNOWN_NO_RETRY" : "PROCESSING";
+        if (!fixture.uncertain) fixture.job.provider_job_id = "provider-job";
+      }
+      return fixture.job?.state === "UNKNOWN_NO_RETRY" ? "UNKNOWN_NO_RETRY" : fixture.observed;
+    },
     j1Fetch: async (_key: string, _path: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         fixture.posts++;

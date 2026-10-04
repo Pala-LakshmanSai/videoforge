@@ -1,3 +1,4 @@
+import { isFalCapacityRefusal, providerRetryAfterMs } from "./provider-throttle";
 import { KieZImageError, type KieImageTask } from "./kie-z-image";
 
 export const FAL_Z_IMAGE_MODEL = "fal-ai/z-image/turbo";
@@ -45,6 +46,8 @@ export class FalZImageClient {
     } catch {
       throw new KieZImageError("SUBMISSION_UNKNOWN");
     }
+    if (await isFalCapacityRefusal(response))
+      throw new KieZImageError("RATE_LIMITED", providerRetryAfterMs(response.headers.get("Retry-After")));
     if ([400, 401, 402, 403, 422].includes(response.status))
       throw new KieZImageError("REQUEST_REJECTED");
     if (!response.ok) throw new KieZImageError("SUBMISSION_UNKNOWN");

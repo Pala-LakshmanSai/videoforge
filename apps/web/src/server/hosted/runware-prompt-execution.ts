@@ -27,6 +27,7 @@ import {
   RunwareSpendLedger,
   retrieveRunwareTextTaskDetails,
   RunwareArchivedTaskRejectedError,
+  type RunwareCapacityRefusal,
   type RunwareSafeDiagnostic,
 } from "../providers/runware-http-transport";
 
@@ -81,6 +82,12 @@ export class HostedPromptArchivedOutputInvalidError extends Error {
   }
 }
 
+/** Capacity rejection is never output-quality evidence or paid replacement authority. */
+export class HostedPromptCapacityPausedError extends Error {
+  public override readonly name = "HostedPromptCapacityPausedError";
+  constructor(readonly refusal: RunwareCapacityRefusal) { super("HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT"); }
+}
+
 /** Validate one original claim through getTaskDetails; this transport never submits inference. */
 export async function recoverClaimedHostedPromptBatch(input: {
   readonly apiKey: string;
@@ -131,7 +138,8 @@ export async function recoverClaimedHostedPromptBatch(input: {
       }));
   } catch (error) {
     if (error instanceof RunwareArchivedTaskRejectedError)
-      throw new HostedPromptArchivedOutputInvalidError(error.responseHash, 0, null);
+      throw new HostedPromptCapacityPausedError({ taskUUID: input.taskUUID,
+        responseHash: error.responseHash, retryAfterMs: 30_000 });
     throw error;
   }
   const recoveredText = recovered.outputText.trim();
@@ -251,6 +259,7 @@ export async function dispatchOneHostedPromptBatch(input: {
     result: Extract<RunwarePromptTransportResult, { status: "succeeded" }>;
   }) => Promise<void>;
   readonly fetcher?: typeof fetch;
+  readonly onCapacityRefused?: (value: RunwareCapacityRefusal) => Promise<void>;
 }): Promise<HostedAcceptedPromptBatch | null> {
   const entry = input.plan.batches[input.batchOrdinal];
   if (
@@ -280,11 +289,16 @@ export async function dispatchOneHostedPromptBatch(input: {
   });
   if (!claimed) return null;
   const ledger = new RunwareSpendLedger(input.remainingReservationMicroUsd / 1_000_000);
+  let capacityRefusal: RunwareCapacityRefusal | null = null;
   const transport = new RunwarePromptHttpTransport({
     apiKey: input.apiKey,
     ledger,
     maximumRequestCostUsd: input.remainingReservationMicroUsd / 1_000_000,
     fetch: input.fetcher,
+    onCapacityRefused: async (value) => {
+      await input.onCapacityRefused?.(value);
+      capacityRefusal = value;
+    },
   });
   let result: RunwarePromptTransportResult | null = null;
   let evidence: RunwarePromptAttemptEvidence | null = null;
@@ -317,10 +331,14 @@ export async function dispatchOneHostedPromptBatch(input: {
     allowPartialRetry: false,
     minimumBatchScenes: 1,
   });
-  const output = validatePromptWriterOutput(
-    entry.batch,
-    await writer.write(entry.batch, input.retryOfRequestHash ?? null),
-  );
+  let output: ReturnType<typeof validatePromptWriterOutput>;
+  try {
+    output = validatePromptWriterOutput(entry.batch,
+      await writer.write(entry.batch, input.retryOfRequestHash ?? null));
+  } catch (error) {
+    if (capacityRefusal) throw new HostedPromptCapacityPausedError(capacityRefusal);
+    throw error;
+  }
   const acceptedResult = result as RunwarePromptTransportResult | null;
   const acceptedEvidence = evidence as RunwarePromptAttemptEvidence | null;
   if (

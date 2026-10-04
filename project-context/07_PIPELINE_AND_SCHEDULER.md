@@ -364,3 +364,7 @@ DEC_VOICEOVER_001 makes J1TTS narration the first durable stage of script-create
 ## Short voiceover compatibility — 2026-10-04
 
 Fresh10–30second voiceovers now pin `scheduler-v5`. It first attempts V4's20–24% short coverage envelope; only if no legal complete word-boundary plan exists may it use20–26%. The18.019second production narration has boundaries at3.470s and4.440s and cannot fit the prior20–24% band. The V5 fallback preserves whole words,3–7second image scenes, bounded avatar scenes, complete source coverage and hard cuts. Longer-than30seconds still pins V2's21–22%. Published V2/V3/V4 configuration hashes and existing revisions stay immutable; preserve the failed V4 qualification revision rather than rewriting its history. Regression fixtures cover both real19.087s and18.019s timing patterns.
+
+## Shared API capacity — 2026-10-04
+
+Under DEC_API_CAPACITY_001, provider task admission is durable across workflows and separate from per-account video admission. Fair waiting and shared cooldown precede paid submission; observation of accepted tasks continues during congestion. Only positively unaccepted throttles may be deferred for a fresh submission claim. Uncertain paid submissions retain their exact identity and are never released into retry by elapsed time. API_CAPACITY_PLAN.md and CURRENT_STATE.yaml record implementation and qualification boundaries.

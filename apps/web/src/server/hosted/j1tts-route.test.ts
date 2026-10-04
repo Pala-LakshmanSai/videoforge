@@ -64,7 +64,7 @@ beforeEach(() => {
     let value: unknown = null;
     const [a, w, j] = args;
     if (sql.includes("saved_voices")) value = state.saved.get(String(a)) ?? [];
-    else if (sql.includes("start_voiceover_job")) {
+    else if (sql.includes("queue_voiceover_job")) {
       const previous = state.jobs.get(String(j));
       if (previous) {
         if (previous.account_id !== a || previous.request_hash !== args[3])
@@ -79,13 +79,39 @@ beforeEach(() => {
           script: args[4],
           voice_id: args[5],
           filename: args[6],
-          state: "SUBMITTING",
+          state: "WAITING",
           provider_job_id: null,
           failure_code: null,
           created_at: new Date().toISOString(),
         };
         state.jobs.set(String(j), job);
         value = { claimed: true, job };
+      }
+    } else if (sql.includes("claim_voiceover_submission")) {
+      const job = state.jobs.get(String(j));
+      if (
+        job &&
+        job.account_id === a &&
+        job.state === "WAITING" &&
+        (!job.next_attempt_at || Date.parse(String(job.next_attempt_at)) <= Date.now())
+      ) {
+        Object.assign(job, {
+          state: "SUBMITTING",
+          submit_claim_id: args[3],
+          submission_started_at: new Date().toISOString(),
+        });
+        value = job;
+      }
+    } else if (sql.includes("finish_voiceover_submission")) {
+      const job = state.jobs.get(String(j));
+      if (job && job.account_id === a && job.submit_claim_id === args[3]) {
+        Object.assign(job, {
+          state: args[4],
+          provider_job_id: args[5],
+          failure_code: args[6],
+          next_attempt_at: new Date(Date.now() + Number(args[7] ?? 0)).toISOString(),
+        });
+        value = job;
       }
     } else if (sql.includes("read_voiceover_job")) {
       const job = j ? state.jobs.get(String(j)) : [...state.jobs.values()].at(-1);
@@ -101,7 +127,7 @@ beforeEach(() => {
         value = job;
       }
     }
-    return { rows: [{ value }], affectedRows: 1 };
+    return { rows: [{ value, job: value }], affectedRows: 1 };
   });
   vi.stubGlobal(
     "fetch",
@@ -201,4 +227,29 @@ it("hides owner imported voices and jobs from other tenants", async () => {
     ).status,
   ).toBe(400);
   expect(calls.filter((x) => x === "/v1/tts")).toHaveLength(1);
+});
+
+it("persists confirmed 429 as waiting and retries only after the saved due time", async () => {
+  const original = globalThis.fetch;
+  let reject = true;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      if (new URL(String(url)).pathname === "/v1/tts" && reject) {
+        calls.push("/v1/tts");
+        return new Response(null, { status: 429, headers: { "retry-after": "12" } });
+      }
+      return original(url, init);
+    }),
+  );
+  const first = await handleJ1Voiceover(req("/jobs", body), environment, config, context);
+  expect(((await first.json()) as { job: { state: string } }).job.state).toBe("WAITING");
+  expect(state.jobs.get(id)?.failure_code).toBe("J1TTS_RATE_LIMITED");
+  await handleJ1Voiceover(req("/jobs/" + id), environment, config, context);
+  expect(calls.filter((x) => x === "/v1/tts")).toHaveLength(1);
+  state.jobs.get(id)!.next_attempt_at = new Date(0).toISOString();
+  reject = false;
+  await handleJ1Voiceover(req("/jobs/" + id), environment, config, context);
+  expect(state.jobs.get(id)?.state).toBe("PROCESSING");
+  expect(calls.filter((x) => x === "/v1/tts")).toHaveLength(2);
 });

@@ -11,6 +11,7 @@ import {
   type RunwareSafeDiagnostic,
   RunwareSpendLedger,
   retrieveRunwareTextTaskDetails,
+  type RunwareCapacityRefusal,
 } from "../providers/runware-http-transport";
 
 export const HOSTED_CONTEXT_RESERVATION_MICRO_USD = 10_000 as const;
@@ -420,6 +421,7 @@ export async function extractHostedVoiceoverContext(input: {
   readonly prepared: HostedVoiceoverContextRequest;
   readonly apiKey: string;
   readonly fetcher?: typeof fetch;
+  readonly onCapacityRefused?: (value: RunwareCapacityRefusal) => Promise<void>;
 }): Promise<{
   readonly context: Readonly<Record<string, JsonValue>>;
   readonly contextBytes: string;
@@ -438,6 +440,7 @@ export async function extractHostedVoiceoverContext(input: {
     ledger: new RunwareSpendLedger(HOSTED_CONTEXT_RESERVATION_USD),
     maximumRequestCostUsd: HOSTED_CONTEXT_RESERVATION_USD,
     fetch: input.fetcher,
+    onCapacityRefused: input.onCapacityRefused,
     onDiagnostic: (value) => {
       diagnosticState.current = value;
     },

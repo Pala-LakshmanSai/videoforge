@@ -1326,6 +1326,24 @@
       "name": "hosted_planning_clock_replay",
       "filename": "0258_hosted_planning_clock_replay.sql",
       "sha256": "sha256:6307e3e6055c22875db35254e71775b0c64992526df559f10e2887424bd7a4f5"
+    },
+    {
+      "version": 259,
+      "name": "provider_api_capacity",
+      "filename": "0259_provider_api_capacity.sql",
+      "sha256": "sha256:2bddb0b35e1bb34aef3ff28a583fd71eceb9f769e115ccf393e0896d82a5f517"
+    },
+    {
+      "version": 260,
+      "name": "j1tts_provider_capacity",
+      "filename": "0260_j1tts_provider_capacity.sql",
+      "sha256": "sha256:6568cf5b0a0d0bc304b15eef1868378348ba948196835a1f466b30c4af8af9c7"
+    },
+    {
+      "version": 261,
+      "name": "runware_text_capacity",
+      "filename": "0261_runware_text_capacity.sql",
+      "sha256": "sha256:b5a1d8d77d6eb2f260a43157c670a303479a4088ab4a358949c765fb3c32e806"
     }
   ]
 }

@@ -220,6 +220,7 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "global_session_events",
   "global_queue_audits",
   "hosted_api_generation_jobs",
+  "provider_api_rejections",
   "hosted_video_jobs",
   "hosted_voiceover_jobs",
   "hosted_script_projects",

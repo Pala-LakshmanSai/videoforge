@@ -232,6 +232,7 @@ test("0225 stops after the replacement fails and settles both known charges", as
         {
           taskType: "textInference",
           taskUUID: uuid(225200 + attemptIndex),
+          model: "deepseek:v4@flash",
           messages: [
             {
               role: "user",

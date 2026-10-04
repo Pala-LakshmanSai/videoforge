@@ -18,7 +18,7 @@ import {
   createProject,
   commitProject,
 } from "./product";
-import { voices, j1Fetch, J1Error, observeJ1Voiceover, type Job } from "./j1tts";
+import { voices, j1Fetch, observeJ1Voiceover, type Job } from "./j1tts";
 import { generatedVoiceoverAudio, fixedLengthAudioStream } from "./generated-voiceover-audio";
 import { continuationRequest } from "./stage-continuation";
 import { scheduleHostedAsrSubmission } from "./app";
@@ -311,20 +311,10 @@ export async function advanceScriptProject(
   if (!intake || ["COMPLETE", "FAILED", "CANCELLED"].includes(intake.state))
     return intake?.state ?? "MISSING";
   const jobArgs = [target.accountId, target.workspaceId, intake.voiceover_job_id];
-  const record = async (state: string, providerId: string | null, code: string | null) =>
-    sqlRun((sql) =>
-      sql.query("SELECT public.videoforge_record_voiceover_job($1,$2,$3,$4,$5,$6)", [
-        ...jobArgs,
-        state,
-        providerId,
-        code,
-      ]),
-    );
   if (intake.state === "WAITING") {
-    let started: { claimed: boolean; job: Job } | undefined;
     const hash = await sha256(JSON.stringify([intake.script, intake.voice_id, "voiceover.mp3"]));
     try {
-      started = await sqlRun(async (sql) => {
+      await sqlRun(async (sql) => {
         // Archive and intake claim take the same project lock. A cancelled queued project cannot submit TTS.
         await sql.query(
           `SELECT id FROM projects WHERE id=$3 AND account_id=$1 AND workspace_id=$2 AND status='ACTIVE' FOR UPDATE`,
@@ -338,7 +328,7 @@ export async function advanceScriptProject(
         if (!current || current.state !== "WAITING") return undefined;
         const result = (
           await sql.query<{ value: { claimed: boolean; job: Job } }>(
-            "SELECT public.videoforge_start_voiceover_job($1,$2,$3,$4,$5,$6,$7) AS value",
+            "SELECT public.videoforge_queue_voiceover_job($1,$2,$3,$4,$5,$6,$7) AS value",
             [...jobArgs, hash, current.script, current.voice_id, "voiceover.mp3"],
           )
         ).rows[0]!.value;
@@ -351,33 +341,6 @@ export async function advanceScriptProject(
     } catch (error) {
       if (String(error).includes("VOICEOVER_CAPACITY_BUSY")) return "WAITING";
       throw error;
-    }
-    if (started?.claimed) {
-      // No retry of this POST. A crash or uncertain response is reconciled through the saved job.
-      try {
-        const result = plainRecord(
-          await (
-            await j1Fetch(env.J1TTS_API_KEY!, "/v1/tts", {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({
-                text: intake.script,
-                voice_id: intake.voice_id,
-                file_name: "voiceover.mp3",
-              }),
-            })
-          ).json(),
-        );
-        if (!result || typeof result.id !== "string" || !/^[A-Za-z0-9_-]{1,160}$/u.test(result.id))
-          throw new J1Error("J1TTS_INVALID_RESPONSE", true);
-        await record("PROCESSING", result.id, null);
-      } catch (error) {
-        await record(
-          error instanceof J1Error && !error.ambiguous ? "FAILED" : "UNKNOWN_NO_RETRY",
-          null,
-          error instanceof J1Error ? error.code : "J1TTS_NETWORK_UNCERTAIN",
-        );
-      }
     }
   }
   const state = await observeJ1Voiceover(env, {
