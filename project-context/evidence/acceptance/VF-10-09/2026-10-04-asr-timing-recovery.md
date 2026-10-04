@@ -86,3 +86,19 @@ separate from this bounded timing-repair scope. No approval for this proposal ha
 New provider spendUSD0; no external mutation, publication, model download or paid compute.
 Read-only complete RunPod inventory:0 total Pods and0 owned Pods. The original Cloud ASR
 reservation is CLEAN with cleanup verified2026-10-04T08:09:05.801Z. Invoice is unverified.
+
+## Approved publication and bounded recovery
+
+User approved: “approved,go ahead, fix and push to production.” Scope and limits above are accepted.
+Desktop0.1.49 builds Windows and Mac successfully in Actions37190052431 from82dfb695;
+Linux initial run37190054279 passed real media/transport and failed only because the added test mount
+was too shallow for its repository-relative import. Corrected mount is included in the next qualification.
+Additive0257 provides owner-only accepted-output-checksum-bound successor recovery, preserves old
+ASR/context/revision/source bytes, retires only pre-plan admission and records an audit. A durable
+preparation-only alias makes paid prompt loading return WAITING, so accepted planning cannot
+start images/avatars under the timing-repair authority. Runtime cannot invoke the operator recovery.
+Existing unrelated cleanup-only reservations use migration0235's full fencing predicate and remain
+untouched; the inspected historical STOPPING row is not released by this repair.
+PGlite exercises rejected cross-tenant/checksum/runtime calls, unstarted render rejection, immutable
+successor/replay/source alias/private negatives and paid-stage hold. Native transaction rollback on
+the actual failed project must pass before applying or executing recovery.

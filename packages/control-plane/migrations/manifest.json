@@ -1314,6 +1314,12 @@
       "name": "per_account_video_admission",
       "filename": "0256_per_account_video_admission.sql",
       "sha256": "sha256:e0ad3de32d62dc28848489d11ba91ff8c38678259490e913643780e9d9bd6881"
+    },
+    {
+      "version": 257,
+      "name": "hosted_asr_timing_recovery",
+      "filename": "0257_hosted_asr_timing_recovery.sql",
+      "sha256": "sha256:251f1920cc5594fd7075ee789840244e0684fcf5d2958aea71533ea09d0dbe57"
     }
   ]
 }

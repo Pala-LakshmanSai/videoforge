@@ -37,8 +37,13 @@ import { canonicalJson } from "./submission";
 import { readRunwareCreditBalance } from "../providers/runware-http-transport";
 
 async function requirePromptCredits(apiKey: string): Promise<void> {
-  if (await readRunwareCreditBalance(apiKey) < 0.25)
-    throw new HostedPromptExecutionError("HOSTED_PROMPT_PROVIDER_CREDITS_LOW", "UNKNOWN", true, null);
+  if ((await readRunwareCreditBalance(apiKey)) < 0.25)
+    throw new HostedPromptExecutionError(
+      "HOSTED_PROMPT_PROVIDER_CREDITS_LOW",
+      "UNKNOWN",
+      true,
+      null,
+    );
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -258,8 +263,12 @@ export function hostedPromptClaimInFlight(
   claim: { claimed_at: string; recorded_result: unknown } | null,
   now = Date.now(),
 ): boolean {
-  return state === "DISPATCHING" && claim !== null && !claim.recorded_result &&
-    now - Date.parse(claim.claimed_at) < HOSTED_PROMPT_STALE_RUN_MS;
+  return (
+    state === "DISPATCHING" &&
+    claim !== null &&
+    !claim.recorded_result &&
+    now - Date.parse(claim.claimed_at) < HOSTED_PROMPT_STALE_RUN_MS
+  );
 }
 
 /** Exported so the continuation sweep offers exactly the classes this route will accept. */
@@ -373,6 +382,15 @@ export async function writeProjectPrompts(
     trace("plan");
     const planRecord = plainRecord(plan.plan);
     if (!planRecord) return response({ error: { code: "HOSTED_PROMPT_PLAN_NOT_READY" } }, 409);
+    if (planRecord.preparation_only === true)
+      return response(
+        {
+          schema_version: "videoforge-hosted-prompt-response/v1",
+          state: "WAITING",
+          reason: "Transcription recovery is complete; video generation is paused.",
+        },
+        202,
+      );
     const existingState = planRecord.existing_run_state;
     if (existingState === "SUCCEEDED")
       return response({
@@ -474,14 +492,17 @@ export async function writeProjectPrompts(
         const saved = original.run;
         runId = saved.id;
         if (hostedPromptClaimInFlight(existingState, original.claim))
-          return response({
-            schema_version: "videoforge-hosted-prompt-response/v1",
-            state: "RUNNING",
-            replayed: false,
-            accepted_batch_count: saved.accepted_batch_count,
-            accepted_scene_count: saved.accepted_scene_count,
-            planned_batch_count: saved.planned_batch_count,
-          }, 202);
+          return response(
+            {
+              schema_version: "videoforge-hosted-prompt-response/v1",
+              state: "RUNNING",
+              replayed: false,
+              accepted_batch_count: saved.accepted_batch_count,
+              accepted_scene_count: saved.accepted_scene_count,
+              planned_batch_count: saved.planned_batch_count,
+            },
+            202,
+          );
         const identity: HostedPromptIdentity = {
           runId: saved.id,
           taskId: saved.task_id,
@@ -635,7 +656,8 @@ export async function writeProjectPrompts(
                     saved.reserved_cost_micro_usd -
                     saved.accepted_cost_micro_usd -
                     saved.discarded_cost_micro_usd,
-                  claim: (claim) => claimHostedPromptBatch(pool, scope.account_id, saved.id, claim, promptApiKey),
+                  claim: (claim) =>
+                    claimHostedPromptBatch(pool, scope.account_id, saved.id, claim, promptApiKey),
                   recordResult: (value) =>
                     recordPromptResponse(pool, scope.account_id, saved.id, value),
                 })
@@ -871,7 +893,8 @@ export async function writeProjectPrompts(
       persistedBinding: persistedBatchPlanBinding,
       batchOrdinal: 0,
       remainingReservationMicroUsd: reservedCostMicroUsd,
-      claim: (claim) => claimHostedPromptBatch(pool, scope.account_id, persistedRunId, claim, promptApiKey),
+      claim: (claim) =>
+        claimHostedPromptBatch(pool, scope.account_id, persistedRunId, claim, promptApiKey),
       recordResult: (value) => recordPromptResponse(pool, scope.account_id, persistedRunId, value),
     });
     if (firstBatch)
@@ -916,7 +939,10 @@ export async function writeProjectPrompts(
               scope.account_id,
             ]);
             if (promptFailure.problemCode === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW") {
-              await transaction.query("SELECT public.videoforge_pause_hosted_prompt_for_credits($1)", [runId]);
+              await transaction.query(
+                "SELECT public.videoforge_pause_hosted_prompt_for_credits($1)",
+                [runId],
+              );
               return;
             }
             await transaction.query(
@@ -969,8 +995,8 @@ export async function writeProjectPrompts(
             promptFailure.problemCode === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
               ? "Prompt writing is paused while provider credits are unavailable. Saved prompts remain intact; check again after credits are available."
               : promptFailure.terminalState === "FAILED"
-              ? "Image prompt writing was rejected before VideoForge accepted a result. The request will not be automatically repeated."
-              : "Image prompt writing stopped without a durable accepted result. The request will not be automatically repeated.",
+                ? "Image prompt writing was rejected before VideoForge accepted a result. The request will not be automatically repeated."
+                : "Image prompt writing stopped without a durable accepted result. The request will not be automatically repeated.",
         },
       },
       409,

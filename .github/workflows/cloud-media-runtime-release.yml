@@ -175,8 +175,8 @@ jobs:
         run: |
           set -euo pipefail
           docker run --rm --network=none --entrypoint python \
-            -e PYTHONPATH=/opt/videoforge/packages/contracts/python:/opt/videoforge/workers/image-media/src:/transcription-tests \
-            -v "$GITHUB_WORKSPACE/workers/image-media/tests/jobs/transcribe:/transcription-tests:ro" \
+            -e PYTHONPATH=/opt/videoforge/packages/contracts/python:/opt/videoforge/workers/image-media/src:/worker-tests/jobs/transcribe \
+            -v "$GITHUB_WORKSPACE/workers/image-media/tests:/worker-tests:ro" \
             vf-cloud-qualified -m unittest test_job
       - name: Record qualified release configuration
         run: |

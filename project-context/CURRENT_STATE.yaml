@@ -10,7 +10,7 @@ asr_timing_recovery_2026_10_04:
   validation: 37_transcription215_pipeline249_web_tests_PASS;full1136509ms_source_local_ASR_and250_scene_plan_PASS;real_Chrome_synthetic_fixture_PASS.
   provider_spend: USD0_started;user_approved_publication_and_one900s_Cloud_transcription_recovery_finite_USD1_cap_no_retained_volume_stop_before_new_image_avatar_generation.
   paid_compute_shutdown: Read_only_complete_RunPod_inventory_zero_Pods;original_ASR_reservation_CLEAN.
-  remaining_gates: Cloud_Linux_and_native_Desktop_runtime_qualification_publication;application_publication;guarded_same_project_immutable_successor_and_fresh_ASR_recovery;production_Chrome_acceptance.
+  remaining_gates: Linux_qualification_rerun_after_test_mount_fix;Cloud_and_application_publication;single_Cloud_ASR_recovery_context_planning;production_Chrome_acceptance.
   evidence: evidence/acceptance/VF-10-09/2026-10-04-asr-timing-recovery.md
 
 voiceover_progress_2026_10_04:
@@ -6929,8 +6929,8 @@ repository:
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
   branch: codex/asr-timing-recovery
-  branch_upstream: null
-  branch_published: false
+  branch_upstream: origin/codex/asr-timing-recovery
+  branch_published: true
   current_source_head: "569948f3b65ec052f0dc6ccb0143e0ae64ea6584"
   current_source_head_semantics: published_application_source_voiceover_progress_local_ASR_repair_pending
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
