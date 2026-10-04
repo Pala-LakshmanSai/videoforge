@@ -103,6 +103,10 @@ provider credential. Windows and macOS run the same execution contract.
   and original normalized analysis bytes. Preserve healthy receipts, cancellation and exact source
   duration; reject recovery that remains invalid. Never fabricate word timing. Historical accepted
   results remain immutable and require a fresh attempt; planning rejects oversized words immediately.
+- Hosted canonical timing replay preserves every exact source, timeline, task and tenant identity.
+  Only per-request `planning_started_at`/`planning_completed_at` display observations are excluded
+  from append-payload replay equality; first accepted clock evidence remains immutable. Concurrent
+  browser/continuation planning must accept the same canonical plan without new provider work.
 - The normal web client sends `optional_script: null`, so ASR wording is canonical. If a versioned API
   client supplies a script, deterministic dynamic programming aligns it to ASR timing; no AI timing
   decision is added.

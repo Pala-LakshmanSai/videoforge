@@ -2,7 +2,8 @@
 
 Checkpoint V2-09 / VF-10-09, profile `v2_09_j1tts_voiceover`. Isolated branch
 `codex/asr-timing-recovery`, base `2da0f945`; resolve implementation commit from Git.
-Status: local verified, not published. Original project remains unchanged.
+Status: fix published; approved live ASR/context/planning recovery complete. Historical accepted ASR, context,
+revision and audio are preserved. Production source `65d28fab257353d54f25bfdf1c9d344dd5484e97`.
 
 ## Exact failure
 
@@ -53,13 +54,14 @@ immutable; deployment alone does not rewrite the failed project's ASR result.
 Private source/transcripts and tool output remain outside Git. No model was downloaded;
 local qualification used the installed worker's pinned Whisper/model/FFmpeg tools.
 
-## Remaining release and recovery gates
+## Pre-approval release and recovery requirements
 
 Cloud Linux runtime/image and native Desktop package qualification/publication are required:
 this shared Python code runs in both. The web application must also be published with current
 bindings, secrets, workflow identities and native/runtime pins preserved. Local build proof
 does not establish those published identities. Docker daemon is unavailable on this host;
-no remote builder or CI mutation was started.
+no remote builder or CI mutation had started at that local handoff. These publication gates
+are now resolved by the approved release below.
 
 For the existing project, first re-read exact revision/attempt/result checksum, account/project
 admission, sibling CPU states and complete provider inventory. Guard a same-project immutable
@@ -79,11 +81,13 @@ cap for recovery actions, one Cloud rental at most900s. Read-only current Secure
 BlackwellServerEdition32GB rateUSD0.72/hour,100GiB ephemeral disk gives observed all-in
 USD0.7338888889/hour;900s aboutUSD0.1834722 before rounding. No retained volume/recurring
 volume charge. No new TTS or unrelated test video. Any downstream full-video generation remains
-separate from this bounded timing-repair scope. No approval for this proposal has been recorded.
+separate from this bounded timing-repair scope. The user subsequently approved this exact bounded proposal.
 
 ## Spend and cleanup
 
-New provider spendUSD0; no external mutation, publication, model download or paid compute.
+At the local handoff, new provider spend wasUSD0 and no external publication/paid compute had started.
+The approved live recovery now has oneUSD0.20 Cloud reservation; final reported spend and cleanup
+are recorded below. No retained volume or new model download.
 Read-only complete RunPod inventory:0 total Pods and0 owned Pods. The original Cloud ASR
 reservation is CLEAN with cleanup verified2026-10-04T08:09:05.801Z. Invoice is unverified.
 
@@ -101,4 +105,78 @@ Existing unrelated cleanup-only reservations use migration0235's full fencing pr
 untouched; the inspected historical STOPPING row is not released by this repair.
 PGlite exercises rejected cross-tenant/checksum/runtime calls, unstarted render rejection, immutable
 successor/replay/source alias/private negatives and paid-stage hold. Native transaction rollback on
-the actual failed project must pass before applying or executing recovery.
+the actual failed project passed before migration257 was applied; original project evidence was
+deep-equal before/after rollback and application. Runtime has no operator execution grant.
+
+## Published qualification and parity
+
+Desktop0.1.49 from82dfb695 is published at `media-worker-v0.1.49`; Windows/Mac native Actions
+37190052431 pass. Complete installers match both release manifest and GitHub asset hashes:
+Windows279626340 bytes, `9338d7c812fe5131c70681ebbd1a3fb41dd7e577adc136778e835d13e1520f60`;
+Mac414292035 bytes, `276ddd579f6275344bea672de5c525781ab859f18bf8d75d4b357ac22345821e`.
+Execution bundle `a2d03010519d4586785ba6f04528b5bf5c1c8eb4b63b803d8162133ae02f52e9`.
+
+Cloud Actions37190484208 from65d28fab passes real offline ASR/span/render, whole/split Fal and
+legacy rendering,77 transport checks and37 transcription checks inside the exact Linux image.
+Qualified image digest `8ffb9239eafe74147031f5aa15e88f7a009524ed29e7f680873b13f8a94550c9`;
+source `2e3a6f9440f6faacda439520134ba9876058f4bebbcbc1f88002ed5c188da9a0`;
+runtime `24b8ba9357ada3d8417e2b8c2482df88e25202035833a40f78e219d95900f6d7`.
+Registry manifest/small runtime-layer hashes, all39 reviewed source files and pinned Whisper1.8.4/
+base.en/FFmpeg8.1.2 match. Temporary package-publish secret deleted and absence verified.
+
+App source65d28fab, Worker `fe1af150-d8c3-4210-8866-fc6d941f5a88`,100% traffic. Status commit,
+29 public assets,53 bindings,26 secret names and three Workflow identities verified; only intended
+new worker/Cloud runtime/authority pins changed. Final284 affected web checks, two SQL recovery
+suites, types, lint, production build, context and tracked-secret scan pass. Same-account ongoing
+Cloud policy is cloned with new qualified pins; old authorities/reservations stay immutable.
+Native257 ledger/rollback/operator-only privilege/hold/idempotence checks pass. Owner200,
+foreign404 and anonymous401 verify current private project access. Real signed-in Chrome shows
+Needs attention, the exact lost-timing explanation and no planning-only Retry on the original result.
+
+Live successor `3b8159bf-1b9d-4622-bf8d-3074f2f9bf64`; fresh normal ASR
+`090ad4e3-81cd-4406-903b-7d0d5537b6bb`. Exact accepted old ASR/revision/context/reservations were
+compared after successor creation and remain unchanged; old unstarted admission is audited and
+retired. One100GB rental,900s/USD0.20 cap, approved RTXPRO4500ServerEdition, all-inUSD0.7338888889/hour,
+no retained volume; paid prompts hold is true and there are no prompt/image/avatar jobs. No second
+rental or provider replay is authorized. Final acceptance and zero-compute readback are complete below.
+
+## Final live acceptance and additional replay defect
+
+New Cloud ASR accepted447359 bytes with checksum
+`05c8a0dfe48c62eb379995d6415cbfc61408d26be7ce60666452c75283d49d6c`:
+3636 words, maximum1330ms, original1136509ms duration. Whole R2 result/timeline readback matches
+accepted length/hash. Canonical timeline120628 bytes, hash
+`4283a924b706734ab522aeab4f841554a5e2e5c5ffc0b7b6f4a78b6ca1d01790`:
+248 segments,34095 frames,65 avatar spans,21.13506379% avatar coverage. Source audio and every preset
+pin match the prior revision; the new immutable revision legitimately has a new derived schedule.
+Historical accepted ASR/revision/context remain deep-equal to the pre-recovery snapshot.
+
+Live verification exposed a second independent failure: concurrent browser/continuation planning
+accepted the same canonical plan but later callers received500. Private Worker trace showed
+`hosted canonical timing idempotency conflict`; the two per-request display clock fields differed
+while semantic plan identity stayed exact. Migration0258 from `5c09c192` excludes only
+`timeline.asset.metadata.planning_started_at` and `planning_completed_at` from the exact append-payload
+replay comparison. First accepted timestamps/payload remain unchanged; all source/timeline/task/
+semantic metadata/tenant checks remain exact. Native rollback reproduces the original clock-only
+conflict, accepts repaired replay and rejects changed words/semantic metadata without altering any
+accepted row. Two PGlite bridge/privacy/backup-restore checks pass with the clock regression; lint
+and control-plane build pass. Native258 applied with ledger/hash readback and no data rewrite.
+No worker, image, model, provider request or ASR retry was created for this database repair.
+
+Production API now returns202 with idempotent_replay=true for the exact accepted plan. Signed-in
+Chrome reload shows stages1/2/3 COMPLETE and Saved248 segments/65 avatar spans; screenshot
+`/tmp/vf-asr-timing-live-complete.png`. Prompt endpoint202 WAITING explicitly states transcription
+recovery is complete and generation is paused. Durable preparation_only remains true, zero prompt
+runs, image/avatar provider jobs or render jobs; only the approved fresh ASR was submitted.
+Both project rentals are CLEAN with cleanup verified; complete provider inventory0 Pods. The
+unrelated historical STOPPING row still satisfies tenant-scoped cleanup-only fencing and is untouched.
+Cloud conservative created-to-clean rounded estimate:2 minutes ×USD0.7338888889/hour =USD0.024462963;
+new context provider reportsUSD0.00053, conservative recovery totalUSD0.024992963, below approvedUSD1.
+USD0.20 is the reservation, not an invoice. Cloud settled invoice remains unverified.
+
+No gate remains for the requested repair/publication. Downstream full-video generation is deliberately
+held at the approved repair boundary; installed Local, whole-film editorial/playback/performance and
+invoice acceptance remain distinct. App deployed source65d28fab/Workerfe1af150 remains the qualified
+release; native258 source5c09c192 and the later documentation handoff are separate commits.
+Private operator receipts: `.videoforge/asr-timing-20261004/` in the primary checkout; no audio,
+transcript or credentials were added to Git. Primary unrelated dirty work remains untouched.
