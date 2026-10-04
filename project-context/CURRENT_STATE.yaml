@@ -1,3 +1,19 @@
+media_review_accepted_2026_10_04:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  read_profile: v2_09_media_review_count
+  status: LOCAL_REGRESSION_VERIFIED_PUBLICATION_PENDING
+  branch: codex/media-review-accepted
+  base_source: e5568ca22a362da6f729f9d8820eef0c917db544
+  user_authority: Fix_incorrect_accepted_count_verify_functionality_and_push_production.
+  diagnosis: Browser_first_page96_loaded_thumbnails_was_labelled_as_accepted_despite380_total_accepted.
+  repair: Shared_image_avatar_video_review_reports_authoritative_accepted_total_and_separate_loaded_count.
+  validation: Red_regression_reproduced;250_focused_UI_and_project_detail_tests_PASS;production_staging_builds_and_bundle_firewalls_PASS.
+  provider_spend: USD0_new_generation_or_compute.
+  paid_compute_shutdown: No_compute_started_or_mutated;existing_media_jobs_and_cleanup_preserved.
+  remaining_gates: Publication_parity_and_production_Chrome_pagination_navigation_playback_readback.
+  evidence: evidence/acceptance/VF-10-09/2026-10-04-media-review-accepted.md
+
 image_quality_2026_10_04:
   checkpoint: V2-09
   selected_task: VF-10-09

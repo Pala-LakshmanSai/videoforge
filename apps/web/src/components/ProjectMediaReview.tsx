@@ -575,8 +575,8 @@ export function ProjectMediaReview({
                       <strong>All accepted</strong>
                       <span>
                         {activeItems.length === activeTotal
-                          ? countLabel(activeTotal, "item", "items")
-                          : `${activeItems.length.toLocaleString()} of ${activeTotal.toLocaleString()} accepted`}
+                          ? `${activeTotal.toLocaleString()} accepted`
+                          : `${activeTotal.toLocaleString()} accepted · ${activeItems.length.toLocaleString()} loaded`}
                       </span>
                     </div>
                     <div className="media-review-thumbnail-grid">

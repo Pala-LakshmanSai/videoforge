@@ -329,7 +329,53 @@ it("shows truthful accepted totals and loads another bounded media page", () => 
   fireEvent.click(screen.getByRole("button", { name: "View generated images" }));
   expect(screen.getByRole("tab", { name: /Generated images 207/u })).toBeVisible();
   expect(screen.getByText("1 / 207 image")).toBeVisible();
+  expect(screen.getByText("207 accepted · 96 loaded")).toBeVisible();
+  expect(screen.queryByText("96 of 207 accepted")).not.toBeInTheDocument();
 
   fireEvent.click(screen.getByRole("button", { name: "Load more image" }));
   expect(onLoadMore).toHaveBeenCalledWith("images");
 });
+
+it.each(["images", "avatar", "videos"] as const)(
+  "keeps the %s accepted total stable while pages load or fail",
+  (section) => {
+    const items = Array.from({ length: 380 }, (_, index) => ({
+      id: `media-${index + 1}`,
+      url: `/media-${index + 1}`,
+      label: `Media ${index + 1}`,
+    }));
+    const props = (loaded: number) => ({
+      launcher: section,
+      images: section === "images" ? items.slice(0, loaded) : [],
+      avatarVideos: section === "avatar" ? items.slice(0, loaded) : [],
+      sceneVideos: section === "videos" ? items.slice(0, loaded) : [],
+      mediaTotals: { images: 380, avatar: 380, videos: 380 },
+      mediaHasMore: { images: loaded < 380, avatar: loaded < 380, videos: loaded < 380 },
+      onLoadMore: vi.fn(),
+    });
+    const view = render(<ProjectMediaReview {...props(96)} />);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name:
+          section === "images"
+            ? "View generated images"
+            : section === "avatar"
+              ? "View avatar videos/footage"
+              : "View generated videos",
+      }),
+    );
+    expect(screen.getByText("380 accepted · 96 loaded")).toBeVisible();
+    view.rerender(<ProjectMediaReview {...props(96)} loadingMore={section} />);
+    expect(screen.getByText("380 accepted · 96 loaded")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Loading more…" })).toBeDisabled();
+    view.rerender(<ProjectMediaReview {...props(96)} loadMoreError="Try again." />);
+    expect(screen.getByText("380 accepted · 96 loaded")).toBeVisible();
+    expect(screen.getByRole("alert")).toHaveTextContent("More media could not be loaded.");
+    view.rerender(<ProjectMediaReview {...props(192)} />);
+    expect(screen.getByText("380 accepted · 192 loaded")).toBeVisible();
+    view.rerender(<ProjectMediaReview {...props(380)} />);
+    expect(screen.getByText("380 accepted")).toBeVisible();
+    expect(screen.queryByText(/loaded$/u)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Load more/u })).not.toBeInTheDocument();
+  },
+);

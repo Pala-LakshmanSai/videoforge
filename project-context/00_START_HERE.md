@@ -1,3 +1,5 @@
+Media review count repair: read `media_review_accepted_2026_10_04` in CURRENT_STATE.yaml for source, validation and production status.
+
 Image quality investigation and required-scene-facts safeguard: read `image_quality_2026_10_04` in CURRENT_STATE.yaml and the selected brief. Forty isolated image tests do not establish a universal anatomy fix; visual acceptance remains a separate production gate.
 
 The 2026-10-04 user decision removes cross-account concurrency ceilings while retaining one active video per account. Read `scalable_admission_2026_10_04` in CURRENT_STATE.yaml and DEC_QUEUE_003.
