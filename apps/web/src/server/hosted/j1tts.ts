@@ -38,10 +38,12 @@ export async function j1Fetch(
   try {
     const result = await fetcher(BASE + path, {
       ...init,
-      redirect: "error",
+      redirect: "manual",
       headers: { Authorization: `Bearer ${key}`, "User-Agent": "VideoForge/1.0", ...init.headers },
       signal: AbortSignal.timeout(30_000),
     });
+    if (result.status >= 300 && result.status < 400)
+      throw new J1Error("J1TTS_REDIRECT_REJECTED", init.method === "POST");
     if (!result.ok)
       throw new J1Error(
         result.status === 429
@@ -297,7 +299,7 @@ export async function handleJ1Voiceover(
         const preview =
           url.origin === BASE
             ? await j1Fetch(key, url.pathname + url.search)
-            : await fetch(url, { redirect: "error", signal: AbortSignal.timeout(20_000) });
+            : await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(20_000) });
         if (!preview.ok) return response({ error: { code: "VOICE_PREVIEW_UNAVAILABLE" } }, 502);
         return new Response(preview.body, {
           headers: {

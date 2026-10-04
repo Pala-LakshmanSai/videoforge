@@ -32,10 +32,20 @@ describe("J1TTS provider boundary", () => {
     expect(fetcher.mock.calls[0]).toEqual([
       "https://api.j1tts.com/v1/tts",
       expect.objectContaining({
-        redirect: "error",
+        redirect: "manual",
         headers: expect.objectContaining({ Authorization: "Bearer private-test-key" }),
       }),
     ]);
+  });
+  it("rejects a redirect without forwarding credentials or repeating submission", async () => {
+    const fetcher = vi.fn(
+      async () =>
+        new Response(null, { status: 302, headers: { location: "https://untrusted.example/" } }),
+    );
+    await expect(
+      j1Fetch("private-key", "/v1/tts", { method: "POST" }, fetcher),
+    ).rejects.toMatchObject({ code: "J1TTS_REDIRECT_REJECTED", ambiguous: true });
+    expect(fetcher).toHaveBeenCalledOnce();
   });
   it.each([429, 401, 403, 400])(
     "classifies an explicit %s rejection without replay",
