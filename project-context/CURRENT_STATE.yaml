@@ -2,20 +2,27 @@ image_quality_2026_10_04:
   checkpoint: V2-09
   selected_task: VF-10-09
   read_profile: v2_09_image_quality
-  status: VERSIONED_INPUT_SAFEGUARDS_READY_FOR_PUBLICATION
+  status: PRODUCTION_INPUT_SAFEGUARDS_DEPLOYED_VISUAL_GATE_OPEN
   branch: codex/image-anatomy-quality
   base_source: ac1323b5
   authority: User_approves_separate_API_tests_and_needed_limits_through_production;finite_investigation_USD5;no_GPU_or_retained_volume.
   diagnosis: Cyclic_HANDS_ACTION_pressured_abstract_narration_into_invented_hand_contact;blueprint_action_sanitized_to_filler;actual_failed_image_already_had_two_hands_rule;trunk_missing_body_placement.
   repair: Reject_empty_forbidden_placeholder_facts;fresh_V6_V7_filter_only_unsupported_hand_candidates;v27_writer_requires_explicit_whole_person_placement;legacy_versions_requests_saved_prefixes_and_no_replay_preserved.
+  production_source: 75a002bec9bdb9d5688b717aade6d4841e07d3b2
+  production_worker: c28499c3-da70-46d7-bf54-0194f6b69db6
+  production_traffic_percent: 100
+  production_readback: 30_public_assets_exact53bindings26secrets3Workflow_identities_preserved;380_image_inputs_unchanged;38_actual_archived_writer_requests_rebuild_exactly.
+  chrome: Existing_user_video100percent_COMPLETE_stage11_GPU_released;no_new_video_submitted;not_fresh_policy_fullfilm_qualification.
+  memory: Project_Index_Coverage_and_image_quality_knowledge_guarded_updates_readback_PASS.
+  evidence: evidence/acceptance/VF-10-09/2026-10-04-image-quality.md
   first_release_source: e5568ca22a362da6f729f9d8820eef0c917db544
   first_release_worker: d0ab6aa9-1e40-49eb-8a86-192fdaa63adf
   first_release_verification: 100percent_traffic30_public_assets_exact53bindings26secrets3Workflow_identities;Chrome_existing_render_continues;380_input_hashes_and_manifests_unchanged.
   experiments: 80Kie_images3writer_calls40vision_reviews_complete;v26_failed_body_placement;v27_trunk2of2_connected_bodies_but_jar1of2_three_hands_and_door2of2_weak_body_framing.
   provider_spend: Finite_USD5_cap;64Kiecredits_estimatedUSD0_32_plus_reported_writerUSD0_120654_and_visionUSD0_016947_totalUSD0_457601;invoice_unverified;zero_unreconciled_calls.
-  paid_compute_shutdown: No_Pods_endpoints_GPU_or_Workflow_instances_created_by_investigation;separate_existing_user_render_remains_under_its_original_lifecycle.
+  paid_compute_shutdown: No_Pods_endpoints_GPU_or_Workflow_instances_created_by_investigation;separate_existing_user_video_completed_with_Chrome_GPU_released_under_its_original_lifecycle;not_account_wide_inventory_proof.
   validation: First_release236_focused_tests_PASS;followup111_prompt44_scheduler50_hosted21_adapter_tests_PASS;Web_Worker_types_scoped_lint_both_builds_firewalls_context_secrets_and_independent_review_PASS.
-  remaining_gates: Versioned_followup_publication_and_Chrome_readback;no_fresh_full_video;visual_checker_false_rejects5of33_independently_accepted_samples_and_is_not_qualified;output_acceptance_and_repair_gate_unimplemented;no_defect_free_claim.
+  remaining_gates: No_fresh_full_video_under_new_policy;visual_checker_false_rejects5of33_independently_accepted_samples_and_is_not_qualified;output_acceptance_and_repair_gate_unimplemented;no_defect_free_claim.
   plan: IMAGE_QUALITY_PLAN.md
 
 asr_timing_recovery_2026_10_04:
@@ -2424,7 +2431,7 @@ image_review_regeneration_request_2026_09_14:
   latest_demo_ui_to_accepted_ms: 34940
   latest_demo_evidence: evidence/acceptance/VF-10-09/2026-09-14-image-regeneration-source/live-demo.json
   final_runpod_balance_usd: 16.7686399735
-updated_at: "2026-09-19T04:41:41Z"
+updated_at: "2026-10-04T12:16:41.966373Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
@@ -6964,10 +6971,10 @@ repository:
   branch: codex/image-anatomy-quality
   branch_upstream: origin/codex/image-anatomy-quality
   branch_published: true
-  current_source_head: "65d28fab257353d54f25bfdf1c9d344dd5484e97"
-  current_source_head_semantics: production_baseline_for_image_quality_safeguard
+  current_source_head: "75a002bec9bdb9d5688b717aade6d4841e07d3b2"
+  current_source_head_semantics: deployed_image_quality_input_safeguards
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Resolve Git HEAD for image-quality safeguard; baseline production is ASR repair65d28fab. Main unrelated work is preserved."
+  current_source_head_note: "Resolve Git HEAD for documentation; deployed image-quality executable75a002be preserves ASR repair65d28fab and unrelated main work."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
@@ -9226,8 +9233,8 @@ recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
   milestone: Image_quality_prevention
-  status: VERSIONED_INPUT_SAFEGUARDS_AND_VISUAL_GATE_PLAN
-  dependency_status: production65d28fab_Workerfe1af150_verified
+  status: INPUT_SAFEGUARDS_PUBLISHED_VISUAL_GATE_OPEN
+  dependency_status: production75a002be_Workerc28499c3_verified
   authorization_status: user_explicitly_approved_API_testing_and_prevention_through_production;finiteUSD5
   task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current
@@ -9247,7 +9254,8 @@ recommended_next_task:
   gpu_use_authorized: false
   retained_volume_mutation_authorized: false
   application_code_changes_authorized: true
-  spend_usd: 0
+  spend_usd: 0.457601
+  spend_semantics: Kie_credit_estimate_plus_reported_API_cost_invoice_unverified
   resources: []
   authorized_operations: [bounded_qualification, additive_migration, worker_release, production_deploy]
 

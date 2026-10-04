@@ -1,4 +1,4 @@
-Image quality prevention: read `image_quality_2026_10_04` in CURRENT_STATE.yaml and the selected brief. The sanitizer safeguard is released; versioned hand-role eligibility and physical-placement prompts have targeted API evidence. Eighty image tests still contain anatomy/framing failures; automatic visual acceptance remains unqualified and unimplemented.
+Image quality prevention: read `image_quality_2026_10_04` in CURRENT_STATE.yaml and the selected brief. Input safeguards are published at source `75a002be` / Worker `c28499c3`: no erased scene facts, fresh V6/V7 hand-role eligibility and versioned v27 physical placement. Eighty image tests still contain anatomy/framing failures; automatic visual acceptance remains unqualified and unimplemented.
 
 The 2026-10-04 user decision removes cross-account concurrency ceilings while retaining one active video per account. Read `scalable_admission_2026_10_04` in CURRENT_STATE.yaml and DEC_QUEUE_003.
 

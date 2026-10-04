@@ -50,4 +50,6 @@ The independently verified required-facts fix was released first at e5568ca2 / W
 
 ## Handoff
 
+Input safeguards published at source `75a002be` / Worker `c28499c3` at 100% traffic. The first sanitizer release was `e5568ca2` / Worker `d0ab6aa9`. Both builds, 226 focused follow-up checks, independent review, exact 38 archived request rebuilds, 380 saved image inputs, 30 public assets and signed-in Chrome readback pass. No migration or GPU rental was required. All 123 isolated provider tasks are reconciled, estimated USD 0.457601. Existing user video completion is compatibility evidence, not a fresh new-policy full-video run. Automatic visual acceptance/repair remains unimplemented and unqualified.
+
 Current status, exact source/deployment, evidence, provider charges and remaining gates belong in `CURRENT_STATE.yaml` and the dated acceptance report. Retain all experiment task identities and reconcile every task; do not attribute other active user generation to this experiment's spend. No GPUs are created by these tests.
