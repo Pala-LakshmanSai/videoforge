@@ -529,6 +529,7 @@ export function ScriptProjectFields({
               const file = event.target.files?.[0];
               if (!file) return;
               const sequence = ++readSequence.current;
+              setReading(false);
               setError(null);
               onChange({ ...current.current, script: "" });
               if (!/\.txt$/iu.test(file.name) || file.size > 400000) {
