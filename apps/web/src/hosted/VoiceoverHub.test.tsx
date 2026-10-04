@@ -107,11 +107,62 @@ it("retains exact request after a lost response and prevents paid duplicate iden
   });
   fireEvent.click(screen.getByRole("button", { name: "Generate voiceover" }));
   await screen.findByText("fetch failed");
-  fireEvent.click(screen.getByRole("button", { name: "Generate voiceover" }));
+  expect(screen.getByLabelText("Voiceover script")).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: "Check generation" }));
   await screen.findByText(/provider response is uncertain/);
   expect(bodies).toHaveLength(2);
   expect(bodies[0]).toBe(bodies[1]);
   expect(screen.getByRole("button", { name: "Generate voiceover" })).toBeDisabled();
+});
+it("checks the same new request after a lost response when an older job was completed", async () => {
+  const bodies: string[] = [];
+  vi.stubGlobal("URL", { ...URL, createObjectURL: () => "blob:audio", revokeObjectURL: vi.fn() });
+  const fetcher = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+    if (init?.method === "POST") {
+      bodies.push(init.body as string);
+      if (bodies.length === 1) throw new TypeError("fetch failed");
+      return Response.json({
+        job: {
+          id: JSON.parse(bodies[0]!).id,
+          state: "UNKNOWN_NO_RETRY",
+          filename: "saved.mp3",
+          voice_id: "alice",
+          audio_url: null,
+        },
+      });
+    }
+    if (String(url).endsWith("/audio")) return new Response(new Uint8Array([1, 2, 3]));
+    return Response.json(
+      String(url).endsWith("/voices")
+        ? { voices }
+        : {
+            job: {
+              id: "older",
+              state: "COMPLETED",
+              filename: "saved.mp3",
+              script: "Older narration.",
+              voice_id: "alice",
+              audio_url: "/older/audio",
+            },
+          },
+    );
+  });
+  vi.stubGlobal("fetch", fetcher);
+  const onReady = vi.fn();
+  wrap(<ScriptVoiceover disabled={false} onReady={onReady} onInvalidate={vi.fn()} />);
+  await waitFor(() => expect(onReady).toHaveBeenCalledOnce());
+  fireEvent.change(screen.getByLabelText("Voiceover script"), {
+    target: { value: "New narration after the older completed job." },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Generate voiceover" }));
+  await screen.findByText("fetch failed");
+  expect(screen.queryByRole("button", { name: "Load saved voiceover" })).toBeNull();
+  expect(screen.getByLabelText("Voiceover script")).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: "Check generation" }));
+  await screen.findByText(/provider response is uncertain/);
+  expect(bodies).toHaveLength(2);
+  expect(bodies[0]).toBe(bodies[1]);
+  expect(JSON.parse(bodies[0]!).id).not.toBe("older");
 });
 it("restores completed MP3 without submitting TTS again", async () => {
   const onReady = vi.fn();

@@ -22,6 +22,14 @@ interface VoiceoverJob {
   audio_url: string | null;
   script?: string;
 }
+class VoiceoverRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
 export async function voiceoverJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     credentials: "same-origin",
@@ -30,7 +38,10 @@ export async function voiceoverJson<T>(url: string, init?: RequestInit): Promise
   });
   const body = (await res.json()) as T & { error?: { code: string; message?: string } };
   if (!res.ok)
-    throw new Error(body.error?.message ?? body.error?.code ?? "Voiceover request failed.");
+    throw new VoiceoverRequestError(
+      body.error?.message ?? body.error?.code ?? "Voiceover request failed.",
+      res.status,
+    );
   return body;
 }
 export function useVoices(enabled = true) {
@@ -254,6 +265,7 @@ export function ScriptVoiceover({
     [voiceId, setVoiceId] = useState(""),
     [error, setError] = useState<string | null>(null),
     [job, setJob] = useState<VoiceoverJob | null>(null),
+    [unconfirmed, setUnconfirmed] = useState(false),
     [busy, setBusy] = useState(false),
     [audioUrl, setAudioUrl] = useState<string | null>(null);
   const request = useRef<{ id: string; body: string } | null>(null),
@@ -347,6 +359,7 @@ export function ScriptVoiceover({
     if (disabled || busy) return;
     setBusy(true);
     setError(null);
+    setAudioUrl(null);
     onInvalidate();
     const input = { ...current.current };
     if (!request.current) request.current = { id: crypto.randomUUID(), body: "" };
@@ -364,16 +377,19 @@ export function ScriptVoiceover({
         signal: AbortSignal.timeout(45_000),
       });
       if (alive.current) {
+        setUnconfirmed(false);
         setJob(result.job);
         loaded.current = null;
       }
     } catch (e) {
-      if (alive.current)
+      if (alive.current) {
+        setUnconfirmed(!(e instanceof VoiceoverRequestError) || e.status >= 500);
         setError(
           e instanceof Error
             ? e.message
             : "Request timed out. Check your saved generation before trying again.",
         );
+      }
     } finally {
       if (alive.current) setBusy(false);
     }
@@ -390,6 +406,7 @@ export function ScriptVoiceover({
       .filter((v) => v.saved)
       .sort((a, b) => Number(b.starred) - Number(a.starred) || a.name.localeCompare(b.name)) ?? [];
   const others = voices.data?.voices.filter((v) => !v.saved) ?? [];
+  const inputLocked = locked || unconfirmed;
   return (
     <div className="script-voiceover">
       <div className="script-voiceover-fields">
@@ -400,7 +417,7 @@ export function ScriptVoiceover({
             aria-label="Script file"
             type="file"
             accept=".txt,text/plain"
-            disabled={locked}
+            disabled={inputLocked}
             onChange={async (e) => {
               const file = e.target.files?.[0];
               if (!file) return;
@@ -441,7 +458,7 @@ export function ScriptVoiceover({
             className="select"
             aria-label="Script voice"
             value={voiceId}
-            disabled={locked || voices.isPending}
+            disabled={inputLocked || voices.isPending}
             onChange={(e) => {
               change();
               setVoiceId(e.target.value);
@@ -475,7 +492,7 @@ export function ScriptVoiceover({
           rows={8}
           maxLength={100_000}
           value={script}
-          disabled={locked}
+          disabled={inputLocked}
           placeholder="Upload a .txt file or paste your script here."
           onChange={(e) => {
             change();
@@ -486,6 +503,9 @@ export function ScriptVoiceover({
       </label>
       {voices.error && <p role="alert">{voices.error.message}</p>}
       {(error || status.error) && <p role="alert">{error ?? status.error?.message}</p>}
+      {unconfirmed && (
+        <p role="status">Check this generation before changing the script; its response is unconfirmed.</p>
+      )}
       {activeJob && ["PROCESSING", "SUBMITTING"].includes(activeJob.state) && (
         <p role="status">Creating voiceover… You can return later.</p>
       )}
@@ -509,7 +529,7 @@ export function ScriptVoiceover({
           </a>
         </div>
       )}
-      {activeJob?.state === "COMPLETED" && !audioUrl && (
+      {activeJob?.state === "COMPLETED" && !audioUrl && !unconfirmed && (
         <button
           className="button button-secondary"
           disabled={busy}
@@ -522,12 +542,22 @@ export function ScriptVoiceover({
         className="button button-primary"
         disabled={locked || !script.trim() || !voiceId}
         onClick={() => {
-          if (activeJob?.state === "FAILED" || activeJob?.state === "COMPLETED")
+          if (
+            !unconfirmed &&
+            request.current?.id === activeJob?.id &&
+            (activeJob?.state === "FAILED" || activeJob?.state === "COMPLETED")
+          )
             request.current = null;
           void generate();
         }}
       >
-        {busy ? "Preparing voiceover…" : audioUrl ? "Generate again" : "Generate voiceover"}
+        {busy
+          ? "Preparing voiceover…"
+          : unconfirmed
+            ? "Check generation"
+            : audioUrl
+              ? "Generate again"
+              : "Generate voiceover"}
       </button>
     </div>
   );

@@ -5,8 +5,8 @@ j1tts_voiceover_2026_10_04:
   branch: codex/j1tts-voiceover
   state: PRODUCTION_HUB_AND_AUDIO_VERIFIED_FINAL_VIDEO_CANARY_RUNNING
   base_source: ce0a31fe
-  production_source: 35ee8c6e6e84681c8b3ba6866d90aff5ca443676
-  production_version: 98e3264a-5a8c-4b1d-b60c-34f88f0773af
+  production_source: d15f56f2902a0f636bc67deef50bdc1ff8f8695c
+  production_version: cb4cddf8-63c4-4776-a64e-0e88546abd85
   production_traffic_percent: 100
   decision: DEC_VOICEOVER_001
   authority: User_supplied_J1TTS_key_and_approved_complete_feature_Hub_tests_and_production_release_without_further_questions;finite_acceptance_cap_USD1.
