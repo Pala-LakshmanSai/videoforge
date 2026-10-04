@@ -97,7 +97,7 @@ function hostedProjectLabel(state: HostedQueueProject["state"]): string {
 function hostedProjectExplanation(project: HostedQueueProject): string {
   if (project.stage === "Generate voiceover")
     return project.state === "WAITING"
-      ? "Script saved. Waiting for a voiceover slot."
+      ? "Script saved. Voiceover starts automatically."
       : project.state === "NEEDS_ATTENTION"
         ? "Voiceover needs attention. Open to review."
         : "Creating narration. Video processing follows automatically.";

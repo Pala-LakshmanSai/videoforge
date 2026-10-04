@@ -56,9 +56,10 @@ Avatars are reusable workspace presets. Ordinary project creation must select an
 
 V2 is tenant-private: one admitted account owns one default workspace; user-created projects,
 presets, media, jobs, costs, and results are private, and only explicit immutable built-ins are
-globally readable. Postgres admits at most one active provider workload per account and two
-different accounts globally; ordinary videos retain one/account and two/global caps, while explicit
-preset previews use the same slots below every eligible video. Ordinary users never choose GPUs or
+globally readable. Postgres admits at most one active video/provider workload per account, with no cross-account
+concurrency ceiling (user decision 2026-10-04). Explicit preset previews retain the per-account lock
+and lower priority than eligible videos. Narration preparation is independent of video admission;
+only another narration for the same account waits. Ordinary users never choose GPUs or
 start/stop Pods. Fresh ordinary generation targets Kie z-image and Fal FlashHead audio-to-video
 under `DEC_API_GENERATION_001`; GPU availability must not gate that path. Existing RunPod attempts
 retain their exact reconciliation and cleanup rules. Historical RunPod lanes keep `workersMin=0`

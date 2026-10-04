@@ -18,9 +18,8 @@ The production target is:
 - invite-only Better Auth with one default private workspace per account;
 - Cloudflare Worker/Workflow control plane, Neon Postgres, private tenant R2;
 - signed tenant-owned Windows/macOS workers for pinned whisper.cpp and FFmpeg;
-- Postgres fair admission: one active provider workload/account and two globally from different
-  accounts; videos retain one/account and two/global caps, and explicit previews use the same slots
-  below every eligible video;
+- Postgres admission: one active video/provider workload per account, independent across accounts
+  without a global ceiling; explicit previews retain the account lock below eligible videos;
 - fresh image generation through Kie Market `z-image` and avatar spans through Fal
   `fal-ai/flashhead/audio-to-video`, using the pinned Avatar Hub source and selected voiceover;
 - durable Postgres admission and provider task identity before output acceptance; uncertain paid

@@ -1,3 +1,16 @@
+scalable_admission_2026_10_04:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  read_profile: v2_09_j1tts_voiceover
+  state: VALIDATED_PENDING_PRODUCTION
+  branch: codex/j1tts-voiceover
+  behavior: One_active_video_per_account;no_cross_account_concurrency_ceiling;independent_narration_per_account;FIFO_tenancy_no_replay_cleanup_preserved.
+  validation: Ten_account_hosted_SQL_Cloud_rental_and_narration_tests_PASS;same_account_second_video_WAITING;native_migration256_rollback_PASS.
+  provider_spend: No_new_test_generation_or_compute;existing_user_requested_script_resumed_after_guarded_archived_admission_retirement.
+  paid_compute_shutdown: No_new_test_compute;historical_UNKNOWN_STOPPING_cleanup_remains_fenced.
+  remaining_gates: Focused_regression_static_build_publication_and_live_readback.
+  evidence: evidence/acceptance/VF-10-09/2026-10-04-scalable-admission.md
+
 script_first_pipeline_2026_10_04:
   checkpoint: V2-09
   selected_task: VF-10-09

@@ -1,3 +1,5 @@
+The 2026-10-04 user decision removes cross-account concurrency ceilings while retaining one active video per account. Read `scalable_admission_2026_10_04` in CURRENT_STATE.yaml and DEC_QUEUE_003.
+
 Script dropdown voice samples are released at `668fdcaf` / Worker `5240a08e`, with production Chrome acceptance. Read `voice_dropdown_samples_2026_10_04` in CURRENT_STATE.yaml.
 
 Voiceover Hub design and shared name-prefix search are released at `90fbf71f` / Worker `6b22a9bb` on `codex/j1tts-voiceover`, with production Chrome acceptance. Read `voiceover_hub_ux_2026_10_04` in CURRENT_STATE.yaml. The J1TTS feature is already released; its separate real-media acceptance remains in `j1tts_voiceover_2026_10_04` and DEC_VOICEOVER_001.

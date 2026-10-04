@@ -77,7 +77,7 @@ export interface PromotedWorkload {
   readonly accountId: string;
   readonly workspaceId: string;
   readonly leaseId: string;
-  readonly slot: 1 | 2;
+  readonly slot: number;
   readonly requestVersion: number;
   readonly leaseVersion: number;
   readonly videoFairCursor: bigint;
@@ -302,7 +302,6 @@ async function candidate(
        JOIN account_queue_heads AS head ON head.account_id = request.account_id
       WHERE request.state IN ('WAITING', 'RETRY_WAIT')
         AND request.available_at <= $1
-        AND NOT public.videoforge_voiceover_busy(request.account_id)
         AND NOT EXISTS (
           SELECT 1 FROM provider_workload_leases AS lease
            WHERE lease.account_id = request.account_id AND lease.state = 'ACTIVE'
@@ -322,10 +321,10 @@ async function candidate(
   return result.rows[0] ?? null;
 }
 
-async function availableSlot(executor: SqlExecutor): Promise<1 | 2 | null> {
+async function availableSlot(executor: SqlExecutor): Promise<number | null> {
   const result = await executor.query<{ slot: number } & Record<string, unknown>>(
     `SELECT candidate.slot
-       FROM (VALUES (1), (2)) AS candidate(slot)
+       FROM (SELECT 1 AS slot UNION SELECT slot+1 FROM provider_workload_leases WHERE state='ACTIVE') AS candidate
       WHERE NOT EXISTS (
         SELECT 1 FROM provider_workload_leases AS lease
          WHERE lease.slot = candidate.slot AND lease.state = 'ACTIVE'
@@ -334,7 +333,7 @@ async function availableSlot(executor: SqlExecutor): Promise<1 | 2 | null> {
       LIMIT 1`,
   );
   const slot = result.rows[0]?.slot;
-  return slot === 1 || slot === 2 ? slot : null;
+  return Number.isSafeInteger(slot) && Number(slot) > 0 ? Number(slot) : null;
 }
 
 async function promoteInTransaction(
@@ -343,10 +342,6 @@ async function promoteInTransaction(
 ): Promise<PromotedWorkload | null> {
   assertLeaseWindow(identity.now, identity.expiresAt);
   const before = await capacityForUpdate(executor);
-  const voiceovers = await executor.query<{ count: number } & Record<string, unknown>>(
-    "SELECT public.videoforge_voiceover_active_count() AS count",
-  );
-  if (before.active_lease_count + (voiceovers.rows[0]?.count ?? 0) >= 2) return null;
 
   let kind: FairRequestKind = "VIDEO";
   let selected = await candidate(executor, "VIDEO", identity.now);
@@ -1302,8 +1297,10 @@ export class FairAdmissionRepository {
           ORDER BY lease.slot FOR UPDATE OF lease`,
       );
       const accountIds = active.rows.map((row) => row.account_id);
-      if (active.rows.length > 2 || new Set(accountIds).size !== active.rows.length) {
-        throw new Error("durable capacity leases violate the one-account/two-global invariant");
+      if (new Set(accountIds).size !== active.rows.length) {
+        throw new Error(
+          "durable capacity leases violate the one-active-workload-per-account invariant",
+        );
       }
       for (const lease of active.rows) {
         if (typeof lease.image_regeneration_request_id === "string") {

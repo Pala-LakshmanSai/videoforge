@@ -148,9 +148,9 @@ and tenant ownership rules remain unchanged. Managers cannot revoke either prote
 | `projects` / `project_revisions` | Workspace-private identity plus immutable voiceover, avatar, style, scheduler, runtime, and render bindings |
 | `assets` | Tenant R2 key, content hash, media metadata, retention, and durable-verification state |
 | `generation_requests` | One frozen project revision in a tenant video queue with state and fairness metadata |
-| `preset_preview_requests` | Explicit tenant-owned Mage or SoulX preview work, lower priority than every eligible video and governed by the same two-slot/per-account admission lock |
+| `preset_preview_requests` | Explicit tenant-owned Mage or SoulX preview work, lower priority than every eligible video and governed by the same per-account admission lock |
 | `global_generation_capacity` | Singleton capacity lock/counter and durable fairness cursor |
-| `provider_workload_leases` | Current admitted video or preset-preview slot; unique while active per account and bounded to two different accounts globally |
+| `provider_workload_leases` | Current admitted video or preset-preview slot; unique while active per account; no cross-account ceiling |
 | `account_queue_heads` | Per-account eligible head and last-served/fairness state |
 | `pipeline_tasks` | CPU, prompt, Mage, SoulX, and render tasks for an admitted revision |
 | `hosted_cpu_job_attempts` / `hosted_cpu_job_events` | Provider-neutral ASR/render attempts, execution backend/bundle, deadlines, lifecycle, and append-only recovery truth |
@@ -203,7 +203,7 @@ The active-state set is versioned in the schema and shared by every repository/a
 One serializable transaction locks `global_generation_capacity`, revalidates the candidate, and:
 
 - enforces no active `provider_workload_lease` for the account;
-- enforces fewer than two workload leases globally and different account owners;
+- enforces different account owners for concurrent workload leases, without a global ceiling;
 - chooses an eligible video account head using the durable fair cursor and deterministic tie-break;
   only when no video head is eligible may it choose a preview head using the separate preview cursor;
 - changes only that request to `ADMITTED` and creates its workload lease;
@@ -223,8 +223,7 @@ last-served cursor or move around another tenant's eligible turn. Queue reads ne
 tenants' identity, titles, inputs, outputs, positions, or costs.
 
 `preset_preview_requests` use a parallel explicit state machine and the same locked capacity row.
-The transaction enforces one active provider workload/account and two workloads globally from
-different accounts across both request kinds. It considers a preview only when no eligible video
+The transaction enforces one active provider workload/account without a cross-account ceiling across both request kinds. It considers a preview only when no eligible video
 head exists, then applies deterministic account rotation among preview heads. Preview waiting rows
 perform no provider or hosted CPU work. Terminal release, cancellation, expiry, audit, cost, and
 restart reconstruction obey the same atomic rules without changing the video fairness cursor.
@@ -556,6 +555,6 @@ Migration0250 adds hosted_voiceover_jobs and saved_voiceover_voices with forced 
 /api/v2/voiceovers/voices lists permitted voices and private saved/starred state. POST /voices/{voice_id} saves preferences. GET /voices/{voice_id}/preview proxies a validated provider preview. POST /import accepts one ElevenLabs voice_id. POST /jobs accepts exact id, script (1–100000 characters), voice_id and safe .mp3 filename; GET /jobs returns latest own job, GET /jobs/{id} observes exact own job and GET /jobs/{id}/audio downloads completed own audio. Foreign IDs return404. Browser mutations require same origin and admitted authentication/rate limits. Provider credentials and IDs are excluded from public job responses; provider download URLs never choose the credential destination.
 
 
-Migration0253 adds tenant-private `hosted_script_projects`. POST `/api/v2/hosted/script-projects` accepts `videoforge-hosted-script-project/v1`, exact project options, script and voice ID with an idempotency key. It saves a real project before a media revision; Queue and detail expose narration state without inventing an audio asset. A project-scoped Workflow and shared driver claim TTS under the existing capacity lock. Saved provider identity is retrieval-only after uncertainty. Streaming MP3 measurement, private R2 persistence, the existing revision/upload receipt commit and deterministic ASR submission complete the handoff. Direct-audio create/v3 remains unchanged. Queued deletion cancels intake under the project lock; generating/preparing/uncertain work cannot be archived. Rollback preserves accepted intakes and requires draining them before returning to an older application reader.
+Migration0253 adds tenant-private `hosted_script_projects`. POST `/api/v2/hosted/script-projects` accepts `videoforge-hosted-script-project/v1`, exact project options, script and voice ID with an idempotency key. It saves a real project before a media revision; Queue and detail expose narration state without inventing an audio asset. A project-scoped Workflow and shared driver claim TTS under an account-specific narration guard independent of video admission. Saved provider identity is retrieval-only after uncertainty. Streaming MP3 measurement, private R2 persistence, the existing revision/upload receipt commit and deterministic ASR submission complete the handoff. Direct-audio create/v3 remains unchanged. Queued deletion cancels intake under the project lock; generating/preparing/uncertain work cannot be archived. Rollback preserves accepted intakes and requires draining them before returning to an older application reader.
 
 Migration0254 grants runtime INSERT on the existing forced-RLS `project_inputs` table so the original script accompanies its generated-audio revision. Existing tenant guards and composite keys remain; no SELECT, UPDATE or DELETE permission is added. Production acceptance exposed the missing historical privilege, and native rollback plus runtime own/foreign-account insertion checks cover the correction.

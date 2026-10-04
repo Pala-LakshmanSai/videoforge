@@ -6,7 +6,7 @@ reconciliation, storage isolation, or cost controls.
 
 ## Ongoing ordinary Cloud billing — 2026-10-01
 
-The user explicitly removes ordinary Cloud spend caps, account allowance expiry, rental-count quotas and repeated finite-budget approvals. Selecting Cloud and starting a video authorizes its normal paid processing. DEC_CLOUD_BILLING_001 supersedes prior temporary finite-account requirements for ordinary videos. Ordinary Cloud access follows current and future VideoForge admission automatically (user decision 2026-10-03); no separate Cloud account list applies. Revoking VideoForge access revokes Cloud eligibility. Preserve tenant/project ownership, durable estimated-versus-settled cost attribution, no-replay, fair admission, cancellation and finite machine shutdown deadlines. Historical finite authorities and the prior UNKNOWN/STOPPING launch remain immutable; ongoing access cannot clear an uncertain launch or its capacity fence. Migration0236 is live with ongoing access and no account spend ceiling, expiry or rental quota. Migration0237 permits fresh Cloud VIDEO admission past fully fenced terminal early-media cleanup; the old UNKNOWN/STOPPING record and debit remain unchanged and still count against the two-resource global ceiling. A fresh rental retains the singleton-locked one-live-rental/account check. Cloud processes ASR, audio and renders remotely, saves R2 results and terminates Pods. Kie/Fal stay remote.
+The user explicitly removes ordinary Cloud spend caps, account allowance expiry, rental-count quotas and repeated finite-budget approvals. Selecting Cloud and starting a video authorizes its normal paid processing. DEC_CLOUD_BILLING_001 supersedes prior temporary finite-account requirements for ordinary videos. Ordinary Cloud access follows current and future VideoForge admission automatically (user decision 2026-10-03); no separate Cloud account list applies. Revoking VideoForge access revokes Cloud eligibility. Preserve tenant/project ownership, durable estimated-versus-settled cost attribution, no-replay, fair admission, cancellation and finite machine shutdown deadlines. Historical finite authorities and the prior UNKNOWN/STOPPING launch remain immutable; ongoing access cannot clear an uncertain launch or its capacity fence. Migration0236 is live with ongoing access and no account spend ceiling, expiry or rental quota. Migration0237 permits fresh Cloud VIDEO admission past fully fenced terminal early-media cleanup; the old UNKNOWN/STOPPING record and debit remain unchanged and retain independent cleanup and cost responsibility without a global ceiling. A fresh rental retains the singleton-locked one-live-rental/account check. Cloud processes ASR, audio and renders remotely, saves R2 results and terminates Pods. Kie/Fal stay remote.
 
 ## Boundary and preserved evidence
 
@@ -33,10 +33,10 @@ requests, paid workers, or volume changes require the exact external-checkpoint 
 User clarification2026-09-29: choose Local or Cloud only on New Project. Existing projects retain their saved execution backend for readiness, execution and retry; Project and Settings have no backend selector. The explicit scoped Cloud render-only recovery API remains compatible for authorized retained-media recovery. Additive0222 introduces a distinct run for an explicitly requested rerender of a successful accepted source: exact provider/media proof, immutable resolved manifest, fresh VIDEO admission and RENDER attempt, separate FINAL receipt, and separate human review. It never creates a replacement source runtime or new provider jobs. Historical finite Cloud authorities retain explicit account scope, budget/count and expiry; ordinary Cloud follows current VideoForge admission. Additive0222 and0223 are installed once at ledger206.223 defers provider runtime initialization for the exact fresh PREPARING render-only admission even when its immutable source has complete prompts and a canonical bridge. Real accepted-source Cloud final/result/independent review and cleanup pass. Production source30b04855 enables only the approved finite account scope. See cloud-media/FINAL_RELEASE.md.
 
 Cloud media is separate from historical Mage/SoulX Serverless lanes and uses current RunPod Pod
-REST v2 (`https://api.runpod.io/v2`). Postgres retains fair video admission (one account/two global);
+REST v2 (`https://api.runpod.io/v2`). Postgres retains fair video admission (one video/account, independent across accounts);
 Cloud belongs to that admitted video and must not acquire a conflicting second provider-workload
-lease. Reserve one Pod/account and two globally, counting startup, upload, ambiguity and uncertain
-cleanup. Waiting, browsing, previews/downloads and Settings rent nothing.
+lease. Reserve one live Pod/account, counting startup, upload, ambiguity and uncertain
+cleanup; there is no cross-account resource ceiling. Waiting, browsing, previews/downloads and Settings rent nothing.
 
 Before each paid POST persist exact tenant/project/revision/attempt, fence/lease, reservation/name,
 image digest/source hash,100GB minimum autosized temporary disk, GPU, expected/actual rate, finite
@@ -72,8 +72,7 @@ The 2026-10-01 Local creation repair separates early failed-video admission from
 Migration0235 retires only a failed ASR/span video with every CPU terminal, no API jobs or active
 personal-worker lease, an expired rental deadline and disabled/expired authority. The original
 UNKNOWN/STOPPING reservation, debit, identity, cleanup timestamp and Cloud capacity remain intact.
-Migration0237 extends this narrow exception to fresh Cloud VIDEO admission; preview admission stays blocked. The reconciler continues until exact cleanup is proven. Two-account global capacity
-still counts the unresolved Cloud account. This supersedes the blanket admission hold for this
+Migration0237 extends this narrow exception to fresh Cloud VIDEO admission; preview admission stays blocked. The reconciler continues until exact cleanup is proven. The unresolved Cloud account retains its own cleanup responsibilities without blocking other accounts. This supersedes the blanket admission hold for this
 narrow early-media failure; accepted provider work and render failures keep their existing guards.
 Ordinary Cloud access now follows DEC_CLOUD_BILLING_001; exact old launch reconciliation continues independently of fresh videos.
 Operator rates,
@@ -99,11 +98,10 @@ Each endpoint uses:
 - A measured execution timeout, request TTL, idle timeout, scaling policy, and
   `RUNPOD_INIT_TIMEOUT`. Provider defaults are not acceptance evidence.
 
-`workersMax=2` is per endpoint and counts that endpoint's Active plus Flex workers. Application
-admission limits work to two active provider workloads from different accounts globally, so at most
-two jobs can be intentionally active on either lane. Ordinary videos remain capped at one/account
-and two globally; explicit preset previews consume the same slots and never outrank an eligible
-video. Do not infer this business limit from RunPod configuration alone.
+`workersMax=2` is retained historical endpoint configuration, not the current application admission
+policy. Fresh Kie/Fal videos have one active video/account and no cross-account ceiling. Explicit
+preset previews retain the account lock and never outrank an eligible video. Historical endpoint
+configuration is not changed by the 2026-10-04 admission release.
 
 ## Tenant-private fair admission
 
@@ -114,12 +112,11 @@ composite ownership constraints. The client never supplies an authority-bearing 
 Admission rules are durable and transactional:
 
 1. At most one provider workload—video or explicit preset preview—may be active per account.
-2. At most two workloads from different accounts may be active globally; this preserves the upper
-   bounds of one active video/account and two active videos globally.
+2. Different accounts may run concurrently without an application-wide ceiling.
 3. FIFO is preserved inside each account unless that account reorders its own waiting work.
 4. Global video promotion is fair across account heads, using a durable round-robin/last-served cursor
-   with deterministic tie-breaking. A busy account cannot monopolize both slots while another
-   eligible account waits. Preset previews become eligible only when no video head is eligible and use
+   with deterministic tie-breaking. A busy account does not block another
+   eligible account. Preset previews become eligible only when no video head is eligible and use
    a separate cursor that never alters video fairness.
 5. Users may inspect, reorder, cancel, or remove only their own rows. A mutation cannot move work
    ahead of another account's already-eligible fair turn.

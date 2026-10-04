@@ -1308,6 +1308,12 @@
       "name": "hosted_cloud_queue_cpu_admission",
       "filename": "0255_hosted_cloud_queue_cpu_admission.sql",
       "sha256": "sha256:fec501ef886d2b78ef35ad1dedf62f13a8c12454e93768705398645ff056095b"
+    },
+    {
+      "version": 256,
+      "name": "per_account_video_admission",
+      "filename": "0256_per_account_video_admission.sql",
+      "sha256": "sha256:e0ad3de32d62dc28848489d11ba91ff8c38678259490e913643780e9d9bd6881"
     }
   ]
 }

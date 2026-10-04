@@ -47,7 +47,7 @@ flowchart TB
     APP --> PG["Neon Postgres tenant and orchestration truth"]
     APP --> R2["Private R2 tenant artifacts"]
     APP --> WF["Cloudflare Workflow"]
-    WF --> ADMIT["Fair DB admission one per account two global"]
+    WF --> ADMIT["DB admission one per account; independent users"]
     WF --> RW["Runware prompt and style calls"]
     ADMIT --> ME["Mage queue endpoint workersMin 0 max 2"]
     ADMIT --> SE["SoulX queue endpoint workersMin 0 max 2"]
@@ -87,7 +87,7 @@ The product scheduler, not RunPod, admits work:
 1. Generate freezes an immutable tenant-owned video revision, or an explicit Hub action freezes one
    preset-preview request; either creates an account-local waiting row.
 2. A serializable transaction selects eligible work only when that account has no active provider
-   workload and fewer than two different accounts hold global workload leases.
+   workload. Other accounts do not consume a shared execution allowance.
 3. Eligible video account heads always precede previews. Fair account rotation chooses the
    least-recently-admitted eligible account; FIFO applies within that account unless its owner changed
    its own waiting order. Preview rotation is separate and never mutates the video cursor.
@@ -97,18 +97,17 @@ The product scheduler, not RunPod, admits work:
    promotes another eligible account.
 
 Unique/partial constraints and locked selection must enforce one active provider workload per
-account and two workloads globally from different accounts under races, restarts, and duplicate
-requests. This also preserves one active video/account and two active videos globally. A user may
+account under races, restarts, and duplicate requests. There is no cross-account ceiling. A user may
 inspect/reorder/cancel only their own waiting work. UI position is privacy-safe and cannot expose
 another account's identity/project.
 The RunPod endpoint queue is only transport backlog after product admission; it must never become
 the fairness mechanism. `/purge-queue` is forbidden in ordinary operation.
 
 An explicit Mage or SoulX `preset_preview` is a separate tenant-owned request, not a hidden video.
-It uses the same two global capacity slots and the same one-active-provider-workload/account lock,
+It uses the same one-active-provider-workload/account lock,
 but is eligible only when no video queue head is eligible. It cannot coexist with another active
 workload from its account, outrank a waiting video, or create provider work before its locked
-admission transaction. This preserves the one-video/account and two-video/global upper bounds while
+admission transaction. This preserves the one-video/account bound while
 keeping optional Hub tests safe and lower priority.
 
 ## Serverless model lanes

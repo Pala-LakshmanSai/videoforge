@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { seedFairAccount } from "./support/fair-account.mjs";
 import { IDS, seedLockedProjects } from "./support/fixtures.mjs";
 import {
   expectDatabaseError,
@@ -63,7 +64,7 @@ async function cloneProject(executor, { projectId, revisionId }) {
   );
 }
 
-test("hosted CPU admission allows one active project per account and two projects globally", async () => {
+test("hosted CPU admission allows one active project per account without a cross-account ceiling", async () => {
   await withMigratedDatabase(async ({ executor }) => {
     await seedLockedProjects(executor);
     const secondProjectA = uuid(960_100);
@@ -91,6 +92,9 @@ test("hosted CPU admission allows one active project per account and two project
       projectId: IDS.projectB,
       revisionId: IDS.revisionB,
     });
+
+    const third = await seedFairAccount(executor, 91);
+    await insertAttempt(executor, { serial: 960_006, ...third });
 
     await expectDatabaseError(
       () =>
@@ -127,6 +131,7 @@ test("hosted CPU admission allows one active project per account and two project
     assert.deepEqual(rows.rows, [
       { account_id: IDS.accountA, project_id: secondProjectA },
       { account_id: IDS.accountB, project_id: IDS.projectB },
+      { account_id: third.accountId, project_id: third.projectId },
     ]);
     assert.ok([attemptB, replacementA].every((id) => typeof id === "string"));
   });
