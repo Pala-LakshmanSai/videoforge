@@ -109,6 +109,7 @@ class FakeProcess:
         self.input_loudness = (-21.4, -4.7)
         self.output_loudness = (-16.0, -2.1)
         self.corrected_loudness = (-16.43, -5.27)
+        self.second_corrected_loudness: tuple[float, float] | None = None
         self.visual_probes: dict[Path, tuple[str, int, int, str]] = {}
         self.nominal_frame_rates: dict[Path, str] = {}
         self.visual_durations: dict[Path, str] = {}
@@ -211,7 +212,9 @@ class FakeProcess:
         if "-af" in call:
             source = Path(call[call.index("-i") + 1])
             values = (
-                self.corrected_loudness
+                self.second_corrected_loudness or self.corrected_loudness
+                if source.name.endswith("-audio-corrected-audio-corrected.mp4")
+                else self.corrected_loudness
                 if source.name.endswith("-audio-corrected.mp4")
                 else self.output_loudness
                 if source.name == "videoforge-local-short-slice.mp4"
@@ -857,14 +860,32 @@ class RenderJobTests(unittest.TestCase):
             decode_calls[0][decode_calls[0].index("-i") + 1], correction[-1]
         )
 
-    def test_audio_correction_still_fails_closed_after_one_pass(self) -> None:
+    def test_corrects_j1tts_loudness_in_two_audio_only_passes(self) -> None:
+        fixture = RenderFixture()
+        fixture.process.input_loudness = (-17.82, -0.99)
+        fixture.process.output_loudness = (-17.81, -2.13)
+        fixture.process.corrected_loudness = (-17.15, -5.36)
+        fixture.process.second_corrected_loudness = (-16.0, -4.2)
+        result = fixture.job().run(fixture.document, claimed_attempt_id="attempt_render_local_001")
+        self.assertEqual(result["status"], "SUCCEEDED")
+        self.assertEqual(sum("-filter_complex" in call for call in fixture.process.calls), 1)
+        corrections = [call for call in fixture.process.calls if "copy" in call]
+        self.assertEqual(len(corrections), 2)
+        self.assertEqual(corrections[1][corrections[1].index("-i") + 1], corrections[0][-1])
+        self.assertIn("measured_I=-17.150", corrections[1][corrections[1].index("-af") + 1])
+        self.assertEqual(result["probe"]["loudness"]["output_integrated_lufs"], -16.0)
+        decode_calls = [call for call in fixture.process.calls if "-xerror" in call]
+        self.assertEqual(len(decode_calls), 1)
+        self.assertEqual(decode_calls[0][decode_calls[0].index("-i") + 1], corrections[-1][-1])
+
+    def test_audio_correction_still_fails_closed_after_two_passes(self) -> None:
         fixture = RenderFixture()
         fixture.process.output_loudness = (-17.14, -1.55)
         fixture.process.corrected_loudness = (-18.0, -2.0)
         result = fixture.job().run(fixture.document, claimed_attempt_id="attempt_render_local_001")
         self.assertEqual(result["status"], "FAILED")
         self.assertEqual(result["error"]["code"], "RENDER_OUTPUT_INVALID")
-        self.assertEqual(sum("copy" in call for call in fixture.process.calls), 1)
+        self.assertEqual(sum("copy" in call for call in fixture.process.calls), 2)
         self.assertFalse(fixture.resolver.published)
 
     def test_audio_failure_diagnostics_exclude_stderr_paths_and_tokens(self) -> None:

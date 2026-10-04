@@ -1339,9 +1339,12 @@ class RenderJob:
 
         total_frames = cast(int, manifest["total_frames"])
         output_loudness = self._measure_loudness(tools, output_path, token)
-        if output_loudness.requires_normalization:
+        for _ in range(2):
+            if not output_loudness.requires_normalization:
+                break
             # Dynamic loudnorm can miss its target on high-crest narration.
-            # Correct encoded audio once, retaining the expensive rendered video.
+            # AAC encoding can also leave the first correction below target.
+            # Bound audio-only corrections while retaining the rendered video.
             corrected_path = output_path.with_name(f"{output_path.stem}-audio-corrected.mp4")
             correction = compile_audio_correction_command(
                 ffmpeg=tools.ffmpeg,
@@ -1377,7 +1380,7 @@ class RenderJob:
                 normalized=True,
                 filtergraph=plan.filtergraph + ";" + correction[correction.index("-af") + 1],
             )
-        # Validate the final bytes after the optional audio-only correction,
+        # Validate the final bytes after the optional audio-only corrections,
         # rather than decoding both the intermediate and final MP4s.
         facts = self._probe_output(
             tools=tools,
