@@ -1,3 +1,5 @@
+Throughput planning follow-up: read `api_throughput_plan_2026_10_04` and the follow-up section in API_CAPACITY_PLAN.md. Target40 completed30–40minute Cloud videos/day; optional independent Kie/Fal accounts at unchanged cost; Runware unchanged. This is a plan, not an implemented pooling release.
+
 Shared API capacity work: follow `api_capacity_2026_10_04` in CURRENT_STATE.yaml and API_CAPACITY_PLAN.md. Shared provider controls are published; actual account quotas and ten-user paid throughput remain unverified. Existing release evidence below remains historical.
 
 Media review count repair: read `media_review_accepted_2026_10_04` in CURRENT_STATE.yaml for source, validation and production status.
