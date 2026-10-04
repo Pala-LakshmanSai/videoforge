@@ -27,8 +27,6 @@ target_profile_word_budget: 15000
 read_profiles:
   v2_09_media_review_count:
     - tasks/VF-10-09.md
-    - 05_UI_UX_SPEC.md
-    - 14_TESTING_AND_ACCEPTANCE.md
     - 19_IMPLEMENTATION_PLAYBOOK.md
   v2_09_image_quality:
     - tasks/VF-10-09.md
