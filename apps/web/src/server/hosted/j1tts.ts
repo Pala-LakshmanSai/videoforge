@@ -40,7 +40,7 @@ export async function j1Fetch(
       ...init,
       redirect: "manual",
       headers: { Authorization: `Bearer ${key}`, "User-Agent": "VideoForge/1.0", ...init.headers },
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(path.endsWith("/download") ? 300_000 : 30_000),
     });
     if (result.status >= 300 && result.status < 400)
       throw new J1Error("J1TTS_REDIRECT_REJECTED", init.method === "POST");
@@ -78,7 +78,7 @@ export function parseJ1Voices(value: unknown): J1Voice[] {
   });
 }
 let cached: { key: string; until: number; voices: J1Voice[] } | undefined;
-async function voices(key: string) {
+export async function voices(key: string) {
   if (cached?.key === key && cached.until > Date.now()) return cached.voices;
   const [global, imported] = await Promise.all([
     j1Fetch(key, "/v1/voices").then((r) => r.json()),
@@ -95,7 +95,7 @@ async function voices(key: string) {
   cached = { key, until: Date.now() + 300_000, voices: all };
   return all;
 }
-interface Job {
+export interface Job {
   id: string;
   state: string;
   filename: string;

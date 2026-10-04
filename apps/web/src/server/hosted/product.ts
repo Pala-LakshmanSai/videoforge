@@ -311,6 +311,71 @@ function unavailableHostedCapability(code: string): Response {
   );
 }
 
+export function parseProjectOptions(
+  record: Record<string, unknown>,
+): Omit<ProjectCreateInput, "voiceover"> | null {
+  if (
+    typeof record.title !== "string" ||
+    record.title !== record.title.trim() ||
+    !record.title ||
+    record.title.length > 240 ||
+    typeof record.avatar_profile_version_id !== "string" ||
+    !UUID.test(record.avatar_profile_version_id) ||
+    typeof record.image_style_version_id !== "string" ||
+    !UUID.test(record.image_style_version_id) ||
+    (record.video_coverage_percent !== undefined &&
+      (!Number.isSafeInteger(record.video_coverage_percent) ||
+        Number(record.video_coverage_percent) < 0 ||
+        Number(record.video_coverage_percent) > 100))
+  )
+    return null;
+  const optionalScript = record.optional_script;
+  const extraPromptKeywords = record.extra_prompt_keywords;
+  const applyExtraPromptKeywords = record.apply_extra_prompt_keywords;
+  const generationMode = record.generation_mode;
+  const userSeed = record.user_seed;
+  const executionBackend = record.execution_backend;
+  if (
+    (optionalScript !== undefined &&
+      optionalScript !== null &&
+      (typeof optionalScript !== "string" || optionalScript.length > MAX_OPTIONAL_SCRIPT)) ||
+    (extraPromptKeywords !== undefined &&
+      extraPromptKeywords !== null &&
+      (typeof extraPromptKeywords !== "string" ||
+        extraPromptKeywords.length > MAX_EXTRA_PROMPT_KEYWORDS)) ||
+    (applyExtraPromptKeywords !== undefined && typeof applyExtraPromptKeywords !== "boolean") ||
+    (generationMode !== undefined &&
+      (typeof generationMode !== "string" || !GENERATION_MODES.has(generationMode))) ||
+    (userSeed !== undefined &&
+      userSeed !== null &&
+      (typeof userSeed !== "number" ||
+        !Number.isSafeInteger(userSeed) ||
+        Number(userSeed) < 0 ||
+        Number(userSeed) > 4_294_967_295)) ||
+    (executionBackend !== undefined &&
+      executionBackend !== "PERSONAL_WORKER" &&
+      executionBackend !== "RUNPOD_POD") ||
+    (applyExtraPromptKeywords === true &&
+      (typeof extraPromptKeywords !== "string" || !/\S/u.test(extraPromptKeywords)))
+  ) {
+    return null;
+  }
+  return {
+    title: record.title,
+    avatarVersionId: record.avatar_profile_version_id,
+    styleVersionId: record.image_style_version_id,
+    optionalScript: typeof optionalScript === "string" ? optionalScript : null,
+    extraPromptKeywords: typeof extraPromptKeywords === "string" ? extraPromptKeywords : null,
+    applyExtraPromptKeywords: applyExtraPromptKeywords === true,
+    generationMode:
+      generationMode === "BALANCED" || generationMode === "FASTER" ? generationMode : "LOWEST_COST",
+    userSeed: typeof userSeed === "number" ? userSeed : null,
+    executionBackend: executionBackend === "RUNPOD_POD" ? "RUNPOD_POD" : "PERSONAL_WORKER",
+    videoCoveragePercent:
+      record.video_coverage_percent === undefined ? null : Number(record.video_coverage_percent),
+  };
+}
+
 function parseCreate(value: unknown): ProjectCreateInput | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
@@ -387,49 +452,10 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
   ) {
     return null;
   }
-  const optionalScript = record.optional_script;
-  const extraPromptKeywords = record.extra_prompt_keywords;
-  const applyExtraPromptKeywords = record.apply_extra_prompt_keywords;
-  const generationMode = record.generation_mode;
-  const userSeed = record.user_seed;
-  const executionBackend = record.execution_backend;
-  if (
-    (optionalScript !== undefined &&
-      optionalScript !== null &&
-      (typeof optionalScript !== "string" || optionalScript.length > MAX_OPTIONAL_SCRIPT)) ||
-    (extraPromptKeywords !== undefined &&
-      extraPromptKeywords !== null &&
-      (typeof extraPromptKeywords !== "string" ||
-        extraPromptKeywords.length > MAX_EXTRA_PROMPT_KEYWORDS)) ||
-    (applyExtraPromptKeywords !== undefined && typeof applyExtraPromptKeywords !== "boolean") ||
-    (generationMode !== undefined &&
-      (typeof generationMode !== "string" || !GENERATION_MODES.has(generationMode))) ||
-    (userSeed !== undefined &&
-      userSeed !== null &&
-      (typeof userSeed !== "number" ||
-        !Number.isSafeInteger(userSeed) ||
-        Number(userSeed) < 0 ||
-        Number(userSeed) > 4_294_967_295)) ||
-    (executionBackend !== undefined &&
-      executionBackend !== "PERSONAL_WORKER" &&
-      executionBackend !== "RUNPOD_POD") ||
-    (applyExtraPromptKeywords === true &&
-      (typeof extraPromptKeywords !== "string" || !/\S/u.test(extraPromptKeywords)))
-  ) {
-    return null;
-  }
+  const options = parseProjectOptions(record);
+  if (!options) return null;
   return {
-    title: record.title,
-    avatarVersionId: record.avatar_profile_version_id,
-    styleVersionId: record.image_style_version_id,
-    optionalScript: typeof optionalScript === "string" ? optionalScript : null,
-    extraPromptKeywords: typeof extraPromptKeywords === "string" ? extraPromptKeywords : null,
-    applyExtraPromptKeywords: applyExtraPromptKeywords === true,
-    generationMode:
-      generationMode === "BALANCED" || generationMode === "FASTER" ? generationMode : "LOWEST_COST",
-    userSeed: typeof userSeed === "number" ? userSeed : null,
-    executionBackend: executionBackend === "RUNPOD_POD" ? "RUNPOD_POD" : "PERSONAL_WORKER",
-    videoCoveragePercent: coverageSchema ? Number(record.video_coverage_percent) : null,
+    ...options,
     voiceover: {
       filename: voiceover.filename,
       contentType: voiceover.content_type,
@@ -1249,7 +1275,7 @@ async function materializeSystemStyle(
   return { style_id: styleId, version_id: versionId, style_profile_hash: sourceHash };
 }
 
-async function resolveProjectPresets(
+export async function resolveProjectPresets(
   transaction: SqlExecutor,
   scope: HostedScope,
   avatarVersionId: string,
@@ -5114,11 +5140,43 @@ async function projectPreflight(
   }
 }
 
-async function createProject(
+export async function validateScriptProjectPresets(
+  transaction: SqlExecutor,
+  scope: HostedScope,
+  config: HostedRuntimeConfiguration,
+  input: Omit<ProjectCreateInput, "voiceover">,
+) {
+  if ((input.videoCoveragePercent ?? 0) > 0 && !config.videoGenerationEnabled)
+    throw new Error("SCENE_VIDEO_UNAVAILABLE");
+  if (input.executionBackend === "RUNPOD_POD") {
+    const readiness = await hostedCloudProjectReadiness(transaction, config);
+    if (!readiness.available) throw new Error(readiness.code ?? "CLOUD_MEDIA_NOT_READY");
+  }
+  const resolved = await resolveProjectPresets(
+    transaction,
+    scope,
+    input.avatarVersionId,
+    input.styleVersionId,
+  );
+  if (!resolved) throw new Error("PROJECT_PRESET_NOT_READY");
+  if (
+    !(config.apiGeneration ? avatarRuntimeSourceReadyForApi : avatarRuntimeSourceQualified)(
+      await readAvatarRuntimeSource(transaction, scope, rowString(resolved.avatar, "version_id")),
+    )
+  )
+    throw new Error("AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED");
+  return {
+    avatar_profile_version_id: rowString(resolved.avatar, "version_id"),
+    image_style_version_id: rowString(resolved.style, "version_id"),
+  };
+}
+
+export async function createProject(
   request: Request,
   environment: HostedRuntimeEnvironment,
   config: HostedRuntimeConfiguration,
   executionContext: HostedExecutionContext,
+  trusted?: { scope: HostedScope; projectId: string },
 ): Promise<Response> {
   if (!sameOrigin(request, config))
     return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
@@ -5130,7 +5188,7 @@ async function createProject(
   const pool = createNeonPool(config.neon.databaseUrl);
   let requestedTitle = "this title";
   try {
-    const scope = await sessionScope(request, config, pool, executionContext);
+    const scope = trusted?.scope ?? (await sessionScope(request, config, pool, executionContext));
     if (scope instanceof Response) return scope;
     const raw = await parseHostedJson(request, "PROJECT_CREATE_REJECTED");
     if (raw instanceof Response) return raw;
@@ -5145,6 +5203,13 @@ async function createProject(
         "videoforge.account_id",
         scope.account_id,
       ]);
+      if (trusted) {
+        const locked = await transaction.query(
+          `SELECT id FROM projects WHERE id=$1 AND account_id=$2 AND workspace_id=$3 AND status='ACTIVE' FOR UPDATE`,
+          [trusted.projectId, scope.account_id, scope.workspace_id],
+        );
+        if (!locked.rows[0]) throw new Error("PROJECT_NOT_FOUND");
+      }
       const existing = await transaction.query<Record<string, unknown>>(
         `SELECT request.request_sha256, request.state, request.project_id,
                 request.project_revision_id, request.upload_reservation_id,
@@ -5232,7 +5297,7 @@ async function createProject(
       // materialized into tenant-owned snapshots by resolveProjectPresets.
       const avatar = resolved.avatar;
       const style = resolved.style;
-      const projectId = crypto.randomUUID();
+      const projectId = trusted?.projectId ?? crypto.randomUUID();
       const revisionId = crypto.randomUUID();
       const assetId = crypto.randomUUID();
       const reservationId = crypto.randomUUID();
@@ -5265,19 +5330,20 @@ async function createProject(
         generationMode: input.generationMode,
       });
       const revisionHash = await sha256(canonicalJson(revisionPayload));
-      await transaction.query(
-        `INSERT INTO projects (
+      if (!trusted)
+        await transaction.query(
+          `INSERT INTO projects (
            id, workspace_id, owner_user_id, name, normalized_name, project_kind,
            generation_provider
          ) VALUES ($1,$2,$3,$4,lower($4),'USER',$5)`,
-        [
-          projectId,
-          scope.workspace_id,
-          scope.user_id,
-          input.title,
-          config.apiGeneration ? "KIE_FAL" : "RUNPOD",
-        ],
-      );
+          [
+            projectId,
+            scope.workspace_id,
+            scope.user_id,
+            input.title,
+            config.apiGeneration ? "KIE_FAL" : "RUNPOD",
+          ],
+        );
       await transaction.query(
         `INSERT INTO assets (
            id, workspace_id, project_id, project_revision_id, kind, state, object_key,
@@ -5423,6 +5489,12 @@ async function createProject(
         expires_at: new Date(Date.now() + 15 * 60_000).toISOString(),
       };
     });
+    if (trusted)
+      return response({
+        project_id: prepared.project_id,
+        state: prepared.state,
+        object_key: prepared.object_key,
+      });
     if (prepared.state === "READY") {
       return response({
         schema_version: "videoforge-hosted-project-create-response/v1",
@@ -5509,12 +5581,13 @@ async function createProject(
   }
 }
 
-async function commitProject(
+export async function commitProject(
   request: Request,
   projectId: string,
   environment: HostedRuntimeEnvironment,
   config: HostedRuntimeConfiguration,
   executionContext: HostedExecutionContext,
+  trustedScope?: HostedScope,
 ): Promise<Response> {
   if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
   if (!sameOrigin(request, config))
@@ -5523,7 +5596,7 @@ async function commitProject(
   if (!bucket) return response({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
   const pool = createNeonPool(config.neon.databaseUrl);
   try {
-    const scope = await sessionScope(request, config, pool, executionContext);
+    const scope = trustedScope ?? (await sessionScope(request, config, pool, executionContext));
     if (scope instanceof Response) return scope;
     const pending = await createNeonExecutor(pool).transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1, $2, true)", [
@@ -7185,6 +7258,38 @@ async function projectDetail(
   try {
     const scope = await sessionScope(request, config, pool, executionContext);
     if (scope instanceof Response) return scope;
+    const { readScriptProject, scriptProjectStatus, ensureScriptProject } = await import(
+      "./script-projects"
+    );
+    const scriptIntake = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config('videoforge.account_id',$1,true)", [
+        scope.account_id,
+      ]);
+      return readScriptProject(transaction, scope, projectId);
+    });
+    if (scriptIntake && scriptIntake.state !== "COMPLETE") {
+      executionContext.waitUntil(
+        ensureScriptProject(environment, {
+          accountId: scope.account_id,
+          workspaceId: scope.workspace_id,
+          projectId,
+        }),
+      );
+      return response({
+        project: {
+          id: projectId,
+          title: scriptIntake.title,
+          created_at: scriptIntake.created_at,
+          revision_id: "",
+          revision_state: "NARRATION",
+          media_execution_backend: scriptIntake.options.execution_backend,
+        },
+        voiceover_generation: scriptProjectStatus(scriptIntake),
+        attempts: [],
+        stages: [],
+        generation: null,
+      });
+    }
     const detail = await createNeonExecutor(pool).transaction(async (transaction) => {
       await transaction.query("SELECT set_config($1, $2, true)", [
         "videoforge.account_id",
@@ -8389,6 +8494,20 @@ async function projectDetail(
         .filter((value): value is string => value !== null)
         .sort();
     const stages = [
+      ...(scriptIntake
+        ? [
+            {
+              id: "voiceover-generation",
+              name: "Generate voiceover",
+              status: "COMPLETE",
+              progress_percent: 100,
+              started_at: timestampOrNull(scriptIntake.created_at),
+              completed_at: timestampOrNull(scriptIntake.updated_at),
+              detail: `Narration generated with ${scriptIntake.voice_name}.`,
+              eta_ms: null,
+            },
+          ]
+        : []),
       {
         id: "prepare",
         name: "Prepare project",
@@ -8902,6 +9021,7 @@ async function projectDetail(
     }
     return response({
       schema_version: "videoforge-hosted-project-detail/v1",
+      voiceover_generation: scriptIntake ? scriptProjectStatus(scriptIntake) : null,
       project: detail.project,
       local_worker: detail.localWorker ? { state: detail.localWorker.state } : null,
       attempts,
@@ -9360,6 +9480,10 @@ export async function handleHostedProductRequest(
   const stylePublishPath = /^\/api\/v2\/hosted\/styles\/([0-9a-f-]+)\/publish$/u.exec(url.pathname);
   if (request.method === "POST" && stylePublishPath)
     return stylePublish(request, stylePublishPath[1]!, config, executionContext);
+  if (request.method === "POST" && url.pathname === "/api/v2/hosted/script-projects") {
+    const { createScriptProject } = await import("./script-projects");
+    return createScriptProject(request, environment, config, executionContext);
+  }
   if (request.method === "POST" && url.pathname === "/api/v2/hosted/projects/preflight")
     return projectPreflight(request, config, executionContext);
   if (request.method === "GET" && url.pathname === "/api/v2/hosted/projects")

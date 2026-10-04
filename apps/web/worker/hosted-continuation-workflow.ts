@@ -26,6 +26,7 @@ import {
 export interface HostedContinuationWorkflowParameters {
   /** Diagnostic only, supplied by the starting caller; the driver never depends on it. */
   readonly reason?: string;
+  readonly scriptProject?: { accountId: string; workspaceId: string; projectId: string };
   readonly voiceover?: { accountId: string; workspaceId: string; jobId: string };
   readonly target?: HostedContinuationTarget;
 }
@@ -48,6 +49,20 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 function continuationParameters(value: unknown): HostedContinuationWorkflowParameters {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return Object.freeze({});
   const reason = (value as { readonly reason?: unknown }).reason;
+  if (reason === "script-project") {
+    const target = (value as { scriptProject?: Record<string, unknown> }).scriptProject;
+    if (
+      target &&
+      UUID.test(String(target.accountId)) &&
+      UUID.test(String(target.workspaceId)) &&
+      UUID.test(String(target.projectId))
+    )
+      return {
+        reason,
+        scriptProject: target as { accountId: string; workspaceId: string; projectId: string },
+      };
+    return { reason: "invalid-stage-handoff" };
+  }
   const voiceover = (value as { voiceover?: unknown }).voiceover;
   if (reason === "voiceover-observer") {
     const v = voiceover as Record<string, unknown> | undefined;
@@ -142,6 +157,36 @@ export class HostedContinuationWorkflow extends WorkflowEntrypoint<
       await import("../src/server/hosted/cloud-media-qualification")
     ).cloudMediaQualificationOnly(this.env);
     if (params.reason === "invalid-stage-handoff") return { state: "INVALID_TARGET" };
+    if (params.scriptProject) {
+      if (qualificationOnly) return { state: "QUALIFICATION_PROVIDER_INERT" };
+      const { advanceScriptProject, recordScriptProjectRetry } = await import(
+        "../src/server/hosted/script-projects"
+      );
+      for (let tick = 0; tick < 1440; tick++) {
+        const state = await step.do(
+          `script project ${tick}`,
+          { retries: { limit: 0, delay: "1 second", backoff: "constant" } },
+          async () => {
+            const { context, drain } = drainingExecutionContext();
+            try {
+              return await advanceScriptProject(this.env, params.scriptProject!, context);
+            } catch {
+              await recordScriptProjectRetry(this.env, params.scriptProject!);
+              return "PENDING";
+            } finally {
+              await drain();
+            }
+          },
+        );
+        if (["COMPLETE", "FAILED", "CANCELLED", "UNKNOWN_NO_RETRY", "MISSING"].includes(state))
+          return { state };
+        await step.sleep(
+          `script project wait ${tick}`,
+          state === "GENERATING" ? "5 seconds" : "60 seconds",
+        );
+      }
+      return { state: "DEFERRED_TO_DRIVER" };
+    }
     if (params.voiceover) {
       if (qualificationOnly) return { state: "QUALIFICATION_PROVIDER_INERT" };
       const { observeJ1Voiceover } = await import("../src/server/hosted/j1tts");
@@ -244,6 +289,10 @@ export class HostedContinuationWorkflow extends WorkflowEntrypoint<
             if (!qualificationOnly) {
               const { reconcilePendingVoiceovers } = await import("../src/server/hosted/j1tts");
               await reconcilePendingVoiceovers(this.env);
+              const { reconcileScriptProjects } = await import(
+                "../src/server/hosted/script-projects"
+              );
+              await reconcileScriptProjects(this.env, context);
             }
             const { reconcileCloudMediaReservations } = await import(
               "../src/server/hosted/runpod-media"

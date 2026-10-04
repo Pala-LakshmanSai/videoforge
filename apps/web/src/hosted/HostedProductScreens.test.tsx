@@ -8133,3 +8133,101 @@ it.each([0, 75])(
     }
   },
 );
+
+it("queues script and voice in one Create action, preserving identity after a lost response", async () => {
+  const submissions: { body: string; key: string }[] = [];
+  const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const path = String(input);
+    if (path.endsWith("/project-catalog")) return Response.json(coverageCatalog());
+    if (path.endsWith("/voiceovers/voices"))
+      return Response.json({
+        voices: [
+          {
+            voice_id: "alice",
+            name: "Alice",
+            saved: true,
+            starred: true,
+            preview_url: null,
+            tags: "Warm",
+            languages: "en",
+          },
+        ],
+      });
+    if (path.endsWith("/script-projects")) {
+      submissions.push({
+        body: String(init?.body),
+        key: new Headers(init?.headers).get("idempotency-key")!,
+      });
+      throw new TypeError("Confirmation interrupted");
+    }
+    throw new Error(`Unexpected request: ${path}`);
+  });
+  vi.stubGlobal("fetch", fetcher);
+  renderHosted(<HostedCreateProjectScreen />);
+  fireEvent.change(await screen.findByLabelText("Video title"), {
+    target: { value: "Every river" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Upload script" }));
+  await waitFor(() => expect(screen.getByLabelText("Script voice")).toHaveValue("Alice"));
+  expect(screen.getByRole("button", { name: "Create video" })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Voiceover script"), {
+    target: { value: "Every river begins with a single drop. This is our narration." },
+  });
+  expect(screen.queryByRole("button", { name: "Generate voiceover" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Create video" })).toBeEnabled();
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
+  await screen.findByText("Confirmation interrupted");
+  expect(screen.getByLabelText("Voiceover script")).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
+  await waitFor(() => expect(submissions).toHaveLength(2));
+  expect(submissions[1]).toEqual(submissions[0]);
+  expect(JSON.parse(submissions[0]!.body)).toMatchObject({
+    voice_id: "alice",
+    script: expect.stringContaining("Every river"),
+    schema_version: "videoforge-hosted-script-project/v1",
+  });
+  expect(JSON.parse(submissions[0]!.body).voiceover).toBeUndefined();
+  expect(
+    fetcher.mock.calls.some(([url]) =>
+      /preflight|cpu-attempts|voiceovers\/jobs/u.test(String(url)),
+    ),
+  ).toBe(false);
+});
+it.each(["WAITING", "GENERATING", "PREPARING", "FAILED", "UNKNOWN_NO_RETRY"])(
+  "opens saved script progress in %s without a revision or browser generation",
+  async (state) => {
+    const fetcher = vi.fn(async () =>
+      Response.json({
+        project: {
+          id: "narration",
+          title: "Every river",
+          revision_id: "",
+          revision_state: "NARRATION",
+          created_at: new Date().toISOString(),
+        },
+        attempts: [],
+        stages: [],
+        generation: null,
+        voiceover_generation: {
+          state,
+          voice_name: "Alice",
+          script: "Every river begins with a single drop.",
+          audio_url: null,
+          failure_code: null,
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    renderHosted(<HostedProjectScreen projectId="narration" />);
+    expect(await screen.findByText("Every river")).toBeVisible();
+    expect(screen.getByText("Voice · Alice")).toBeVisible();
+    expect(screen.getByText("Every river begins with a single drop.")).toBeInTheDocument();
+    expect(
+      fetcher.mock.calls.every(
+        (call) =>
+          !(call as unknown as [unknown, RequestInit?])[1]?.method ||
+          (call as unknown as [unknown, RequestInit?])[1]?.method === "GET",
+      ),
+    ).toBe(true);
+  },
+);

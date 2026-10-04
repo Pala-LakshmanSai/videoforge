@@ -1290,6 +1290,12 @@
       "name": "hosted_archived_unplanned_admission",
       "filename": "0252_hosted_archived_unplanned_admission.sql",
       "sha256": "sha256:034a5c4aef5c75f47b0d726f4c41c2655a3dd716964d743675a3fb3a69e9af1e"
+    },
+    {
+      "version": 253,
+      "name": "hosted_script_projects",
+      "filename": "0253_hosted_script_projects.sql",
+      "sha256": "sha256:4cf4b191d3374957dccaa10865b166e3e73a550259d74a948fb29f8220aa786a"
     }
   ]
 }

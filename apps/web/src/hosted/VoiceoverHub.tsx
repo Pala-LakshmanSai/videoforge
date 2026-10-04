@@ -482,6 +482,128 @@ export function VoiceoverHub() {
     </div>
   );
 }
+export interface ScriptProjectInput {
+  script: string;
+  voiceId: string;
+}
+/** Draft input only. Create video owns the durable submission and progress. */
+export function ScriptProjectFields({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: ScriptProjectInput;
+  onChange: (value: ScriptProjectInput) => void;
+  disabled: boolean;
+}) {
+  const voices = useVoices();
+  const [error, setError] = useState<string | null>(null);
+  const [reading, setReading] = useState(false);
+  const readSequence = useRef(0);
+  const current = useRef(value);
+  current.current = value;
+  useEffect(
+    () => () => {
+      readSequence.current++;
+    },
+    [],
+  );
+  useEffect(() => {
+    if (!value.voiceId && voices.data) {
+      const preferred =
+        voices.data.voices.find((v) => v.starred) ?? voices.data.voices.find((v) => v.saved);
+      if (preferred) onChange({ ...value, voiceId: preferred.voice_id });
+    }
+  }, [voices.data, value, onChange]);
+  return (
+    <div className="script-voiceover">
+      <div className="create-section-grid">
+        <label className="field">
+          <span className="field-label">Script file</span>
+          <input
+            className="input"
+            type="file"
+            accept=".txt,text/plain"
+            disabled={disabled}
+            onChange={async (event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              const sequence = ++readSequence.current;
+              setError(null);
+              onChange({ ...current.current, script: "" });
+              if (!/\.txt$/iu.test(file.name) || file.size > 400000) {
+                setError("Choose a plain text (.txt) file, up to 100,000 characters.");
+                return;
+              }
+              setReading(true);
+              try {
+                const script = await file.text();
+                if (sequence !== readSequence.current) return;
+                if (!script.trim() || script.length > 100000 || script.includes("\0"))
+                  throw new Error("Use 1 to 100,000 plain text characters.");
+                onChange({ ...current.current, script });
+              } catch (e) {
+                if (sequence === readSequence.current)
+                  setError(e instanceof Error ? e.message : "Unable to read script.");
+              } finally {
+                if (sequence === readSequence.current) setReading(false);
+              }
+            }}
+          />
+        </label>
+        <div className="field">
+          <VoiceSelect
+            voices={voices.data?.voices ?? []}
+            value={value.voiceId}
+            disabled={disabled || voices.isPending}
+            onChange={(voiceId) => onChange({ ...value, voiceId })}
+          />
+          <Link to="/voiceovers">Manage voices</Link>
+        </div>
+      </div>
+      <label className="field">
+        <span className="field-label">Script</span>
+        <textarea
+          className="textarea"
+          rows={8}
+          aria-label="Voiceover script"
+          placeholder="Paste your narration, or upload a .txt file above."
+          disabled={disabled || reading}
+          maxLength={100000}
+          value={value.script}
+          onChange={(event) => {
+            setError(null);
+            onChange({ ...value, script: event.target.value });
+          }}
+        />
+        <span className="helper">{value.script.length.toLocaleString()} / 100,000 characters</span>
+      </label>
+      {reading ? (
+        <p role="status" className="helper">
+          Reading script…
+        </p>
+      ) : null}
+      {error || voices.isError ? (
+        <p role="alert" className="validation validation-danger">
+          {error ?? "Voices could not load."}{" "}
+          {voices.isError ? (
+            <button type="button" onClick={() => void voices.refetch()}>
+              Retry voices
+            </button>
+          ) : null}
+        </p>
+      ) : null}
+      <div className="validation validation-info">
+        <Headphones size={18} aria-hidden="true" />
+        <span>
+          <strong>Voiceover comes first.</strong> Click Create video to generate your narration,
+          then build your video automatically. You can follow each stage in Progress.
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function ScriptVoiceover({
   disabled,
   onReady,

@@ -362,10 +362,11 @@ async function validateWav(
 interface Mp3Frame {
   readonly channels: 1 | 2;
   readonly frameBytes: number;
+  readonly samples: number;
   readonly sampleRateHz: number;
 }
 
-function parseMp3Frame(header: Uint8Array): Mp3Frame | null {
+export function parseMp3Frame(header: Uint8Array): Mp3Frame | null {
   if (header.byteLength < 4) return null;
   const bits = new DataView(header.buffer, header.byteOffset, 4).getUint32(0, false);
   if (bits >>> 21 !== 0x7ff) return null;
@@ -402,6 +403,7 @@ function parseMp3Frame(header: Uint8Array): Mp3Frame | null {
   return {
     channels: ((bits >>> 6) & 0x3) === 3 ? 1 : 2,
     frameBytes,
+    samples: mpeg1 ? 1152 : 576,
     sampleRateHz,
   };
 }

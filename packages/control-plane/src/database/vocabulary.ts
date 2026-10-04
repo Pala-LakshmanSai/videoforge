@@ -152,6 +152,7 @@ export const RELATIONAL_TABLE_NAMES = [
   "hosted_video_plans",
   "hosted_video_jobs",
   "hosted_voiceover_jobs",
+  "hosted_script_projects",
   "saved_voiceover_voices",
   "hosted_api_image_regeneration_jobs",
   "video_runtime_states",

@@ -1,4 +1,4 @@
-import { ScriptVoiceover } from "./VoiceoverHub";
+import { ScriptProjectFields } from "./VoiceoverHub";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
@@ -1166,6 +1166,14 @@ interface HostedReviewSnapshot {
 }
 
 interface ProjectDetailResponse {
+  readonly voiceover_generation?: {
+    script?: string;
+    state: string;
+    voice_name: string;
+    failure_code: string | null;
+    created_at: string;
+    audio_url: string | null;
+  };
   readonly project: {
     id: string;
     title: string;
@@ -1885,6 +1893,10 @@ function isHostedV209PreSendIntegrityError(error: unknown): boolean {
 export function hostedProjectPollInterval(data: ProjectDetailResponse | undefined) {
   if (data?.queue?.blocked_reason === "HOSTED_CLOUD_CLEANUP_PENDING") return 2_000;
   if (!data) return 2_000;
+  if (data.voiceover_generation && data.voiceover_generation.state !== "COMPLETE")
+    return ["FAILED", "CANCELLED", "UNKNOWN_NO_RETRY"].includes(data.voiceover_generation.state)
+      ? false
+      : 2000;
   if (data.voiceover_context?.automatic_retry_pending === true) return 2_000;
   if (["DISPATCHING", "UNKNOWN"].includes(data.prompt_progress?.state ?? "")) return 2_000;
   const activeWork = hostedHasActiveWork(data.stages, data.attempts, data.gpu_lanes);
@@ -2791,6 +2803,13 @@ export function HostedCreateProjectScreen() {
   const [styleVersionId, setStyleVersionId] = useState("");
   const [voiceover, setVoiceover] = useState<File | null>(null);
   const [voiceoverDragOver, setVoiceoverDragOver] = useState(false);
+  const [scriptInput, setScriptInput] = useState({ script: "", voiceId: "" });
+  const scriptReady = Boolean(
+    scriptInput.script.trim() &&
+      scriptInput.script.length <= 100000 &&
+      !scriptInput.script.includes("\0") &&
+      scriptInput.voiceId,
+  );
   const [voiceoverSource, setVoiceoverSource] = useState<"audio" | "script">("audio");
   const [extraPromptKeywords, setExtraPromptKeywords] = useState("");
   const [applyExtraPromptKeywords, setApplyExtraPromptKeywords] = useState(false);
@@ -2806,6 +2825,8 @@ export function HostedCreateProjectScreen() {
     videoCoveragePercent >= 0 &&
     videoCoveragePercent <= 100;
   const fingerprint = JSON.stringify([
+    voiceoverSource,
+    scriptInput,
     title.trim(),
     executionBackend,
     avatarVersionId,
@@ -2908,7 +2929,10 @@ export function HostedCreateProjectScreen() {
   }, [executionBackend, executionReady]);
   const inputChecklist = [
     { label: "Video title", complete: Boolean(title.trim()) },
-    { label: "Voiceover", complete: Boolean(voiceover) },
+    {
+      label: voiceoverSource === "script" ? "Script & voice" : "Voiceover",
+      complete: voiceoverSource === "script" ? scriptReady : Boolean(voiceover),
+    },
     { label: "Avatar", complete: Boolean(avatarVersionId) },
     { label: "Image style", complete: Boolean(styleVersionId) },
   ];
@@ -2957,7 +2981,7 @@ export function HostedCreateProjectScreen() {
     title.trim() &&
       avatarVersionId &&
       styleVersionId &&
-      voiceover &&
+      (voiceoverSource === "script" ? scriptReady : voiceover) &&
       keywordsValid &&
       coverageValid &&
       coverageSupported,
@@ -3054,6 +3078,40 @@ export function HostedCreateProjectScreen() {
       const snapshot = { fingerprint, voiceover };
       if (!creationLocked && (!coverageValid || !coverageSupported))
         throw new Error("Choose an available whole percentage from 0 through 100.");
+      if (voiceoverSource === "script") {
+        if (!scriptReady) throw new Error("Enter a script and choose a voice.");
+        if (!creationLocked && !currentExecution.current.ready)
+          throw new Error(currentExecution.current.message);
+        const body = JSON.stringify({
+          schema_version: "videoforge-hosted-script-project/v1",
+          title: title.trim(),
+          script: scriptInput.script,
+          voice_id: scriptInput.voiceId,
+          execution_backend: executionBackend,
+          avatar_profile_version_id: avatarVersionId,
+          image_style_version_id: styleVersionId,
+          video_coverage_percent: videoCoveragePercent,
+          extra_prompt_keywords: applyExtraPromptKeywords ? extraPromptKeywords.trim() : "",
+          apply_extra_prompt_keywords: applyExtraPromptKeywords,
+          user_seed: userSeed.trim() ? Number(userSeed) : null,
+        });
+        if (creationLocked && createRequest.current?.body !== body)
+          throw new Error("Request pending. Check Queue or retry with the original inputs.");
+        if (createRequest.current?.body !== body)
+          createRequest.current = { body, key: `browser-script-${crypto.randomUUID()}` };
+        setCreationLocked(true);
+        setError(null);
+        const created = await bounded(
+          readJson<{ project_id: string }>("/api/v2/hosted/script-projects", {
+            method: "POST",
+            headers: { "idempotency-key": createRequest.current.key },
+            body,
+          }),
+          "Project confirmation timed out. Check Queue or retry to confirm this request.",
+        );
+        creationAccepted.current = true;
+        return created.project_id;
+      }
       if (!voiceover) throw new Error("Choose a voiceover first.");
       // A new request checks current admission. An uncertain dispatched request
       // retains its original body and may be reconciled after eligibility changes.
@@ -3139,7 +3197,15 @@ export function HostedCreateProjectScreen() {
       // Other conflicts and upload/commit failures retain the original request.
       const { status, code } = value as Error & { status?: number; code?: string };
       const cloudAdmissionRejected =
-        status === 409 && ["CLOUD_MEDIA_NOT_READY", "CLOUD_MEDIA_UNAVAILABLE"].includes(code ?? "");
+        status === 409 &&
+        [
+          "CLOUD_MEDIA_NOT_READY",
+          "CLOUD_MEDIA_UNAVAILABLE",
+          "PROJECT_TITLE_EXISTS",
+          "PROJECT_PRESET_NOT_READY",
+          "AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED",
+          "SCENE_VIDEO_UNAVAILABLE",
+        ].includes(code ?? "");
       if (
         !creationAccepted.current &&
         ([400, 401, 403, 422].includes(status ?? 0) || cloudAdmissionRejected)
@@ -3236,14 +3302,10 @@ export function HostedCreateProjectScreen() {
                     </button>
                   </div>
                   {voiceoverSource === "script" ? (
-                    <ScriptVoiceover
+                    <ScriptProjectFields
+                      value={scriptInput}
+                      onChange={setScriptInput}
                       disabled={creationLocked || submit.isPending || preflightMutation.isPending}
-                      onReady={selectVoiceover}
-                      onInvalidate={() => {
-                        setVoiceover(null);
-                        setVoiceoverMeta(null);
-                        setPreflightResult(null);
-                      }}
                     />
                   ) : (
                     <>
@@ -5480,6 +5542,62 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         }
       />
     );
+  if (query.data.voiceover_generation && query.data.voiceover_generation.state !== "COMPLETE") {
+    const narration = query.data.voiceover_generation;
+    const failed = ["FAILED", "UNKNOWN_NO_RETRY"].includes(narration.state);
+    return (
+      <>
+        <PageHeader title={query.data.project.title} />
+        <Panel
+          eyebrow="Stage 1"
+          heading={
+            failed
+              ? "Voiceover needs attention"
+              : narration.state === "WAITING"
+                ? "Voiceover queued"
+                : narration.state === "PREPARING"
+                  ? "Preparing your narration"
+                  : "Generating voiceover"
+          }
+        >
+          <p className="helper">Voice · {narration.voice_name}</p>
+          <p role={failed ? "alert" : "status"}>
+            {narration.state === "WAITING"
+              ? "Your project is saved. Voiceover generation starts when a slot is free."
+              : narration.state === "UNKNOWN_NO_RETRY"
+                ? "The voice provider did not confirm this request. It is saved for reconciliation and will not be submitted twice."
+                : narration.state === "FAILED"
+                  ? narration.failure_code === "GENERATED_VOICEOVER_INVALID"
+                    ? "The generated audio could not be accepted. Narration must be 10 seconds to 60 minutes. Your script remains saved."
+                    : "The voice provider could not generate this narration. Your script remains saved."
+                  : narration.state === "CANCELLED"
+                    ? "This project was cancelled."
+                    : narration.failure_code === "VOICEOVER_STAGE_RETRYING"
+                      ? "Your project is saved. Preparation was interrupted; we’re retrying automatically without generating another voiceover."
+                      : "We’ll start the rest of your video automatically. You can leave this page."}
+          </p>
+          {narration.audio_url ? (
+            <audio
+              controls
+              preload="none"
+              src={narration.audio_url}
+              aria-label="Generated voiceover"
+            />
+          ) : null}
+          {narration.script ? (
+            <details>
+              <summary>View script</summary>
+              <p style={{ whiteSpace: "pre-wrap" }}>{narration.script}</p>
+            </details>
+          ) : null}
+          <p className="helper">Next: transcription · planning · video generation</p>
+          <Link to="/" className="button button-secondary">
+            Back to Queue
+          </Link>
+        </Panel>
+      </>
+    );
+  }
   const stages = query.data.stages?.length
     ? query.data.stages
     : fallbackHostedStages(asr, render, query.data.generation, query.data.voiceover_context);

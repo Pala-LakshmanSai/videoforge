@@ -230,4 +230,4 @@ an unrun gate into confirmed fact.
 
 ## Voiceover preparation option — 2026-10-04
 
-Under DEC_VOICEOVER_001 users may upload their final audio or explicitly generate it from a script with J1TTS. The completed MP3 then enters the normal private project flow. Voiceover Hub stores workspace-private saved/starred voice IDs. Keep the supplied TTS credential server-side; preserve immutable claims, shared capacity, retrieval-only uncertain recovery and existing media execution.
+Under DEC_VOICEOVER_001 users may upload their final audio or submit a script and selected J1TTS voice with one Create video action. Durable project intake runs narration as stage 1; the completed MP3 then enters the normal private project flow automatically. Voiceover Hub stores workspace-private saved/starred voice IDs. Keep the supplied TTS credential server-side; preserve immutable claims, shared capacity, retrieval-only uncertain recovery and existing media execution.

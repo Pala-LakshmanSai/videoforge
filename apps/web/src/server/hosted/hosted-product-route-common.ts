@@ -46,7 +46,7 @@ function hostedRateLimitOperation(
   if (request.method === "GET" || path === "/api/v2/hosted/projects/preflight") {
     return "hosted_read";
   }
-  if (path === "/api/v2/hosted/projects") return "project_create";
+  if (path === "/api/v2/hosted/projects" || path === "/api/v2/hosted/script-projects") return "project_create";
   if (/^\/api\/v2\/hosted\/projects\/[0-9a-f-]+\/commit$/u.test(path)) {
     return "project_commit";
   }

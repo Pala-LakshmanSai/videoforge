@@ -338,7 +338,7 @@ DEC_VIDEO_SCENE_001 and DEC_VIDEO_COVERAGE_001 are published in source 89cfe121:
 
 ## Optional script-to-voiceover preparation — 2026-10-04
 
-DEC_VOICEOVER_001 inserts explicit J1TTS preparation before ordinary project creation. A generated MP3 is the final canonical narration and follows the same voiceover validation/upload/timed-ASR stages. TTS shares the global admission lock and one/account, two/global provider-workload ceiling with existing videos/previews. Busy preparation performs no provider POST. Existing fair video admission waits around active TTS, preserving lease counters and reconciliation. Ambiguous TTS submissions retain their capacity and never automatically replay; known provider IDs permit retrieval-only recovery.
+DEC_VOICEOVER_001 makes J1TTS narration the first durable stage of script-created projects. One Create video action saves the script, voice and exact preset choices before any TTS submission. Queue intake remains accepted while capacity is busy; a revision is written only after real generated audio has a verified checksum and measured duration. A generated MP3 is the final canonical narration and follows the same voiceover validation/upload/timed-ASR stages. TTS shares the global admission lock and one/account, two/global provider-workload ceiling with existing videos/previews. Busy preparation performs no provider POST. Existing fair video admission waits around active TTS, preserving lease counters and reconciliation. Ambiguous TTS submissions retain their capacity and never automatically replay; known provider IDs permit retrieval-only recovery.
 
 ## Short voiceover compatibility — 2026-10-04
 

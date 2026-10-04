@@ -732,9 +732,26 @@ async function handleCpuSubmission(
   }
 }
 
-/** Internal-only entrypoint for a DB-materialized SPAN_AUDIO submission. It deliberately shares
- * the exact durable attempt, R2 job-spec, upload-authority, and Workflow path used by browser ASR
- * and persisted RENDER submissions while preserving the DB-owned deterministic attempt ID. */
+/** Continue a materialized narration through the existing durable ASR admission path. */
+export async function scheduleHostedAsrSubmission(
+  environment: HostedRuntimeEnvironment,
+  config: HostedRuntimeConfiguration,
+  scope: { account_id: string; workspace_id: string },
+  raw: unknown,
+  executionContext: HostedExecutionContext,
+): Promise<void> {
+  const submission = exactHostedCpuSubmission(raw);
+  if (!submission || submission.kind !== "ASR") throw new Error("HOSTED_ASR_SUBMISSION_INVALID");
+  const result = await handleCpuSubmission(
+    new Request(config.publicOrigin, { method: "POST" }),
+    environment,
+    config,
+    executionContext,
+    { scope, submission },
+  );
+  if (!result.ok) throw new Error("HOSTED_ASR_HANDOFF_PENDING");
+}
+
 export async function scheduleHostedSpanAudioSubmission(
   environment: HostedRuntimeEnvironment,
   config: HostedRuntimeConfiguration,

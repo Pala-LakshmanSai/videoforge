@@ -95,6 +95,12 @@ function hostedProjectLabel(state: HostedQueueProject["state"]): string {
 }
 
 function hostedProjectExplanation(project: HostedQueueProject): string {
+  if (project.stage === "Generate voiceover")
+    return project.state === "WAITING"
+      ? "Script saved. Waiting for a voiceover slot."
+      : project.state === "NEEDS_ATTENTION"
+        ? "Voiceover needs attention. Open to review."
+        : "Creating narration. Video processing follows automatically.";
   if (project.execution_backend === "RUNPOD_POD") {
     const phase = ({WAITING_CAPACITY: "Waiting for capacity", CREATING: "Starting", STARTING: "Starting",
       AMBIGUOUS: "Reconciling launch", DOWNLOADING: "Downloading inputs", RENDERING: "Rendering",

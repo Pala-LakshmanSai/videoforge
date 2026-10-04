@@ -16,6 +16,7 @@ function json(value: unknown, status = 200): Response {
 }
 
 interface HostedQueueRow extends Record<string, unknown> {
+  readonly script_state: string | null;
   readonly project_id: string;
   readonly title: string;
   readonly state: string;
@@ -49,7 +50,9 @@ export async function handleHostedQueue(
 ): Promise<Response> {
   const pool = createNeonPool(config.neon.databaseUrl);
   try {
-    const session = await createHostedAuth({ config, pool, executionContext }).api.getSession({ headers: request.headers });
+    const session = await createHostedAuth({ config, pool, executionContext }).api.getSession({
+      headers: request.headers,
+    });
     if (!session?.user?.id) return json({ error: { code: "AUTHENTICATION_REQUIRED" } }, 401);
     const scope = await pool.query(`SELECT * FROM videoforge_hosted_session_scope($1)`, [
       session.session.token,
@@ -65,8 +68,11 @@ export async function handleHostedQueue(
         accountId,
       ]);
       const projects = await transaction.query<HostedQueueRow>(
-        `SELECT project.id AS project_id, project.name AS title,
+        `SELECT project.id AS project_id, project.name AS title, script.state AS script_state,
                 CASE
+                  WHEN script.state IN ('FAILED','UNKNOWN_NO_RETRY') THEN 'NEEDS_ATTENTION'
+                  WHEN script.state='WAITING' THEN 'WAITING'
+                  WHEN script.state IN ('GENERATING','PREPARING') THEN 'IN_PROGRESS'
                   WHEN cloud.state NOT IN ('WAITING_CAPACITY','CLEAN') THEN 'IN_PROGRESS'
                   WHEN active_attempt.id IS NOT NULL THEN 'IN_PROGRESS'
                   WHEN cloud.state='WAITING_CAPACITY' THEN 'WAITING'
@@ -82,6 +88,7 @@ export async function handleHostedQueue(
                   ELSE 'WAITING'
                 END AS state,
                 CASE
+                  WHEN script.state IS NOT NULL AND script.state<>'COMPLETE' THEN 'Generate voiceover'
                   WHEN cloud.state IS NOT NULL AND cloud.state<>'CLEAN' THEN
                     CASE cloud.kind WHEN 'ASR' THEN 'Transcription' WHEN 'SPAN_AUDIO' THEN 'Audio preparation'
                       WHEN 'RENDER' THEN 'Final assembly' ELSE 'Video generation' END
@@ -98,7 +105,7 @@ export async function handleHostedQueue(
                 END AS stage,
                 CASE WHEN cloud.state IS NOT NULL AND cloud.state<>'CLEAN' THEN 'RUNPOD_POD'
                   ELSE COALESCE(active_attempt.execution_backend,latest_attempt.execution_backend,
-                    revision.media_execution_backend,'PERSONAL_WORKER') END AS execution_backend,
+                    revision.media_execution_backend,script.options->>'execution_backend','PERSONAL_WORKER') END AS execution_backend,
                 CASE WHEN cloud.state='CLEAN' AND latest_attempt.state='SUCCEEDED'
                     AND latest_generation.state IS DISTINCT FROM 'ACTIVE' THEN 'COMPLETE'
                   WHEN cloud.state<>'CLEAN' THEN cloud.state ELSE NULL END AS cloud_phase,
@@ -118,6 +125,7 @@ export async function handleHostedQueue(
                   COALESCE(context.finished_at,context.started_at,project.created_at),
                   COALESCE(latest_generation.updated_at,project.created_at)) AS updated_at
            FROM projects AS project
+            LEFT JOIN hosted_script_projects script ON script.project_id=project.id AND script.account_id=project.account_id AND script.workspace_id=project.workspace_id
             LEFT JOIN LATERAL (
               SELECT revision.media_execution_backend FROM project_revisions AS revision
                WHERE revision.account_id=project.account_id AND revision.workspace_id=project.workspace_id
@@ -256,7 +264,12 @@ export async function handleHostedQueue(
           ORDER BY updated_at DESC,project.id DESC`,
         [accountId, workspaceId],
       );
-      const workers = await qualifiedPersonalWorkers(transaction, config.mediaWorkerRelease, accountId, workspaceId);
+      const workers = await qualifiedPersonalWorkers(
+        transaction,
+        config.mediaWorkerRelease,
+        accountId,
+        workspaceId,
+      );
       return { projects: projects.rows, workers };
     });
     return json({
@@ -286,10 +299,14 @@ export async function handleHostedQueue(
             hostedQueueCount(project.active_request_count) === 1 &&
             activeCpu === 0 &&
             (totalServerless === 0 || totalServerless === 2) &&
-            nonplannedServerless === 0 && hostedQueueCount(project.cloud_reservation_count) === 0,
+            nonplannedServerless === 0 &&
+            hostedQueueCount(project.cloud_reservation_count) === 0,
           // Mirrors videoforge_archive_hosted_project: no live CPU, provider or dispatching work.
           can_delete_project:
-            activeCpu === 0 && activeServerless === 0 && dispatchingSideEffects === 0 &&
+            !["GENERATING", "PREPARING", "UNKNOWN_NO_RETRY"].includes(project.script_state ?? "") &&
+            activeCpu === 0 &&
+            activeServerless === 0 &&
+            dispatchingSideEffects === 0 &&
             hostedQueueCount(project.cloud_reservation_count) === 0,
           created_at: new Date(project.created_at).toISOString(),
           updated_at: new Date(project.updated_at).toISOString(),

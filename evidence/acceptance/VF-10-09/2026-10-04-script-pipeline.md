@@ -1,0 +1,13 @@
+# Script-first project pipeline acceptance
+
+Checkpoint V2-09 / VF-10-09, profile `v2_09_j1tts_voiceover`; base `4289a047`.
+
+One Create video action accepts either uploaded audio or a script and exact selected voice. The script path creates a private durable project immediately, waits for narration capacity, submits J1TTS once, records uncertain outcomes without replay, measures/stores completed MP3, then uses the existing revision/commit/ASR admission path. Script and voice remain pinned. Progress and Queue show narration first; temporary downstream failures retry the saved handoff. Uploaded-audio behavior, sample previews, saved/starred voices, and immutable presets remain intact.
+
+Migration253 is additive: forced tenant RLS, immutable intake identity/audio receipt, queued cancellation, active narration archive guard, bounded due-project query, and retrieval-only observation of known provider jobs. Native PostgreSQL rollback rehearsal restored migration252 and the original observer; runtime grants and RLS verified. Application has not yet been published at this source checkpoint.
+
+Validation: 473 focused web/server/Workflow tests; final250 affected tests after retry-copy changes; 3 native database privacy/cancellation/capacity/inventory tests; Web and Worker types, lint, production/staging quarantine, and context checks. Exact startup closures are2813301/2806268 bytes; provider and generated validators remain lazy, existing quarantine and CPU bounds unchanged. Real workerd streamed the existing J1TTS file to R2 with306408 bytes, duration19087ms matching FFprobe19.086803s, SHA256398d4b5332e337e74c77d4b4e6d6f98baca039d45621a0696be41c9654a49811. Synthetic16-second MP3 measured16000ms, including gapless metadata handling.
+
+Real Chrome fixture: desktop script + favorite enables Create, no separate Generate voiceover button, accepted Create reaches durable-intake route and narration progress;390px mobile script controls inspected. Fixture proof is distinct from production provider proof. Current production Chrome account has no ready avatar; do not alter its account or unrelated project to manufacture acceptance.
+
+Private receipts: `.videoforge/script-pipeline-20261004/` under the primary checkout. No credentials retained in repository evidence. Before publication no new paid work or compute was started. Remaining gates: native migration apply, exact configuration-preserving release, one short automatic script project and one direct-audio regression within USD2 finite acceptance cap, final artifact verification and owned-compute cleanup. J1TTS invoice pricing is not asserted.

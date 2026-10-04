@@ -76,9 +76,12 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // No dependency additions or provider/native quarantine exceptions.
 // J1TTS retrieval-only Workflow observation and private route dispatch add exactly
 // 1,760 production and 216 staging bytes; provider code remains dynamically loaded.
+// Script-first narration adds 2,286 production and 623 staging bytes for the durable Workflow
+// branch and trusted ASR handoff. J1TTS, audio parsing, and project materialization remain dynamic.
+// These measured ceilings retain every provider, validator, fixture, and CPU quarantine check.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_811_015,
-  "wrangler.staging.jsonc": 2_805_645,
+  "wrangler.production.jsonc": 2_813_301,
+  "wrangler.staging.jsonc": 2_806_268,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",
