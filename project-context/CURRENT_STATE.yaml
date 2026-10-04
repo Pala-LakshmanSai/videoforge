@@ -2,7 +2,7 @@ media_review_accepted_2026_10_04:
   checkpoint: V2-09
   selected_task: VF-10-09
   read_profile: v2_09_media_review_count
-  status: LOCAL_REGRESSION_VERIFIED_PUBLICATION_PENDING
+  status: PRODUCTION_PUBLISHED_CHROME_ACCEPTED
   branch: codex/media-review-accepted
   base_source: 75a002bec9bdb9d5688b717aade6d4841e07d3b2
   user_authority: Fix_incorrect_accepted_count_verify_functionality_and_push_production.
@@ -11,8 +11,15 @@ media_review_accepted_2026_10_04:
   validation: Red_regression_reproduced;250_focused_UI_and_project_detail_tests_PASS;production_staging_builds_and_bundle_firewalls_PASS.
   provider_spend: USD0_new_generation_or_compute.
   paid_compute_shutdown: No_compute_started_or_mutated;existing_media_jobs_and_cleanup_preserved.
-  remaining_gates: Publication_parity_and_production_Chrome_pagination_navigation_playback_readback.
+  remaining_gates: None_for_count_repair;historical_fullfilm_Local_editorial_performance_invoice_and_UNKNOWN_cleanup_gates_remain_separate.
   evidence: evidence/acceptance/VF-10-09/2026-10-04-media-review-accepted.md
+
+  production_source: beeaa22362aa75f1ad97b80c20c8d028be08e2a5
+  production_version: 8b61d38a-2ac0-420c-93dc-45e5163c7e29
+  production_traffic_percent: 100
+  publication: 53bindings26secrets3WorkflowIdentities_runtime_pins_preserved;30public_assets_exact;latest75a002be_image_quality_preserved;no_new_instances.
+  chrome: 380images_loaded_four_pages96_192_288_380;113avatars_two_pages;28scene_videos;last_items_open_wrap_navigation_regeneration_enabled_avatar_and_scene_play_to_end_no_errors.
+  project_memory: Project_context_Index_and_Coverage_updated_with_guarded_edits.
 
 image_quality_2026_10_04:
   checkpoint: V2-09
@@ -6980,8 +6987,8 @@ repository:
   branch: codex/media-review-accepted
   branch_upstream: origin/codex/media-review-accepted
   branch_published: true
-  current_source_head: "65d28fab257353d54f25bfdf1c9d344dd5484e97"
-  current_source_head_semantics: production_baseline_for_image_quality_safeguard
+  current_source_head: "beeaa22362aa75f1ad97b80c20c8d028be08e2a5"
+  current_source_head_semantics: published_media_review_count_source
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
   current_source_head_note: "Resolve Git HEAD for image-quality safeguard; baseline production is ASR repair65d28fab. Main unrelated work is preserved."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
