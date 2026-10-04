@@ -171,6 +171,52 @@ async function setup() {
 }
 
 describe("hosted generation coordinator", () => {
+  it("names unschedulable ASR timing before persisting or dispatching a plan", async () => {
+    const fixture = await setup();
+    const result = JSON.parse(new TextDecoder().decode(fixture.bytes));
+    const input = JSON.parse(new TextDecoder().decode(fixture.inputBytes));
+    const transcript = result.transcript;
+    const duration = 24_220;
+    const extra = duration - transcript.words[0].end_ms;
+    transcript.words[0].end_ms = duration;
+    for (const word of transcript.words.slice(1)) {
+      word.start_ms += extra;
+      word.end_ms += extra;
+    }
+    transcript.source.duration_ms += extra;
+    transcript.phrases = transcript.words.map(
+      (word: { index: number; text: string; start_ms: number; end_ms: number }) => ({
+        phrase_id: `phrase_${word.index}`,
+        sentence_id: "sentence_001",
+        word_start: word.index,
+        word_end_exclusive: word.index + 1,
+        text: word.text,
+        start_ms: word.start_ms,
+        end_ms: word.end_ms,
+        pause_before_ms: 0,
+        pause_after_ms: 0,
+      }),
+    );
+    result.diagnostics.source_duration_ms = transcript.source.duration_ms;
+    input.input_document.voiceover.duration_ms = transcript.source.duration_ms;
+    const bytes = new TextEncoder().encode(JSON.stringify(result)).buffer as ArrayBuffer;
+    const inputBytes = new TextEncoder().encode(JSON.stringify(input)).buffer as ArrayBuffer;
+    await expect(
+      coordinateHostedGeneration({
+        snapshot: {
+          ...fixture.snapshot,
+          asrInputContentLength: inputBytes.byteLength,
+          asrInputSha256: await sha256Bytes(inputBytes),
+          asrOutputContentLength: bytes.byteLength,
+          asrOutputSha256: await sha256Bytes(bytes),
+        },
+        asrInputBytes: inputBytes,
+        asrOutputBytes: bytes,
+        persistence: fixture.persistence,
+      }),
+    ).rejects.toMatchObject({ code: "HOSTED_GENERATION_ASR_TIMING_UNSCHEDULABLE" });
+    expect(fixture.persist).not.toHaveBeenCalled();
+  });
   it("validates private ASR lineage, plans deterministically, then persists a provider-inert wait", async () => {
     const fixture = await setup();
     const order: string[] = [];

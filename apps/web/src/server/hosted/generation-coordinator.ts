@@ -450,6 +450,9 @@ export async function coordinateHostedGeneration(input: {
   ) {
     reject("HOSTED_GENERATION_ASR_LINEAGE_MISMATCH");
   }
+  if (transcript.value.words.some((word) => word.end_ms - word.start_ms > 7_000)) {
+    reject("HOSTED_GENERATION_ASR_TIMING_UNSCHEDULABLE");
+  }
   const preparedTimeline = await prepareDurableDeterministicTimeline(
     scope,
     {

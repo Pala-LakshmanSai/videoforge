@@ -18,7 +18,12 @@ from videoforge_contracts import (
 )
 
 from .chunking import ChunkReconciliationError, ChunkWindow, plan_chunks, reconcile_chunk_words
-from .parser import WhisperOutputError, build_transcript_document, parse_whisper_words
+from .parser import (
+    WhisperOutputError,
+    build_transcript_document,
+    has_oversized_word,
+    parse_whisper_words,
+)
 from .ports import (
     ArtifactResolver,
     CancellationProbe,
@@ -201,6 +206,13 @@ class TranscriptionJob:
                 _failure_result(attempt_id, source_hash, model_hash, "ASR_OUTPUT_INVALID")
             )
         if replay is not None:
+            if replay.get("status") == "SUCCEEDED" and has_oversized_word(
+                cast(list[dict[str, Any]], replay["transcript"]["words"])
+            ):
+                # Keep accepted historical bytes immutable; a fresh attempt must recover them.
+                return self._validated_result(
+                    _failure_result(attempt_id, source_hash, model_hash, "ASR_OUTPUT_INVALID")
+                )
             self._record("asr_replayed", {"attempt_id": attempt_id})
             return self._validated_result(replay)
 
@@ -360,6 +372,8 @@ class TranscriptionJob:
                 )
                 recovered = _load_chunk_receipt(chunk_receipt_path, chunk_fingerprint, window)
                 if recovered is not None:
+                    if has_oversized_word(recovered):
+                        raise WhisperOutputError("saved chunk contains unschedulable word timing")
                     chunk_outputs.append((window, recovered))
                     self._record(
                         "asr_chunk_replayed",
@@ -412,6 +426,20 @@ class TranscriptionJob:
                         allow_trailing_overhang=len(windows) > 1,
                     ),
                 )
+                if has_oversized_word(words):
+                    self._record(
+                        "asr_chunk_timing_recovery",
+                        {"attempt_id": attempt_id, "chunk_index": window.index},
+                    )
+                    words = self._recover_chunk_timing(
+                        tool,
+                        normalized_audio_path,
+                        work_root,
+                        window,
+                        job_input,
+                        cancel_token,
+                        transient_paths,
+                    )
                 _write_chunk_receipt(
                     chunk_receipt_path,
                     chunk_fingerprint,
@@ -508,6 +536,78 @@ class TranscriptionJob:
             success,
             result_path=result_path,
             cleanup=tuple(transient_paths),
+        )
+
+    def _recover_chunk_timing(
+        self,
+        tool: WhisperTool,
+        normalized_audio_path: Path,
+        work_root: Path,
+        window: ChunkWindow,
+        job_input: dict[str, Any],
+        cancel_token: str,
+        transient_paths: list[Path],
+    ) -> list[dict[str, Any]]:
+        # One recovery pass only. Re-decode the affected chunk at shorter windows with the
+        # same pinned model/options; never invent timestamps or change the source audio.
+        maximum_ms = 90_000 if window.duration_ms > 90_000 else 15_000
+        windows = plan_chunks(window.duration_ms, max_chunk_ms=maximum_ms)
+        recovered: list[tuple[ChunkWindow, list[dict[str, Any]]]] = []
+        for local in windows:
+            if self._is_cancelled(cancel_token):
+                raise _ChunkCancelled
+            prefix = work_root / f"chunk_{window.index:04d}_recovery_{local.index:04d}"
+            audio = prefix.with_suffix(".wav")
+            raw = Path(f"{prefix}.json")
+            transient_paths.extend((audio, raw))
+            absolute = ChunkWindow(
+                local.index,
+                window.start_ms + local.start_ms,
+                window.start_ms + local.end_ms,
+                window.start_ms + local.emit_start_ms,
+                window.start_ms + local.emit_end_ms,
+            )
+            extracted = self._processes.run(
+                _ffmpeg_chunk_arguments(tool, normalized_audio_path, audio, absolute),
+                should_cancel=lambda: self._is_cancelled(cancel_token),
+            )
+            if extracted.cancelled or self._is_cancelled(cancel_token):
+                raise _ChunkCancelled
+            error = _normalization_error(extracted)
+            if error is not None or not _is_nonempty_file(audio):
+                raise _ChunkProcessError(error or "ASR_SOURCE_DECODE_FAILED")
+            decoded = self._processes.run(
+                _whisper_arguments(
+                    tool,
+                    audio,
+                    prefix,
+                    threads=cast(int, job_input["options"]["threads"]),
+                    flash_attention=cast(bool, job_input["options"]["flash_attention"]),
+                ),
+                should_cancel=lambda: self._is_cancelled(cancel_token),
+            )
+            if decoded.cancelled or self._is_cancelled(cancel_token):
+                raise _ChunkCancelled
+            error = _process_error(decoded)
+            if error is not None:
+                raise _ChunkProcessError(error)
+            words = cast(
+                list[dict[str, Any]],
+                parse_whisper_words(
+                    raw,
+                    source_duration_ms=local.duration_ms,
+                    allow_trailing_overhang=len(windows) > 1,
+                ),
+            )
+            if has_oversized_word(words):
+                raise WhisperOutputError("bounded ASR timing recovery exhausted")
+            recovered.append((local, words))
+        return cast(
+            list[dict[str, Any]],
+            reconcile_chunk_words(
+                tuple(recovered),
+                source_duration_ms=window.duration_ms,
+            ),
         )
 
     def _is_cancelled(self, token: str) -> bool:

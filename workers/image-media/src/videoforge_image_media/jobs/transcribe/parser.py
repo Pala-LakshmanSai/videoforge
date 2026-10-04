@@ -12,6 +12,7 @@ MAX_ZERO_DURATION_REPAIR_MS = 100
 PHRASE_PAUSE_BOUNDARY_MS = 600
 MAX_WORDS_PER_PHRASE = 12
 MAX_PHRASE_DURATION_MS = 4500
+MAX_SCHEDULABLE_WORD_MS = 7000
 _SENTENCE_END = re.compile(r"[.!?…][\"')\]]*$", re.UNICODE)
 _CLAUSE_END = re.compile(r"[,;:][\"')\]]*$", re.UNICODE)
 _CONJUNCTIONS = frozenset(
@@ -21,6 +22,13 @@ _CONJUNCTIONS = frozenset(
 
 class WhisperOutputError(ValueError):
     pass
+
+
+def has_oversized_word(words: list[dict[str, Any]]) -> bool:
+    """A single word cannot occupy more than the longest legal scene."""
+    return any(
+        int(word["end_ms"]) - int(word["start_ms"]) > MAX_SCHEDULABLE_WORD_MS for word in words
+    )
 
 
 @dataclass(frozen=True)

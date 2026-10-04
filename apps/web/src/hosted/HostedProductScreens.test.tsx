@@ -5674,102 +5674,131 @@ describe("hosted product journey", () => {
     expect(screen.getByRole("button", { name: "Retry progress" })).toBeInTheDocument();
   });
 
-  it("fails closed when ASR succeeds without an exact render plan", async () => {
-    let planned = false;
-    const detail = {
-      project: {
-        id: "11111111-1111-4111-8111-111111111111",
-        title: "Private project",
-        created_at: "2026-08-17T10:00:00.000Z",
-        revision_id: "22222222-2222-4222-8222-222222222222",
-        revision_state: "LOCKED",
-      },
-      attempts: [
-        {
-          id: "33333333-3333-4333-8333-333333333333",
-          kind: "ASR" as const,
-          state: "SUCCEEDED",
-          version: 3,
+  it.each([false, true])(
+    "fails closed when ASR succeeds without an exact render plan (timing repair %s)",
+    async (timingRepair) => {
+      let planned = false;
+      const detail = {
+        project: {
+          id: "11111111-1111-4111-8111-111111111111",
+          title: "Private project",
           created_at: "2026-08-17T10:00:00.000Z",
-          updated_at: "2026-08-17T10:01:00.000Z",
-          terminal_at: "2026-08-17T10:01:00.000Z",
-          output_checksum_sha256: `sha256:${"a".repeat(64)}`,
-          approved_at: null,
-          preview_url: null,
+          revision_id: "22222222-2222-4222-8222-222222222222",
+          revision_state: "LOCKED",
         },
-      ],
-      gpu_transport: "DISABLED_UNQUALIFIED" as const,
-      gpu_readiness: gpuReadiness,
-      voiceover_context: {
-        state: "SUCCEEDED" as const,
-        transcript_hash: `sha256:${"b".repeat(64)}`,
-        context_hash: `sha256:${"c".repeat(64)}`,
-        context_document: { primary_topic: "Private project" },
-        reserved_cost_micro_usd: 10_000,
-        reported_cost_micro_usd: 1_000,
-      },
-      generation: null,
-    };
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      if (String(input).endsWith("/render"))
-        return Response.json(
+        attempts: [
           {
-            error: {
-              code: "HOSTED_PROJECT_PLANNING_FAILED",
-              message:
-                "Video planning could not finish. Your transcript is saved; try planning again.",
-            },
+            id: "33333333-3333-4333-8333-333333333333",
+            kind: "ASR" as const,
+            state: "SUCCEEDED",
+            version: 3,
+            created_at: "2026-08-17T10:00:00.000Z",
+            updated_at: "2026-08-17T10:01:00.000Z",
+            terminal_at: "2026-08-17T10:01:00.000Z",
+            output_checksum_sha256: `sha256:${"a".repeat(64)}`,
+            approved_at: null,
+            preview_url: null,
           },
-          { status: 409 },
-        );
-      return Response.json(
-        planned
-          ? {
-              ...detail,
-              generation: {
-                id: "55555555-5555-4555-8555-555555555555",
-                stage: "RUNNING",
-                planned_tasks: 2,
-                completed_tasks: 0,
-                failed_tasks: 0,
+        ],
+        gpu_transport: "DISABLED_UNQUALIFIED" as const,
+        gpu_readiness: gpuReadiness,
+        voiceover_context: {
+          state: "SUCCEEDED" as const,
+          transcript_hash: `sha256:${"b".repeat(64)}`,
+          context_hash: `sha256:${"c".repeat(64)}`,
+          context_document: { primary_topic: "Private project" },
+          reserved_cost_micro_usd: 10_000,
+          reported_cost_micro_usd: 1_000,
+        },
+        generation: null,
+        stages: [
+          { id: "transcription", name: "Transcribe voiceover", status: "COMPLETE" },
+          { id: "voiceover-context", name: "Understand voiceover context", status: "COMPLETE" },
+          { id: "planning", name: "Plan scenes", status: "STARTING" },
+        ],
+      };
+      const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).endsWith("/render"))
+          return Response.json(
+            {
+              error: {
+                code: timingRepair
+                  ? "HOSTED_ASR_TIMING_REPAIR_REQUIRED"
+                  : "HOSTED_PROJECT_PLANNING_FAILED",
+                message: timingRepair
+                  ? "Transcription lost speech timing. Your audio is saved; transcription needs recovery before planning."
+                  : "Video planning could not finish. Your transcript is saved; try planning again.",
               },
-              stages: [
-                { id: "planning", name: "Plan scenes", status: "COMPLETE" },
-                { id: "prompt-writing", name: "Write image prompts", status: "COMPLETE" },
-                { id: "image-generation", name: "Generate images", status: "RUNNING" },
-              ],
-            }
-          : detail,
-      );
-    });
-    vi.stubGlobal("fetch", fetchMock);
-    renderHosted(<HostedProjectScreen projectId="11111111-1111-4111-8111-111111111111" />);
+            },
+            { status: 409 },
+          );
+        return Response.json(
+          planned
+            ? {
+                ...detail,
+                generation: {
+                  id: "55555555-5555-4555-8555-555555555555",
+                  stage: "RUNNING",
+                  planned_tasks: 2,
+                  completed_tasks: 0,
+                  failed_tasks: 0,
+                },
+                stages: [
+                  { id: "planning", name: "Plan scenes", status: "COMPLETE" },
+                  { id: "prompt-writing", name: "Write image prompts", status: "COMPLETE" },
+                  { id: "image-generation", name: "Generate images", status: "RUNNING" },
+                ],
+              }
+            : detail,
+        );
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      renderHosted(<HostedProjectScreen projectId="11111111-1111-4111-8111-111111111111" />);
 
-    expect(
-      await screen.findByText(/generation planning could not be verified/u),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Your transcript is saved; try planning again/u)).toBeInTheDocument();
-    expect(screen.queryByText(/HOSTED_/u)).not.toBeInTheDocument();
-    expect(screen.getByText(/This will retry planning only/u)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Retry planning" }));
-    await waitFor(() =>
       expect(
-        fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/render")),
-      ).toHaveLength(2),
-    );
-    expect(
-      fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/v2/cpu-attempts")),
-    ).toBe(false);
-    expect(screen.queryByRole("link", { name: "Review video" })).not.toBeInTheDocument();
-    planned = true;
-    fireEvent.click(screen.getByRole("button", { name: "Refresh now" }));
-    await waitFor(() =>
+        await screen.findByText(/generation planning could not be verified/u),
+      ).toBeInTheDocument();
+      if (timingRepair) {
+        expect(screen.getAllByText(/Transcription lost speech timing/u).length).toBeGreaterThan(0);
+        expect(
+          screen.queryByRole("button", { name: "Retry" }),
+        ).not.toBeInTheDocument();
+        expect(screen.getByText("Needs attention")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Retry planning" })).not.toBeInTheDocument();
+        expect(screen.queryByText(/This will retry planning only/u)).not.toBeInTheDocument();
+        expect(
+          fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/render")),
+        ).toHaveLength(1);
+        expect(
+          fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/v2/cpu-attempts")),
+        ).toBe(false);
+        return;
+      }
       expect(
-        screen.queryByText(/generation planning could not be verified/u),
-      ).not.toBeInTheDocument(),
-    );
-    expect(screen.queryByRole("button", { name: "Retry planning" })).not.toBeInTheDocument();
-  });
+        screen.getAllByText(/Your transcript is saved; try planning again/u).length,
+      ).toBeGreaterThan(0);
+      expect(screen.queryByText(/HOSTED_/u)).not.toBeInTheDocument();
+      expect(screen.getByText(/This will retry planning only/u)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Retry planning" }));
+      await waitFor(() =>
+        expect(
+          fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/render")),
+        ).toHaveLength(2),
+      );
+      expect(
+        fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/v2/cpu-attempts")),
+      ).toBe(false);
+      expect(screen.queryByRole("link", { name: "Review video" })).not.toBeInTheDocument();
+      planned = true;
+      fireEvent.click(screen.getByRole("button", { name: "Refresh now" }));
+      await waitFor(() =>
+        expect(
+          screen.queryByText(/generation planning could not be verified/u),
+        ).not.toBeInTheDocument(),
+      );
+      expect(screen.queryByRole("button", { name: "Retry planning" })).not.toBeInTheDocument();
+    },
+  );
 
   it("re-arms one automatic render handoff for a successor revision reusing ASR evidence", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";

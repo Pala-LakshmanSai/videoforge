@@ -1,3 +1,18 @@
+asr_timing_recovery_2026_10_04:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  read_profile: v2_09_j1tts_voiceover
+  state: LOCAL_VERIFIED_NOT_PUBLISHED
+  branch: codex/asr-timing-recovery
+  base_source: 2da0f945
+  root_cause: Accepted_Whisper_words_24220ms_and27300ms_exceeded7000ms_scene_limit;planner_retry_could_not_repair_missing_speech_timing.
+  behavior: Bounded_same_model_redecode_of_affected_chunk_before_receipt;legacy_timing_guard_before_planning;truthful_Progress_without_futile_planning_retry.
+  validation: 37_transcription215_pipeline249_web_tests_PASS;full1136509ms_source_local_ASR_and250_scene_plan_PASS;real_Chrome_synthetic_fixture_PASS.
+  provider_spend: USD0;no_provider_mutation_or_paid_compute.
+  paid_compute_shutdown: Read_only_complete_RunPod_inventory_zero_Pods;original_ASR_reservation_CLEAN.
+  remaining_gates: Cloud_Linux_and_native_Desktop_runtime_qualification_publication;application_publication;guarded_same_project_immutable_successor_and_fresh_ASR_recovery;production_Chrome_acceptance.
+  evidence: evidence/acceptance/VF-10-09/2026-10-04-asr-timing-recovery.md
+
 voiceover_progress_2026_10_04:
   checkpoint: V2-09
   selected_task: VF-10-09
@@ -6913,17 +6928,17 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/j1tts-voiceover
-  branch_upstream: origin/codex/seedance-video
-  branch_published: true
-  current_source_head: "f705d6c21bf7b6ab46ba1801fb30eff0b58729f0"
-  current_source_head_semantics: published_application_source_elapsed_fix_handoff_follows
+  branch: codex/asr-timing-recovery
+  branch_upstream: null
+  branch_published: false
+  current_source_head: "569948f3b65ec052f0dc6ccb0143e0ae64ea6584"
+  current_source_head_semantics: published_application_source_voiceover_progress_local_ASR_repair_pending
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Resolve Git HEAD for the elapsed-time release. User explicitly authorized production; main unrelated work is preserved."
+  current_source_head_note: "Resolve Git HEAD for local ASR timing repair; published application remains voiceover Progress source569948f3. Main unrelated work is preserved."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
-  working_tree_expected: clean_tracked_after_elapsed_fix_handoff_commit
+  working_tree_expected: clean_tracked_after_ASR_timing_repair_handoff_commit
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
 live_development:

@@ -563,6 +563,39 @@ test("accepted 10–15-second speech with 500ms word boundaries remains schedula
   }
 });
 
+test("stretched ASR words fail before seeded scene search", async () => {
+  for (const duration of [24_220, 27_300]) {
+    const transcript = createPropertyTranscript({
+      durationMs: 40_000,
+      phraseStarts: [0, 10_000, 20_000, 30_000],
+      wordQuantumMs: 500,
+    });
+    const extra = duration - transcript.words[0].end_ms;
+    transcript.words[0].end_ms = duration;
+    for (const word of transcript.words.slice(1)) {
+      word.start_ms += extra;
+      word.end_ms += extra;
+    }
+    transcript.source.duration_ms += extra;
+    transcript.phrases = transcript.words.map((word) => ({
+      phrase_id: `phrase_${word.index}`,
+      sentence_id: "sentence_001",
+      word_start: word.index,
+      word_end_exclusive: word.index + 1,
+      text: word.text,
+      start_ms: word.start_ms,
+      end_ms: word.end_ms,
+      pause_before_ms: 0,
+      pause_after_ms: 0,
+    }));
+    const result = await scheduleTimeline(await propertyRequest(0, transcript));
+    assert.equal(result.ok, false);
+    assert.equal(result.error.code, "TRANSCRIPT_INVALID");
+    assert.deepEqual(result.error.path, ["transcript", "words", 0]);
+    assert.equal(result.error.details.wordDurationMs, duration);
+  }
+});
+
 test("a dead-end seed is rescued by the bounded deterministic seed ladder", async () => {
   // Seed 35 dead-ends the single-attempt search path on this 30-minute fixture: with only the
   // revision seed honoured, scheduleTimeline returns TIMELINE_INVALID "Word boundaries cannot

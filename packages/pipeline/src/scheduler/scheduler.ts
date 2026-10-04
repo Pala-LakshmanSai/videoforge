@@ -179,6 +179,14 @@ function validateSchedulerInput(
       );
     }
     previousWordEnd = word.end_ms;
+    if (word.end_ms - word.start_ms > IMAGE_MAXIMUM_MS) {
+      return fail(
+        "TRANSCRIPT_INVALID",
+        "A transcript word exceeds seven seconds. Recover transcription before planning scenes.",
+        ["transcript", "words", index],
+        { wordDurationMs: word.end_ms - word.start_ms },
+      );
+    }
   }
 
   const phraseIds = new Set<string>();

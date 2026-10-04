@@ -5848,6 +5848,15 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const firstIncompleteStageIndex = pipelineStages.findIndex(
     (stage) => stage.status !== "COMPLETE",
   );
+  const planningFailed =
+    asr?.state === "SUCCEEDED" &&
+    contextComplete &&
+    !render &&
+    !query.data.generation &&
+    renderHandoff.isError;
+  const transcriptionTimingRepair =
+    planningFailed &&
+    (renderHandoff.error as Error & { code?: string }).code === "HOSTED_ASR_TIMING_REPAIR_REQUIRED";
   const activeStageIndex =
     firstIncompleteStageIndex < 0
       ? Math.max(0, pipelineStages.length - 1)
@@ -5874,7 +5883,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         ["MAGE_IMAGE", "SOULX_AVATAR"].includes(attempt.kind) &&
         ["IN_QUEUE", "WAITING_FOR_GPUS"].includes(attempt.state.toUpperCase()),
     );
-  const hasFailed = generationStopped || uiStages.some((stage) => stage.status === "FAILED");
+  const hasFailed =
+    planningFailed || generationStopped || uiStages.some((stage) => stage.status === "FAILED");
   const hasActionRequired = uiStages.some((stage) => stage.status === "ACTION_REQUIRED");
   const hasRunning =
     uiStages.some((stage) =>
@@ -6201,12 +6211,6 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   // backgrounded tab throttles the poll, and a writer task switches states before the next response
   // lands. The live panel beside it already knows prompt writing is running, so the numbered stage
   // must agree instead of reporting the previous "not started" status.
-  const planningFailed =
-    asr?.state === "SUCCEEDED" &&
-    contextComplete &&
-    !render &&
-    !query.data.generation &&
-    renderHandoff.isError;
   const displayedStages = pipelineStages.map((stage) =>
     stage.id === "planning" && planningFailed
       ? { ...stage, status: "FAILED" as const, detail: renderHandoff.error.message }
@@ -6399,7 +6403,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             .map((id) => [id, stageRetryButton(gpuDispatch.isPending, () => gpuDispatch.mutate())]),
         )
       : {}),
-    ...(failedStageIds.has("planning") && planningFailed && asr
+    ...(failedStageIds.has("planning") && planningFailed && !transcriptionTimingRepair && asr
       ? { planning: stageRetryButton(renderHandoff.isPending, () => renderHandoff.mutate(asr.id)) }
       : {}),
     ...(failedStageIds.has("transcription") && asr?.state === "FAILED"
@@ -6464,10 +6468,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       : {}),
   };
   const visibleStageRetries = Object.fromEntries(
-    [...failedStageIds].map((id) => [
-      id,
-      stageRetries[id] ?? stageRetryDisabled(unavailableRetryReason(id)),
-    ]),
+    [...failedStageIds]
+      .filter((id) => !(id === "planning" && transcriptionTimingRepair))
+      .map((id) => [id, stageRetries[id] ?? stageRetryDisabled(unavailableRetryReason(id))]),
   );
   // A refused press has to say why inside the stage that was pressed. The server's sentence used to
   // land only in the notice below the pipeline, so a spent retry budget read as "nothing happened".
@@ -6485,7 +6488,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     ...(planningFailed ? { planning: renderHandoff.error.message } : {}),
     ...Object.fromEntries(
       [...failedStageIds]
-        .filter((id) => !stageRetries[id])
+        .filter((id) => !stageRetries[id] && !(id === "planning" && transcriptionTimingRepair))
         .map((id) => [id, unavailableRetryNotice(id)]),
     ),
     ...(failedStageIds.has("transcription") && asrHandoff.isError
@@ -7151,7 +7154,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               {query.data.generation_provider === "KIE_FAL" ? " API" : " GPU"} retry was sent.
             </span>
           ) : null}
-          {renderHandoff.isError && !query.data.generation ? (
+          {renderHandoff.isError && !query.data.generation && !transcriptionTimingRepair ? (
             <>
               <span>Your transcript is saved. This will retry planning only.</span>
               <Button

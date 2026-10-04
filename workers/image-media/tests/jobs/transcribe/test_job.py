@@ -666,6 +666,72 @@ class TranscriptionJobTest(unittest.TestCase):
             )
         )
 
+    def test_oversized_word_redecodes_once_before_saving_success(self) -> None:
+        broken = _whisper_output()
+        broken["transcription"] = [
+            {"offsets": {"from": 0, "to": 9000}, "text": " T"},
+            {"offsets": {"from": 9000, "to": 10000}, "text": " a"},
+        ]
+
+        class RecoveringRunner(FakeProcessRunner):
+            def run(
+                self, arguments: Sequence[str], *, should_cancel: Callable[[], bool]
+            ) -> ProcessResult:
+                if "--output-file" in arguments:
+                    prefix = arguments[arguments.index("--output-file") + 1]
+                    self.raw_document = _whisper_output() if "_recovery_" in prefix else broken
+                return super().run(arguments, should_cancel=should_cancel)
+
+        result, process, _, diagnostics = self._run(process=RecoveringRunner())
+        self.assertEqual(result["status"], "SUCCEEDED")
+        self.assertEqual(result["transcript"]["words"][0]["text"], "Fresh")
+        self.assertEqual(sum("--output-file" in c for c in process.commands), 2)
+        self.assertIn("asr_chunk_timing_recovery", [event for event, _ in diagnostics.events])
+        receipt = json.loads((self.root / "runs/asr-work/chunks/chunk_0000.json").read_text())
+        self.assertEqual(receipt["words"][0]["text"], "Fresh")
+        self.assertEqual(self.source_path.read_bytes(), self.source_bytes)
+        replay, replay_process, _, _ = self._run(process=FakeProcessRunner(raw_document=broken))
+        self.assertEqual(replay, result)
+        self.assertEqual(replay_process.calls, 0)
+
+    def test_timing_recovery_exhausts_once_without_publishing_bad_transcript(self) -> None:
+        broken = _whisper_output()
+        broken["transcription"] = [{"offsets": {"from": 0, "to": 9000}, "text": " T"}]
+        result, process, _, _ = self._run(process=FakeProcessRunner(raw_document=broken))
+        self.assert_error(result, "ASR_OUTPUT_INVALID")
+        self.assertEqual(sum("--output-file" in c for c in process.commands), 2)
+        self.assertFalse((self.root / "runs/asr-work/chunks/chunk_0000.json").exists())
+
+    def test_legacy_saved_bad_timing_is_rejected_without_overwriting_accepted_bytes(self) -> None:
+        broken = _whisper_output()
+        broken["transcription"] = [{"offsets": {"from": 0, "to": 9000}, "text": " T"}]
+        with patch(
+            "videoforge_image_media.jobs.transcribe.job.has_oversized_word", return_value=False
+        ):
+            old, _, _, _ = self._run(process=FakeProcessRunner(raw_document=broken))
+        self.assertEqual(old["status"], "SUCCEEDED")
+        saved = (self.root / "runs/asr-result.json").read_bytes()
+        result, process, _, _ = self._run()
+        self.assert_error(result, "ASR_OUTPUT_INVALID")
+        self.assertEqual(process.calls, 0)
+        self.assertEqual((self.root / "runs/asr-result.json").read_bytes(), saved)
+
+    def test_timing_recovery_preserves_cancellation(self) -> None:
+        broken = _whisper_output()
+        broken["transcription"] = [{"offsets": {"from": 0, "to": 9000}, "text": " T"}]
+
+        class CancelRecoveryRunner(FakeProcessRunner):
+            def run(
+                self, arguments: Sequence[str], *, should_cancel: Callable[[], bool]
+            ) -> ProcessResult:
+                if "_recovery_" in str(arguments[-1]):
+                    return ProcessResult(return_code=-15, cancelled=True)
+                return super().run(arguments, should_cancel=should_cancel)
+
+        result, process, _, _ = self._run(process=CancelRecoveryRunner(raw_document=broken))
+        self.assert_error(result, "ASR_CANCELLED", "CANCELLED")
+        self.assertEqual(sum("--output-file" in c for c in process.commands), 1)
+
     def test_restart_recovers_chunks_and_identical_replay_skips_processes(self) -> None:
         document = copy.deepcopy(self.document)
         document["voiceover"]["duration_ms"] = 610_000

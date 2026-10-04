@@ -97,6 +97,12 @@ provider credential. Windows and macOS run the same execution contract.
   starts/ends, FFprobe duration, and chunk receipt lineage.
 - For long audio, preserve deterministic overlap/reconciliation and recovery rules. Monotonic,
   complete word coverage is mandatory.
+- A word longer than the seven-second maximum scene cannot be scheduled. Before publishing a new
+  chunk receipt, re-decode only the affected chunk once with balanced overlapping windows capped at
+  90 seconds (15 seconds for an original chunk at most 90 seconds), the same pinned model and options,
+  and original normalized analysis bytes. Preserve healthy receipts, cancellation and exact source
+  duration; reject recovery that remains invalid. Never fabricate word timing. Historical accepted
+  results remain immutable and require a fresh attempt; planning rejects oversized words immediately.
 - The normal web client sends `optional_script: null`, so ASR wording is canonical. If a versioned API
   client supplies a script, deterministic dynamic programming aligns it to ASR timing; no AI timing
   decision is added.

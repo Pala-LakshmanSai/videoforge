@@ -6914,12 +6914,16 @@ export async function renderHandoff(
       error instanceof HostedCanonicalTimingPersistenceError
     ) {
       console.error("hosted_generation_planning_failed", error.code);
+      const timingRepair = error.code === "HOSTED_GENERATION_ASR_TIMING_UNSCHEDULABLE";
       return response(
         {
           error: {
-            code: "HOSTED_PROJECT_PLANNING_FAILED",
-            message:
-              "Video planning could not finish. Your transcript is saved; try planning again.",
+            code: timingRepair
+              ? "HOSTED_ASR_TIMING_REPAIR_REQUIRED"
+              : "HOSTED_PROJECT_PLANNING_FAILED",
+            message: timingRepair
+              ? "Transcription lost speech timing. Your audio is saved; transcription needs recovery before planning."
+              : "Video planning could not finish. Your transcript is saved; try planning again.",
           },
         },
         409,
