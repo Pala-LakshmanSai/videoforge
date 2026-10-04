@@ -9238,19 +9238,19 @@ provider_authority: &v2_09_provider_authority_current
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: Media_review_accepted_count
-  status: LOCAL_REGRESSION_VERIFIED_PUBLICATION_PENDING
+  milestone: Image_quality_prevention
+  status: QUALIFIED_PROMPT_SAFEGUARD_AND_VISUAL_GATE_PLAN
   dependency_status: production65d28fab_Workerfe1af150_verified
   authorization_status: user_explicitly_approved_API_testing_and_prevention_through_production;finiteUSD5
   task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current
   read_profile: v2_09_media_review_count
   task_brief: tasks/VF-10-09.md
-  goal: Correct_accepted_media_display_and_verify_pagination_in_production
+  goal: Publish_required_scene_fact_safeguard_and_qualify_durable_visual_acceptance_gate
   provider_mode: fixture
-  provider_calls_authorized: false
+  provider_calls_authorized: true
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 0
+  maximum_external_spend_usd: 5
   remote_or_cloud_mutations_authorized: true
   credential_access_authorized: true
   credential_value_read_authorized: true
