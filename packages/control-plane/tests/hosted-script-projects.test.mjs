@@ -5,6 +5,10 @@ import { IDS, seedLockedProjects } from "./support/fixtures.mjs";
 test("script intake accepts a durable queue before narration; tenant fences, archive, identity and capacity survive", async () => {
   await withMigratedDatabase(async ({ executor }) => {
     await seedLockedProjects(executor);
+    // Existing hosted deployment grants needed by the tenant-write trigger; not new authority.
+    await executor.query(
+      "GRANT SELECT ON workspaces, projects TO videoforge_v209_runtime_dc9612d6",
+    );
     const scoped = (account, work) =>
       executor.transaction(async (sql) => {
         await sql.query("SELECT set_config('videoforge.account_id',$1,true)", [account]);
@@ -44,6 +48,23 @@ test("script intake accepts a durable queue before narration; tenant fences, arc
         )
       ).rows[0].n,
       0,
+    );
+    await scoped(IDS.accountA, async (sql) => {
+      await sql.query("SET LOCAL ROLE videoforge_v209_runtime_dc9612d6");
+      await sql.query(
+        "INSERT INTO project_inputs(id,workspace_id,project_id,kind,state,idempotency_key,optional_script) VALUES($1,$2,$3,'OPTIONAL_SCRIPT','UPLOADED','script-intake-proof','Original script')",
+        [uuid(254001), IDS.workspaceA, first],
+      );
+    });
+    await assert.rejects(
+      scoped(IDS.accountB, async (sql) => {
+        await sql.query("SET LOCAL ROLE videoforge_v209_runtime_dc9612d6");
+        await sql.query(
+          "INSERT INTO project_inputs(id,workspace_id,project_id,kind,state,idempotency_key,optional_script) VALUES($1,$2,$3,'OPTIONAL_SCRIPT','UPLOADED','foreign-script-proof','Foreign script')",
+          [uuid(254002), IDS.workspaceA, second],
+        );
+      }),
+      /tenant|row-level security|has no owning account/i,
     );
     const due = (await executor.query("SELECT videoforge_pending_script_projects() AS due")).rows[0]
       .due;

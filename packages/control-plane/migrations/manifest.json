@@ -1296,6 +1296,12 @@
       "name": "hosted_script_projects",
       "filename": "0253_hosted_script_projects.sql",
       "sha256": "sha256:4cf4b191d3374957dccaa10865b166e3e73a550259d74a948fb29f8220aa786a"
+    },
+    {
+      "version": 254,
+      "name": "hosted_script_input_grant",
+      "filename": "0254_hosted_script_input_grant.sql",
+      "sha256": "sha256:3177d54544d00a0a29c25a4d40c1be96ec6f37fad4cafe8e3d9468290cdf4875"
     }
   ]
 }
