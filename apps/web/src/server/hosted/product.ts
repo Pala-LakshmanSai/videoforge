@@ -8601,6 +8601,20 @@ async function projectDetail(
     const apiPlan = detail.generation as Record<string, unknown> | null;
     const finalFrameCount = numberOrNull(apiPlan?.final_frame_count);
     const requiredOpening = videoPlan?.replacement_policy === "OPENING_180_V3";
+    const noAvatarAudioNeeded =
+      projectApiGeneration &&
+      requiredOpening &&
+      finalFrameCount !== null &&
+      finalFrameCount > 0 &&
+      numberOrNull(apiPlan?.avatar_frame_count) === 0 &&
+      spanTotal === 0 &&
+      spanJobRows.length === 0 &&
+      runtimeLanes.some(
+        (lane) =>
+          lane.lane === "soulx_avatar" &&
+          lane.state === "SUCCEEDED" &&
+          numberOrNull(lane.planned_item_count) === 0,
+      );
     const openingFrames = requiredOpening ? (numberOrNull(videoPlan?.opening_frames) ?? 0) : 0;
     const openingDurationFrames = requiredOpening ? Math.min(finalFrameCount ?? 0, 5400) : 0;
     const coverageFrames =
@@ -8793,42 +8807,51 @@ async function projectDetail(
       {
         id: "audio-spanning",
         name: "Audio spanning",
-        status: spanAdmissionWaiting
-          ? detail.cleanupPending
-            ? "BLOCKED"
-            : "QUEUED"
-          : spanAudioProgress.failed > 0
-            ? spanAudioProgress.retrying > 0
-              ? "RUNNING"
-              : "FAILED"
-            : spanTotal > 0 && spanAudioProgress.materialized === spanTotal
-              ? "COMPLETE"
-              : spanAudioProgress.running > 0 ||
-                  spanAudioProgress.queued > 0 ||
-                  spanAudioProgress.started_at !== null
+        status: noAvatarAudioNeeded
+          ? "COMPLETE"
+          : spanAdmissionWaiting
+            ? detail.cleanupPending
+              ? "BLOCKED"
+              : "QUEUED"
+            : spanAudioProgress.failed > 0
+              ? spanAudioProgress.retrying > 0
                 ? "RUNNING"
-                : "WAITING",
-        progress_percent: cloudMedia
-          ? null
-          : hostedProgressPercent(spanAudioProgress.materialized, spanTotal > 0 ? spanTotal : null),
+                : "FAILED"
+              : spanTotal > 0 && spanAudioProgress.materialized === spanTotal
+                ? "COMPLETE"
+                : spanAudioProgress.running > 0 ||
+                    spanAudioProgress.queued > 0 ||
+                    spanAudioProgress.started_at !== null
+                  ? "RUNNING"
+                  : "WAITING",
+        progress_percent: noAvatarAudioNeeded
+          ? 100
+          : cloudMedia
+            ? null
+            : hostedProgressPercent(
+                spanAudioProgress.materialized,
+                spanTotal > 0 ? spanTotal : null,
+              ),
         started_at: spanAudioProgress.started_at,
         completed_at: spanAudioProgress.completed_at,
-        detail: spanAdmissionWaiting
-          ? detail.cleanupPending
-            ? HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE +
-              " Saved prompts remain available; this stage resumes automatically after cleanup."
-            : "Waiting for an earlier project. Audio preparation starts automatically when the account slot opens."
-          : cloudMedia
-            ? spanAudioProgress.failed > 0
-              ? `${spanAudioProgress.materialized} of ${spanTotal} clips are saved. Cloud audio preparation failed; accepted clips remain available.`
-              : "Cloud media execution prepares the exact selected audio spans."
-            : spanTotal > 0
+        detail: noAvatarAudioNeeded
+          ? "Audio spans are not needed because this scene plan has no avatar segments."
+          : spanAdmissionWaiting
+            ? detail.cleanupPending
+              ? HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE +
+                " Saved prompts remain available; this stage resumes automatically after cleanup."
+              : "Waiting for an earlier project. Audio preparation starts automatically when the account slot opens."
+            : cloudMedia
               ? spanAudioProgress.failed > 0
-                ? spanAudioProgress.retrying > 0
-                  ? `${hostedSpanFailureMessage(spanAudioProgress.failure_code, spanTotal, spanAudioProgress.materialized)} The same ${spanAudioProgress.retrying} clip${spanAudioProgress.retrying === 1 ? "" : "s"} retry automatically on your computer.`
-                  : `${hostedSpanFailureMessage(spanAudioProgress.failure_code, spanTotal, spanAudioProgress.materialized)} Open this project again to retry on your computer.`
-                : `Your computer extracts the exact voiceover span for each avatar segment. ${spanAudioProgress.materialized} of ${spanTotal} spans are ready.`
-              : "Your computer extracts the exact voiceover span for each avatar segment before any GPU work starts.",
+                ? `${spanAudioProgress.materialized} of ${spanTotal} clips are saved. Cloud audio preparation failed; accepted clips remain available.`
+                : "Cloud media execution prepares the exact selected audio spans."
+              : spanTotal > 0
+                ? spanAudioProgress.failed > 0
+                  ? spanAudioProgress.retrying > 0
+                    ? `${hostedSpanFailureMessage(spanAudioProgress.failure_code, spanTotal, spanAudioProgress.materialized)} The same ${spanAudioProgress.retrying} clip${spanAudioProgress.retrying === 1 ? "" : "s"} retry automatically on your computer.`
+                    : `${hostedSpanFailureMessage(spanAudioProgress.failure_code, spanTotal, spanAudioProgress.materialized)} Open this project again to retry on your computer.`
+                  : `Your computer extracts the exact voiceover span for each avatar segment. ${spanAudioProgress.materialized} of ${spanTotal} spans are ready.`
+                : "Your computer extracts the exact voiceover span for each avatar segment before any GPU work starts.",
         eta_ms: null,
       },
       {

@@ -62,7 +62,7 @@ const database = {
             plannedJobCount: fixture.plannedJobCount ?? fixture.videos.length,
             jobs: structuredClone(fixture.videos),
           };
-        else if (name === "videoforge_read_hosted_api_jobs")
+        else if (name === "videoforge_read_hosted_api_jobs_v2")
           value = {
             generationRequestId: scope.generationRequestId,
             jobs: structuredClone(fixture.apiJobs),
@@ -263,6 +263,38 @@ describe("hosted video execution", () => {
     expect(
       fixture.events.some((event) => event.startsWith("videoforge_settle_hosted_api_failure")),
     ).toBe(false);
+  });
+
+  it("blocks rendering and new submissions after a definite required-opening clip failure", async () => {
+    fixture.videos = videoJobs("PREPARED", 2);
+    // Model the durable reader's result after the SQL opening policy prefixes a definite
+    // failure and refuses optional still fallback; this test owns orchestration behavior.
+    Object.assign(fixture.videos[0]!, {
+      state: "FAILED",
+      failureCode: "REQUIRED_OPENING_SEEDANCE_CLIP_TOO_SHORT",
+      staticFallback: false,
+      claimId: identity(100),
+      providerTaskId: identity(0),
+      outputCostUsd: 0.02,
+    });
+    const original = structuredClone(fixture.videos);
+    const result = await run(advanceHostedApiGeneration(environment, database, scope));
+    expect(result).toMatchObject({
+      state: "ACTION_REQUIRED",
+      code: "REQUIRED_OPENING_SEEDANCE_CLIP_TOO_SHORT",
+    });
+    expect(fixture.videos).toEqual(original);
+    expect(fixture.submit).not.toHaveBeenCalled();
+    expect(fixture.observe).not.toHaveBeenCalled();
+    expect(
+      fixture.events.some((event) => event.startsWith("videoforge_claim_hosted_video_job")),
+    ).toBe(false);
+    expect(
+      fixture.events.some((event) => event.startsWith("videoforge_commit_hosted_video_output")),
+    ).toBe(false);
+    expect(
+      fixture.events.some((event) => event.startsWith("videoforge_settle_hosted_api_failure")),
+    ).toBe(true);
   });
 
   it("never treats an uncertain submission as a still fallback", async () => {
@@ -472,6 +504,11 @@ describe("hosted video execution", () => {
     fixture.apiJobs = apiJobs("PREPARED", 2);
     fixture.apiJobs[1]!.state = "SUBMITTED";
     fixture.apiJobs[1]!.providerTaskId = "kie-paid";
+    fixture.apiJobs[1]!.providerAccount = {
+      id: "kie-legacy",
+      provider: "KIE",
+      credentialVersion: "v1",
+    };
     fixture.observeImage.mockResolvedValue({
       state: "SUCCEEDED",
       artifact: {

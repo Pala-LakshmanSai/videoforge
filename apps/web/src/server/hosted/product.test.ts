@@ -1491,6 +1491,125 @@ describe("hosted product route contract", () => {
     }
   });
 
+  it.each([
+    ["OPENING_180_V3", "SUCCEEDED", "COMPLETE"],
+    ["OPENING_180_V3", "MANIFEST_DURABLE", "WAITING"],
+    ["WHOLE_SCENE_V2", "SUCCEEDED", "WAITING"],
+  ])(
+    "completes zero-avatar audio only after its opening lane barrier (%s/%s)",
+    async (policy, avatarState, audioStatus) => {
+      const original = testState.query.getMockImplementation()!;
+      const previousProject = testState.projectRows[0]!;
+      testState.projectRows[0] = { ...previousProject, generation_provider: "KIE_FAL" };
+      testState.query.mockImplementation(async (sql, params) => {
+        if (
+          sql.includes("FROM selected_span_audio AS span") ||
+          sql.includes("SELECT job.state, count(*)::int AS total")
+        )
+          return { rows: [], affectedRows: 0 };
+        if (sql.includes("SELECT runtime.id, runtime.stage"))
+          return {
+            rows: [
+              {
+                stage: "WAITING_FOR_WORKER",
+                lanes: [
+                  {
+                    lane: "mage_image",
+                    state: "SUCCEEDED",
+                    planned_item_count: 38,
+                    accepted_item_count: 38,
+                  },
+                  {
+                    lane: "soulx_avatar",
+                    state: avatarState,
+                    planned_item_count: 0,
+                    accepted_item_count: 0,
+                  },
+                ],
+              },
+            ],
+            affectedRows: 1,
+          };
+        if (sql.includes("SELECT plan.id, plan.canonical_document_hash"))
+          return {
+            rows: [
+              {
+                final_frame_count: 5400,
+                image_scene_count: 38,
+                avatar_frame_count: 0,
+                planned_tasks: 38,
+                completed_tasks: 38,
+                failed_tasks: 0,
+              },
+            ],
+            affectedRows: 1,
+          };
+        if (sql.includes("FROM hosted_video_plans"))
+          return {
+            rows: [
+              {
+                replacement_policy: policy,
+                coverage_percent: 0,
+                planned_at: "2026-10-04T18:00:00Z",
+                opening_frames: 5400,
+                selections: [{ videoFrameCount: 60, durationSeconds: 2.1 }],
+              },
+            ],
+            affectedRows: 1,
+          };
+        if (sql.includes("FROM hosted_video_jobs job"))
+          return {
+            rows: [
+              {
+                start_frame: 0,
+                video_frame_count: 60,
+                duration_seconds: 2.1,
+                state: "SUBMITTED",
+                submitted_at: "2026-10-04T18:01:00Z",
+              },
+            ],
+            affectedRows: 1,
+          };
+        return original(sql, params);
+      });
+      try {
+        const result = await handleHostedProductRequest(
+          request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+          environment,
+          stagingConfig,
+          executionContext,
+        );
+        expect(result?.status).toBe(200);
+        const body = (await result!.json()) as {
+          stages: Record<string, unknown>[];
+          span_audio: Record<string, unknown>;
+        };
+        const audioStage = body.stages.find((stage) => stage.id === "audio-spanning");
+        expect(audioStage).toMatchObject({
+          status: audioStatus,
+          started_at: null,
+          completed_at: null,
+        });
+        expect(body.span_audio).toMatchObject({
+          total: 0,
+          materialized: 0,
+          started_at: null,
+          completed_at: null,
+        });
+        if (audioStatus === "COMPLETE") {
+          expect(audioStage).toMatchObject({ progress_percent: 100 });
+          expect(audioStage?.detail).toContain("no avatar segments");
+          expect(body.stages.find((stage) => stage.id === "video-generation")).toMatchObject({
+            status: "RUNNING",
+          });
+        }
+      } finally {
+        testState.projectRows[0] = previousProject;
+        testState.query.mockImplementation(original);
+      }
+    },
+  );
+
   it("reports persisted stage boundaries without inventing technical or historical planning time", async () => {
     const previousProject = testState.projectRows[0]!;
     const previousAttempts = [...testState.projectDetailAttemptRows];
