@@ -2,13 +2,17 @@ voiceover_progress_2026_10_04:
   checkpoint: V2-09
   selected_task: VF-10-09
   read_profile: v2_09_j1tts_voiceover
-  state: VALIDATED_PENDING_PRODUCTION
+  state: PRODUCTION_LIVE_CHROME_READBACK
   branch: codex/j1tts-voiceover
   behavior: Create_navigates_to_saved_project_Progress;stage1_narration_uses_progress_dashboard;generated_audio_and_script_remain_on_Progress_after_handoff.
   validation: 242_focused_web_tests_and_Web_Worker_types_PASS;lost_response_identity_and_no_uncertain_replay_preserved.
   provider_spend: No_new_TTS_or_video_generation.
   paid_compute_shutdown: No_new_compute_started;prior_user_video_completed_under_original_lifecycle.
-  remaining_gates: Production_staging_builds_static_checks_publication_and_Chrome_readback.
+  production_source: 569948f3b65ec052f0dc6ccb0143e0ae64ea6584
+  worker_version: a0d71c77-04e8-4679-bd56-c751ba58d4c2
+  release: 100_percent_traffic;53_bindings;26_secrets;3_workflow_identities_preserved;status_commit_verified.
+  chrome_readback: Existing_dunes_project_Progress_displays_saved_voice_player_and_script_after_stage11.
+  remaining_gates: Fresh_paid_script_Create_click_not_repeated_for_UI_only_change;existing_completed_project_readback_verified.
   evidence: evidence/acceptance/VF-10-09/2026-10-04-voiceover-progress.md
 
 scalable_admission_2026_10_04:
