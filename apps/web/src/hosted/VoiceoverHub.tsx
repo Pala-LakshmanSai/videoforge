@@ -20,6 +20,7 @@ interface VoiceoverJob {
   voice_id: string;
   failure_code: string | null;
   audio_url: string | null;
+  script?: string;
 }
 export async function voiceoverJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -47,7 +48,9 @@ export function VoiceoverHub() {
     client = useQueryClient();
   const [search, setSearch] = useState(""),
     [filter, setFilter] = useState("saved"),
+    [limit, setLimit] = useState(100),
     [preview, setPreview] = useState<Voice | null>(null);
+  useEffect(() => setLimit(100), [search, filter]);
   const save = useMutation({
     mutationFn: ({ voice, saved, starred }: { voice: Voice; saved: boolean; starred: boolean }) =>
       voiceoverJson(`/api/v2/voiceovers/voices/${voice.voice_id}`, {
@@ -76,7 +79,7 @@ export function VoiceoverHub() {
         `${v.name} ${v.tags} ${v.languages}`.toLowerCase().includes(search.toLowerCase()),
     )
     .sort((a, b) => Number(b.starred) - Number(a.starred) || a.name.localeCompare(b.name));
-  const displayed = visible.slice(0, 100);
+  const displayed = visible.slice(0, limit);
   return (
     <div className="page voiceover-hub">
       <PageHeader
@@ -87,23 +90,30 @@ export function VoiceoverHub() {
         <div className="voice-hub-filters" role="group" aria-label="Voice library">
           <button
             className={filter === "saved" ? "is-active" : ""}
+            aria-pressed={filter === "saved"}
             onClick={() => setFilter("saved")}
           >
             Saved ({all.filter((v) => v.saved).length})
           </button>
           <button
             className={filter === "starred" ? "is-active" : ""}
+            aria-pressed={filter === "starred"}
             onClick={() => setFilter("starred")}
           >
             Starred
           </button>
-          <button className={filter === "all" ? "is-active" : ""} onClick={() => setFilter("all")}>
+          <button
+            className={filter === "all" ? "is-active" : ""}
+            aria-pressed={filter === "all"}
+            onClick={() => setFilter("all")}
+          >
             All voices
           </button>
         </div>
         <label className="voice-hub-search">
           <Search size={18} />
           <input
+            className="input"
             aria-label="Search voices"
             placeholder="Search voices, accent or style"
             value={search}
@@ -117,6 +127,7 @@ export function VoiceoverHub() {
           <label className="field">
             <span className="field-label">Voice ID</span>
             <input
+              className="input"
               aria-label="ElevenLabs voice ID"
               placeholder="Paste the voice ID"
               value={importId}
@@ -215,8 +226,15 @@ export function VoiceoverHub() {
           </article>
         ))}
       </div>
-      {visible.length > 100 && (
-        <p className="muted">Showing 100 of {visible.length} voices. Search to narrow the list.</p>
+      {visible.length > displayed.length && (
+        <div className="voice-hub-more">
+          <p className="muted">
+            Showing {displayed.length} of {visible.length} voices.
+          </p>
+          <button className="button button-secondary" onClick={() => setLimit(limit + 100)}>
+            Show more voices
+          </button>
+        </div>
       )}
     </div>
   );
@@ -257,10 +275,18 @@ export function ScriptVoiceover({
     retry: false,
     refetchOnWindowFocus: false,
   });
-  const activeJob = job ?? jobs.data?.job ?? null;
+  const activeJob = job ?? (jobs.isFetchedAfterMount ? jobs.data?.job : null) ?? null;
   useEffect(() => {
-    if (jobs.data?.job && !job) setJob(jobs.data.job);
-  }, [jobs.data]);
+    if (jobs.isFetchedAfterMount && jobs.data?.job && !job) {
+      setJob(jobs.data.job);
+      if (!current.current.script) {
+        setScript(jobs.data.job.script ?? "");
+        setVoiceId(jobs.data.job.voice_id);
+        setFilename(jobs.data.job.filename);
+        chooseDefault.current = true;
+      }
+    }
+  }, [jobs.data, jobs.isFetchedAfterMount]);
   const status = useQuery({
     queryKey: ["voiceover-job", activeJob?.id],
     queryFn: () => voiceoverJson<{ job: VoiceoverJob }>(`/api/v2/voiceovers/jobs/${activeJob!.id}`),
@@ -355,6 +381,7 @@ export function ScriptVoiceover({
   const locked =
     disabled ||
     busy ||
+    !jobs.isFetchedAfterMount ||
     Boolean(
       activeJob && ["PROCESSING", "SUBMITTING", "UNKNOWN_NO_RETRY"].includes(activeJob.state),
     );
@@ -369,6 +396,7 @@ export function ScriptVoiceover({
         <label className="field">
           <span className="field-label">Script file</span>
           <input
+            className="input"
             aria-label="Script file"
             type="file"
             accept=".txt,text/plain"
@@ -376,30 +404,41 @@ export function ScriptVoiceover({
             onChange={async (e) => {
               const file = e.target.files?.[0];
               if (!file) return;
+              change();
+              setScript("");
               if (!/\.txt$/iu.test(file.name) || file.size > 400_000) {
                 setError("Upload a plain text (.txt) script, up to 100,000 characters.");
                 return;
               }
-              const text = await file.text();
-              if (!text.trim() || text.length > 100_000) {
-                setError("Script must contain 1 to 100,000 characters.");
-                return;
+              setBusy(true);
+              try {
+                const text = await file.text();
+                if (!alive.current) return;
+                if (!text.trim() || text.length > 100_000 || text.includes("\0")) {
+                  setError("Script must contain 1 to 100,000 plain text characters.");
+                  return;
+                }
+                setScript(text);
+                setFilename(
+                  file.name
+                    .replace(/\.txt$/iu, ".mp3")
+                    .replace(/[^A-Za-z0-9._-]/gu, "_")
+                    .slice(0, 150)
+                    .replace(/\.mp3$/iu, "") + ".mp3",
+                );
+              } catch {
+                if (alive.current)
+                  setError("This script file could not be read. Try another .txt file.");
+              } finally {
+                if (alive.current) setBusy(false);
               }
-              change();
-              setScript(text);
-              setFilename(
-                file.name
-                  .replace(/\.txt$/iu, ".mp3")
-                  .replace(/[^A-Za-z0-9._-]/gu, "_")
-                  .slice(0, 150)
-                  .replace(/\.mp3$/iu, "") + ".mp3",
-              );
             }}
           />
         </label>
         <label className="field">
           <span className="field-label">Voice</span>
           <select
+            className="select"
             aria-label="Script voice"
             value={voiceId}
             disabled={locked || voices.isPending}
@@ -431,6 +470,7 @@ export function ScriptVoiceover({
       <label className="field">
         <span className="field-label">Script</span>
         <textarea
+          className="textarea"
           aria-label="Voiceover script"
           rows={8}
           maxLength={100_000}
@@ -462,7 +502,7 @@ export function ScriptVoiceover({
       )}
       {audioUrl && (
         <div className="generated-voiceover">
-          <span>Voiceover ready</span>
+          <span>Voiceover ready · {activeJob?.filename}</span>
           <audio aria-label="Generated voiceover preview" controls src={audioUrl} />
           <a href={audioUrl} download={activeJob?.filename ?? filename}>
             Download MP3

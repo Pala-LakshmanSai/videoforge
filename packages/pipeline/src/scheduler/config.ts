@@ -50,8 +50,18 @@ export const SHORT_FORM_SCHEDULER_CONFIG = Object.freeze({
   short_form_target_avatar_ratio_maximum: 0.24,
 });
 
+export const SCRIPT_SHORT_FORM_SCHEDULER_VERSION = "scheduler-v4";
+
+/** Extend the established short coverage envelope without changing V2 or V3 identities. */
+export const SCRIPT_SHORT_FORM_SCHEDULER_CONFIG = Object.freeze({
+  ...SHORT_FORM_SCHEDULER_CONFIG,
+  schema_version: "deterministic-timeline-scheduler-config/v4",
+  short_form_maximum_ms: 30_000,
+});
+
 export function schedulerConfigForVersion(version: string) {
   if (version === SUPPORTED_SCHEDULER_VERSION) return SUPPORTED_SCHEDULER_CONFIG;
   if (version === SHORT_FORM_SCHEDULER_VERSION) return SHORT_FORM_SCHEDULER_CONFIG;
+  if (version === SCRIPT_SHORT_FORM_SCHEDULER_VERSION) return SCRIPT_SHORT_FORM_SCHEDULER_CONFIG;
   return null;
 }

@@ -284,7 +284,12 @@ export function hostedRevisionConfigV2(input: {
       avatar_quality_profile_id: null,
     },
     spend_cap_usd: null,
-    scheduler_version: input.voiceoverDurationMs <= 15_000 ? "scheduler-v3" : "scheduler-v2",
+    scheduler_version:
+      input.voiceoverDurationMs <= 15_000
+        ? "scheduler-v3"
+        : input.voiceoverDurationMs <= 30_000
+          ? "scheduler-v4"
+          : "scheduler-v2",
     scheduler_seed: input.schedulerSeed,
     prompt_writer_version: "scene-prompt-writer-v1",
     prompt_compiler_version: "mage-prompt-compiler-v1",

@@ -103,6 +103,7 @@ interface Job {
   provider_job_id: string | null;
   failure_code: string | null;
   created_at: string;
+  script?: string;
 }
 export function publicVoiceoverJob(job: Job | null) {
   if (!job) return null;
@@ -113,6 +114,7 @@ export function publicVoiceoverJob(job: Job | null) {
     voice_id: job.voice_id,
     failure_code: job.failure_code,
     created_at: job.created_at,
+    script: job.script,
     audio_url: job.state === "COMPLETED" ? `/api/v2/voiceovers/jobs/${job.id}/audio` : null,
   };
 }
@@ -360,6 +362,7 @@ export async function handleJ1Voiceover(
         !UUID.test(b.id) ||
         typeof b.script !== "string" ||
         !b.script.trim() ||
+        b.script.includes("\0") ||
         b.script.length > 100_000 ||
         typeof b.voice_id !== "string" ||
         !ID.test(b.voice_id) ||
@@ -476,8 +479,9 @@ export async function handleJ1Voiceover(
       {
         error: {
           code: error instanceof J1Error ? error.code : "VOICEOVER_UNAVAILABLE",
-          message:
-            "Unable to reach voice generation. Your saved request will not be submitted again.",
+          message: path.includes("/jobs")
+            ? "Unable to reach voice generation. Your saved request will not be submitted again."
+            : "Unable to load voices. Try again in a moment.",
         },
       },
       503,

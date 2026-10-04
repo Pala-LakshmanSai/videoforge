@@ -9,7 +9,7 @@ test("durable TTS: identity, tenant privacy, saved stars, terminal fences and sh
   await seedLockedProjects(executor);
   const call=async(name,args)=> !args.length ? (await executor.query(`SELECT public.${name}() value`)).rows[0].value : (await executor.query(`WITH bound AS (SELECT set_config('videoforge.account_id',($1::uuid)::text,true)) SELECT public.${name}(${args.map((_,i)=>'$'+(i+1)).join(',')}) value FROM bound`,args)).rows[0].value;
   const start=(a,j,hash=sha256('request'))=>call('videoforge_start_voiceover_job',[...a,j,hash,'A complete script.','voice','demo.mp3']);
-  const first=await start(owner,uuid(250001));assert.equal(first.claimed,true);assert.equal((await start(owner,uuid(250001))).claimed,false);
+  const first=await start(owner,uuid(250001));assert.equal(first.claimed,true);assert.equal(first.job.script,"A complete script.");assert.equal((await start(owner,uuid(250001))).claimed,false);
   await assert.rejects(start(owner,uuid(250001),sha256('different')),/VOICEOVER_REQUEST_CONFLICT/);
   assert.equal(await call('videoforge_read_voiceover_job',[...other,uuid(250001)]),null);
   await assert.rejects(start(owner,uuid(250002)),/VOICEOVER_CAPACITY_BUSY/);

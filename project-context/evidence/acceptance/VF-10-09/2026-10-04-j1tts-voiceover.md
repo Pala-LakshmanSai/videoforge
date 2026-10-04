@@ -17,3 +17,9 @@ Acceptance is bounded to USD1 incremental generation/compute and one short pipel
 ## Native runtime correction
 
 First application publication12ca2f19/6d1bec87 exposed a concrete live-only provider-read failure: workerd rejects fetch redirect mode `error` although Node accepts it. No TTS POST occurred. Use `manual` and explicitly reject redirects at the provider boundary; external previews also use manual mode. An actual workerd regression executes the source boundary with provider-free outbound fixtures and proves successful reads and rejection without credential forwarding. The15 provider/route checks pass; no native schema change is required.
+
+## Real J1TTS and pipeline acceptance
+
+Productionacbe189f/4c921a7f loads1123 owner voices, six saved imports and1117 foreign global voices. Imported preview is404 to a foreign account; anonymous401 and cross-origin mutation403. Starred Matt persists and defaults in the dropdown. Actual Chrome .txt upload sends one explicit TTS request, job747b790e-4ce9-46e5-ae3a-5417331ba1f7; the independent observer runs and page reload retrieves the same request without resubmitting. Completed MP3 is306408bytes,19.086803seconds, mono44.1kHz and fully decodes. Native migration0251 safely adds authenticated original-script recovery; all scope/grant checks pass.
+
+First Cloud canary33ea5194-a2a6-432b-badb-ac2367c5df22 completes ASR and context and cleans its machine. Existing V2 scheduling fails because no word boundary meets its narrow21–22% coverage at19seconds. Logs establish TIMELINE_SCHEDULING_FAILED; no accepted generation work is replayed. Separate V4 covers fresh15–30second clips with the already established20–24% short envelope. V2/V3 remain exact and historical revisions stay pinned. Validate this canary's timing fixture and complete a fresh revision after publication.

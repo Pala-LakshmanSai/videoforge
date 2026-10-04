@@ -17,6 +17,8 @@ import {
   SCHEDULER_SHOT_ROLES,
   SHORT_FORM_SCHEDULER_CONFIG,
   SHORT_FORM_SCHEDULER_VERSION,
+  SCRIPT_SHORT_FORM_SCHEDULER_CONFIG,
+  SCRIPT_SHORT_FORM_SCHEDULER_VERSION,
   SUPPORTED_SCHEDULER_CONFIG,
   SUPPORTED_SCHEDULER_VERSION,
 } from "./config.js";
@@ -75,11 +77,16 @@ function avatarCoverageRange(
   durationMs: number,
   version: string,
 ): { minimum: number; maximum: number } {
-  return version === SHORT_FORM_SCHEDULER_VERSION &&
-    durationMs <= SHORT_FORM_SCHEDULER_CONFIG.short_form_maximum_ms
+  const short =
+    version === SCRIPT_SHORT_FORM_SCHEDULER_VERSION
+      ? SCRIPT_SHORT_FORM_SCHEDULER_CONFIG
+      : version === SHORT_FORM_SCHEDULER_VERSION
+        ? SHORT_FORM_SCHEDULER_CONFIG
+        : null;
+  return short && durationMs <= short.short_form_maximum_ms
     ? {
-        minimum: SHORT_FORM_SCHEDULER_CONFIG.short_form_target_avatar_ratio_minimum,
-        maximum: SHORT_FORM_SCHEDULER_CONFIG.short_form_target_avatar_ratio_maximum,
+        minimum: short.short_form_target_avatar_ratio_minimum,
+        maximum: short.short_form_target_avatar_ratio_maximum,
       }
     : {
         minimum: SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_minimum,
@@ -106,13 +113,20 @@ function validateSchedulerInput(
 ): PipelineFailure | null {
   if (
     revision.scheduler_version !== SUPPORTED_SCHEDULER_VERSION &&
-    revision.scheduler_version !== SHORT_FORM_SCHEDULER_VERSION
+    revision.scheduler_version !== SHORT_FORM_SCHEDULER_VERSION &&
+    revision.scheduler_version !== SCRIPT_SHORT_FORM_SCHEDULER_VERSION
   ) {
     return fail(
       "TIMELINE_INVALID",
       `Unsupported scheduler version ${revision.scheduler_version}.`,
       ["revision", "scheduler_version"],
-      { supportedVersions: [SUPPORTED_SCHEDULER_VERSION, SHORT_FORM_SCHEDULER_VERSION] },
+      {
+        supportedVersions: [
+          SUPPORTED_SCHEDULER_VERSION,
+          SHORT_FORM_SCHEDULER_VERSION,
+          SCRIPT_SHORT_FORM_SCHEDULER_VERSION,
+        ],
+      },
     );
   }
 
@@ -635,8 +649,7 @@ export function validateTimelineSemantics(
   if (avatarRatio < coverageRange.minimum || avatarRatio > coverageRange.maximum) {
     return fail(
       "TIMELINE_INVALID",
-      plan.scheduler_version === SHORT_FORM_SCHEDULER_VERSION &&
-        transcript.source.duration_ms <= SHORT_FORM_SCHEDULER_CONFIG.short_form_maximum_ms
+      coverageRange.minimum === SHORT_FORM_SCHEDULER_CONFIG.short_form_target_avatar_ratio_minimum
         ? "Short-form avatar coverage must remain inside the 20–24% range."
         : "Avatar coverage must remain inside the locked 21–22% range.",
       ["segments"],

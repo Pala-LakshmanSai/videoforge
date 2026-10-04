@@ -151,3 +151,7 @@ playable short MP4 alone do not prove this boundary.
 ## Voiceover sources — 2026-10-04
 
 DEC_VOICEOVER_001 adds J1TTS script generation alongside the default final-audio upload. Create offers Upload voiceover and Upload script; script mode accepts a UTF-8 .txt file or pasted text and an exact voice ID. Users generate, listen, optionally download the MP3, then create the video. Voiceover Hub provides previews, private saved/starred voices and optional ElevenLabs-ID import. Generated MP3s use the same validated private upload, ASR timing and downstream video path as direct audio. The existing avatar/version, style, Local/Cloud and video-output rules remain binding.
+
+## Short voiceover compatibility — 2026-10-04
+
+Fresh voiceovers longer than15seconds and at most30seconds pin `scheduler-v4`, extending the established20–24% short-clip avatar envelope while preserving exact `scheduler-v2` and `scheduler-v3` configurations/hashes and all historical revision pins. V3 still selects for10–15seconds; longer-than30seconds selects V2's21–22%. Whole-word cuts, continuous source coverage,3–7second image scenes, bounded avatar scenes, immutable work-plan provenance and output grammar remain. The real19.087second J1TTS canary has no word boundary in V2's4.00–4.20second avatar window; preserve that failed revision and use a fresh V4 revision for acceptance. Regression data is de-identified in `packages/pipeline/tests/fixtures/j1tts-short-transcript.json`.

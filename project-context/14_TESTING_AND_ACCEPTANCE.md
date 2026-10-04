@@ -407,3 +407,7 @@ Published source 89cfe121 passes focused Create/preflight/idempotency, integer 0
 ## Voiceover source acceptance — 2026-10-04
 
 Verify private saved/starred state and dropdown ordering, script picker/paste, no TTS on selection/editing, one provider submission per durable UUID, altered-body conflict, ambiguous-response no replay, refresh recovery, exact-ID status/audio, foreign-owner404, shared admission, and unchanged direct upload/ASR/render. Prove a real generated MP3 decodes and meets the10s–60min voiceover contract. Live Chrome and production publication are separate from fixtures; full generated-video playback/download and cleanup require their own evidence.
+
+## Short voiceover compatibility — 2026-10-04
+
+Fresh voiceovers longer than15seconds and at most30seconds pin `scheduler-v4`, extending the established20–24% short-clip avatar envelope while preserving exact `scheduler-v2` and `scheduler-v3` configurations/hashes and all historical revision pins. V3 still selects for10–15seconds; longer-than30seconds selects V2's21–22%. Whole-word cuts, continuous source coverage,3–7second image scenes, bounded avatar scenes, immutable work-plan provenance and output grammar remain. The real19.087second J1TTS canary has no word boundary in V2's4.00–4.20second avatar window; preserve that failed revision and use a fresh V4 revision for acceptance. Regression data is de-identified in `packages/pipeline/tests/fixtures/j1tts-short-transcript.json`.

@@ -76,7 +76,7 @@ describe("J1TTS provider boundary", () => {
     });
     expect(fetcher).toHaveBeenCalledOnce();
   });
-  it("never publishes provider job identity, credentials or script", () => {
+  it("never publishes provider job identity or credentials", () => {
     const data = publicVoiceoverJob({
       id: "local",
       state: "COMPLETED",

@@ -923,6 +923,19 @@
 .script-voiceover textarea {
   width: 100%;
 }
+.script-voiceover input[type="file"] {
+  height: auto;
+  padding: 8px;
+}
+.script-voiceover input::file-selector-button {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  margin-right: 10px;
+  background: var(--panel-strong);
+  color: var(--text);
+  cursor: pointer;
+}
 .generated-voiceover,
 .voice-preview {
   display: flex;
@@ -1014,6 +1027,12 @@
 .voice-preview audio {
   flex: 1;
   min-width: 240px;
+}
+.voice-hub-more {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
 }
 @media (max-width: 640px) {
   .script-voiceover-fields {

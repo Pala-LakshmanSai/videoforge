@@ -127,7 +127,8 @@ it("restores completed MP3 without submitting TTS again", async () => {
               id: "saved",
               state: "COMPLETED",
               filename: "saved.mp3",
-              voice_id: "alice",
+              script: "Original narration restored after refresh.",
+              voice_id: "bob",
               audio_url: "/jobs/saved/audio",
             },
           },
@@ -137,7 +138,47 @@ it("restores completed MP3 without submitting TTS again", async () => {
   wrap(<ScriptVoiceover disabled={false} onReady={onReady} onInvalidate={vi.fn()} />);
   await waitFor(() => expect(onReady).toHaveBeenCalledOnce());
   expect(onReady.mock.calls[0]?.[0].name).toBe("saved.mp3");
+  expect(screen.getByLabelText("Voiceover script")).toHaveValue(
+    "Original narration restored after refresh.",
+  );
+  expect(screen.getByLabelText("Script voice")).toHaveValue("bob");
   expect(fetcher.mock.calls.every((call) => !(call[1] as RequestInit | undefined)?.method)).toBe(
     true,
   );
+});
+it("reads a script file and generates only after the explicit button", async () => {
+  const posts: Record<string, unknown>[] = [];
+  const fetcher = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+    if (init?.method === "POST") {
+      const body = JSON.parse(init.body as string);
+      posts.push(body);
+      return Response.json({
+        job: {
+          id: body.id,
+          state: "PROCESSING",
+          filename: body.filename,
+          voice_id: body.voice_id,
+          audio_url: null,
+        },
+      });
+    }
+    return Response.json(String(url).endsWith("/voices") ? { voices } : { job: null });
+  });
+  vi.stubGlobal("fetch", fetcher);
+  wrap(<ScriptVoiceover disabled={false} onReady={vi.fn()} onInvalidate={vi.fn()} />);
+  await waitFor(() => expect(screen.getByLabelText("Script file")).toBeEnabled());
+  const file = new File(["River narration."], "river.txt", { type: "text/plain" });
+  Object.defineProperty(file, "text", { value: async () => "River narration." });
+  fireEvent.change(screen.getByLabelText("Script file"), { target: { files: [file] } });
+  await waitFor(() =>
+    expect(screen.getByLabelText("Voiceover script")).toHaveValue("River narration."),
+  );
+  expect(posts).toHaveLength(0);
+  fireEvent.click(screen.getByRole("button", { name: "Generate voiceover" }));
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({
+    script: "River narration.",
+    voice_id: "alice",
+    filename: "river.mp3",
+  });
 });

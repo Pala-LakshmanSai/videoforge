@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 
 import {
   canonicalizeJson,
@@ -13,6 +14,7 @@ import {
   schedulerConfigForVersion,
   SHORT_FORM_SCHEDULER_CONFIG,
   SHORT_FORM_SCHEDULER_VERSION,
+  SCRIPT_SHORT_FORM_SCHEDULER_VERSION,
   SUPPORTED_SCHEDULER_CONFIG,
   SUPPORTED_SCHEDULER_VERSION,
 } from "../dist/src/index.js";
@@ -296,8 +298,10 @@ test("sub-frame phrase starts preserve words and produce positive, contiguous sc
     durationMs: 40_000,
     phraseStarts: [0, 4_000, 4_010, 8_000, 12_000, 16_000, 20_000, 24_000, 28_000, 32_000, 36_000],
   });
-  assert.equal(Math.round(transcript.phrases[1].start_ms * 30 / 1_000),
-    Math.round(transcript.phrases[2].start_ms * 30 / 1_000));
+  assert.equal(
+    Math.round((transcript.phrases[1].start_ms * 30) / 1_000),
+    Math.round((transcript.phrases[2].start_ms * 30) / 1_000),
+  );
   const request = await propertyRequest(982_341, transcript);
   const first = requireSuccess(await scheduleTimeline(request));
   const second = requireSuccess(await scheduleTimeline(request));
@@ -812,4 +816,21 @@ test("complete work plans reject forged scheduler identity, word cuts, and dupli
   });
   assert.equal(duplicateResult.ok, false);
   assert.deepEqual(duplicateResult.error.path, ["timeline"]);
+});
+
+test("19-second J1TTS narration keeps word boundaries in a separately pinned short scheduler", async () => {
+  const transcriptValue = JSON.parse(
+    readFileSync(new URL("./fixtures/j1tts-short-transcript.json", import.meta.url), "utf8"),
+  );
+  const legacy = await scheduleTimeline(await propertyRequest(1000527468, transcriptValue));
+  assert.equal(legacy.ok, false);
+  const request = await propertyRequest(
+    1000527468,
+    transcriptValue,
+    SCRIPT_SHORT_FORM_SCHEDULER_VERSION,
+  );
+  const plan = requireSuccess(await scheduleTimeline(request));
+  const coverage = assertExactTimelineCoverage(plan.value, transcriptValue);
+  assert.ok(coverage.avatarRatio >= 0.2 && coverage.avatarRatio <= 0.24);
+  assert.equal(plan.sha256, requireSuccess(await scheduleTimeline(request)).sha256);
 });

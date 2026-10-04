@@ -1278,6 +1278,12 @@
       "name": "hosted_j1tts_voiceover",
       "filename": "0250_hosted_j1tts_voiceover.sql",
       "sha256": "sha256:a3a1460cc6a1318d6ac4ba9b826db68892e982af751c3eceeda6056e572803b1"
+    },
+    {
+      "version": 251,
+      "name": "hosted_voiceover_script_recovery",
+      "filename": "0251_hosted_voiceover_script_recovery.sql",
+      "sha256": "sha256:33edaa43fe8907c935d035a6a6cc7e70dac9042797c71c7cb98fb61377f3cc18"
     }
   ]
 }
