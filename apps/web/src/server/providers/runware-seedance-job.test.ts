@@ -197,6 +197,69 @@ describe("Runware Seedance durable job", () => {
     })).rejects.toMatchObject({ code: "RESPONSE_INVALID" });
   });
 
+  it("settles only an exact task-scoped HTTP504 provider timeout without paid replay or a zero-cost assumption", async () => {
+    const failure = { taskUUID, taskType: "videoInference", status: "error", code: "failedProviderTimeout",
+      message: "ByteDance request timeout. The service provider took too long to respond." };
+    const bucket = { get: vi.fn(), put: vi.fn() } as unknown as HostedR2BucketBinding;
+    const recordProviderCost = vi.fn(async (_cost: number) => undefined);
+    const fetchPort = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => json({ errors: [failure] }, 504));
+    const input = { requestId: taskUUID, apiKey, objectKey, durationSeconds: 1.2, bucket, recordProviderCost };
+    expect(await observeRunwareSeedanceJob({ ...input, fetchPort })).toEqual({ state: "FAILED" });
+    expect(fetchPort).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(fetchPort.mock.calls[0]?.[1]?.body)))
+      .toEqual([{ taskType: "getResponse", taskUUID }]);
+    expect(recordProviderCost).not.toHaveBeenCalled();
+    expect(bucket.get).not.toHaveBeenCalled(); expect(bucket.put).not.toHaveBeenCalled();
+    for (const [status, error] of [
+      [500, failure], [502, failure], [503, failure],
+      [504, { ...failure, taskType: "getResponse" }],
+      [504, { ...failure, taskUUID: undefined }],
+      [504, { ...failure, code: "gatewayTimeout" }],
+      [504, { ...failure, status: "processing" }],
+    ] as const) {
+      await expect(observeRunwareSeedanceJob({ ...input,
+        fetchPort: async () => json({ errors: [error] }, status),
+      })).rejects.toMatchObject({ code: error.taskUUID === undefined ? "RESPONSE_INVALID" : "POLL_UNAVAILABLE" });
+    }
+    for (const body of [
+      { errors: [{ ...failure, taskUUID: videoUUID }] },
+      { errors: [failure, failure] },
+      { errors: [failure], data: [completed] },
+    ]) {
+      await expect(observeRunwareSeedanceJob({ ...input,
+        fetchPort: async () => json(body, 504),
+      })).rejects.toMatchObject({ code: "RESPONSE_INVALID" });
+    }
+    await expect(observeRunwareSeedanceJob({ ...input,
+      fetchPort: async () => new Response("gateway timeout", { status: 504 }),
+    })).rejects.toMatchObject({ code: "POLL_UNAVAILABLE" });
+    expect(recordProviderCost).not.toHaveBeenCalled();
+    expect(bucket.get).not.toHaveBeenCalled(); expect(bucket.put).not.toHaveBeenCalled();
+  });
+
+  it("retains an explicit timeout charge and rejects invalid charges or cost-persistence failure", async () => {
+    const failure = { taskUUID, taskType: "videoInference", status: "error", code: "failedProviderTimeout" };
+    const recordProviderCost = vi.fn(async (_cost: number) => undefined);
+    const bucket = { get: vi.fn(), put: vi.fn() } as unknown as HostedR2BucketBinding;
+    const input = { requestId: taskUUID, apiKey, objectKey, durationSeconds: 1.2, bucket, recordProviderCost };
+    expect(await observeRunwareSeedanceJob({ ...input,
+      fetchPort: async () => json({ errors: [{ ...failure, cost: 0.025 }] }, 504),
+    })).toEqual({ state: "FAILED" });
+    expect(recordProviderCost).toHaveBeenCalledWith(0.025);
+    for (const cost of [null, "0", -1]) {
+      await expect(observeRunwareSeedanceJob({ ...input,
+        fetchPort: async () => json({ errors: [{ ...failure, cost }] }, 504),
+      })).rejects.toMatchObject({ code: "RESPONSE_INVALID" });
+    }
+    const persistenceFailure = new Error("cost persistence unavailable");
+    recordProviderCost.mockRejectedValueOnce(persistenceFailure);
+    await expect(observeRunwareSeedanceJob({ ...input,
+      fetchPort: async () => json({ errors: [{ ...failure, cost: 0.025 }] }, 504),
+    })).rejects.toBe(persistenceFailure);
+    expect(recordProviderCost).toHaveBeenCalledTimes(2);
+    expect(bucket.get).not.toHaveBeenCalled(); expect(bucket.put).not.toHaveBeenCalled();
+  });
+
   it("accepts the live getResponse processing envelope without weakening successful-video identity", async () => {
     const requestId = "5b731319-4f67-432b-8953-ee71a19893ed";
     const processing = { taskUUID: requestId, status: "processing", taskType: "getResponse" };

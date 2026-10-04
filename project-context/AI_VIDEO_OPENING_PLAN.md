@@ -27,3 +27,9 @@ submission and visible Progress scene-video work at zero optional percentage. Ow
 clean; contracts and pipeline builds pass. These are provider-free local checks, not production
 playback, paid image/video quality, invoice or rental-cleanup proof. Root CURRENT_STATE records
 subsequent deployment and external acceptance.
+
+## Provider acceptance recovery
+
+The first 180-second Off test accepted 37 clips, then its last exact saved Seedance UUID returned HTTP 504 with a single `videoInference` / `failedProviderTimeout` / `status:error` envelope. Generic gateway errors remain reconcilable; only that exact task-scoped failure settles as failed. Cost omission stays unknown, and any explicit charge is persisted before settlement. Required opening failure blocks rendering and releases the failed request's workload lease. Immutable selections and accepted clips remain intact; no supported same-plan paid replay is invented. A second fresh 180-second acceptance is bounded with the first under USD 10, at most two projects and eight 900-second rentals, with full failed-request cost allowance retained. Stop on uncertain identity, price/cap risk, unconfirmed cleanup or another required failure.
+
+Runware [task polling](https://runware.ai/docs/models-api/task-polling) defines task errors as failed async generations; its [error guide](https://runware.ai/docs/models-api/errors) notes provider-specific code variation. Classification of the observed alias is an inference from that documented envelope and the exact native receipt, not a generic HTTP 504 rule.

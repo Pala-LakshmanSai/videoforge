@@ -267,7 +267,18 @@ export async function observeRunwareSeedanceJob(input: {
     // Only that exact task-scoped envelope is terminal; HTTP/auth/lookup failures stay reconcilable.
     const terminalProviderError = reply.response.status === 400 &&
       errors[0]?.taskType === "videoInference" && errors[0]?.code === "providerError";
-    if ((reply.response.ok || terminalProviderError) && errors[0]?.status === "error" && typeof errors[0]?.code === "string" &&
+    // A task-scoped failedProviderTimeout is the async generation's terminal error,
+    // unlike a generic gateway timeout while looking up the saved UUID.
+    const terminalProviderTimeout = reply.response.status === 504 &&
+      errors[0]?.taskType === "videoInference" && errors[0]?.code === "failedProviderTimeout" &&
+      errors[0]?.status === "error";
+    if (terminalProviderTimeout && errors[0]?.cost !== undefined) {
+      const cost = errors[0].cost;
+      if (typeof cost !== "number" || !Number.isFinite(cost) || cost < 0)
+        throw new RunwareSeedanceJobError("RESPONSE_INVALID");
+      await input.recordProviderCost?.(cost);
+    }
+    if ((reply.response.ok || terminalProviderError || terminalProviderTimeout) && errors[0]?.status === "error" && typeof errors[0]?.code === "string" &&
         !/invalid|notfound|notready|notavailable|unauthor|auth|balance/iu.test(errors[0].code) &&
         (errors[0]?.taskType === undefined || errors[0].taskType === "videoInference"))
       return { state: "FAILED" };
