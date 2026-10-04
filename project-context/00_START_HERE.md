@@ -1,4 +1,4 @@
-J1TTS and private Voiceover Hub implementation is in progress on isolated `codex/j1tts-voiceover`, from published base `ce0a31fe`. Direct upload stays default; script-generated MP3s enter the existing pipeline. Read `j1tts_voiceover_2026_10_04` in CURRENT_STATE.yaml and DEC_VOICEOVER_001.
+Voiceover Hub design and shared name-prefix search are the selected follow-up on `codex/j1tts-voiceover`. Read `voiceover_hub_ux_2026_10_04` in CURRENT_STATE.yaml. The J1TTS feature is already released; its separate real-media acceptance remains in `j1tts_voiceover_2026_10_04` and DEC_VOICEOVER_001.
 
 Context recovery Progress repair is published at `d64015aa` / Worker `9036de4a` with assets, authenticated compatibility and real Chrome verified. Read `context_recovery_progress_2026_10_03` in CURRENT_STATE.yaml. The false FAILED state stopped browser polling while bounded server recovery continued; stage timers remain authoritative.
 

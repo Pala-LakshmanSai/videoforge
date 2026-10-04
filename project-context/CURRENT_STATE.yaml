@@ -1,3 +1,20 @@
+voiceover_hub_ux_2026_10_04:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  read_profile: v2_09_j1tts_voiceover
+  branch: codex/j1tts-voiceover
+  state: LOCAL_CHROME_244_TESTS_AND_RELEASE_CHECKS_PASS
+  base_source: 8932fa60b321aa46dd2099a896f29817a2028d3b
+  production_source: 5755fc371fcee4159ac0d9ccc7f3a1f2d9e3dfdd
+  production_version: a3adc11f-d72e-42f8-8d6f-c467766c83aa
+  cause: Search_matched_language_country_codes_gb_br_and_returned_A_names_for_b.
+  behavior: Shared_normalized_name_prefix_matching_Hub_and_searchable_script_picker;counted_filters_clear_empty_error_loading_states;compact_import;closeable_retryable_preview;quiet_saved_cards;mobile_nine_destination_navigation_two_rows;same_voice_reselection_preserves_audio.
+  validation: 244_affected_Hub_Create_shell_preset_and_search_tests_PASS;real_Chrome_fixture_desktop_mobile_search_save_star_import_preview_keyboard_selection_and_Escape_PASS;types_changed_file_lint_format_production_and_staging_builds_context_secret_scan_diff_PASS.
+  provider_spend: USD0_new_provider_generation_or_compute;fixture_import_and_preview_only;production_read_and_reversible_preferences_acceptance_authorized.
+  paid_compute_shutdown: No_compute_started_for_this_UI_change;existing_user_work_and_prior_cleanup_authority_untouched.
+  remaining_gates: Exact_configuration_publication_public_assets_authenticated_Chrome_and_Project_Memory_readback.
+  evidence: evidence/acceptance/VF-10-09/2026-10-04-voiceover-hub-ux.md
+
 j1tts_voiceover_2026_10_04:
   checkpoint: V2-09
   selected_task: VF-10-09

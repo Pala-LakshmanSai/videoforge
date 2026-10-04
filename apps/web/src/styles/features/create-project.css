@@ -882,8 +882,7 @@
 }
 
 /* Voiceover inputs share the Create layout and existing form tokens. */
-.voiceover-source,
-.voice-hub-filters {
+.voiceover-source {
   display: flex;
   gap: 4px;
   padding: 4px;
@@ -894,8 +893,7 @@
 .voiceover-source {
   margin-bottom: 20px;
 }
-.voiceover-source button,
-.voice-hub-filters button {
+.voiceover-source button {
   padding: 10px 16px;
   border: 0;
   border-radius: 8px;
@@ -904,8 +902,7 @@
   font: inherit;
   cursor: pointer;
 }
-.voiceover-source .is-active,
-.voice-hub-filters .is-active {
+.voiceover-source .is-active {
   background: var(--panel);
   color: var(--text);
   box-shadow: 0 1px 5px #0002;
@@ -936,8 +933,7 @@
   color: var(--text);
   cursor: pointer;
 }
-.generated-voiceover,
-.voice-preview {
+.generated-voiceover {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -950,139 +946,12 @@
   flex: 1;
   min-width: 200px;
 }
-.voice-hub-toolbar {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-  justify-content: space-between;
-  margin: 24px 0;
-  flex-wrap: wrap;
-}
-.voice-hub-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 280px;
-}
-.voice-hub-search input {
-  width: 100%;
-}
-.voice-hub-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
-  margin-top: 24px;
-}
-.voice-card {
-  padding: 22px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--panel);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.voice-card-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.voice-card-icon {
-  padding: 10px;
-  border-radius: 12px;
-  background: var(--panel-strong);
-}
-.voice-star {
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  color: var(--muted);
-  padding: 8px;
-}
-.voice-star[aria-pressed="true"] {
-  color: #e8b34b;
-}
-.voice-card h3 {
-  font-size: 16px;
-  margin: 0;
-  line-height: 1.4;
-}
-.voice-card p {
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
-  flex: 1;
-  margin: 0;
-}
-.voice-card-actions {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-}
-.voice-hub-empty {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--muted);
-}
-.voice-preview audio {
-  flex: 1;
-  min-width: 240px;
-}
-.voice-hub-more {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-top: 20px;
-}
 @media (max-width: 640px) {
   .script-voiceover-fields {
     grid-template-columns: 1fr;
   }
-  .voice-hub-toolbar {
-    align-items: stretch;
-  }
-  .voice-hub-search {
-    min-width: 0;
-    width: 100%;
-  }
-  .voice-hub-grid {
-    grid-template-columns: 1fr;
-  }
-  .voice-hub-filters {
-    width: 100%;
-    justify-content: space-between;
-  }
   .voiceover-source button {
     flex: 1;
     padding: 10px;
-  }
-}
-
-.voice-import {
-  margin: 16px 0;
-  padding: 16px 20px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  color: var(--muted);
-}
-.voice-import summary {
-  cursor: pointer;
-  color: var(--text);
-  font-size: 14px;
-}
-.voice-import-form {
-  display: flex;
-  gap: 16px;
-  align-items: end;
-  margin: 20px 0 12px;
-  max-width: 600px;
-}
-.voice-import-form .field {
-  flex: 1;
-}
-@media (max-width: 640px) {
-  .voice-import-form {
-    flex-direction: column;
-    align-items: stretch;
   }
 }

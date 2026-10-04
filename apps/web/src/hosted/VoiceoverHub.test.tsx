@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: ReactNode }) => <a href="/voiceovers">{children}</a>,
 }));
 import { VoiceoverHub, ScriptVoiceover } from "./VoiceoverHub";
+import { VoiceSelect } from "./VoiceSelect";
 const voices = [
   {
     voice_id: "alice",
@@ -38,6 +39,7 @@ function wrap(node: ReactNode) {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 it("shows private saved voices and saves a star through authenticated API", async () => {
   const fetcher = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
@@ -48,7 +50,7 @@ it("shows private saved voices and saves a star through authenticated API", asyn
   wrap(<VoiceoverHub />);
   await screen.findByRole("heading", { name: "Alice" });
   expect(screen.queryByRole("heading", { name: "Bob" })).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "All voices" }));
+  fireEvent.click(screen.getByRole("button", { name: /^All voices/ }));
   await screen.findByRole("heading", { name: "Bob" });
   fireEvent.click(screen.getByRole("button", { name: "Star Bob" }));
   await waitFor(() =>
@@ -67,7 +69,7 @@ it("defaults to starred voice and never synthesizes on selection or typing", asy
   );
   vi.stubGlobal("fetch", fetcher);
   wrap(<ScriptVoiceover disabled={false} onReady={vi.fn()} onInvalidate={vi.fn()} />);
-  await waitFor(() => expect(screen.getByLabelText("Script voice")).toHaveValue("alice"));
+  await waitFor(() => expect(screen.getByLabelText("Script voice")).toHaveValue("Alice"));
   fireEvent.change(screen.getByLabelText("Voiceover script"), {
     target: { value: "A complete script for a short voiceover." },
   });
@@ -101,7 +103,7 @@ it("retains exact request after a lost response and prevents paid duplicate iden
   });
   vi.stubGlobal("fetch", fetcher);
   wrap(<ScriptVoiceover disabled={false} onReady={vi.fn()} onInvalidate={vi.fn()} />);
-  await waitFor(() => expect(screen.getByLabelText("Script voice")).toHaveValue("alice"));
+  await waitFor(() => expect(screen.getByLabelText("Script voice")).toHaveValue("Alice"));
   fireEvent.change(screen.getByLabelText("Voiceover script"), {
     target: { value: "This request must keep the same durable identity." },
   });
@@ -192,7 +194,7 @@ it("restores completed MP3 without submitting TTS again", async () => {
   expect(screen.getByLabelText("Voiceover script")).toHaveValue(
     "Original narration restored after refresh.",
   );
-  expect(screen.getByLabelText("Script voice")).toHaveValue("bob");
+  expect(screen.getByLabelText("Script voice")).toHaveValue("Bob");
   expect(fetcher.mock.calls.every((call) => !(call[1] as RequestInit | undefined)?.method)).toBe(
     true,
   );
@@ -232,4 +234,177 @@ it("reads a script file and generates only after the explicit button", async () 
     voice_id: "alice",
     filename: "river.mp3",
   });
+});
+
+it("searches name prefixes instead of country codes and reports filtered empty states", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        voices: [
+          { ...voices[0], languages: "gb,br", tags: "British, Bold" },
+          { ...voices[1], name: "Béatrice", preview_url: "/beatrice.mp3" },
+          { ...voices[1], voice_id: "abby", name: "Abby" },
+        ],
+      }),
+    ),
+  );
+  wrap(<VoiceoverHub />);
+  await screen.findByRole("heading", { name: "Alice" });
+  fireEvent.click(screen.getByRole("button", { name: /^All voices/ }));
+  fireEvent.change(screen.getByRole("searchbox", { name: "Search voices" }), {
+    target: { value: "  B " },
+  });
+  expect(screen.getByRole("heading", { name: "Béatrice" })).toBeVisible();
+  expect(screen.queryByRole("heading", { name: "Alice" })).toBeNull();
+  expect(screen.queryByRole("heading", { name: "Abby" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: /^Saved/ }));
+  expect(screen.getByRole("heading", { name: "No matching voices" })).toBeVisible();
+  expect(screen.queryByText("Build your voice library")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Clear voice search" }));
+  expect(screen.getByRole("heading", { name: "Alice" })).toBeVisible();
+  expect(screen.getByRole("searchbox", { name: "Search voices" })).toHaveFocus();
+});
+
+it("opens the full library for a new user and resets pagination for a new search", async () => {
+  const catalog = Array.from({ length: 75 }, (_, n) => ({
+    ...voices[1],
+    voice_id: `voice-${n}`,
+    name: `Brian ${String(n).padStart(2, "0")}`,
+  }));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => Response.json({ voices: catalog })),
+  );
+  wrap(<VoiceoverHub />);
+  await screen.findByRole("heading", { name: "Brian 00" });
+  expect(screen.getByRole("button", { name: /^All voices/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  expect(screen.getAllByRole("article")).toHaveLength(60);
+  fireEvent.click(screen.getByRole("button", { name: "Show more voices" }));
+  expect(screen.getAllByRole("article")).toHaveLength(75);
+  fireEvent.change(screen.getByRole("searchbox", { name: "Search voices" }), {
+    target: { value: "b" },
+  });
+  await waitFor(() => expect(screen.getAllByRole("article")).toHaveLength(60));
+});
+
+it("keeps one closeable preview and explains failed playback", async () => {
+  const reload = vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => {});
+  vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        voices: voices.map((voice) => ({
+          ...voice,
+          saved: true,
+          preview_url: `/${voice.voice_id}.mp3`,
+        })),
+      }),
+    ),
+  );
+  const { container } = wrap(<VoiceoverHub />);
+  await screen.findByRole("heading", { name: "Alice" });
+  fireEvent.click(screen.getByRole("button", { name: "Listen to Alice" }));
+  fireEvent.play(screen.getByLabelText("Alice preview"));
+  expect(screen.getByRole("button", { name: "Pause Alice" })).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Listen to Bob" }));
+  expect(container.querySelectorAll("audio")).toHaveLength(1);
+  fireEvent.error(screen.getByLabelText("Bob preview"));
+  expect(screen.getByRole("alert")).toHaveTextContent("Preview unavailable");
+  fireEvent.click(screen.getByRole("button", { name: "Listen to Bob" }));
+  expect(reload).toHaveBeenCalledOnce();
+  fireEvent.click(screen.getByRole("button", { name: "Close voice preview" }));
+  expect(container.querySelector("audio")).toBeNull();
+});
+
+it("reselecting a voice leaves existing narration intact and locking closes the picker", () => {
+  const change = vi.fn();
+  const view = render(
+    <VoiceSelect voices={voices} value="alice" disabled={false} onChange={change} />,
+  );
+  const picker = screen.getByRole("combobox", { name: "Script voice" });
+  fireEvent.focus(picker);
+  fireEvent.keyDown(picker, { key: "Enter" });
+  expect(change).not.toHaveBeenCalled();
+  expect(picker).toHaveValue("Alice");
+  fireEvent.focus(picker);
+  view.rerender(<VoiceSelect voices={voices} value="alice" disabled onChange={change} />);
+  expect(picker).toBeDisabled();
+  expect(screen.queryByRole("listbox")).toBeNull();
+  expect(change).not.toHaveBeenCalled();
+});
+
+it("imports with Enter, clears a stale search, and exposes the saved voice", async () => {
+  let imported = false;
+  const fetcher = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+    if (init?.method === "POST") {
+      imported = true;
+      return Response.json({ imported: true });
+    }
+    return Response.json({
+      voices: imported
+        ? [...voices, { ...voices[1], voice_id: "new", name: "Zara", saved: true }]
+        : voices,
+    });
+  });
+  vi.stubGlobal("fetch", fetcher);
+  const { container } = wrap(<VoiceoverHub />);
+  await screen.findByRole("heading", { name: "Alice" });
+  fireEvent.change(screen.getByRole("searchbox", { name: "Search voices" }), {
+    target: { value: "b" },
+  });
+  fireEvent.change(screen.getByLabelText("ElevenLabs voice ID"), { target: { value: " new " } });
+  fireEvent.submit(container.querySelector("form")!);
+  await screen.findByRole("heading", { name: "Zara" });
+  expect(screen.getByRole("searchbox", { name: "Search voices" })).toHaveValue("");
+  expect(fetcher).toHaveBeenCalledWith(
+    "/api/v2/voiceovers/import",
+    expect.objectContaining({ method: "POST", body: JSON.stringify({ voice_id: "new" }) }),
+  );
+});
+
+it("uses the same prefix search in the script picker with keyboard selection and no generation", async () => {
+  const fetcher = vi.fn(async (url: RequestInfo | URL, _init?: RequestInit) =>
+    Response.json(
+      String(url).endsWith("/voices")
+        ? {
+            voices: [
+              { ...voices[0], languages: "gb,br", tags: "British" },
+              voices[1],
+              { ...voices[1], voice_id: "brian", name: "Brian", saved: true, starred: true },
+            ],
+          }
+        : { job: null },
+    ),
+  );
+  vi.stubGlobal("fetch", fetcher);
+  wrap(<ScriptVoiceover disabled={false} onReady={vi.fn()} onInvalidate={vi.fn()} />);
+  const picker = screen.getByRole("combobox", { name: "Script voice" });
+  await waitFor(() => expect(picker).toHaveValue("Alice"));
+  fireEvent.focus(picker);
+  fireEvent.change(picker, { target: { value: " B " } });
+  const list = screen.getByRole("listbox", { name: "Voice options" });
+  expect(within(list).getAllByRole("option")).toHaveLength(2);
+  expect(within(list).queryByText("Alice")).toBeNull();
+  expect(within(list).getAllByRole("option")[0]).toHaveTextContent("Brian");
+  fireEvent.keyDown(picker, { key: "Enter" });
+  expect(picker).toHaveValue("Brian");
+  expect(screen.queryByRole("listbox")).toBeNull();
+  fireEvent.focus(picker);
+  fireEvent.change(picker, { target: { value: "zzz" } });
+  expect(screen.getByText(/No matching voices/)).toBeVisible();
+  fireEvent.keyDown(picker, { key: "Escape" });
+  expect(picker).toHaveValue("Brian");
+  fireEvent.focus(picker);
+  fireEvent.pointerDown(document.body);
+  expect(screen.queryByRole("listbox")).toBeNull();
+  expect(
+    fetcher.mock.calls.every(
+      (call) => call.length === 1 || !(call[1] as RequestInit | undefined)?.method,
+    ),
+  ).toBe(true);
 });

@@ -1,18 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Bookmark, Search, Star, Volume2 } from "lucide-react";
+import {
+  Bookmark,
+  Check,
+  ChevronDown,
+  Headphones,
+  Pause,
+  Play,
+  Plus,
+  Search,
+  Star,
+  X,
+} from "lucide-react";
+import { VoiceSelect } from "./VoiceSelect";
+import { matchesVoiceName, type Voice } from "./voice-library";
+export type { Voice } from "./voice-library";
 import { PageHeader } from "../components/PageHeader";
 
-export interface Voice {
-  voice_id: string;
-  name: string;
-  tags: string;
-  languages: string;
-  preview_url: string | null;
-  saved: boolean;
-  starred: boolean;
-}
 interface VoiceoverJob {
   id: string;
   state: string;
@@ -57,18 +62,74 @@ export function VoiceoverHub() {
   const [importId, setImportId] = useState("");
   const voices = useVoices(),
     client = useQueryClient();
-  const [search, setSearch] = useState(""),
-    [filter, setFilter] = useState("saved"),
-    [limit, setLimit] = useState(100),
-    [preview, setPreview] = useState<Voice | null>(null);
-  useEffect(() => setLimit(100), [search, filter]);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"saved" | "starred" | "all" | null>(null);
+  const [limit, setLimit] = useState(60);
+  const [preview, setPreview] = useState<Voice | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
+  const audio = useRef<HTMLAudioElement>(null);
+  const importDetails = useRef<HTMLDetailsElement>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
+  const all = voices.data?.voices ?? [];
+  const savedCount = all.filter((voice) => voice.saved).length;
+  const starredCount = all.filter((voice) => voice.starred).length;
+  const selectedFilter = filter ?? (savedCount ? "saved" : "all");
+  useEffect(() => {
+    if (voices.data && filter === null) setFilter(savedCount ? "saved" : "all");
+  }, [voices.data, filter, savedCount]);
+  useEffect(() => setLimit(60), [search, selectedFilter]);
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = window.setTimeout(() => setNotice(""), 4000);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
+  function closeImport() {
+    if (importDetails.current) importDetails.current.open = false;
+    setImportOpen(false);
+  }
+  useEffect(() => {
+    if (!importOpen) return;
+    const dismiss = (event: PointerEvent | FocusEvent) => {
+      if (event.target instanceof Node && !importDetails.current?.contains(event.target))
+        closeImport();
+    };
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("focusin", dismiss);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("focusin", dismiss);
+    };
+  }, [importOpen]);
   const save = useMutation({
     mutationFn: ({ voice, saved, starred }: { voice: Voice; saved: boolean; starred: boolean }) =>
       voiceoverJson(`/api/v2/voiceovers/voices/${voice.voice_id}`, {
         method: "POST",
         body: JSON.stringify({ saved, starred }),
       }),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["voiceover-voices"] }),
+    onSuccess: (_result, change) => {
+      client.setQueryData<{ voices: Voice[] }>(
+        ["voiceover-voices"],
+        (data) =>
+          data && {
+            voices: data.voices.map((voice) =>
+              voice.voice_id === change.voice.voice_id
+                ? { ...voice, saved: change.saved, starred: change.starred }
+                : voice,
+            ),
+          },
+      );
+      setNotice(
+        change.starred
+          ? "Voice starred and saved."
+          : change.saved
+            ? "Voice saved."
+            : "Voice removed from Saved.",
+      );
+      return client.invalidateQueries({ queryKey: ["voiceover-voices"] });
+    },
   });
   const importVoice = useMutation({
     mutationFn: () =>
@@ -78,171 +139,342 @@ export function VoiceoverHub() {
       }),
     onSuccess: () => {
       setImportId("");
+      setSearch("");
       setFilter("saved");
+      closeImport();
+      importDetails.current?.querySelector("summary")?.focus();
+      setNotice("Voice imported and saved.");
       return client.invalidateQueries({ queryKey: ["voiceover-voices"] });
     },
   });
-  const all = voices.data?.voices ?? [];
   const visible = all
     .filter(
-      (v) =>
-        (filter === "all" || (filter === "saved" ? v.saved : v.starred)) &&
-        `${v.name} ${v.tags} ${v.languages}`.toLowerCase().includes(search.toLowerCase()),
+      (voice) =>
+        (selectedFilter === "all" || (selectedFilter === "saved" ? voice.saved : voice.starred)) &&
+        matchesVoiceName(voice, search),
     )
-    .sort((a, b) => Number(b.starred) - Number(a.starred) || a.name.localeCompare(b.name));
+    .sort(
+      (a, b) =>
+        (selectedFilter === "all" ? 0 : Number(b.starred) - Number(a.starred)) ||
+        a.name.localeCompare(b.name),
+    );
   const displayed = visible.slice(0, limit);
+  function listen(voice: Voice) {
+    setPreviewError(null);
+    if (preview?.voice_id === voice.voice_id && audio.current) {
+      if (previewError || audio.current.error) audio.current.load();
+      if (!audio.current.paused) audio.current.pause();
+      else
+        void audio.current
+          .play()
+          .catch(() =>
+            setPreviewError("Preview could not play. Try again or choose another voice."),
+          );
+    } else {
+      setPlaying(false);
+      setPreview(voice);
+    }
+  }
+  function clearSearch() {
+    setSearch("");
+    searchInput.current?.focus();
+  }
   return (
     <div className="page voiceover-hub">
       <PageHeader
+        eyebrow="Your voice library"
         title="Voiceover Hub"
-        description="Find a voice. Save your favorites for the next script."
+        description="A voice for every story. Keep your favorites close."
+        actions={
+          <details
+            className="voice-import"
+            ref={importDetails}
+            onToggle={(event) => setImportOpen(event.currentTarget.open)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                closeImport();
+                importDetails.current?.querySelector("summary")?.focus();
+              }
+            }}
+          >
+            <summary aria-expanded={importOpen}>
+              <Plus size={17} aria-hidden="true" />
+              Import voice
+              <ChevronDown size={15} aria-hidden="true" />
+            </summary>
+            <form
+              className="voice-import-panel"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (importId.trim() && !importVoice.isPending) importVoice.mutate();
+              }}
+            >
+              <strong>Import from ElevenLabs</strong>
+              <p>Paste a voice ID to add it to your private library.</p>
+              <label className="field">
+                <span className="field-label">Voice ID</span>
+                <input
+                  className="input"
+                  aria-label="ElevenLabs voice ID"
+                  placeholder="Paste voice ID"
+                  value={importId}
+                  maxLength={160}
+                  disabled={importVoice.isPending}
+                  onChange={(event) => setImportId(event.target.value)}
+                />
+              </label>
+              <button
+                className="button button-primary"
+                type="submit"
+                disabled={!importId.trim() || importVoice.isPending}
+              >
+                {importVoice.isPending ? "Importing…" : "Import and save"}
+              </button>
+              {importVoice.error && <p role="alert">{importVoice.error.message}</p>}
+            </form>
+          </details>
+        }
       />
       <div className="voice-hub-toolbar">
-        <div className="voice-hub-filters" role="group" aria-label="Voice library">
-          <button
-            className={filter === "saved" ? "is-active" : ""}
-            aria-pressed={filter === "saved"}
-            onClick={() => setFilter("saved")}
-          >
-            Saved ({all.filter((v) => v.saved).length})
-          </button>
-          <button
-            className={filter === "starred" ? "is-active" : ""}
-            aria-pressed={filter === "starred"}
-            onClick={() => setFilter("starred")}
-          >
-            Starred
-          </button>
-          <button
-            className={filter === "all" ? "is-active" : ""}
-            aria-pressed={filter === "all"}
-            onClick={() => setFilter("all")}
-          >
-            All voices
-          </button>
-        </div>
-        <label className="voice-hub-search">
-          <Search size={18} />
+        <div className="voice-hub-search">
+          <Search size={20} aria-hidden="true" />
           <input
-            className="input"
+            ref={searchInput}
+            type="search"
             aria-label="Search voices"
-            placeholder="Search voices, accent or style"
+            placeholder="Search by voice name…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(event) => setSearch(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") clearSearch();
+            }}
           />
-        </label>
-      </div>
-      <details className="voice-import">
-        <summary>Import an ElevenLabs voice</summary>
-        <div className="voice-import-form">
-          <label className="field">
-            <span className="field-label">Voice ID</span>
-            <input
-              className="input"
-              aria-label="ElevenLabs voice ID"
-              placeholder="Paste the voice ID"
-              value={importId}
-              maxLength={160}
-              disabled={importVoice.isPending}
-              onChange={(e) => setImportId(e.target.value)}
-            />
-          </label>
-          <button
-            className="button button-secondary"
-            disabled={!importId.trim() || importVoice.isPending}
-            onClick={() => importVoice.mutate()}
-          >
-            {importVoice.isPending ? "Importing…" : "Import voice"}
-          </button>
+          {search && (
+            <button
+              type="button"
+              className="voice-icon-button"
+              aria-label="Clear voice search"
+              onClick={clearSearch}
+            >
+              <X size={17} />
+            </button>
+          )}
         </div>
-        <p className="muted">Imported voices are saved in your workspace.</p>
-        {importVoice.error && <p role="alert">{importVoice.error.message}</p>}
-      </details>
-      {voices.isPending && <p role="status">Loading voices…</p>}
+        <div className="voice-hub-library-row">
+          <div className="voice-hub-filters" role="group" aria-label="Voice library">
+            {(
+              [
+                { id: "all", label: "All voices", count: all.length },
+                { id: "saved", label: "Saved", count: savedCount },
+                { id: "starred", label: "Starred", count: starredCount },
+              ] as const
+            ).map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                className={selectedFilter === item.id ? "is-active" : ""}
+                aria-pressed={selectedFilter === item.id}
+                onClick={() => setFilter(item.id)}
+              >
+                {item.label}
+                <span>{item.count.toLocaleString()}</span>
+              </button>
+            ))}
+          </div>
+          <p className="voice-results-count" role="status">
+            {voices.isPending
+              ? "Loading library…"
+              : `${visible.length.toLocaleString()} ${visible.length === 1 ? "voice" : "voices"}${search.trim() ? ` starting with “${search.trim()}”` : ""}`}
+          </p>
+        </div>
+      </div>
+      {notice && (
+        <p className="voice-hub-notice" role="status">
+          <Check size={16} aria-hidden="true" />
+          {notice}
+        </p>
+      )}
+      {voices.isPending && (
+        <div className="voice-hub-grid" aria-hidden="true">
+          {[0, 1, 2, 3, 4, 5].map((n) => (
+            <div className="voice-card voice-card-skeleton" key={n}>
+              <span />
+              <span />
+              <span />
+            </div>
+          ))}
+        </div>
+      )}
       {voices.error && (
-        <div role="alert">
+        <div className="voice-hub-empty" role="alert">
+          <Headphones size={32} />
+          <h3>Voices could not load</h3>
           <p>{voices.error.message}</p>
           <button className="button button-secondary" onClick={() => void voices.refetch()}>
             Try again
           </button>
         </div>
       )}
-      {save.error && <p role="alert">{save.error.message}</p>}
+      {save.error && (
+        <p className="voice-hub-notice" role="alert">
+          {save.error.message}
+        </p>
+      )}
       {preview && (
         <div className="voice-preview">
-          <Volume2 size={20} />
-          <span>{preview.name}</span>
+          <span className="voice-preview-symbol">
+            <Headphones size={22} aria-hidden="true" />
+          </span>
+          <div className="voice-preview-copy">
+            <small>{playing ? "Now playing" : "Voice preview"}</small>
+            <strong>{preview.name}</strong>
+          </div>
           <audio
+            ref={audio}
             key={preview.voice_id}
             aria-label={`${preview.name} preview`}
             src={preview.preview_url ?? undefined}
             controls
             autoPlay
-            onError={() => setPreview(null)}
+            onPlay={() => setPlaying(true)}
+            onPause={() => setPlaying(false)}
+            onEnded={() => setPlaying(false)}
+            onError={() => {
+              setPlaying(false);
+              setPreviewError("Preview unavailable. Try another voice or listen again.");
+            }}
           />
+          <button
+            type="button"
+            className="voice-icon-button"
+            aria-label="Close voice preview"
+            onClick={() => {
+              setPreview(null);
+              setPlaying(false);
+              setPreviewError(null);
+            }}
+          >
+            <X size={19} />
+          </button>
+          {previewError && (
+            <p role="alert" className="voice-preview-error">
+              {previewError}
+            </p>
+          )}
         </div>
       )}
       {!voices.isPending && !voices.error && !visible.length && (
         <div className="voice-hub-empty">
-          <Volume2 size={36} />
-          <h3>{filter === "all" ? "No matching voices" : `No ${filter} voices yet`}</h3>
+          <span className="voice-empty-symbol">
+            {search.trim() ? <Search size={28} /> : <Bookmark size={28} />}
+          </span>
+          <h3>
+            {search.trim()
+              ? "No matching voices"
+              : selectedFilter === "starred"
+                ? "Your favorites belong here"
+                : "Build your voice library"}
+          </h3>
           <p>
-            {filter === "all"
-              ? "Try a different search."
-              : "Explore the library and save voices you like."}
+            {search.trim()
+              ? "Try the beginning of a voice name, or browse the full library."
+              : selectedFilter === "starred"
+                ? "Star a voice to find it first when you create."
+                : "Listen to a few voices, then save the ones you love."}
           </p>
-          {filter !== "all" && (
-            <button className="button button-primary" onClick={() => setFilter("all")}>
-              Explore voices
-            </button>
-          )}
+          <div className="voice-empty-actions">
+            {search && (
+              <button className="button button-secondary" onClick={clearSearch}>
+                Clear search
+              </button>
+            )}
+            {selectedFilter !== "all" && (
+              <button className="button button-primary" onClick={() => setFilter("all")}>
+                Explore all voices
+              </button>
+            )}
+          </div>
         </div>
       )}
       <div className="voice-hub-grid">
-        {displayed.map((v) => (
-          <article className="voice-card" key={v.voice_id}>
-            <div className="voice-card-top">
-              <div className="voice-card-icon">
-                <Volume2 size={22} />
+        {displayed.map((voice) => {
+          const isPlaying = preview?.voice_id === voice.voice_id && playing;
+          const pending = save.isPending && save.variables?.voice.voice_id === voice.voice_id;
+          const tone = (voice.name.codePointAt(0) ?? 0) % 5;
+          return (
+            <article
+              className={`voice-card ${preview?.voice_id === voice.voice_id ? "is-previewing" : ""}`}
+              key={voice.voice_id}
+            >
+              <div className="voice-card-heading">
+                <span className={`voice-monogram voice-tone-${tone}`} aria-hidden="true">
+                  {Array.from(voice.name)[0]?.toUpperCase()}
+                </span>
+                <h3 title={voice.name}>{voice.name}</h3>
+                <button
+                  type="button"
+                  className="voice-star"
+                  aria-label={`${voice.starred ? "Unstar" : "Star"} ${voice.name}`}
+                  aria-pressed={voice.starred}
+                  title={voice.starred ? "Remove star" : "Star voice"}
+                  disabled={save.isPending}
+                  onClick={() => save.mutate({ voice, saved: true, starred: !voice.starred })}
+                >
+                  <Star size={18} fill={voice.starred ? "currentColor" : "none"} />
+                </button>
               </div>
-              <button
-                className="voice-star"
-                aria-label={`${v.starred ? "Unstar" : "Star"} ${v.name}`}
-                aria-pressed={v.starred}
-                disabled={save.isPending}
-                onClick={() => save.mutate({ voice: v, saved: true, starred: !v.starred })}
-              >
-                <Star size={19} fill={v.starred ? "currentColor" : "none"} />
-              </button>
-            </div>
-            <h3>{v.name}</h3>
-            <p>{v.tags || "Narration voice"}</p>
-            <div className="voice-card-actions">
-              <button
-                className="button button-secondary"
-                disabled={!v.preview_url}
-                onClick={() => setPreview(v)}
-              >
-                Listen
-              </button>
-              <button
-                className={`button ${v.saved ? "button-secondary" : "button-primary"}`}
-                disabled={save.isPending}
-                onClick={() => save.mutate({ voice: v, saved: !v.saved, starred: false })}
-              >
-                <Bookmark size={15} />
-                {v.saved ? "Remove" : "Save"}
-              </button>
-            </div>
-          </article>
-        ))}
+              <div className="voice-card-tags">
+                {(voice.tags || "Narration")
+                  .split(",")
+                  .map((tag) => tag.trim())
+                  .filter(Boolean)
+                  .slice(0, 3)
+                  .map((tag, i) => (
+                    <span key={`${tag}-${i}`}>{tag}</span>
+                  ))}
+              </div>
+              <div className="voice-card-actions">
+                <button
+                  type="button"
+                  className={`voice-listen ${isPlaying ? "is-playing" : ""}`}
+                  disabled={!voice.preview_url}
+                  aria-label={`${isPlaying ? "Pause" : "Listen to"} ${voice.name}`}
+                  onClick={() => listen(voice)}
+                >
+                  <span>
+                    {isPlaying ? (
+                      <Pause size={15} fill="currentColor" />
+                    ) : (
+                      <Play size={15} fill="currentColor" />
+                    )}
+                  </span>
+                  {voice.preview_url ? (isPlaying ? "Pause" : "Listen") : "No preview"}
+                </button>
+                <button
+                  type="button"
+                  className={`voice-save ${voice.saved ? "is-saved" : ""}`}
+                  aria-label={`${voice.saved ? "Remove" : "Save"} ${voice.name}`}
+                  aria-pressed={voice.saved}
+                  disabled={save.isPending}
+                  onClick={() => save.mutate({ voice, saved: !voice.saved, starred: false })}
+                >
+                  {voice.saved ? <Check size={15} /> : <Plus size={15} />}
+                  {pending ? "Saving…" : voice.saved ? "Saved" : "Save voice"}
+                </button>
+              </div>
+            </article>
+          );
+        })}
       </div>
       {visible.length > displayed.length && (
         <div className="voice-hub-more">
           <p className="muted">
-            Showing {displayed.length} of {visible.length} voices.
+            Showing {displayed.length} of {visible.length.toLocaleString()} voices
           </p>
-          <button className="button button-secondary" onClick={() => setLimit(limit + 100)}>
+          <button
+            className="button button-secondary"
+            onClick={() => setLimit((value) => value + 60)}
+          >
             Show more voices
           </button>
         </div>
@@ -401,11 +633,6 @@ export function ScriptVoiceover({
     Boolean(
       activeJob && ["PROCESSING", "SUBMITTING", "UNKNOWN_NO_RETRY"].includes(activeJob.state),
     );
-  const saved =
-    voices.data?.voices
-      .filter((v) => v.saved)
-      .sort((a, b) => Number(b.starred) - Number(a.starred) || a.name.localeCompare(b.name)) ?? [];
-  const others = voices.data?.voices.filter((v) => !v.saved) ?? [];
   const inputLocked = locked || unconfirmed;
   return (
     <div className="script-voiceover">
@@ -452,37 +679,18 @@ export function ScriptVoiceover({
             }}
           />
         </label>
-        <label className="field">
-          <span className="field-label">Voice</span>
-          <select
-            className="select"
-            aria-label="Script voice"
+        <div className="field">
+          <VoiceSelect
+            voices={voices.data?.voices ?? []}
             value={voiceId}
             disabled={inputLocked || voices.isPending}
-            onChange={(e) => {
+            onChange={(id) => {
               change();
-              setVoiceId(e.target.value);
+              setVoiceId(id);
             }}
-          >
-            <option value="">Choose a voice</option>
-            <optgroup label="Saved voices">
-              {saved.map((v) => (
-                <option key={v.voice_id} value={v.voice_id}>
-                  {v.starred ? "★ " : ""}
-                  {v.name}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="All voices">
-              {others.map((v) => (
-                <option key={v.voice_id} value={v.voice_id}>
-                  {v.name}
-                </option>
-              ))}
-            </optgroup>
-          </select>
+          />
           <Link to="/voiceovers">Manage voices</Link>
-        </label>
+        </div>
       </div>
       <label className="field">
         <span className="field-label">Script</span>
@@ -504,7 +712,9 @@ export function ScriptVoiceover({
       {voices.error && <p role="alert">{voices.error.message}</p>}
       {(error || status.error) && <p role="alert">{error ?? status.error?.message}</p>}
       {unconfirmed && (
-        <p role="status">Check this generation before changing the script; its response is unconfirmed.</p>
+        <p role="status">
+          Check this generation before changing the script; its response is unconfirmed.
+        </p>
       )}
       {activeJob && ["PROCESSING", "SUBMITTING"].includes(activeJob.state) && (
         <p role="status">Creating voiceover… You can return later.</p>
