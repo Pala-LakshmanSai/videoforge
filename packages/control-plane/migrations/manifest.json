@@ -1344,6 +1344,12 @@
       "name": "runware_text_capacity",
       "filename": "0261_runware_text_capacity.sql",
       "sha256": "sha256:b5a1d8d77d6eb2f260a43157c670a303479a4088ab4a358949c765fb3c32e806"
+    },
+    {
+      "version": 262,
+      "name": "hosted_prompt_capacity_read",
+      "filename": "0262_hosted_prompt_capacity_read.sql",
+      "sha256": "sha256:d39b1c2863798dfc640f54381c664ee6239ccbbf62fcf18db44d2b0ab567a9cb"
     }
   ]
 }

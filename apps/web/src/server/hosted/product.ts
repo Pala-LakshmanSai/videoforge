@@ -7607,10 +7607,7 @@ async function projectDetail(
       );
       const promptProgress = await transaction.query(
         `SELECT run.state, run.problem_code, run.started_at, run.finished_at,
-                EXISTS(SELECT 1 FROM repository_mutation_receipts refusal
-                  WHERE refusal.workspace_id=run.workspace_id
-                    AND refusal.operation='hosted_prompt_capacity_rejected'
-                    AND refusal.result_payload->>'run_id'=run.id::text) AS capacity_hold,
+                public.videoforge_hosted_prompt_capacity_held(run.id) AS capacity_hold,
                 COALESCE(run.planned_scene_count, expected.scene_count) AS total_scenes,
                 count(DISTINCT scene.id) AS accepted_scenes,
                 run.planned_batch_count AS total_batches,

@@ -18,13 +18,19 @@ Limits are operational configuration. Kie100 outstanding/550ms starts; Fal4 outs
 - Broad web suite:2894 pass,10 fail,1 skip. All10 failures independently reproduce at clean baselinec85ccc3d (old V207 image digest1, V209 lane image fixtures7, incomplete queue fixture schema1, source-substring visibility expectation1). No baseline source edits.
 - Broad database suite initially714 pass,2 fail,12 skip. One new test fixture omitted the required Runware model; it was corrected and all4 affected SQL tests passed. The other expects migration239 to be the last migration and independently reproduces on clean baselinec85ccc3d with239–258; it is unrelated to provider capacity. The broad aggregate is not claimed green.
 - Canonical `CI=1 TURBO_FORCE=true pnpm verify` remains nongreen: existing formatting debt (143 flagged files on first run) and unavailable repository-local uv0.8.13. Workerd parity passes. Separately invoked installed-Chrome suite:28 pass16 fail; failures concern old counts/text/selectors, but a baseline Chrome rerun was not performed and aggregate Chrome is not claimed green.
-- Existing production Chrome Voices and Create forms were inspected without submission before release. Post-release readback remains a publication gate until separately recorded.
+- Existing production Chrome Voices and Create forms were inspected without submission before release. Final post-release readback is recorded separately below.
 
 ## Release and rollback
 
 Additive migrations259–261 require a superuser/BYPASSRLS migration owner and exact historical function preimages. Old media claims still require exact SUBMITTING claims. Old J1 start/record remains compatible; new app uses versioned queue intake. Never drop queued jobs or rejection receipts on rollback. Prior binary rollback requires zero WAITING narration; otherwise hold affected provider admissions via durable cooldown and deploy a queue-compatible fix while observing accepted jobs. Operational policies/fairness are native-backup/PITR state; portable restore preserves rejection receipts and requires operator quota/reconciliation before admission.
 
 Private baseline/configuration, logs and release receipts are under the ignored task directory `.videoforge/api-capacity-20261004` in the primary checkout. Credentials and private configuration are not committed.
+
+## Progress permission repair
+
+Initial source `f6723003` was published as Worker `82d1a209-0be6-477c-aa5b-92019f1603ca` after additive migrations259–261. Real Chrome exposed a Progress regression: its new hold query directly selected protected `repository_mutation_receipts`. The actual runtime connection reproduced permission denied. With zero WAITING narration verified, traffic was restored to prior Worker `8b61d38a-2ac0-420c-93dc-45e5163c7e29`; existing completed Progress and private access recovered. Additive schema and existing media identities were retained.
+
+Migration262 adds only a tenant-scoped SECURITY DEFINER boolean read helper; runtime receives EXECUTE without receipt-table SELECT or INSERT. The exact production Progress SELECT passes a regression under the named restricted runtime role and tenant security-barrier views, including foreign-tenant denial. A native owner rollback trial passed, then262 was applied while the prior app remained live. Before republishing, the exact current Progress SELECT returned the existing project through actual production runtime credentials; receipt-table SELECT remains denied and helper EXECUTE is granted. No provider request or existing job mutation was used for this proof.
 
 ## Spend and remaining proof
 
