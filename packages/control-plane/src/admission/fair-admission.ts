@@ -302,6 +302,7 @@ async function candidate(
        JOIN account_queue_heads AS head ON head.account_id = request.account_id
       WHERE request.state IN ('WAITING', 'RETRY_WAIT')
         AND request.available_at <= $1
+        AND NOT public.videoforge_voiceover_busy(request.account_id)
         AND NOT EXISTS (
           SELECT 1 FROM provider_workload_leases AS lease
            WHERE lease.account_id = request.account_id AND lease.state = 'ACTIVE'
@@ -342,7 +343,10 @@ async function promoteInTransaction(
 ): Promise<PromotedWorkload | null> {
   assertLeaseWindow(identity.now, identity.expiresAt);
   const before = await capacityForUpdate(executor);
-  if (before.active_lease_count >= 2) return null;
+  const voiceovers = await executor.query<{ count: number } & Record<string, unknown>>(
+    "SELECT public.videoforge_voiceover_active_count() AS count",
+  );
+  if (before.active_lease_count + (voiceovers.rows[0]?.count ?? 0) >= 2) return null;
 
   let kind: FairRequestKind = "VIDEO";
   let selected = await candidate(executor, "VIDEO", identity.now);

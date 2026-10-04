@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VoiceoversRouteImport } from './routes/voiceovers'
 import { Route as UsageRouteImport } from './routes/usage'
 import { Route as StylesRouteImport } from './routes/styles'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -23,6 +24,11 @@ import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projec
 import { Route as AvatarsNewRouteImport } from './routes/avatars/new'
 import { Route as ProjectsProjectIdReviewRouteImport } from './routes/projects/$projectId/review'
 
+const VoiceoversRoute = VoiceoversRouteImport.update({
+  id: '/voiceovers',
+  path: '/voiceovers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UsageRoute = UsageRouteImport.update({
   id: '/usage',
   path: '/usage',
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/styles': typeof StylesRouteWithChildren
   '/usage': typeof UsageRoute
+  '/voiceovers': typeof VoiceoversRoute
   '/avatars/new': typeof AvatarsNewRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/projects/new': typeof ProjectsNewRoute
@@ -113,6 +120,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/styles': typeof StylesRouteWithChildren
   '/usage': typeof UsageRoute
+  '/voiceovers': typeof VoiceoversRoute
   '/avatars/new': typeof AvatarsNewRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/projects/new': typeof ProjectsNewRoute
@@ -129,6 +137,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/styles': typeof StylesRouteWithChildren
   '/usage': typeof UsageRoute
+  '/voiceovers': typeof VoiceoversRoute
   '/avatars/new': typeof AvatarsNewRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/projects/new': typeof ProjectsNewRoute
@@ -146,6 +155,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/styles'
     | '/usage'
+    | '/voiceovers'
     | '/avatars/new'
     | '/projects/$projectId'
     | '/projects/new'
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/styles'
     | '/usage'
+    | '/voiceovers'
     | '/avatars/new'
     | '/projects/$projectId'
     | '/projects/new'
@@ -176,6 +187,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/styles'
     | '/usage'
+    | '/voiceovers'
     | '/avatars/new'
     | '/projects/$projectId'
     | '/projects/new'
@@ -192,10 +204,18 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   StylesRoute: typeof StylesRouteWithChildren
   UsageRoute: typeof UsageRoute
+  VoiceoversRoute: typeof VoiceoversRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/voiceovers': {
+      id: '/voiceovers'
+      path: '/voiceovers'
+      fullPath: '/voiceovers'
+      preLoaderRoute: typeof VoiceoversRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/usage': {
       id: '/usage'
       path: '/usage'
@@ -346,6 +366,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   StylesRoute: StylesRouteWithChildren,
   UsageRoute: UsageRoute,
+  VoiceoversRoute: VoiceoversRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

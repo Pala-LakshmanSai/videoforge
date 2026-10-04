@@ -227,3 +227,7 @@ the root loader, startup files, one selected profile, one checkpoint section, an
 Every handoff states checkpoint, commit, validations, remaining gates, provider/spend state, zero-
 worker state, and continuing volume cost. Never reset away newer clean context-only handoffs or turn
 an unrun gate into confirmed fact.
+
+## Voiceover preparation option — 2026-10-04
+
+Under DEC_VOICEOVER_001 users may upload their final audio or explicitly generate it from a script with J1TTS. The completed MP3 then enters the normal private project flow. Voiceover Hub stores workspace-private saved/starred voice IDs. Keep the supplied TTS credential server-side; preserve immutable claims, shared capacity, retrieval-only uncertain recovery and existing media execution.

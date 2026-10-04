@@ -7,7 +7,6 @@ import { PageHeader } from "../components/PageHeader";
 import { Badge, Button, Disclosure, EmptyState, Panel } from "../components/ui";
 import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
-import { isHostedProviderMode } from "../hosted/provider-mode";
 
 interface HostedLibraryItem {
   readonly attempt_id: string;
@@ -105,11 +104,7 @@ function HostedLibraryScreen() {
                     <Play size={15} />
                     Review
                   </a>
-                  <a
-                    className="button button-secondary"
-                    href={output.download_url}
-                    download
-                  >
+                  <a className="button button-secondary" href={output.download_url} download>
                     <Download size={15} />
                     Download MP4
                   </a>
@@ -157,7 +152,8 @@ function HostedLibraryScreen() {
 }
 
 export function LibraryScreen() {
-  return isHostedProviderMode(import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE) ? (
+  return import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "staging" ||
+    import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE === "production" ? (
     <HostedLibraryScreen />
   ) : (
     <FixtureLibraryScreen />

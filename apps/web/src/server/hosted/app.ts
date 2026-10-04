@@ -1346,6 +1346,10 @@ export async function handleHostedRequest(
     return json({ error: { code: "HOSTED_CONFIGURATION_INVALID", retryable: false } }, 503);
   }
   const url = new URL(request.url);
+  if (url.pathname.startsWith("/api/v2/voiceovers/")) {
+    const { handleJ1Voiceover } = await import("./j1tts");
+    return await handleJ1Voiceover(request, environment, config, executionContext);
+  }
   if (url.pathname.startsWith("/api/v2/cloud-media/")) {
     const { handleCloudMediaRequest } = await import("./runpod-media");
     const cloudResponse = await handleCloudMediaRequest(request, environment, config, executionContext);

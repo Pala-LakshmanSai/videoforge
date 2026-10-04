@@ -242,3 +242,7 @@ Seedance1.0ProFast bytedance:2@2,720p16:9: published Runware rate verified2026-1
 ## Published whole scene coverage control (2026-10-03)
 
 Published coverage changes fresh scene-footage ceilings from fixed 7% to the immutable per-revision user choice; default stays 7% and legacy plans keep their original selections. Projected motion cost uses actual selected padded provider-request durations and configured rate metadata. Pre-timeline estimates are preliminary. Off has no Seedance calls/charges; definite failed clips retain actual charges and reduce accepted coverage. Higher coverage preserves the existing four-job concurrency bound. No new paid test authority is inferred from the earlier USD4 run. This release used USD0 new provider generation/paid compute; fresh paid high-coverage performance and final invoices remain unverified. Details: [combined plan](tasks/SEEDANCE_VIDEO_PLAN.md#whole-scene-replacement-follow-up).
+
+## Voiceover generation accounting — 2026-10-04
+
+J1TTS uses the approved supplied subscription key and provider usage rather than GPU compute. The initial authenticated usage read reports used_today0, limit0, remaining null; the supplied dashboard labels the plan unlimited. These are provider/subscription observations, not an invoice or a unit-price claim. No software token enables additional subscriptions or GPU fallback. Direct uploads incur no J1TTS call. Each generation is explicit and durably claimed; uncertain submissions never retry automatically. Existing image/avatar/Cloud costs and cleanup remain independently accountable.

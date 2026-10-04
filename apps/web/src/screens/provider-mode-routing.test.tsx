@@ -55,7 +55,7 @@ describe("product screen provider-mode routing", () => {
       );
 
       expect(screen.getByRole("heading", { name: "Loading candidate" })).toBeVisible();
-      expect(screen.getByRole("heading", { name: "Loading Library" })).toBeVisible();
+      expect(screen.getByRole("heading", { name: "Loading library" })).toBeVisible();
       expect(screen.queryByRole("heading", { name: "Hosted review" })).not.toBeInTheDocument();
     },
   );

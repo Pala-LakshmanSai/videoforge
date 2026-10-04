@@ -1272,6 +1272,12 @@
       "name": "cloud_access_follows_admission",
       "filename": "0249_cloud_access_follows_admission.sql",
       "sha256": "sha256:1edeac81a7ed0e4d3be84aeec2009f610458b57f350b5ae018de839eebc7b255"
+    },
+    {
+      "version": 250,
+      "name": "hosted_j1tts_voiceover",
+      "filename": "0250_hosted_j1tts_voiceover.sql",
+      "sha256": "sha256:a3a1460cc6a1318d6ac4ba9b826db68892e982af751c3eceeda6056e572803b1"
     }
   ]
 }

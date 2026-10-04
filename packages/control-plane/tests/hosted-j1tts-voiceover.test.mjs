@@ -1,0 +1,31 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {withMigratedDatabase,uuid,sha256,FIXED_TIME} from "./support/pglite.mjs";
+import {IDS,seedLockedProjects} from "./support/fixtures.mjs";
+import {FairAdmissionRepository,trustedTenantActorScope,trustedTenantScope} from "../dist/src/index.js";
+const owner=[IDS.accountA,IDS.workspaceA],other=[IDS.accountB,IDS.workspaceB];
+test("durable TTS: identity, tenant privacy, saved stars, terminal fences and shared admission",async()=>{
+ await withMigratedDatabase(async({executor})=>{
+  await seedLockedProjects(executor);
+  const call=async(name,args)=> !args.length ? (await executor.query(`SELECT public.${name}() value`)).rows[0].value : (await executor.query(`WITH bound AS (SELECT set_config('videoforge.account_id',($1::uuid)::text,true)) SELECT public.${name}(${args.map((_,i)=>'$'+(i+1)).join(',')}) value FROM bound`,args)).rows[0].value;
+  const start=(a,j,hash=sha256('request'))=>call('videoforge_start_voiceover_job',[...a,j,hash,'A complete script.','voice','demo.mp3']);
+  const first=await start(owner,uuid(250001));assert.equal(first.claimed,true);assert.equal((await start(owner,uuid(250001))).claimed,false);
+  await assert.rejects(start(owner,uuid(250001),sha256('different')),/VOICEOVER_REQUEST_CONFLICT/);
+  assert.equal(await call('videoforge_read_voiceover_job',[...other,uuid(250001)]),null);
+  await assert.rejects(start(owner,uuid(250002)),/VOICEOVER_CAPACITY_BUSY/);
+  await call('videoforge_record_voiceover_job',[...owner,uuid(250001),'PROCESSING','provider-job',null]);
+  await assert.rejects(call('videoforge_record_voiceover_job',[...owner,uuid(250001),'PROCESSING','changed-job',null]),/identity cannot replay/);
+  await start(other,uuid(250003));assert.equal(await call('videoforge_voiceover_active_count',[]),2);
+  const repo=new FairAdmissionRepository(executor);const actor=trustedTenantActorScope(trustedTenantScope(...owner),IDS.userA);
+  await repo.enqueueVideo(actor,{requestId:uuid(250010),projectId:IDS.projectA,projectRevisionId:IDS.revisionA,idempotencyKey:'tts-admission-video',now:FIXED_TIME,auditId:uuid(250011)});
+  assert.equal(await repo.promoteNext({leaseId:uuid(250012),auditId:uuid(250013),ownerTokenSha256:sha256('lease'),now:FIXED_TIME,expiresAt:new Date(Date.parse(FIXED_TIME)+60000).toISOString()}),null);
+  await call('videoforge_record_voiceover_job',[...owner,uuid(250001),'COMPLETED','provider-job',null]);
+  assert.equal(await call('videoforge_voiceover_active_count',[]),1);
+  const promoted=await repo.promoteNext({leaseId:uuid(250014),auditId:uuid(250015),ownerTokenSha256:sha256('lease'),now:FIXED_TIME,expiresAt:new Date(Date.parse(FIXED_TIME)+60000).toISOString()});assert.ok(promoted);
+  await assert.rejects(start(owner,uuid(250016)),/VOICEOVER_CAPACITY_BUSY/);
+  assert.equal((await call('videoforge_record_voiceover_job',[...owner,uuid(250001),'FAILED',null,'late-error'])).state,'COMPLETED');
+  await call('videoforge_save_voice',[...owner,'voice',true,true]);assert.deepEqual(await call('videoforge_saved_voices',owner),[{voice_id:'voice',starred:true,saved:true,imported:false}]);assert.deepEqual(await call('videoforge_saved_voices',other),[]);
+  await call('videoforge_save_voice',[...owner,'voice',false,false]);assert.deepEqual(await call('videoforge_saved_voices',owner),[]);
+  const counts=(await executor.query('SELECT active_lease_count FROM global_generation_capacity')).rows[0];assert.equal(counts.active_lease_count,1);
+ });
+});

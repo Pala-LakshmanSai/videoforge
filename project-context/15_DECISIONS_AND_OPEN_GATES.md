@@ -9,6 +9,7 @@ Every row below is `APPROVED` by the user and recorded in this planning session 
 
 | ID | Decision | Why |
 |---|---|---|
+| `DEC_VOICEOVER_001` | Preserve direct audio upload and add explicit J1TTS script-file or paste generation, a private Voiceover Hub with saved/starred voices and previews, and a saved-first dropdown. Durable request identity prevents uncertain TTS resubmission; generated audio uses existing project validation and rendering. | User authorized implementation, testing and production on 2026-10-04. Shared account/global workload caps, privacy and existing media identity remain enforced. |
 | `DEC_CLOUD_CLEANUP_ISOLATION_001` | A fenced early ASR/span failure with all CPU jobs terminal, no API jobs, no active personal-worker lease, an expired rental deadline and disabled/expired authority may retire its failed VIDEO admission while UNKNOWN/STOPPING rental cleanup remains independently fenced. Fresh Local and Cloud VIDEO admission bypass this cleanup-only hold under migration0237; presets stay blocked, the old reservation remains counted in global resource capacity, and the singleton lock retains one live rental/account. Never infer CLEAN from absent inventory or replay the launch. | Implements the user's 2026-10-01 request to fix Local creation blocked by an earlier failed Cloud benchmark. Supersedes only the blanket VIDEO admission hold for this narrow early failure; resource cleanup, cost, tenant, concurrency and accepted-media rules remain. See migration0235 and the queue operations domain. |
 | `DEC_SCOPE_001` | MVP uses AI still images, not AI B-roll video | Much simpler, faster, cheaper; user explicitly chose image-only now |
 | `DEC_OUTPUT_001` | Only full avatar, full image, and avatar-left/image-right split | Matches target style without effects |
@@ -131,3 +132,7 @@ Every row below is `APPROVED` by the user and recorded in this planning session 
 ## Change authority
 
 Only an explicit user decision changes an approved item. Benchmark evidence may recommend a change, but the implementation pauses at the relevant gate and presents the tradeoff. Follow the authority/consistency protocol in `16_CONTEXT_MAINTENANCE.md`; never treat the MANIFEST mirror or an older summary as a separate authority.
+
+## DEC_VOICEOVER_001 — J1TTS and private Voiceover Hub (2026-10-04)
+
+Accepted user change: implement both direct final-audio upload and script upload/paste with software-created J1TTS voiceover; add saved/starred voices and an easy dropdown, keep UI simple, verify existing functionality and publish production. The user supplies the server credential and explicitly approves this complete feature/release and continued execution without further questions. Direct upload remains default. Generate/listen/download precedes normal Create video; generated audio uses the existing exact narration pipeline. Durable private preferences, request/provider identity, shared provider admission and no automatic replay are required. No new subscription, model download or GPU speech service is introduced. Existing broader editorial, long-film, Local, invoice and historical UNKNOWN gates are independent.

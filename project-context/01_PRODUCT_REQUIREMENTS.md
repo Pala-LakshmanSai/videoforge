@@ -147,3 +147,7 @@ signed tenant-owned Windows/macOS media workers, both RunPod Serverless lanes, o
 5–10-account fairness/recovery, production-length quality/cost evidence, monitoring/runbooks, and
 independent zero-worker proof all pass. Local fixtures, Pod samples, model-volume presence, or a
 playable short MP4 alone do not prove this boundary.
+
+## Voiceover sources — 2026-10-04
+
+DEC_VOICEOVER_001 adds J1TTS script generation alongside the default final-audio upload. Create offers Upload voiceover and Upload script; script mode accepts a UTF-8 .txt file or pasted text and an exact voice ID. Users generate, listen, optionally download the MP3, then create the video. Voiceover Hub provides previews, private saved/starred voices and optional ElevenLabs-ID import. Generated MP3s use the same validated private upload, ASR timing and downstream video path as direct audio. The existing avatar/version, style, Local/Cloud and video-output rules remain binding.

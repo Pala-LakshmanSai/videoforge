@@ -342,3 +342,9 @@ At the original 7% rollout, pinned Seedance projects showed Generate scene video
 ## Published whole scene coverage control (2026-10-03)
 
 Create provides a synchronized 0–100% Video footage coverage slider/number field, presets 0/7/15/25/50/75/100 and default 7%. The value means up to that percentage of the finished video as scene footage; avatars are separate. Coverage edits invalidate preflight and stale asynchronous responses. Preliminary cost/seconds precede scheduling, then requested/planned/accepted coverage and whole-scene shortfall appear in Progress/Review. Off skips the scene-video stage. Published source 89cfe121 and live Chrome controls pass, including custom23, keyboard24, invalid101 and mobile390px. Fresh generated whole-film playback/editorial acceptance remains open; legacy plans/outputs remain unchanged. Details: [combined plan](tasks/SEEDANCE_VIDEO_PLAN.md#whole-scene-replacement-follow-up).
+
+## Voiceover Hub and script input — 2026-10-04
+
+Create defaults to Upload voiceover. Upload script reveals script file/paste controls, a voice dropdown grouped into Saved voices (starred first) and All voices, and Generate voiceover. Generation is explicit; selection and editing never call TTS. The completed MP3 can be heard/downloaded before Create video. Editing inputs invalidates accepted audio; request identity is retained after a lost submission response. A saved provider job can be restored after refresh.
+
+Voiceover Hub is in primary navigation. Saved, Starred and All voices filters, text search, one shared audio preview, Save/Remove and Star/Unstar controls use private durable preferences. ElevenLabs-ID import is optional and collapsed. A provider-key owner's imported library is visible only to that account; other imported voices require a workspace import. No credential is entered or returned in product UI.

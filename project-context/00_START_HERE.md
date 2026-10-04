@@ -1,3 +1,5 @@
+J1TTS and private Voiceover Hub implementation is in progress on isolated `codex/j1tts-voiceover`, from published base `ce0a31fe`. Direct upload stays default; script-generated MP3s enter the existing pipeline. Read `j1tts_voiceover_2026_10_04` in CURRENT_STATE.yaml and DEC_VOICEOVER_001.
+
 Context recovery Progress repair is published at `d64015aa` / Worker `9036de4a` with assets, authenticated compatibility and real Chrome verified. Read `context_recovery_progress_2026_10_03` in CURRENT_STATE.yaml. The false FAILED state stopped browser polling while bounded server recovery continued; stage timers remain authoritative.
 
 Hand-anatomy prevention is published at `8a4dae91` / Worker `e58efab8`: required per-person hand count, wrist ownership and simple grips survive Kie compaction; writer/recovery identity and saved prompts remain intact. See `hand_anatomy_prevention_2026_10_03` in CURRENT_STATE.yaml.

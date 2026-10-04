@@ -79,6 +79,8 @@ export interface HostedRuntimeEnvironment {
   readonly WORKFLOW_CALLBACK_SECRET?: string;
   readonly MEDIA_WORKER_TOKEN_SECRET?: string;
   /** Runware credential for bounded Gemini style analysis and the existing prompt writer. */
+  readonly J1TTS_API_KEY?: string;
+  readonly J1TTS_LIBRARY_OWNER_ACCOUNT_ID?: string;
   readonly RUNWARE_API_KEY?: string;
   readonly VIDEO_GENERATION_ENABLED?: string;
   readonly VIDEOFORGE_V207_AUTHORITY_NONCE?: string;
@@ -478,9 +480,16 @@ export function hostedRuntimeConfiguration(
   }
   const desktopRelease = mediaWorkerRelease(required(source, "MEDIA_WORKER_RELEASE_MANIFEST_JSON"));
   const cloudMedia = cloudMediaConfiguration(source);
-  const [workerMajor, workerMinor, workerPatch] = desktopRelease.version.split(/[.\-+]/u).slice(0, 3).map(Number);
-  if (source.VIDEO_GENERATION_ENABLED === "true" && (!apiGeneration || !source.RUNWARE_API_KEY?.trim() ||
-      workerMajor === 0 && (workerMinor! < 1 || workerMinor === 1 && workerPatch! < 46)))
+  const [workerMajor, workerMinor, workerPatch] = desktopRelease.version
+    .split(/[.\-+]/u)
+    .slice(0, 3)
+    .map(Number);
+  if (
+    source.VIDEO_GENERATION_ENABLED === "true" &&
+    (!apiGeneration ||
+      !source.RUNWARE_API_KEY?.trim() ||
+      (workerMajor === 0 && (workerMinor! < 1 || (workerMinor === 1 && workerPatch! < 46))))
+  )
     throw new Error("HOSTED_VIDEO_RENDERER_UNQUALIFIED");
   if (cloudMedia && cloudMedia.tooling.whisper_model_sha256 !== desktopRelease.whisperModelSha256)
     throw new Error("CLOUD_MEDIA_MODEL_UNQUALIFIED");

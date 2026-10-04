@@ -26,6 +26,7 @@ import {
 export interface HostedContinuationWorkflowParameters {
   /** Diagnostic only, supplied by the starting caller; the driver never depends on it. */
   readonly reason?: string;
+  readonly voiceover?: { accountId: string; workspaceId: string; jobId: string };
   readonly target?: HostedContinuationTarget;
 }
 
@@ -47,6 +48,18 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 function continuationParameters(value: unknown): HostedContinuationWorkflowParameters {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return Object.freeze({});
   const reason = (value as { readonly reason?: unknown }).reason;
+  const voiceover = (value as { voiceover?: unknown }).voiceover;
+  if (reason === "voiceover-observer") {
+    const v = voiceover as Record<string, unknown> | undefined;
+    if (
+      v &&
+      UUID.test(String(v.accountId)) &&
+      UUID.test(String(v.workspaceId)) &&
+      UUID.test(String(v.jobId))
+    )
+      return { reason, voiceover: v as { accountId: string; workspaceId: string; jobId: string } };
+    return { reason: "invalid-stage-handoff" };
+  }
   const target = (value as { readonly target?: unknown }).target;
   if (typeof target === "object" && target !== null && !Array.isArray(target)) {
     const candidate = target as Record<string, unknown>;
@@ -125,9 +138,31 @@ export class HostedContinuationWorkflow extends WorkflowEntrypoint<
     step: WorkflowStep,
   ): Promise<unknown> {
     const params = continuationParameters(event.payload);
-    const qualificationOnly=(await import("../src/server/hosted/cloud-media-qualification")).cloudMediaQualificationOnly(this.env);
+    const qualificationOnly = (
+      await import("../src/server/hosted/cloud-media-qualification")
+    ).cloudMediaQualificationOnly(this.env);
     if (params.reason === "invalid-stage-handoff") return { state: "INVALID_TARGET" };
-    if(qualificationOnly && params.target) return {state:"QUALIFICATION_PROVIDER_INERT"};
+    if (params.voiceover) {
+      if (qualificationOnly) return { state: "QUALIFICATION_PROVIDER_INERT" };
+      const { observeJ1Voiceover } = await import("../src/server/hosted/j1tts");
+      for (let tick = 0; tick < 240; tick++) {
+        const state = await step.do(
+          `voiceover observation ${tick}`,
+          { retries: { limit: 0, delay: "1 second", backoff: "constant" } },
+          async () => {
+            try {
+              return await observeJ1Voiceover(this.env, params.voiceover!);
+            } catch {
+              return "PROCESSING";
+            }
+          },
+        );
+        if (!["SUBMITTING", "PROCESSING"].includes(state)) return { state };
+        await step.sleep(`voiceover wait ${tick}`, "15 seconds");
+      }
+      return { state: "OBSERVATION_DEADLINE" };
+    }
+    if (qualificationOnly && params.target) return { state: "QUALIFICATION_PROVIDER_INERT" };
     if (params.target) {
       if (params.target.step !== "prompts") {
         return step.do(`handoff ${params.target.step}`, async () => {
@@ -155,16 +190,21 @@ export class HostedContinuationWorkflow extends WorkflowEntrypoint<
             let running = false;
             let accepted = -1;
             try {
-              const rows = await runHostedContinuation(this.env, context, params.target, async (response) => {
-                if (response.status !== 202) return;
-                const body = await response.clone().json() as {
-                  state?: unknown;
-                  accepted_batch_count?: unknown;
-                };
-                running = body.state === "RUNNING";
-                if (typeof body.accepted_batch_count === "number")
-                  accepted = body.accepted_batch_count;
-              });
+              const rows = await runHostedContinuation(
+                this.env,
+                context,
+                params.target,
+                async (response) => {
+                  if (response.status !== 202) return;
+                  const body = (await response.clone().json()) as {
+                    state?: unknown;
+                    accepted_batch_count?: unknown;
+                  };
+                  running = body.state === "RUNNING";
+                  if (typeof body.accepted_batch_count === "number")
+                    accepted = body.accepted_batch_count;
+                },
+              );
               return { rows, running, accepted };
             } finally {
               await drain();
@@ -195,23 +235,34 @@ export class HostedContinuationWorkflow extends WorkflowEntrypoint<
       // The iteration index is the replay key. `continuation 7` is a different durable step than
       // `continuation 6`, so a replayed instance resumes where it stopped instead of reusing the
       // first iteration's recorded result for every tick.
-      const outcome = await step.do(`continuation ${iteration}`, { retries: { limit: 0, delay: "1 second", backoff: "constant" } }, async () => {
-        const { context, drain } = drainingExecutionContext();
-        try {
-          const { reconcileCloudMediaReservations } = await import("../src/server/hosted/runpod-media");
-          const cloud = await reconcileCloudMediaReservations(this.env);
-          if(qualificationOnly) return {dispatched:0,observers:0,cloud:cloud ?? 0,error:null};
-          const dispatched = await runHostedContinuation(this.env, context);
-          const observers = await ensureHostedPairObservers(this.env, context);
-          return { dispatched: dispatched.length, observers, cloud: cloud ?? 0, error: null };
-        } catch (error) {
-          // One bad tick (a transient database failure, a missing binding) must not kill a
-          // 24-hour driver: record it and let the next iteration try again in 60 seconds.
-          return { dispatched: 0, observers: 0, cloud: null, error: errorMessage(error) };
-        } finally {
-          await drain();
-        }
-      });
+      const outcome = await step.do(
+        `continuation ${iteration}`,
+        { retries: { limit: 0, delay: "1 second", backoff: "constant" } },
+        async () => {
+          const { context, drain } = drainingExecutionContext();
+          try {
+            if (!qualificationOnly) {
+              const { reconcilePendingVoiceovers } = await import("../src/server/hosted/j1tts");
+              await reconcilePendingVoiceovers(this.env);
+            }
+            const { reconcileCloudMediaReservations } = await import(
+              "../src/server/hosted/runpod-media"
+            );
+            const cloud = await reconcileCloudMediaReservations(this.env);
+            if (qualificationOnly)
+              return { dispatched: 0, observers: 0, cloud: cloud ?? 0, error: null };
+            const dispatched = await runHostedContinuation(this.env, context);
+            const observers = await ensureHostedPairObservers(this.env, context);
+            return { dispatched: dispatched.length, observers, cloud: cloud ?? 0, error: null };
+          } catch (error) {
+            // One bad tick (a transient database failure, a missing binding) must not kill a
+            // 24-hour driver: record it and let the next iteration try again in 60 seconds.
+            return { dispatched: 0, observers: 0, cloud: null, error: errorMessage(error) };
+          } finally {
+            await drain();
+          }
+        },
+      );
       iterations += 1;
       dispatches += outcome.dispatched;
       pairObservers += outcome.observers;
@@ -230,18 +281,35 @@ export class HostedContinuationWorkflow extends WorkflowEntrypoint<
 
     // Cron delivery is unqualified here. Uncertain cleanup must retain an independent observer
     // beyond this bounded instance, even when new allocations have been disabled for rollback.
-    if (cloudPending > 0 || (cloudObservationUncertain && (this.env.VIDEOFORGE_CLOUD_MEDIA_ENABLED === "true" || this.env.VIDEOFORGE_CLOUD_MEDIA_IMAGE))) {
+    if (
+      cloudPending > 0 ||
+      (cloudObservationUncertain &&
+        (this.env.VIDEOFORGE_CLOUD_MEDIA_ENABLED === "true" ||
+          this.env.VIDEOFORGE_CLOUD_MEDIA_IMAGE))
+    ) {
       await step.do("continue cloud cleanup observation", async () => {
         const binding = this.env.HOSTED_CONTINUATION_WORKFLOW;
         if (!binding) throw new Error("CLOUD_MEDIA_CLEANUP_OBSERVER_UNAVAILABLE");
-        const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(event.instanceId));
-        const id = `cloud-safety-${Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("").slice(0, 40)}`;
-        try { await binding.create({ id, params: { reason: "cloud-cleanup-recovery" } }); }
-        catch (error) {
+        const digest = await crypto.subtle.digest(
+          "SHA-256",
+          new TextEncoder().encode(event.instanceId),
+        );
+        const id = `cloud-safety-${Array.from(new Uint8Array(digest))
+          .map((byte) => byte.toString(16).padStart(2, "0"))
+          .join("")
+          .slice(0, 40)}`;
+        try {
+          await binding.create({ id, params: { reason: "cloud-cleanup-recovery" } });
+        } catch (error) {
           // A lost creation acknowledgement adopts the same deterministic observer instance.
           const existing = await binding.get(id);
-          const status = await existing.status() as { status?: unknown };
-          if (!["queued", "running", "waiting", "sleeping", "waitingForPause", "paused"].includes(String(status?.status))) throw error;
+          const status = (await existing.status()) as { status?: unknown };
+          if (
+            !["queued", "running", "waiting", "sleeping", "waitingForPause", "paused"].includes(
+              String(status?.status),
+            )
+          )
+            throw error;
         }
       });
     }

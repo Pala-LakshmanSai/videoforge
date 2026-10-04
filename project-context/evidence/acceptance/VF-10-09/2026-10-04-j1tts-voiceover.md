@@ -1,0 +1,15 @@
+# J1TTS voiceover and private Voiceover Hub
+
+Checkpoint V2-09, task VF-10-09, profile v2_09_short_live_e2e. User authorizes both narration sources, private saved/starred Voiceover Hub, simple UI, complete functional verification and production release; a second message supplies the server credential and a third explicitly approves continued implementation/release without further questions. No credential is retained in this record.
+
+Implementation starts from clean published sourcece0a31fe on codex/j1tts-voiceover; extensive unrelated primary-workspace edits are preserved. DEC_VOICEOVER_001 reconciles the prior upload-only input policy. Generated MP3s reuse the existing private validation/upload/ASR/render pipeline. The Hub supports search, Saved/Starred/All, safe previews, Save/Remove, stars and private ElevenLabs-ID import. Existing provider-owner imports remain restricted to that owner.
+
+Migration0250 retains private durable claim identity before provider POST, immutable script/voice/hash/provider ID, scoped SQL/RLS/preferences and backup/restore inventory. Both provider lease and TTS claims share the existing serialization lock, preserving one account and two global workloads without changing lease counters. Busy work performs no provider submission; known jobs are observed through the existing Workflow binding and minute-driver fallback. An uncertain POST cannot replay. GET/audio reject foreign IDs and never use a provider-returned URL to send credentials elsewhere.
+
+Initial provider reads return1117 global and six imported voices; usage reports used_today0, limit0, remaining null. The supplied dashboard labels unlimited. This is subscription/usage evidence, not settled billing. Detailed private operator receipts remain in primary .videoforge/j1tts-20261004; publication/browser/media/compute results will be recorded after verification.
+
+## Release preparation
+
+262 focused web/provider/Workflow/product checks and14 admission/database checks pass. Web/Worker types, changed-source lint, production/staging native bundles and context validators pass. Staging Library/Review branches now compile directly by hosted mode, removing inherited fixture strings while preserving both hosted and fixture routing; six routing checks pass. Migration0250 passed a native transactional rollback rehearsal, then applied with its exact ledger hash. Runtime credentials verify private saved voice scopes; the key owner's six already imported voices were saved without calling the provider import endpoint. One unrelated active VIDEO lease and one unrelated STOPPING reservation remain preserved. No TTS submission or new compute has occurred at this checkpoint. The server credential was provisioned in an undeployed Worker version.
+
+Acceptance is bounded to USD1 incremental generation/compute and one short pipeline canary; existing resource admission and price ceilings remain authoritative. J1TTS usage reports limit0/remainingnull with the supplied unlimited dashboard; per-call price and invoice are unverified. Browser/media/publication proof follows the release.

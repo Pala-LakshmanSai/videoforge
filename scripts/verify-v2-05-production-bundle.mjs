@@ -74,9 +74,11 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // Voiceover download naming adds1,766 measured bytes to each static closure for
 // the exact revision/asset Library lookup and shared safe UTF-8 disposition helper.
 // No dependency additions or provider/native quarantine exceptions.
+// J1TTS retrieval-only Workflow observation and private route dispatch add exactly
+// 1,760 production and 216 staging bytes; provider code remains dynamically loaded.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_809_255,
-  "wrangler.staging.jsonc": 2_805_429,
+  "wrangler.production.jsonc": 2_811_015,
+  "wrangler.staging.jsonc": 2_805_645,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",
@@ -235,11 +237,14 @@ let workerCodeFiles = 0;
 let clientCodeFiles = 0;
 const workerManifestPath = path.join(root, emittedWorkerDirectory, ".vite/manifest.json");
 let releaseManifest = {};
-try { releaseManifest = JSON.parse(await readFile(workerManifestPath, "utf8")); } catch {
+try {
+  releaseManifest = JSON.parse(await readFile(workerManifestPath, "utf8"));
+} catch {
   // The manifest guard below reports this alongside all other quarantine failures.
 }
-const cloudMediaEntry = Object.entries(releaseManifest).find(([key, value]) =>
-  /(?:^|\/)runpod-media\.ts$/u.test(key) && value?.isDynamicEntry === true)?.[1];
+const cloudMediaEntry = Object.entries(releaseManifest).find(
+  ([key, value]) => /(?:^|\/)runpod-media\.ts$/u.test(key) && value?.isDynamicEntry === true,
+)?.[1];
 const cloudMediaFile = cloudMediaEntry?.file;
 const emittedFiles = await filesBelow(root);
 for (const file of emittedFiles) {
@@ -263,9 +268,12 @@ for (const file of emittedFiles) {
   const tokens = workerFile ? workerForbidden : clientForbidden;
   for (const token of tokens) {
     // Only the isolated server cloud adapter may name the approved automatic GPU preference.
-    const qualifiedCloudVocabulary = workerFile && token === "NVIDIA RTX A6000" &&
+    const qualifiedCloudVocabulary =
+      workerFile &&
+      token === "NVIDIA RTX A6000" &&
       relative === `${emittedWorkerDirectory}/${cloudMediaFile}`;
-    if (source.includes(token) && !qualifiedCloudVocabulary) failures.push(`${file} contains ${token}`);
+    if (source.includes(token) && !qualifiedCloudVocabulary)
+      failures.push(`${file} contains ${token}`);
   }
 }
 
@@ -282,7 +290,10 @@ try {
     staticallyReachable.add(key);
     for (const importedKey of workerManifest[key]?.imports ?? []) pending.push(importedKey);
   }
-  if (cloudMediaEntry && [...staticallyReachable].some(key => workerManifest[key]?.file === cloudMediaFile))
+  if (
+    cloudMediaEntry &&
+    [...staticallyReachable].some((key) => workerManifest[key]?.file === cloudMediaFile)
+  )
     failures.push("Cloud media adapter must remain a dynamic server entry");
   const eagerValidatorKeys = [...staticallyReachable].filter((key) =>
     /contract-validators/iu.test(`${key} ${workerManifest[key]?.file ?? ""}`),

@@ -248,3 +248,7 @@ concurrent reads, worker cleanup, or Serverless cost.
   state without logging private content.
 - Production handoff proves no Active workers (`workersMin=0`), zero Flex workers/jobs after drain,
   and exactly the two intended retained model volumes. Endpoint existence is not ongoing GPU spend.
+
+## J1TTS preparation boundary — 2026-10-04
+
+Same-origin authenticated /api/v2/voiceovers routes own voice catalog/previews/preferences/import and private durable TTS jobs. Only the Worker holds J1TTS_API_KEY. An immutable claim is saved before the provider POST; duplicate request UUIDs reuse its saved identity and changed bytes conflict. The existing continuation Workflow binding runs a bounded retrieval-only voiceover observer, with the periodic driver as fallback. No new GPU, model download or native worker is required for speech generation. Generated audio enters the existing project/R2/ASR pipeline.

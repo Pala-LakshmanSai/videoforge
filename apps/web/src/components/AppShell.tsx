@@ -10,6 +10,7 @@ import {
   Clapperboard,
   Images,
   Library,
+  Mic,
   Settings,
   Sparkles,
   UsersRound,
@@ -41,6 +42,7 @@ function scenarioLabel(id: string): string {
 const nav = [
   { to: "/", label: "Queue", mobileLabel: "Queue", icon: CircleGauge },
   { to: "/projects/new", label: "New Project", mobileLabel: "New", icon: Sparkles },
+  { to: "/voiceovers", label: "Voiceover Hub", mobileLabel: "Voices", icon: Mic },
   { to: "/avatars", label: "Avatar Hub", mobileLabel: "Avatars", icon: UsersRound },
   { to: "/styles", label: "Image Styles", mobileLabel: "Styles", icon: Images },
   { to: "/library", label: "Library", mobileLabel: "Library", icon: Library },
