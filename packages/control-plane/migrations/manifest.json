@@ -1302,6 +1302,12 @@
       "name": "hosted_script_input_grant",
       "filename": "0254_hosted_script_input_grant.sql",
       "sha256": "sha256:3177d54544d00a0a29c25a4d40c1be96ec6f37fad4cafe8e3d9468290cdf4875"
+    },
+    {
+      "version": 255,
+      "name": "hosted_cloud_queue_cpu_admission",
+      "filename": "0255_hosted_cloud_queue_cpu_admission.sql",
+      "sha256": "sha256:fec501ef886d2b78ef35ad1dedf62f13a8c12454e93768705398645ff056095b"
     }
   ]
 }
