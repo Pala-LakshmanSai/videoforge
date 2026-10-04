@@ -14,6 +14,7 @@ import {
   schedulerConfigForVersion,
   SHORT_FORM_SCHEDULER_CONFIG,
   SHORT_FORM_SCHEDULER_VERSION,
+  WORD_BOUNDARY_SCHEDULER_VERSION,
   SCRIPT_SHORT_FORM_SCHEDULER_VERSION,
   SUPPORTED_SCHEDULER_CONFIG,
   SUPPORTED_SCHEDULER_VERSION,
@@ -833,4 +834,52 @@ test("19-second J1TTS narration keeps word boundaries in a separately pinned sho
   const coverage = assertExactTimelineCoverage(plan.value, transcriptValue);
   assert.ok(coverage.avatarRatio >= 0.2 && coverage.avatarRatio <= 0.24);
   assert.equal(plan.sha256, requireSuccess(await scheduleTimeline(request)).sha256);
+});
+
+test("short narration with no 20-24 percent word boundary uses only the versioned bounded fallback", async () => {
+  const transcript = JSON.parse(
+    readFileSync(
+      new URL("./fixtures/j1tts-word-boundary-transcript.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.equal(
+    (
+      await scheduleTimeline(
+        await propertyRequest(42107, transcript, SCRIPT_SHORT_FORM_SCHEDULER_VERSION),
+      )
+    ).ok,
+    false,
+  );
+  const request = await propertyRequest(42107, transcript, WORD_BOUNDARY_SCHEDULER_VERSION);
+  const plan = requireSuccess(await scheduleTimeline(request));
+  const coverage = assertExactTimelineCoverage(plan.value, transcript);
+  assert.ok(coverage.avatarRatio >= 0.2 && coverage.avatarRatio <= 0.26);
+  assert.equal(plan.sha256, requireSuccess(await scheduleTimeline(request)).sha256);
+});
+
+test("word-boundary fallback keeps the original coverage band when it fits and leaves old plans replayable", async () => {
+  const transcript = JSON.parse(
+    readFileSync(new URL("./fixtures/j1tts-short-transcript.json", import.meta.url), "utf8"),
+  );
+  const old = requireSuccess(
+    await scheduleTimeline(
+      await propertyRequest(1000527468, transcript, SCRIPT_SHORT_FORM_SCHEDULER_VERSION),
+    ),
+  );
+  const next = requireSuccess(
+    await scheduleTimeline(
+      await propertyRequest(1000527468, transcript, WORD_BOUNDARY_SCHEDULER_VERSION),
+    ),
+  );
+  const coverage = assertExactTimelineCoverage(next.value, transcript);
+  assert.ok(coverage.avatarRatio >= 0.2 && coverage.avatarRatio <= 0.24);
+  assert.equal(
+    old.sha256,
+    requireSuccess(
+      await scheduleTimeline(
+        await propertyRequest(1000527468, transcript, SCRIPT_SHORT_FORM_SCHEDULER_VERSION),
+      ),
+    ).sha256,
+  );
 });

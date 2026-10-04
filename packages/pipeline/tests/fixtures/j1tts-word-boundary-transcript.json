@@ -1,0 +1,435 @@
+{
+  "schema_version": "transcript-timing/v1",
+  "project_revision_id": "revision_local_owned_001",
+  "source": {
+    "asset_id": "asset_voiceover_local_owned_001",
+    "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "duration_ms": 18019
+  },
+  "engine": {
+    "name": "whisper.cpp",
+    "version": "1.8.4",
+    "model_name": "base.en",
+    "model_sha256": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "language": "en"
+  },
+  "text": "At dawn, a quiet river carries silver light through the valley. Tall reed sway along the banks, and a heron waits beside the water. As the sun rises above the distant hills, the landscape slowly wakes, revealing a world shaped by water, weather, and time.",
+  "words": [
+    {
+      "index": 0,
+      "text": "At",
+      "start_ms": 30,
+      "end_ms": 220,
+      "confidence": null
+    },
+    {
+      "index": 1,
+      "text": "dawn,",
+      "start_ms": 220,
+      "end_ms": 690,
+      "confidence": null
+    },
+    {
+      "index": 2,
+      "text": "a",
+      "start_ms": 690,
+      "end_ms": 1010,
+      "confidence": null
+    },
+    {
+      "index": 3,
+      "text": "quiet",
+      "start_ms": 1010,
+      "end_ms": 1260,
+      "confidence": null
+    },
+    {
+      "index": 4,
+      "text": "river",
+      "start_ms": 1260,
+      "end_ms": 1650,
+      "confidence": null
+    },
+    {
+      "index": 5,
+      "text": "carries",
+      "start_ms": 1650,
+      "end_ms": 2320,
+      "confidence": null
+    },
+    {
+      "index": 6,
+      "text": "silver",
+      "start_ms": 2320,
+      "end_ms": 2640,
+      "confidence": null
+    },
+    {
+      "index": 7,
+      "text": "light",
+      "start_ms": 2640,
+      "end_ms": 2980,
+      "confidence": null
+    },
+    {
+      "index": 8,
+      "text": "through",
+      "start_ms": 2980,
+      "end_ms": 3470,
+      "confidence": null
+    },
+    {
+      "index": 9,
+      "text": "the",
+      "start_ms": 3470,
+      "end_ms": 4440,
+      "confidence": null
+    },
+    {
+      "index": 10,
+      "text": "valley.",
+      "start_ms": 4440,
+      "end_ms": 4450,
+      "confidence": null
+    },
+    {
+      "index": 11,
+      "text": "Tall",
+      "start_ms": 4450,
+      "end_ms": 4820,
+      "confidence": null
+    },
+    {
+      "index": 12,
+      "text": "reed",
+      "start_ms": 4820,
+      "end_ms": 5450,
+      "confidence": null
+    },
+    {
+      "index": 13,
+      "text": "sway",
+      "start_ms": 5450,
+      "end_ms": 5600,
+      "confidence": null
+    },
+    {
+      "index": 14,
+      "text": "along",
+      "start_ms": 5600,
+      "end_ms": 6050,
+      "confidence": null
+    },
+    {
+      "index": 15,
+      "text": "the",
+      "start_ms": 6050,
+      "end_ms": 6330,
+      "confidence": null
+    },
+    {
+      "index": 16,
+      "text": "banks,",
+      "start_ms": 6330,
+      "end_ms": 6900,
+      "confidence": null
+    },
+    {
+      "index": 17,
+      "text": "and",
+      "start_ms": 6900,
+      "end_ms": 7000,
+      "confidence": null
+    },
+    {
+      "index": 18,
+      "text": "a",
+      "start_ms": 7000,
+      "end_ms": 7080,
+      "confidence": null
+    },
+    {
+      "index": 19,
+      "text": "heron",
+      "start_ms": 7080,
+      "end_ms": 7520,
+      "confidence": null
+    },
+    {
+      "index": 20,
+      "text": "waits",
+      "start_ms": 7520,
+      "end_ms": 7800,
+      "confidence": null
+    },
+    {
+      "index": 21,
+      "text": "beside",
+      "start_ms": 7800,
+      "end_ms": 8360,
+      "confidence": null
+    },
+    {
+      "index": 22,
+      "text": "the",
+      "start_ms": 8360,
+      "end_ms": 8940,
+      "confidence": null
+    },
+    {
+      "index": 23,
+      "text": "water.",
+      "start_ms": 8940,
+      "end_ms": 9420,
+      "confidence": null
+    },
+    {
+      "index": 24,
+      "text": "As",
+      "start_ms": 9420,
+      "end_ms": 9640,
+      "confidence": null
+    },
+    {
+      "index": 25,
+      "text": "the",
+      "start_ms": 9640,
+      "end_ms": 9820,
+      "confidence": null
+    },
+    {
+      "index": 26,
+      "text": "sun",
+      "start_ms": 9820,
+      "end_ms": 10060,
+      "confidence": null
+    },
+    {
+      "index": 27,
+      "text": "rises",
+      "start_ms": 10060,
+      "end_ms": 10460,
+      "confidence": null
+    },
+    {
+      "index": 28,
+      "text": "above",
+      "start_ms": 10460,
+      "end_ms": 10860,
+      "confidence": null
+    },
+    {
+      "index": 29,
+      "text": "the",
+      "start_ms": 10860,
+      "end_ms": 11100,
+      "confidence": null
+    },
+    {
+      "index": 30,
+      "text": "distant",
+      "start_ms": 11100,
+      "end_ms": 11670,
+      "confidence": null
+    },
+    {
+      "index": 31,
+      "text": "hills,",
+      "start_ms": 11670,
+      "end_ms": 12280,
+      "confidence": null
+    },
+    {
+      "index": 32,
+      "text": "the",
+      "start_ms": 12280,
+      "end_ms": 12490,
+      "confidence": null
+    },
+    {
+      "index": 33,
+      "text": "landscape",
+      "start_ms": 12490,
+      "end_ms": 12910,
+      "confidence": null
+    },
+    {
+      "index": 34,
+      "text": "slowly",
+      "start_ms": 12910,
+      "end_ms": 13920,
+      "confidence": null
+    },
+    {
+      "index": 35,
+      "text": "wakes,",
+      "start_ms": 13920,
+      "end_ms": 14520,
+      "confidence": null
+    },
+    {
+      "index": 36,
+      "text": "revealing",
+      "start_ms": 14520,
+      "end_ms": 15090,
+      "confidence": null
+    },
+    {
+      "index": 37,
+      "text": "a",
+      "start_ms": 15090,
+      "end_ms": 15150,
+      "confidence": null
+    },
+    {
+      "index": 38,
+      "text": "world",
+      "start_ms": 15150,
+      "end_ms": 15530,
+      "confidence": null
+    },
+    {
+      "index": 39,
+      "text": "shaped",
+      "start_ms": 15530,
+      "end_ms": 15850,
+      "confidence": null
+    },
+    {
+      "index": 40,
+      "text": "by",
+      "start_ms": 15850,
+      "end_ms": 15970,
+      "confidence": null
+    },
+    {
+      "index": 41,
+      "text": "water,",
+      "start_ms": 15970,
+      "end_ms": 16410,
+      "confidence": null
+    },
+    {
+      "index": 42,
+      "text": "weather,",
+      "start_ms": 16410,
+      "end_ms": 16980,
+      "confidence": null
+    },
+    {
+      "index": 43,
+      "text": "and",
+      "start_ms": 16980,
+      "end_ms": 17170,
+      "confidence": null
+    },
+    {
+      "index": 44,
+      "text": "time.",
+      "start_ms": 17170,
+      "end_ms": 17680,
+      "confidence": null
+    }
+  ],
+  "phrases": [
+    {
+      "phrase_id": "phrase_0001",
+      "sentence_id": "sentence_0001",
+      "word_start": 0,
+      "word_end_exclusive": 2,
+      "start_ms": 30,
+      "end_ms": 690,
+      "pause_before_ms": 30,
+      "pause_after_ms": 0,
+      "text": "At dawn,"
+    },
+    {
+      "phrase_id": "phrase_0002",
+      "sentence_id": "sentence_0001",
+      "word_start": 2,
+      "word_end_exclusive": 11,
+      "start_ms": 690,
+      "end_ms": 4450,
+      "pause_before_ms": 0,
+      "pause_after_ms": 0,
+      "text": "a quiet river carries silver light through the valley."
+    },
+    {
+      "phrase_id": "phrase_0003",
+      "sentence_id": "sentence_0002",
+      "word_start": 11,
+      "word_end_exclusive": 17,
+      "start_ms": 4450,
+      "end_ms": 6900,
+      "pause_before_ms": 0,
+      "pause_after_ms": 0,
+      "text": "Tall reed sway along the banks,"
+    },
+    {
+      "phrase_id": "phrase_0004",
+      "sentence_id": "sentence_0002",
+      "word_start": 17,
+      "word_end_exclusive": 24,
+      "start_ms": 6900,
+      "end_ms": 9420,
+      "pause_before_ms": 0,
+      "pause_after_ms": 0,
+      "text": "and a heron waits beside the water."
+    },
+    {
+      "phrase_id": "phrase_0005",
+      "sentence_id": "sentence_0003",
+      "word_start": 24,
+      "word_end_exclusive": 32,
+      "start_ms": 9420,
+      "end_ms": 12280,
+      "pause_before_ms": 0,
+      "pause_after_ms": 0,
+      "text": "As the sun rises above the distant hills,"
+    },
+    {
+      "phrase_id": "phrase_0006",
+      "sentence_id": "sentence_0003",
+      "word_start": 32,
+      "word_end_exclusive": 36,
+      "start_ms": 12280,
+      "end_ms": 14520,
+      "pause_before_ms": 0,
+      "pause_after_ms": 0,
+      "text": "the landscape slowly wakes,"
+    },
+    {
+      "phrase_id": "phrase_0007",
+      "sentence_id": "sentence_0003",
+      "word_start": 36,
+      "word_end_exclusive": 42,
+      "start_ms": 14520,
+      "end_ms": 16410,
+      "pause_before_ms": 0,
+      "pause_after_ms": 0,
+      "text": "revealing a world shaped by water,"
+    },
+    {
+      "phrase_id": "phrase_0008",
+      "sentence_id": "sentence_0003",
+      "word_start": 42,
+      "word_end_exclusive": 43,
+      "start_ms": 16410,
+      "end_ms": 16980,
+      "pause_before_ms": 0,
+      "pause_after_ms": 0,
+      "text": "weather,"
+    },
+    {
+      "phrase_id": "phrase_0009",
+      "sentence_id": "sentence_0003",
+      "word_start": 43,
+      "word_end_exclusive": 45,
+      "start_ms": 16980,
+      "end_ms": 17680,
+      "pause_before_ms": 0,
+      "pause_after_ms": 339,
+      "text": "and time."
+    }
+  ]
+}

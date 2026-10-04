@@ -15,6 +15,8 @@ import {
 import type { SchedulerPort, SchedulerRequest } from "./ports.js";
 import {
   SCHEDULER_SHOT_ROLES,
+  WORD_BOUNDARY_SCHEDULER_VERSION,
+  WORD_BOUNDARY_SCHEDULER_CONFIG,
   SHORT_FORM_SCHEDULER_CONFIG,
   SHORT_FORM_SCHEDULER_VERSION,
   SCRIPT_SHORT_FORM_SCHEDULER_CONFIG,
@@ -76,17 +78,23 @@ function frameForMilliseconds(milliseconds: number): number {
 function avatarCoverageRange(
   durationMs: number,
   version: string,
+  boundaryFallback = false,
 ): { minimum: number; maximum: number } {
   const short =
-    version === SCRIPT_SHORT_FORM_SCHEDULER_VERSION
-      ? SCRIPT_SHORT_FORM_SCHEDULER_CONFIG
-      : version === SHORT_FORM_SCHEDULER_VERSION
-        ? SHORT_FORM_SCHEDULER_CONFIG
-        : null;
+    version === WORD_BOUNDARY_SCHEDULER_VERSION
+      ? WORD_BOUNDARY_SCHEDULER_CONFIG
+      : version === SCRIPT_SHORT_FORM_SCHEDULER_VERSION
+        ? SCRIPT_SHORT_FORM_SCHEDULER_CONFIG
+        : version === SHORT_FORM_SCHEDULER_VERSION
+          ? SHORT_FORM_SCHEDULER_CONFIG
+          : null;
   return short && durationMs <= short.short_form_maximum_ms
     ? {
         minimum: short.short_form_target_avatar_ratio_minimum,
-        maximum: short.short_form_target_avatar_ratio_maximum,
+        maximum:
+          boundaryFallback && version === WORD_BOUNDARY_SCHEDULER_VERSION
+            ? WORD_BOUNDARY_SCHEDULER_CONFIG.short_form_boundary_fallback_maximum
+            : short.short_form_target_avatar_ratio_maximum,
       }
     : {
         minimum: SUPPORTED_SCHEDULER_CONFIG.target_avatar_ratio_minimum,
@@ -114,7 +122,8 @@ function validateSchedulerInput(
   if (
     revision.scheduler_version !== SUPPORTED_SCHEDULER_VERSION &&
     revision.scheduler_version !== SHORT_FORM_SCHEDULER_VERSION &&
-    revision.scheduler_version !== SCRIPT_SHORT_FORM_SCHEDULER_VERSION
+    revision.scheduler_version !== SCRIPT_SHORT_FORM_SCHEDULER_VERSION &&
+    revision.scheduler_version !== WORD_BOUNDARY_SCHEDULER_VERSION
   ) {
     return fail(
       "TIMELINE_INVALID",
@@ -125,6 +134,7 @@ function validateSchedulerInput(
           SUPPORTED_SCHEDULER_VERSION,
           SHORT_FORM_SCHEDULER_VERSION,
           SCRIPT_SHORT_FORM_SCHEDULER_VERSION,
+          WORD_BOUNDARY_SCHEDULER_VERSION,
         ],
       },
     );
@@ -645,7 +655,11 @@ export function validateTimelineSemantics(
     .reduce((sum, segment) => sum + segment.end_frame_exclusive - segment.start_frame, 0);
   const splitAvatarFrames = avatarFrames - fullAvatarFrames;
   const avatarRatio = avatarFrames / plan.total_frames;
-  const coverageRange = avatarCoverageRange(transcript.source.duration_ms, plan.scheduler_version);
+  const coverageRange = avatarCoverageRange(
+    transcript.source.duration_ms,
+    plan.scheduler_version,
+    true,
+  );
   if (avatarRatio < coverageRange.minimum || avatarRatio > coverageRange.maximum) {
     return fail(
       "TIMELINE_INVALID",
@@ -681,13 +695,19 @@ export function validateTimelineSemantics(
 function buildTimelinePlan(
   request: SchedulerRequest,
   variation: SeededVariation,
+  boundaryFallback = false,
 ): TimelinePlanDocument | PipelineFailure {
   const revision = request.revision.value;
   const transcript = request.transcript.value;
   const coverageRange = avatarCoverageRange(
     transcript.source.duration_ms,
     revision.scheduler_version,
+    boundaryFallback,
   );
+  const canUseBoundaryFallback =
+    !boundaryFallback &&
+    revision.scheduler_version === WORD_BOUNDARY_SCHEDULER_VERSION &&
+    transcript.source.duration_ms <= WORD_BOUNDARY_SCHEDULER_CONFIG.short_form_maximum_ms;
   const targetAvatarRatio = variation.between(
     "target-avatar-ratio",
     coverageRange.minimum,
@@ -705,6 +725,7 @@ function buildTimelinePlan(
     maximumAvatarFrames,
   );
   if (openers.length === 0) {
+    if (canUseBoundaryFallback) return buildTimelinePlan(request, variation, true);
     return fail(
       "TIMELINE_INVALID",
       "Word boundaries cannot produce a bounded avatar opener inside the locked coverage range.",
@@ -790,6 +811,7 @@ function buildTimelinePlan(
   }
 
   if (ranges === null) {
+    if (canUseBoundaryFallback) return buildTimelinePlan(request, variation, true);
     return fail(
       "TIMELINE_INVALID",
       "Word boundaries cannot satisfy locked avatar coverage and complete image partitioning.",

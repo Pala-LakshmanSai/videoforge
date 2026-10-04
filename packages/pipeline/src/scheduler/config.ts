@@ -59,7 +59,17 @@ export const SCRIPT_SHORT_FORM_SCHEDULER_CONFIG = Object.freeze({
   short_form_maximum_ms: 30_000,
 });
 
+export const WORD_BOUNDARY_SCHEDULER_VERSION = "scheduler-v5";
+
+/** New short projects try the V4 envelope first; an impossible word boundary may use at most 26%. */
+export const WORD_BOUNDARY_SCHEDULER_CONFIG = Object.freeze({
+  ...SCRIPT_SHORT_FORM_SCHEDULER_CONFIG,
+  schema_version: "deterministic-timeline-scheduler-config/v5",
+  short_form_boundary_fallback_maximum: 0.26,
+});
+
 export function schedulerConfigForVersion(version: string) {
+  if (version === WORD_BOUNDARY_SCHEDULER_VERSION) return WORD_BOUNDARY_SCHEDULER_CONFIG;
   if (version === SUPPORTED_SCHEDULER_VERSION) return SUPPORTED_SCHEDULER_CONFIG;
   if (version === SHORT_FORM_SCHEDULER_VERSION) return SHORT_FORM_SCHEDULER_CONFIG;
   if (version === SCRIPT_SHORT_FORM_SCHEDULER_VERSION) return SCRIPT_SHORT_FORM_SCHEDULER_CONFIG;
