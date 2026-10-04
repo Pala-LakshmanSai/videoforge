@@ -15,6 +15,9 @@ import {
 import type { SchedulerPort, SchedulerRequest } from "./ports.js";
 import {
   SCHEDULER_SHOT_ROLES,
+  NARRATION_SHOT_SCHEDULER_VERSION,
+  NARRATION_SHOT_SHORT_SCHEDULER_VERSION,
+  schedulerTimingVersion,
   WORD_BOUNDARY_SCHEDULER_VERSION,
   WORD_BOUNDARY_SCHEDULER_CONFIG,
   SHORT_FORM_SCHEDULER_CONFIG,
@@ -80,6 +83,7 @@ function avatarCoverageRange(
   version: string,
   boundaryFallback = false,
 ): { minimum: number; maximum: number } {
+  version = schedulerTimingVersion(version);
   const short =
     version === WORD_BOUNDARY_SCHEDULER_VERSION
       ? WORD_BOUNDARY_SCHEDULER_CONFIG
@@ -123,7 +127,9 @@ function validateSchedulerInput(
     revision.scheduler_version !== SUPPORTED_SCHEDULER_VERSION &&
     revision.scheduler_version !== SHORT_FORM_SCHEDULER_VERSION &&
     revision.scheduler_version !== SCRIPT_SHORT_FORM_SCHEDULER_VERSION &&
-    revision.scheduler_version !== WORD_BOUNDARY_SCHEDULER_VERSION
+    revision.scheduler_version !== WORD_BOUNDARY_SCHEDULER_VERSION &&
+    revision.scheduler_version !== NARRATION_SHOT_SCHEDULER_VERSION &&
+    revision.scheduler_version !== NARRATION_SHOT_SHORT_SCHEDULER_VERSION
   ) {
     return fail(
       "TIMELINE_INVALID",
@@ -135,6 +141,8 @@ function validateSchedulerInput(
           SHORT_FORM_SCHEDULER_VERSION,
           SCRIPT_SHORT_FORM_SCHEDULER_VERSION,
           WORD_BOUNDARY_SCHEDULER_VERSION,
+          NARRATION_SHOT_SCHEDULER_VERSION,
+          NARRATION_SHOT_SHORT_SCHEDULER_VERSION,
         ],
       },
     );
@@ -470,6 +478,59 @@ function shotRoleFor(phrase: string, imageOrdinal: number, rotationOffset: numbe
   );
 }
 
+/** Conservative eligibility: an ambiguous/abstract phrase never forces invented hand contact.
+ * This is not general semantic classification. Missed actions retain ordinary scene framing. */
+export function hasSupportedPhysicalHandAction(phrase: string): boolean {
+  const text = phrase.normalize("NFKC").toLocaleLowerCase("en-US").replace(/[’']/gu, "'");
+  // These constructions can contain physical nouns ("hold the keys to success") but are idioms.
+  if (
+    /\b(?:on (?:the )?(?:one|other) hand|hands? (?:of fate|of time|down|off|in hand)|hold(?:s|ing)? (?:office|power|promise|true)|lift(?:s|ing)? (?:spirits|the ban|restrictions)|touch(?:es|ing)? (?:base|lives|on)|tap(?:s|ping)? into|finger(?:s)? (?:of blame|at)|keys? to (?:success|the future))\b/u.test(
+      text,
+    )
+  )
+    return false;
+  // A machine/object doing the lifting does not imply visible human hand contact.
+  if (
+    /\b(?:crane|forklift|robot|robotic|conveyor|machine|magnet|wind|water)\s+(?:[\p{L}'-]+\s+){0,2}(?:holds?|holding|held|lifts?|lifting|lifted|carries|carrying|moves?|moving|turns?|turning|grips?|gripping)\b/u.test(
+      text,
+    )
+  )
+    return false;
+  // A local verb must govern a concrete contact target. Vague "work/working" is insufficient.
+  const action =
+    /\b(?:plac(?:e|es|ed|ing)|put(?:s|ting)?|hold(?:s|ing)?|held|lift(?:s|ing|ed)?|grip(?:s|ping|ped)?|grasp(?:s|ing|ed)?|carry|carries|carrying|carried|tap(?:s|ping|ped)?|touch(?:es|ing|ed)?|turn(?:s|ing|ed)?|twist(?:s|ing|ed)?|tighten(?:s|ing|ed)?|loosen(?:s|ing|ed)?|thread(?:s|ing|ed)?|tie|ties|tying|tied|pinch(?:es|ing|ed)?|peel(?:s|ing|ed)?|cut(?:s|ting)?|slic(?:e|es|ed|ing)|stitch(?:es|ing|ed)?|button(?:s|ing|ed)?)\s+(?:(?:up|out|down)\s+)?(?:(?:a|an|the|this|that|these|those|my|your|his|her|their|our|one|two|small|large|heavy|light|empty|full|wooden|metal|cardboard|clay|plastic|glass|red|blue|green|brown|white|black)\s+){0,5}(?:box|boxes|crate|bag|bottle|cup|glass|pot|flowerpot|handle|rope|cord|needle|thread|screw|bolt|nut|valve|knob|key|keys|shirt|button|shoelace|knot|fabric|cloth|dough|fruit|apple|melon|watermelon|rind|tool|hammer|screwdriver|seed|leaf|leaves|stem|hand|hands)\b/u;
+  const contact = action.exec(text);
+  const actor = contact
+    ? text
+        .slice(0, contact.index)
+        .split(/[.;!?]/u)
+        .at(-1)!
+        .trim()
+    : "";
+  const humanContact =
+    contact !== null &&
+    (/^(?:(?:then|next|carefully|gently|firmly|slowly)\s*)*$/u.test(actor) ||
+      /\b(?:i|we|you|he|she|they|person|people|man|woman|child|worker|farmer|gardener|homeowner|builder|mechanic|cook|chef|seamstress|sewer|hands?|fingers?)\b/u.test(
+        actor,
+      ));
+  return (
+    humanContact ||
+    /\b(?:run|runs|running|slide|slides|sliding|press|presses|pressing)\s+(?:your|their|his|her|the|a|one|two)?\s*(?:fingers?|thumbs?|palms?|hands?)\s+(?:across|along|against|onto|on|over|into)\b/u.test(
+      text,
+    )
+  );
+}
+
+function narrationShotRole(phrase: string, imageOrdinal: number, rotationOffset: number): ShotRole {
+  const candidate = shotRoleFor(phrase, imageOrdinal, rotationOffset);
+  // Eligibility can remove an unsupported hands shot; it never converts another role to hands.
+  if (candidate !== "HANDS_ACTION" || hasSupportedPhysicalHandAction(phrase)) return candidate;
+  const rotated =
+    SCHEDULER_SHOT_ROLES[(rotationOffset + imageOrdinal) % SCHEDULER_SHOT_ROLES.length]!;
+  // Skip only the ineligible hands slot, leaving every other rotation position unchanged.
+  return rotated === "HANDS_ACTION" ? "OBJECT_EVIDENCE" : rotated;
+}
+
 function createTimelineSegments(
   request: SchedulerRequest,
   ranges: readonly ScheduledRange[],
@@ -488,7 +549,7 @@ function createTimelineSegments(
       "timeline-segment-v1",
       [
         request.revision.value.project_revision_id,
-        request.revision.value.scheduler_version,
+        schedulerTimingVersion(request.revision.value.scheduler_version),
         request.revision.value.scheduler_seed,
         index,
         sourceAudioStartMs,
@@ -520,7 +581,12 @@ function createTimelineSegments(
       };
     }
 
-    const role = shotRoleFor(base.phrase, imageOrdinal, rotationOffset);
+    const legacyRole = shotRoleFor(base.phrase, imageOrdinal, rotationOffset);
+    const role =
+      schedulerTimingVersion(request.revision.value.scheduler_version) ===
+      request.revision.value.scheduler_version
+        ? legacyRole
+        : narrationShotRole(base.phrase, imageOrdinal, rotationOffset);
     imageOrdinal += 1;
 
     if (range.timelineComposition === "AVATAR_SPLIT_IMAGE") {
@@ -714,7 +780,7 @@ function buildTimelinePlan(
   );
   const canUseBoundaryFallback =
     !boundaryFallback &&
-    revision.scheduler_version === WORD_BOUNDARY_SCHEDULER_VERSION &&
+    schedulerTimingVersion(revision.scheduler_version) === WORD_BOUNDARY_SCHEDULER_VERSION &&
     transcript.source.duration_ms <= WORD_BOUNDARY_SCHEDULER_CONFIG.short_form_maximum_ms;
   const targetAvatarRatio = variation.between(
     "target-avatar-ratio",
@@ -873,7 +939,7 @@ export async function scheduleTimeline(
   for (let attempt = 0; attempt < MAXIMUM_SEED_ATTEMPTS && plan === null; attempt += 1) {
     const variation = new SeededVariation(
       revision.project_revision_id,
-      revision.scheduler_version,
+      schedulerTimingVersion(revision.scheduler_version),
       schedulerSeedForAttempt(revision.scheduler_seed, attempt),
     );
     const candidate = buildTimelinePlan(request, variation);

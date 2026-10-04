@@ -8,6 +8,8 @@ The source project contains 380 bound Kie prompts, including 12 generic normaliz
 
 The car-trunk scene is REACTION_RESULT, so the HANDS_ACTION-only safeguard does not apply. Its literal subject says a person is packing a trunk, but neither person placement nor a view showing the body is defined. The model can frame the trunk with a disconnected or concealed person. These are observed input/output associations, not access to the model's internal reasoning.
 
+The hand scene has an upstream mismatch too: `shotRoleFor` selected HANDS_ACTION from a seeded six-role rotation when its homeowner/developer narration had no lexical role match. The writer must echo that role and was instructed to invent a hand-object contact despite an abstract blame statement. A new scheduler policy must make hand-action roles eligible only for supported physical activity; changing writer wording alone leaves this pressure in place.
+
 ## Release 1: stop accepting missing scene meaning
 
 Reject required subject/action/environment fields that are empty, generic placeholders, or forbidden content. Preserve harmless normalization, audit-only lighting and compatibility-only prompt_core handling. Keep exact writer request bytes, task UUIDs, versions, style hashes and accepted saved scenes unchanged. The existing durable invalid-result path verifies the terminal response and known charge, permits at most one distinct replacement within its existing reservation, and stops after another failure. Never silently invent an action or replay uncertain paid work.
@@ -16,9 +18,17 @@ Prove blueprint/action rejection, placeholder rejection, valid hands and collabo
 
 ## Framing qualification
 
-Use the exact two bound provider prompts as baseline. Compare repeated isolated generations with a compact body rule and concrete narration-related scene descriptions. Keep model, aspect ratio, safety setting and pinned style constant; separately label variants that intentionally rewrite scene content. Grade extra/missing limbs, connected ownership, visible required subject, action, relevance, text, and crop suitability. Include collaborators, ordinary hand work, non-human controls, and full/split layouts before promoting a general policy.
+Freeze V2–V5 schedules and legacy writer v24/v25 request bytes. Fresh-only V6/V7 retain their V2/V5 parent's timing/segment-ID seed namespace while filtering unsupported hand roles. A new writer request policy supplies explicit physical placement for whole-person actions, retaining legitimate hand closeups and collaborators. Reconstruct saved prompt plans against exact supported policy hashes before recovering any request; never default an existing plan to new wording. Verify old request/plan hashes, saved-prefix recovery and unknown-no-replay before publication.
 
-A 24-image initial study uses three variants and four repetitions for each source scene. A second 16-image study tests medium side views and rear views. Small samples establish failure examples and candidate behavior, not a universal defect rate. No framing variant is eligible merely because its text passes unit tests. Do not reduce a group to one person or erase a narrated precise action to make anatomy easier.
+Use the exact two bound provider prompts as the initial baseline. Compare repeated isolated generations with a compact body rule and concrete narration-related scene descriptions. Keep model, aspect ratio, safety setting and pinned style constant; separately label variants that intentionally rewrite scene content. Grade extra/missing limbs, connected ownership, visible required subject, action, relevance, text, and crop suitability. Include collaborators, ordinary hand work, non-human controls, and full/split layouts before promoting a general policy.
+
+A 24-image initial study uses three variants and four repetitions for each source scene. A second 16-image study tests medium side views and rear views. A third 32-image study uses eight authored narration cases, actual legacy/v26 writer outputs and two image repetitions; role changes in that harness are explicitly selected test inputs, not a full fresh-video scheduler run. The final eight images use four actual v27 writer outputs with two repetitions. v26 did not reliably emit body placement, so it is not the fresh default; v27 emitted explicit placement for all three tested whole-person actions while keeping the jar closeup. Small samples establish failure examples and candidate behavior, not a universal defect rate. No framing variant is eligible merely because its text passes unit tests. Do not reduce a group to one person or erase a narrated precise action to make anatomy easier.
+
+## Release 2: versioned prompt-input improvements
+
+V6/V7 apply an eligibility filter to the old role candidate; they never change a non-HANDS role into HANDS. v27 explicitly requires visible torso/connected arms in the subject and person/object position plus camera side in the environment for whole-person handling actions. The v26 experiment remains frozen for recovery identity, but new runs select v27. Legacy low-level builders stay default-legacy; hosted fresh preparation selects the new policy, seals its hash, and saved recovery selects the exact matching policy.
+
+The final trunk outputs show connected bodies; collaborators remain two people. The jar control still produced a third hand in one of two outputs, and door framing still tended toward the arm/edge of the torso. This supports a bounded input-framing improvement, not complete image-quality acceptance or a defect-free claim. Keep permanent manual output review and the explicit remaining gate below.
 
 ## Output-quality gate: qualify before activation
 
@@ -36,7 +46,7 @@ The expanded review experiment rejected plausible occluded hands and small point
 
 Then implement candidate/review persistence and the SQL acceptance barrier, with one bounded corrective candidate and exact-cost reconciliation; test the entire rejection-to-repair path. The existing manual Fal regeneration button requires an already accepted source and cannot repair an unaccepted quality-rejected image. A stop-only gate that strands whole videos is not the intended final design. New image-review costs must enter preflight estimates and project accounting. Activate only after a real fresh canary demonstrates bad-image rejection, successful corrected acceptance, downstream video exclusion, cancellation, and final playback. Keep old accepted jobs and active videos under their pinned original policy.
 
-Release the independently verified required-facts fix first. It is a prompt-input safeguard, not completion of the requested output-quality objective. No schema migration or generation-policy activation belongs in that first deployment.
+The independently verified required-facts fix was released first at e5568ca2 / Worker d0ab6aa9. Release the versioned scheduler/writer input improvements only after legacy identity, recovery, build and browser checks pass. Neither release implements or activates the proposed output-review gate. No schema migration is needed for these input safeguards.
 
 ## Handoff
 

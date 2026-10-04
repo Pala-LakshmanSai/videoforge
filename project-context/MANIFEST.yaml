@@ -289,7 +289,7 @@ approved_decisions:
   DEC_PERSONAL_WORKER_001: optional_local_or_qualified_runpod_media_execution
   DEC_RUNPOD_003: superseded_two_serverless_lanes_historical_only
   DEC_RUNTIME_001: kie_fal_api_generation_and_tenant_worker_render_no_manual_pods
-  DEC_SCHEDULER_001: seeded_deterministic_bounded_variation
+  DEC_SCHEDULER_001: seeded_deterministic_bounded_variation_with_versioned_physical_hand_eligibility
   DEC_SCHEDULER_002: approximately_22_percent_avatar_even_full_split
   DEC_SCOPE_001: image_only_broll
   DEC_STYLE_001: tenant_private_immutable_image_styles

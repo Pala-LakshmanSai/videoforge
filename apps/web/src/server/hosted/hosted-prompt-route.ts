@@ -8,6 +8,7 @@ import { sha256 } from "./crypto";
 import {
   hostedPromptAuthority,
   hostedPromptBatchPlan,
+  recoverHostedPromptBatchPlan,
   hostedPromptBatchPlanDocument,
   compileAndPersistHostedPromptBatch,
   runHostedPromptExecution,
@@ -518,12 +519,12 @@ export async function writeProjectPrompts(
           reservedCostMicroUsd: saved.reserved_cost_micro_usd,
           redispatchApproved: true,
         });
-        const batchPlan = hostedPromptBatchPlan(authority);
         const binding: HostedPromptBatchPlanBinding = {
           plannedBatchCount: saved.planned_batch_count,
           plannedSceneCount: saved.planned_scene_count,
           batchPlanHash: saved.batch_plan_hash as HostedPromptBatchPlanBinding["batchPlanHash"],
         };
+        const batchPlan = await recoverHostedPromptBatchPlan(authority, binding);
         if (
           authority.recordedInputHash !== saved.input_hash ||
           batchPlan.batchCount !== binding.plannedBatchCount ||

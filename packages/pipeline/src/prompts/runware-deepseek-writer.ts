@@ -34,7 +34,14 @@ export const RUNWARE_PROMPT_MODEL = "google:gemini@3.5-flash" as const;
 // The version feeds the deterministic taskUUID; changed instructions must not reuse a paid v23 task.
 export const NATURAL_DOCUMENTARY_PROMPT_REQUEST_VERSION =
   "runware-gemini-3.5-flash-prompt-request-v25" as const;
+export type PromptRequestPolicy = "legacy" | "physical-placement-v1" | "physical-placement-v2";
+export const PHYSICAL_PLACEMENT_PROMPT_REQUEST_VERSION =
+  "runware-gemini-3.5-flash-prompt-request-v26" as const;
+export const PHYSICAL_PLACEMENT_V2_PROMPT_REQUEST_VERSION =
+  "runware-gemini-3.5-flash-prompt-request-v27" as const;
 type PromptRequestVersion =
+  | typeof PHYSICAL_PLACEMENT_V2_PROMPT_REQUEST_VERSION
+  | typeof PHYSICAL_PLACEMENT_PROMPT_REQUEST_VERSION
   | typeof RUNWARE_PROMPT_REQUEST_VERSION
   | typeof NATURAL_DOCUMENTARY_PROMPT_REQUEST_VERSION;
 export const RUNWARE_PROMPT_REQUEST_VERSION =
@@ -85,6 +92,14 @@ export const SCENE_PROMPT_WRITER_SYSTEM_PROMPT = [
   "All text fields non-empty, no control characters. Word targets: literal_subject/action/environment at most 20 each, lighting_context 10, prompt_core 45. Character ceilings: 240 each for subject/action/environment, 120 lighting_context, 600 prompt_core. continuity_tags: at most 12 unique non-empty lowercase phrases, 80 characters each, ordinary words separated by single spaces; no hyphens, underscores or slashes.",
   "Never choose duration, layout, shot role, avatar placement, style version, model, GPU, retry or fallback. Return the exact JSON contract.",
 ].join(" ");
+
+/** New-run instruction only; legacy system text above remains byte-for-byte frozen. */
+export const PHYSICAL_PLACEMENT_WRITER_INSTRUCTION =
+  "For actions that require a visible person handling or moving an object, state the person's position relative to the object and setting, and choose a camera side that keeps their torso and the arm-to-object connection visible. Put this concrete spatial framing in literal_subject or environment within the existing character budget. Use a simple supported contact. Preserve genuine HANDS_ACTION close-ups and all narrated collaborators; do not invent participants or force faces into view. Pinned style treatment still owns camera language and shot-scale preferences.";
+
+/** v27 strengthens the output-field requirement; v26 experiment identity stays immutable. */
+export const PHYSICAL_PLACEMENT_V2_WRITER_INSTRUCTION =
+  "MANDATORY PHYSICAL PLACEMENT: When a whole person handles, lifts, carries, loads, opens or moves an object, literal_subject MUST explicitly include their visible torso and connected arm(s), and environment MUST specify their physical position relative to that object plus a side or rear camera view that shows that connection. Merely naming a person and a place is insufficient. For loading a car, place the person outside the open rear hatch, viewed from beside or behind that person, never apparently inside the cargo space. Keep these drawable facts in literal_subject/environment, not prompt_core, lighting_context or continuity_tags. Fit the existing character budget by removing optional adjectives. Exempt genuine HANDS_ACTION close-ups: retain the locally supported hand-object contact without requiring torso or face. Preserve every narrated collaborator, with each necessary contact owned by the correct person; never invent solitude or additional people. Preserve pinned style treatment and assigned shot role.";
 
 /** Exact legacy system text remains available for durable v24 recovery. */
 export function naturalDocumentaryWriterSystemPrompt(literalCharacterLimit: number): string {
@@ -350,6 +365,7 @@ export interface RunwarePromptAttemptEvidenceSink {
 }
 
 export interface RunwarePromptWriterOptions {
+  readonly requestPolicy?: PromptRequestPolicy;
   readonly transport: RunwarePromptTransport;
   readonly evidenceSink: RunwarePromptAttemptEvidenceSink;
   /** Caller-owned reservation ceiling for this one provider request. */
@@ -574,8 +590,11 @@ export function buildRunwarePromptRequest(
   retryOfRequestSha256: Sha256Digest | null = null,
   /** @deprecated Retained for source compatibility; adaptive planning owns batch size. */
   minimumBatchScenes: 1 | 25 = 1,
+  requestPolicy: PromptRequestPolicy = "legacy",
 ): RunwarePromptTransportRequest {
   void minimumBatchScenes;
+  if (!["legacy", "physical-placement-v1", "physical-placement-v2"].includes(requestPolicy))
+    fail("Prompt request policy is invalid.", ["requestPolicy"]);
   if (scenes.length === 0) fail("Prompt attempt must contain at least one expected scene.");
   if (batch.scenePromptWriterVersion !== SCENE_PROMPT_WRITER_VERSION)
     fail("Prompt writer version is invalid.", ["scenePromptWriterVersion"]);
@@ -606,12 +625,23 @@ export function buildRunwarePromptRequest(
     fail("Prompt attempt must preserve the original batch scene order.", ["scenes"]);
 
   const natural = batch.styleProfileHash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH;
-  const requestVersion: PromptRequestVersion = natural
-    ? NATURAL_DOCUMENTARY_PROMPT_REQUEST_VERSION
-    : RUNWARE_PROMPT_REQUEST_VERSION;
-  const systemPrompt = natural
+  const requestVersion: PromptRequestVersion =
+    requestPolicy === "physical-placement-v2"
+      ? PHYSICAL_PLACEMENT_V2_PROMPT_REQUEST_VERSION
+      : requestPolicy === "physical-placement-v1"
+        ? PHYSICAL_PLACEMENT_PROMPT_REQUEST_VERSION
+        : natural
+          ? NATURAL_DOCUMENTARY_PROMPT_REQUEST_VERSION
+          : RUNWARE_PROMPT_REQUEST_VERSION;
+  const legacySystemPrompt = natural
     ? naturalDocumentaryWriterSystemPrompt(batch.literalCharacterLimit ?? 0)
     : SCENE_PROMPT_WRITER_SYSTEM_PROMPT;
+  const systemPrompt =
+    requestPolicy === "physical-placement-v2"
+      ? `${legacySystemPrompt} ${PHYSICAL_PLACEMENT_V2_WRITER_INSTRUCTION}`
+      : requestPolicy === "physical-placement-v1"
+        ? `${legacySystemPrompt} ${PHYSICAL_PLACEMENT_WRITER_INSTRUCTION}`
+        : legacySystemPrompt;
   const payload = Object.freeze({
     batch_id: batch.batchId,
     attempt_index: attemptIndex,
@@ -1874,12 +1904,14 @@ export class RunwarePromptWriter implements PromptWriterPort {
   readonly #evidenceSink: RunwarePromptAttemptEvidenceSink;
   readonly #maximumBatchCostUsd: number;
   readonly #semanticQualityMode: "advisory" | "enforce";
+  readonly #requestPolicy: PromptRequestPolicy;
 
   constructor(options: RunwarePromptWriterOptions) {
     if (!Number.isFinite(options.maximumBatchCostUsd) || options.maximumBatchCostUsd < 0)
       throw new TypeError("maximumBatchCostUsd must be a finite non-negative number.");
     if (options.minimumBatchScenes !== undefined && ![1, 25].includes(options.minimumBatchScenes))
       throw new TypeError("minimumBatchScenes must be 1 or 25.");
+    this.#requestPolicy = options.requestPolicy ?? "legacy";
     this.#transport = options.transport;
     this.#evidenceSink = options.evidenceSink;
     this.#maximumBatchCostUsd = options.maximumBatchCostUsd;
@@ -1900,7 +1932,14 @@ export class RunwarePromptWriter implements PromptWriterPort {
     attemptIndex: 1 | 2,
     retryOfRequestSha256: Sha256Digest | null,
   ): Promise<AttemptEvaluation> {
-    const request = buildRunwarePromptRequest(batch, scenes, attemptIndex, retryOfRequestSha256);
+    const request = buildRunwarePromptRequest(
+      batch,
+      scenes,
+      attemptIndex,
+      retryOfRequestSha256,
+      1,
+      this.#requestPolicy,
+    );
     let result: RunwarePromptTransportResult;
     try {
       result = await this.#transport.dispatch(request);

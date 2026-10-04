@@ -214,14 +214,20 @@ describe("V2-06 hosted adapters", () => {
     const revision = hostedRevisionConfigV2(input);
     expect(
       hostedRevisionConfigV2({ ...input, voiceoverDurationMs: 12_384 }).scheduler_version,
-    ).toBe("scheduler-v3");
+    ).toBe("scheduler-v7");
+    expect(
+      hostedRevisionConfigV2({ ...input, voiceoverDurationMs: 30_000 }).scheduler_version,
+    ).toBe("scheduler-v7");
+    expect(
+      hostedRevisionConfigV2({ ...input, voiceoverDurationMs: 30_001 }).scheduler_version,
+    ).toBe("scheduler-v6");
 
     await expect(
       validateAndHashContractDocument("projectRevisionConfig", revision),
     ).resolves.toMatchObject({
       value: {
         schema_version: "project-revision-config/v2",
-        scheduler_version: "scheduler-v2",
+        scheduler_version: "scheduler-v7",
         scheduler_seed: 982_341,
         execution_profiles: {
           image_media_profile_id: "serverless-mage-image-v1",

@@ -125,8 +125,19 @@ breath, or meaningful phrase. This is deterministic code and needs no LLM.
 ## 4. Timeline scheduler
 
 Preserve accepted `scheduler-v2`. A versioned PRNG derives only from
-`project_revision_id + scheduler_version + user_seed`. Same inputs/version/seed produce identical
+`project_revision_id + selected_config_timing_seed_namespace + user_seed`; legacy versions use
+their own version as that namespace. Same inputs/version/seed produce identical
 frame boundaries, compositions, asset slots, and shot roles.
+
+Fresh image-quality revisions select `scheduler-v6` for long narration and `scheduler-v7` for
+short narration. These use the V2/V5 parent's timing and segment-ID seed namespace respectively,
+so the new behavior changes only eligible shot roles. Compute the old candidate first: preserve
+every non-HANDS_ACTION role, and retain HANDS_ACTION only for supported physical contact. Abstract
+cyclic hand shots and vague `work/working` alone are ineligible; a conservative English classifier
+can leave uncommon real actions in another framing without deleting their narrated content.
+V2–V5 behavior and saved revisions remain immutable. Golden hashes and timing/layout/ID parity
+must pass before publication. Do not silently alter the legacy rotation or force every physical
+action into a hands-only view.
 
 Algorithm:
 

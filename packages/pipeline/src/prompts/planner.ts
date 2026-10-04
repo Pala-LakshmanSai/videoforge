@@ -2,6 +2,7 @@ import { PipelineDomainError } from "../errors.js";
 import { buildPromptBatch, MAX_PROMPT_LOCAL_CONTEXT_CHARS } from "./batch.js";
 import {
   buildRunwarePromptRequest,
+  type PromptRequestPolicy,
   estimatePromptWriterOutputTokens,
   estimateRunwarePromptRequestInputTokens,
   RUNWARE_PROMPT_MAX_INPUT_TOKENS,
@@ -25,6 +26,7 @@ export const DEFAULT_PROMPT_BATCH_MAX_OUTPUT_TOKENS = 16_384 as const;
 export const DEFAULT_PROMPT_BATCH_BOUNDARY_LOOKBACK = 4 as const;
 
 export interface PromptBatchPlanningOptions {
+  readonly requestPolicy?: PromptRequestPolicy;
   /** Conservative estimate of request input tokens, including wire metadata. */
   readonly maxInputTokens?: number;
   /** Maximum `settings.maxTokens` allowed for one request. */
@@ -61,6 +63,8 @@ export interface PromptBatchPlanEntry {
 }
 
 export interface PromptBatchPlan {
+  /** Omitted only for legacy plans; every batch uses this same policy. */
+  readonly requestPolicy?: PromptRequestPolicy;
   readonly planVersion: "prompt-batch-plan-v1";
   readonly batchIdPrefix: string;
   readonly totalScenes: number;
@@ -179,6 +183,7 @@ const candidateFor = (
   batchIdPrefix: string,
   maxInputTokens: number,
   maxOutputTokens: number,
+  requestPolicy: PromptRequestPolicy,
 ): Candidate | null => {
   const candidateScenes = scenes.slice(start, end);
   const localContextCharacters = candidateScenes.reduce(
@@ -204,7 +209,7 @@ const candidateFor = (
   if (requestedOutputTokens > maxOutputTokens) return null;
   // Build the exact request once for this candidate so planning accounts for
   // schema IDs, global context, task metadata and maxTokens itself.
-  const request = buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1);
+  const request = buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, requestPolicy);
   const estimatedInputTokens = estimateRunwarePromptRequestInputTokens(request.requestBytes);
   if (estimatedInputTokens > maxInputTokens) return null;
   return Object.freeze({
@@ -274,6 +279,7 @@ export function planPromptBatches(input: PromptBatchPlanningInput): PromptBatchP
         input.batchIdPrefix,
         maxInputTokens,
         maxOutputTokens,
+        input.options?.requestPolicy ?? "legacy",
       );
       if (!candidate) break;
       largest = candidate;
@@ -337,6 +343,7 @@ export function planPromptBatches(input: PromptBatchPlanningInput): PromptBatchP
         input.batchIdPrefix,
         maxInputTokens,
         maxOutputTokens,
+        input.options?.requestPolicy ?? "legacy",
       );
       if (!candidate || candidate.estimatedInputTokens > maxInputTokens) break;
       candidates.push(candidate);
@@ -408,6 +415,9 @@ export function planPromptBatches(input: PromptBatchPlanningInput): PromptBatchP
     fail("Prompt batch plan must preserve every scene exactly once.", ["scenes"]);
 
   return Object.freeze({
+    ...(input.options?.requestPolicy === undefined || input.options.requestPolicy === "legacy"
+      ? {}
+      : { requestPolicy: input.options.requestPolicy }),
     planVersion: "prompt-batch-plan-v1",
     batchIdPrefix: input.batchIdPrefix,
     totalScenes: scenes.length,
