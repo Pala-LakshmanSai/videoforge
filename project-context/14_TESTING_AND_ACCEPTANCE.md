@@ -80,9 +80,9 @@ and scrubbed after success/failure/cancel. Recovery never depends on scratch.
 Pass the following with real PostgreSQL semantics:
 
 - no account can have more than one active video;
-- no more than two videos are active globally under high-concurrency races;
-- videos and explicit preset previews share one active-workload/account and two-global capacity
-  leases; previews never outrank an eligible video or alter the video fairness cursor;
+- independent accounts start concurrently without a global ceiling under high-concurrency races;
+- videos and explicit preset previews share one active-workload/account; previews never outrank
+  an eligible video or alter the video fairness cursor;
 - FIFO holds within an account unless that account reorders its own waiting rows;
 - durable round-robin/last-served selection prevents starvation across eligible account heads;
 - a user can see/reorder/cancel only their own rows and cannot bypass another account's fair turn;

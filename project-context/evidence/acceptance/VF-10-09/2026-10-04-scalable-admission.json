@@ -1,0 +1,19 @@
+{
+  "checkpoint": "V2-09",
+  "source": "e19f4ad4c360778783e726d25f5cae4a349490e1",
+  "worker": "c59050a3-5e63-4afe-a32e-ce2c45e47ff4",
+  "trafficPercent": 100,
+  "migration": 256,
+  "databaseTestsPassed": 29,
+  "webTestsPassed": 11,
+  "nativeOnlyTestsSkipped": 11,
+  "publicAssetsVerified": 29,
+  "bindings": 53,
+  "secrets": 26,
+  "workflowsPreserved": 3,
+  "newPaidTestJobs": 0,
+  "newTestCompute": 0,
+  "historicalUnknownCleanupPreserved": true,
+  "blockedUserGeneration": "SUCCEEDED",
+  "tenUserLiveBenchmark": false
+}
