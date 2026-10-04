@@ -1,0 +1,39 @@
+{
+  "checkpoint": "V2-09",
+  "task": "VF-10-09",
+  "source": "90fbf71f1aae53fed87d175ae01cc7f88c2c6305",
+  "worker_version": "6b22a9bb-3953-4fb6-a850-80c2e2bb979d",
+  "published_at": "2026-10-04T03:17:00.742Z",
+  "traffic_percent": 100,
+  "focused_tests": 244,
+  "public_assets_exact": 29,
+  "production_chrome": {
+    "prefix_b_matches": 41,
+    "accent_case_space_matches": 2,
+    "save_star_reload": true,
+    "script_prefix_keyboard_escape": true,
+    "preview_duration_seconds": 11.238458,
+    "preview_ended": true,
+    "preview_error": null,
+    "test_preferences_restored": true
+  },
+  "private_http": {
+    "at": "2026-10-04T03:19:21.268Z",
+    "ownerVoiceCount": 1123,
+    "ownerSaved": 6,
+    "foreignVoiceCount": 1117,
+    "privateVoiceDenied": 404,
+    "anonymousDenied": 401,
+    "ownerVoicePreview": 200,
+    "previewBytes": 132120,
+    "privateVideoDenied": 404,
+    "olderCanaryDownload": 404,
+    "olderCanaryRetentionDeletedAt": "2026-10-04T02:57:11.431871+00:00",
+    "newGenerationOrCompute": 0
+  },
+  "new_generation_or_compute": 0,
+  "native_runtime_pins_unchanged": true,
+  "bindings": 53,
+  "secrets": 26,
+  "workflow_identities_preserved": 3
+}

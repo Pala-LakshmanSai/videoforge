@@ -1,4 +1,4 @@
-Voiceover Hub design and shared name-prefix search are the selected follow-up on `codex/j1tts-voiceover`. Read `voiceover_hub_ux_2026_10_04` in CURRENT_STATE.yaml. The J1TTS feature is already released; its separate real-media acceptance remains in `j1tts_voiceover_2026_10_04` and DEC_VOICEOVER_001.
+Voiceover Hub design and shared name-prefix search are released at `90fbf71f` / Worker `6b22a9bb` on `codex/j1tts-voiceover`, with production Chrome acceptance. Read `voiceover_hub_ux_2026_10_04` in CURRENT_STATE.yaml. The J1TTS feature is already released; its separate real-media acceptance remains in `j1tts_voiceover_2026_10_04` and DEC_VOICEOVER_001.
 
 Context recovery Progress repair is published at `d64015aa` / Worker `9036de4a` with assets, authenticated compatibility and real Chrome verified. Read `context_recovery_progress_2026_10_03` in CURRENT_STATE.yaml. The false FAILED state stopped browser polling while bounded server recovery continued; stage timers remain authoritative.
 
