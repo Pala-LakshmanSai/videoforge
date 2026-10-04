@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import os
+import re
 import runpy
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -13,6 +16,25 @@ prepare = overlay["prepare"]
 
 
 class RunPodSourceTests(unittest.TestCase):
+    def test_release_workflow_and_docker_guards_accept_the_helpers_exact_base(self):
+        root = Path(__file__).resolve().parents[3]
+        workflow = (root / ".github/workflows/cloud-media-runtime-release.yml").read_text()
+        dockerfile = (root / "workers/media-local/Dockerfile.runpod-source").read_text()
+        workflow_guard = re.search(r'^\s*(test "\$IMAGE_DIGEST" = sha256:[0-9a-f]{64})$', workflow, re.MULTILINE)
+        docker_guard = re.search(r'^RUN (test "\$BASE_IMAGE" = .+)$', dockerfile, re.MULTILINE)
+        self.assertIsNotNone(workflow_guard)
+        self.assertIsNotNone(docker_guard)
+        correct = overlay["BASE_IMAGE"]
+        wrong = correct[:-1] + ("0" if correct[-1] != "0" else "1")
+        for candidate, expected in ((correct, 0), (wrong, 1)):
+            environment = {**os.environ, "BASE_IMAGE": candidate, "IMAGE_DIGEST": candidate.split("@", 1)[1]}
+            for guard in (workflow_guard.group(1), docker_guard.group(1)):
+                self.assertEqual(subprocess.run(["sh", "-c", guard], env=environment,
+                                                capture_output=True, check=False).returncode, expected)
+        runtime_guard = re.search(r"assert hashlib.sha256\(canonical\).hexdigest\(\) == '([0-9a-f]{64})'", dockerfile)
+        self.assertIsNotNone(runtime_guard)
+        self.assertEqual("sha256:" + runtime_guard.group(1), overlay["BASE_RUNTIME_SHA256"])
+
     def fixture(self, root):
         sources = {}
         for relative in overlay["SOURCE_ROOTS"]:

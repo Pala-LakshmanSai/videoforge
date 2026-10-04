@@ -4,13 +4,13 @@ ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 ARG BASE_IMAGE
 USER 0:0
-RUN test "$BASE_IMAGE" = 'ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:d054d17bef2178593d96b8d579c41446f272330044e79ef1bbde976a859f2c62'
+RUN test "$BASE_IMAGE" = 'ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:8ffb9239eafe74147031f5aa15e88f7a009524ed29e7f680873b13f8a94550c9'
 RUN python - <<'PY'
 import hashlib, json
 from pathlib import Path
 base = json.loads(Path('/opt/videoforge/runtime.json').read_bytes())
 canonical = json.dumps(base, sort_keys=True, separators=(',', ':')).encode()
-assert hashlib.sha256(canonical).hexdigest() == '194d1a4cee7acca64661774faa9ad205b31c66470af2011b5dc420ebe447db81'
+assert hashlib.sha256(canonical).hexdigest() == '24b8ba9357ada3d8417e2b8c2482df88e25202035833a40f78e219d95900f6d7'
 assert base['qualified'] is True and base['platform'] == 'linux'
 PY
 # Delete exact old execution roots so COPY can never retain removed source files.
