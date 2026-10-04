@@ -8875,7 +8875,7 @@ async function projectDetail(
                   ? "Confirming the saved Runware task. No duplicate generation request is sent."
                   : videoComplete && videoSelections.length === 0
                     ? `No complete image scene fits the requested ${requestedVideoCoverage}% coverage. Original images are used throughout those scenes.`
-                    : `${videoAccepted} of ${videoSelections.length} clips accepted${videoFallback ? ` · ${videoFallback} ${videoFallback === 1 ? "scene kept as its original still" : "scenes kept as their original stills"}` : ""} · ${actualVideoCoverage === null ? `Up to ${requestedVideoCoverage}% motion target` : `${actualVideoCoverage.toFixed(2)}% actual motion (up to ${requestedVideoCoverage}% target)`} · 720p 16:9.${videoComplete ? "" : " Runs alongside images and avatars as source images become ready."}`,
+                    : `${videoAccepted} of ${videoSelections.length} clips accepted${videoFallback ? ` · ${videoFallback} ${videoFallback === 1 ? "scene kept as its original still" : "scenes kept as their original stills"}` : ""} · ${requiredOpening ? `First 3 minutes: AI video only · Afterward: up to ${requestedVideoCoverage}% coverage${actualVideoCoverage === null ? "" : ` (${actualVideoCoverage.toFixed(2)}% actual)`}` : actualVideoCoverage === null ? `Up to ${requestedVideoCoverage}% motion target` : `${actualVideoCoverage.toFixed(2)}% actual motion (up to ${requestedVideoCoverage}% target)`} · 720p 16:9.${videoComplete ? "" : " Runs alongside images and avatars as source images become ready."}`,
               eta_ms: null,
             },
           ]
