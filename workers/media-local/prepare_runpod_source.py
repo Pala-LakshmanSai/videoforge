@@ -10,9 +10,9 @@ import hashlib
 import json
 from pathlib import Path
 
-BASE_IMAGE = "ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:d054d17bef2178593d96b8d579c41446f272330044e79ef1bbde976a859f2c62"
-BASE_RUNTIME_SHA256 = "sha256:194d1a4cee7acca64661774faa9ad205b31c66470af2011b5dc420ebe447db81"
-BASE_SOURCE_SHA256 = "sha256:08f7344553c2b493eccd236b61698cae330edbee77eb7ee909e180d13f66b768"
+BASE_IMAGE = "ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:8ffb9239eafe74147031f5aa15e88f7a009524ed29e7f680873b13f8a94550c9"
+BASE_RUNTIME_SHA256 = "sha256:24b8ba9357ada3d8417e2b8c2482df88e25202035833a40f78e219d95900f6d7"
+BASE_SOURCE_SHA256 = "sha256:2e3a6f9440f6faacda439520134ba9876058f4bebbcbc1f88002ed5c188da9a0"
 # Exact exported lock in the original qualified source (fe61), unchanged by this overlay.
 BASE_LOCK_SHA256 = "sha256:065037ca5ed47b2117bfa7949abc3b6c4acb66640d9c6f15f31decae02989114"
 SOURCE_ROOTS = ("packages/contracts/python", "workers/image-media/src", "workers/media-local/src")

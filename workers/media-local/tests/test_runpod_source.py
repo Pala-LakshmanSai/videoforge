@@ -53,11 +53,13 @@ class RunPodSourceTests(unittest.TestCase):
             root = Path(directory)
             base, pins = self.fixture(root)
             with patch.dict(prepare.__globals__, pins):
-                for image in ("private/runtime:latest", overlay["BASE_IMAGE"].replace("d054", "a054")):
+                wrong_digest = overlay["BASE_IMAGE"][:-1] + ("0" if overlay["BASE_IMAGE"][-1] != "0" else "1")
+                for image in ("private/runtime:latest", wrong_digest):
                     with self.assertRaises(ValueError):
                         prepare(root, base, image)
                 for mutation in ({"qualified": False}, {"platform": "darwin"},
-                                 {"source_sha256": "sha256:" + "b" * 64}):
+                                 {"source_sha256": "sha256:" + "b" * 64},
+                                 {"tools": {"model": {"sha256": "different model"}}}):
                     bad = copy.deepcopy(base)
                     bad.update(mutation)
                     with self.assertRaises(ValueError):
