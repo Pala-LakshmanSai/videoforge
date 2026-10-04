@@ -1,4 +1,4 @@
-Shared API capacity work: follow `api_capacity_2026_10_04` in CURRENT_STATE.yaml and API_CAPACITY_PLAN.md. Existing release evidence below remains historical; no capacity release is claimed yet.
+Shared API capacity work: follow `api_capacity_2026_10_04` in CURRENT_STATE.yaml and API_CAPACITY_PLAN.md. Shared provider controls are published; actual account quotas and ten-user paid throughput remain unverified. Existing release evidence below remains historical.
 
 Media review count repair: read `media_review_accepted_2026_10_04` in CURRENT_STATE.yaml for source, validation and production status.
 
