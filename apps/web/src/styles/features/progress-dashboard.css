@@ -152,6 +152,17 @@
   min-height: 0;
 }
 
+.narration-details-panel audio {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+}
+
+.narration-details-panel details {
+  margin-top: 16px;
+  overflow-wrap: anywhere;
+}
+
 .progress-dashboard .stage-list {
   gap: 3px;
 }

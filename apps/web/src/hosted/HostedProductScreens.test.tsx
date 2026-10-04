@@ -8187,11 +8187,47 @@ it("queues script and voice in one Create action, preserving identity after a lo
     schema_version: "videoforge-hosted-script-project/v1",
   });
   expect(JSON.parse(submissions[0]!.body).voiceover).toBeUndefined();
+  expect(routerState.navigate).not.toHaveBeenCalled();
   expect(
     fetcher.mock.calls.some(([url]) =>
       /preflight|cpu-attempts|voiceovers\/jobs/u.test(String(url)),
     ),
   ).toBe(false);
+});
+it("opens the saved project's Progress page as soon as script Create is confirmed", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.endsWith("/project-catalog")) return Response.json(coverageCatalog());
+      if (path.endsWith("/voiceovers/voices"))
+        return Response.json({
+          voices: [{ voice_id: "alice", name: "Alice", saved: true, starred: true }],
+        });
+      if (path.endsWith("/script-projects"))
+        return Response.json(
+          { project_id: "saved-script-project", state: "WAITING" },
+          { status: 202 },
+        );
+      throw new Error(`Unexpected request: ${path}`);
+    }),
+  );
+  renderHosted(<HostedCreateProjectScreen />);
+  fireEvent.change(await screen.findByLabelText("Video title"), {
+    target: { value: "Singing dunes" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Upload script" }));
+  await waitFor(() => expect(screen.getByLabelText("Script voice")).toHaveValue("Alice"));
+  fireEvent.change(screen.getByLabelText("Voiceover script"), {
+    target: { value: "The desert begins to hum when dry sand slides." },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
+  await waitFor(() =>
+    expect(routerState.navigate).toHaveBeenCalledWith({
+      to: "/projects/$projectId",
+      params: { projectId: "saved-script-project" },
+    }),
+  );
 });
 it.each(["WAITING", "GENERATING", "PREPARING", "FAILED", "UNKNOWN_NO_RETRY"])(
   "opens saved script progress in %s without a revision or browser generation",
@@ -8212,16 +8248,29 @@ it.each(["WAITING", "GENERATING", "PREPARING", "FAILED", "UNKNOWN_NO_RETRY"])(
           state,
           voice_name: "Alice",
           script: "Every river begins with a single drop.",
-          audio_url: null,
+          audio_url: state === "PREPARING" ? "/api/v2/voiceovers/jobs/saved/audio" : null,
           failure_code: null,
+          created_at: new Date().toISOString(),
         },
       }),
     );
     vi.stubGlobal("fetch", fetcher);
     renderHosted(<HostedProjectScreen projectId="narration" />);
     expect(await screen.findByText("Every river")).toBeVisible();
+    const hero = screen.getByRole("region", { name: "Live video progress" });
+    expect(within(hero).getByText("01/11")).toBeInTheDocument();
+    const stages = screen.getByRole("list", { name: "Project stages" });
+    expect(within(stages).getAllByRole("listitem")).toHaveLength(11);
+    expect(within(stages).getByText("Generate voiceover")).toBeInTheDocument();
+    expect(within(stages).getByText("Transcribe voiceover")).toBeInTheDocument();
+    expect(screen.getByText("Waiting for first visual")).toBeInTheDocument();
     expect(screen.getByText("Voice · Alice")).toBeVisible();
     expect(screen.getByText("Every river begins with a single drop.")).toBeInTheDocument();
+    if (state === "PREPARING")
+      expect(screen.getByLabelText("Generated voiceover")).toHaveAttribute(
+        "src",
+        "/api/v2/voiceovers/jobs/saved/audio",
+      );
     expect(
       fetcher.mock.calls.every(
         (call) =>
@@ -8231,3 +8280,40 @@ it.each(["WAITING", "GENERATING", "PREPARING", "FAILED", "UNKNOWN_NO_RETRY"])(
     ).toBe(true);
   },
 );
+it("keeps the voiceover and script available after video stages begin", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        project: {
+          id: "narration-complete",
+          title: "Singing dunes",
+          revision_id: "revision",
+          revision_state: "LOCKED",
+          created_at: new Date().toISOString(),
+        },
+        voiceover_generation: {
+          state: "COMPLETE",
+          voice_name: "Alice",
+          script: "The dunes begin to hum.",
+          audio_url: "/api/v2/voiceovers/jobs/saved/audio",
+          failure_code: null,
+          created_at: new Date().toISOString(),
+        },
+        attempts: [],
+        generation: null,
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: gpuReadiness,
+        stages: stageList({ transcription: "RUNNING" }),
+      }),
+    ),
+  );
+  renderHosted(<HostedProjectScreen projectId="narration-complete" />);
+  expect(await screen.findByRole("region", { name: "Live video progress" })).toBeInTheDocument();
+  expect(screen.getByText("Voice · Alice")).toBeInTheDocument();
+  expect(screen.getByLabelText("Generated voiceover")).toHaveAttribute(
+    "src",
+    "/api/v2/voiceovers/jobs/saved/audio",
+  );
+  expect(screen.getByText("The dunes begin to hum.")).toBeInTheDocument();
+});

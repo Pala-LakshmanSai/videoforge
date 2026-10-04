@@ -44,6 +44,7 @@ interface Intake extends Record<string, unknown> {
   failure_code: string | null;
   title: string;
   created_at: string;
+  updated_at: string;
   audio: null | {
     object_key: string;
     metadata: {
@@ -76,6 +77,7 @@ export function scriptProjectStatus(row: Intake) {
     voice_name: row.voice_name,
     failure_code: row.failure_code,
     created_at: row.created_at,
+    updated_at: row.updated_at,
     script: row.script,
     audio_url: row.audio ? `/api/v2/voiceovers/jobs/${row.voiceover_job_id}/audio` : null,
   };

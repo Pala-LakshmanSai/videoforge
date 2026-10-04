@@ -1,0 +1,7 @@
+# Voiceover progress on the project page — 2026-10-04
+
+Checkpoint V2-09 / VF-10-09. Create routes to `/projects/$projectId` as soon as the server confirms a durable script project. Direct-audio upload still completes its existing upload, commit and ASR handoff before routing to that same project page. A lost or unconfirmed Create response retains the original idempotency key on the form and does not navigate to an unconfirmed project.
+
+While narration is WAITING, GENERATING or PREPARING, Progress shows the same hero, pipeline and preview layout as later stages. Stage 01 is the authoritative narration state; downstream stages are pending. Its timer includes account waits, but no invented provider percentage or cost. Narration details show selected voice, current state, saved script and the generated audio when available. FAILED, CANCELLED and UNKNOWN_NO_RETRY remain distinct, with no client retry of uncertain paid work. The project detail endpoint now includes the durable narration update timestamp so stopped elapsed time can freeze. When narration finishes, the full existing stage projection replaces the pending view without changing the route, and the narration player and script remain visible on Progress.
+
+Validation: web and Worker typecheck, 242 focused UI/route tests including successful script navigation, lost-response identity, all narration states, generated-audio preview and the later-stage view. No new provider submission or compute started for this UI change. Production and Chrome verification are recorded after publication.

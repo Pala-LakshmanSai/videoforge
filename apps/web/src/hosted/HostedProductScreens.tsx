@@ -1172,6 +1172,7 @@ interface ProjectDetailResponse {
     voice_name: string;
     failure_code: string | null;
     created_at: string;
+    updated_at?: string;
     audio_url: string | null;
   };
   readonly project: {
@@ -2790,6 +2791,7 @@ function hostedProjectStages(
 }
 
 export function HostedCreateProjectScreen() {
+  const navigate = useNavigate();
   const catalog = useQuery({
     queryKey: ["hosted-project-catalog"],
     queryFn: readHostedCatalog,
@@ -3191,7 +3193,7 @@ export function HostedCreateProjectScreen() {
       );
       return ready.project_id;
     },
-    onSuccess: (projectId) => window.location.assign(`/projects/${projectId}`),
+    onSuccess: (projectId) => void navigate({ to: "/projects/$projectId", params: { projectId } }),
     onError: (value) => {
       // Definite input/auth and typed Cloud admission rejections create no project.
       // Other conflicts and upload/commit failures retain the original request.
@@ -4982,6 +4984,61 @@ export function HostedPresetCreationScreen({
   );
 }
 
+const NARRATION_FOLLOWING_STAGES = [
+  ["transcription", "Transcribe voiceover"],
+  ["voiceover-context", "Understand voiceover context"],
+  ["planning", "Plan scenes"],
+  ["prompt-writing", "Write image prompts"],
+  ["audio-spanning", "Audio spanning"],
+  ["image-generation", "Generate images"],
+  ["video-generation", "Generate scene videos"],
+  ["avatar-generation", "Generate avatar video"],
+  ["render", "Assemble final video"],
+  ["review", "Review and approve"],
+] as const;
+
+function narrationMessage(narration: NonNullable<ProjectDetailResponse["voiceover_generation"]>) {
+  if (narration.state === "WAITING")
+    return "Project saved. Voiceover starts automatically when this account can begin another narration.";
+  if (narration.state === "GENERATING")
+    return "Your voice is generating. This page updates automatically.";
+  if (narration.state === "PREPARING")
+    return narration.failure_code === "VOICEOVER_STAGE_RETRYING"
+      ? "Preparing saved audio was interrupted. VideoForge is retrying without generating another voiceover."
+      : "Saving and checking generated audio before transcription starts.";
+  if (narration.state === "UNKNOWN_NO_RETRY")
+    return "The voice provider did not confirm this request. Its identity is saved for reconciliation; it will not be submitted twice.";
+  if (narration.state === "FAILED")
+    return narration.failure_code === "GENERATED_VOICEOVER_INVALID"
+      ? "Generated audio could not be accepted. Narration must be 10 seconds to 60 minutes. Your script remains saved."
+      : "The voice provider could not generate this narration. Your script remains saved.";
+  if (narration.state === "CANCELLED") return "This project was cancelled.";
+  return "Generated voiceover saved. Video production continues automatically.";
+}
+
+function NarrationDetails({
+  narration,
+}: {
+  narration: NonNullable<ProjectDetailResponse["voiceover_generation"]>;
+}) {
+  const stopped = ["FAILED", "UNKNOWN_NO_RETRY", "CANCELLED"].includes(narration.state);
+  return (
+    <Panel className="narration-details-panel" eyebrow="Voiceover" heading="Narration details">
+      <p className="helper">Voice · {narration.voice_name}</p>
+      <p role={stopped ? "alert" : "status"}>{narrationMessage(narration)}</p>
+      {narration.audio_url ? (
+        <audio controls preload="none" src={narration.audio_url} aria-label="Generated voiceover" />
+      ) : null}
+      {narration.script ? (
+        <details>
+          <summary>View script</summary>
+          <p style={{ whiteSpace: "pre-wrap" }}>{narration.script}</p>
+        </details>
+      ) : null}
+    </Panel>
+  );
+}
+
 export function HostedProjectScreen({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -5544,57 +5601,123 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     );
   if (query.data.voiceover_generation && query.data.voiceover_generation.state !== "COMPLETE") {
     const narration = query.data.voiceover_generation;
-    const failed = ["FAILED", "UNKNOWN_NO_RETRY"].includes(narration.state);
+    const narrationStatus: ProjectStage["status"] =
+      narration.state === "WAITING"
+        ? "QUEUED"
+        : narration.state === "UNKNOWN_NO_RETRY"
+          ? "ACTION_REQUIRED"
+          : narration.state === "FAILED" || narration.state === "CANCELLED"
+            ? narration.state
+            : "RUNNING";
+    const narrationHeading =
+      narration.state === "WAITING"
+        ? "Voiceover queued"
+        : narration.state === "PREPARING"
+          ? "Preparing your narration"
+          : narrationStatus === "RUNNING"
+            ? "Generate voiceover"
+            : "Voiceover needs attention";
+    const pendingStages: ProjectStage[] = [
+      {
+        id: "voiceover-generation",
+        label: "Generate voiceover",
+        status: narrationStatus,
+        completed: 0,
+        total: 0,
+        detail: narrationMessage(narration),
+      },
+      ...NARRATION_FOLLOWING_STAGES.map(([id, label]) => ({
+        id,
+        label,
+        status: "PENDING" as const,
+        completed: 0,
+        total: 0,
+        detail: "",
+      })),
+    ];
     return (
       <>
-        <PageHeader title={query.data.project.title} />
-        <Panel
-          eyebrow="Stage 1"
-          heading={
-            failed
-              ? "Voiceover needs attention"
-              : narration.state === "WAITING"
-                ? "Voiceover queued"
-                : narration.state === "PREPARING"
-                  ? "Preparing your narration"
-                  : "Generating voiceover"
-          }
-        >
-          <p className="helper">Voice · {narration.voice_name}</p>
-          <p role={failed ? "alert" : "status"}>
-            {narration.state === "WAITING"
-              ? "Your project is saved. Voiceover generation starts when a slot is free."
-              : narration.state === "UNKNOWN_NO_RETRY"
-                ? "The voice provider did not confirm this request. It is saved for reconciliation and will not be submitted twice."
-                : narration.state === "FAILED"
-                  ? narration.failure_code === "GENERATED_VOICEOVER_INVALID"
-                    ? "The generated audio could not be accepted. Narration must be 10 seconds to 60 minutes. Your script remains saved."
-                    : "The voice provider could not generate this narration. Your script remains saved."
-                  : narration.state === "CANCELLED"
-                    ? "This project was cancelled."
-                    : narration.failure_code === "VOICEOVER_STAGE_RETRYING"
-                      ? "Your project is saved. Preparation was interrupted; we’re retrying automatically without generating another voiceover."
-                      : "We’ll start the rest of your video automatically. You can leave this page."}
-          </p>
-          {narration.audio_url ? (
-            <audio
-              controls
-              preload="none"
-              src={narration.audio_url}
-              aria-label="Generated voiceover"
-            />
-          ) : null}
-          {narration.script ? (
-            <details>
-              <summary>View script</summary>
-              <p style={{ whiteSpace: "pre-wrap" }}>{narration.script}</p>
-            </details>
-          ) : null}
-          <p className="helper">Next: transcription · planning · video generation</p>
-          <Link to="/" className="button button-secondary">
-            Back to Queue
-          </Link>
-        </Panel>
+        <PageHeader eyebrow="Live project" title={query.data.project.title} />
+        <section className="progress-hero" aria-label="Live video progress">
+          <ProgressRing value={0} label="Overall video progress" detail="complete" />
+          <div className="progress-hero-body">
+            <div className="progress-hero-heading">
+              <div>
+                <p className="eyebrow">Happening now</p>
+                <h2>{narrationHeading}</h2>
+              </div>
+              <Badge
+                tone={
+                  narrationStatus === "RUNNING"
+                    ? "info"
+                    : narrationStatus === "FAILED"
+                      ? "danger"
+                      : "warning"
+                }
+              >
+                {narrationStatus.replaceAll("_", " ")}
+              </Badge>
+            </div>
+            <div className="progress-metrics">
+              <Metric
+                label="Stage"
+                value={`01/${String(pendingStages.length).padStart(2, "0")}`}
+                tone="info"
+              />
+              <Metric
+                label="Estimated"
+                value="After scene plan"
+                detail="timing available after planning"
+              />
+              <Metric
+                label="Projected cost"
+                value="After scene plan"
+                detail="calculated when planning finishes"
+                tone="success"
+              />
+              <Metric
+                label="Total elapsed"
+                value={
+                  <HostedElapsed
+                    since={narration.created_at}
+                    until={
+                      ["FAILED", "UNKNOWN_NO_RETRY", "CANCELLED"].includes(narration.state)
+                        ? (narration.updated_at ?? null)
+                        : null
+                    }
+                    running={!["FAILED", "UNKNOWN_NO_RETRY", "CANCELLED"].includes(narration.state)}
+                    label="Total elapsed time"
+                  />
+                }
+                detail="includes narration and waits"
+              />
+            </div>
+            <ProgressBar value={0} label="Overall video progress" />
+          </div>
+        </section>
+        <div className="progress-workspace progress-dashboard">
+          <div className="progress-pipeline-column">
+            <Panel className="pipeline-panel" eyebrow="Pipeline" heading="Video production stages">
+              <StageTimeline stages={pendingStages} />
+            </Panel>
+            <NarrationDetails narration={narration} />
+          </div>
+          <div className="progress-prompts-column" />
+          <div className="progress-media-column">
+            <Panel className="latest-artifact-panel" eyebrow="Latest" heading="Live preview">
+              <div className="latest-artifact-frame">
+                <div className="live-preview-waiting">
+                  <Images size={30} aria-hidden="true" />
+                  <strong>Waiting for first visual</strong>
+                </div>
+              </div>
+              <div className="artifact-caption">
+                <span>Preparing assets</span>
+                <Badge tone="neutral">Waiting</Badge>
+              </div>
+            </Panel>
+          </div>
+        </div>
       </>
     );
   }
@@ -6617,6 +6740,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               )}
             />
           </Panel>
+          {query.data.voiceover_generation ? (
+            <NarrationDetails narration={query.data.voiceover_generation} />
+          ) : null}
           <Panel eyebrow="Activity" heading="Current run">
             <div className="detail-facts">
               {latestCloudAttempt ? (
