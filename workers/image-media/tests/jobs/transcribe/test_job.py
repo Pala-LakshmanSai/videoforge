@@ -21,7 +21,52 @@ from videoforge_image_media.jobs.transcribe import (  # noqa: E402
     WhisperTool,
 )
 from videoforge_image_media.jobs.transcribe.job import _write_result  # noqa: E402
-from videoforge_image_media.jobs.transcribe.parser import parse_whisper_words  # noqa: E402
+from videoforge_image_media.jobs.transcribe.parser import (  # noqa: E402
+    WhisperOutputError,
+    parse_whisper_words,
+)
+
+
+class TerminalWordBoundsTests(unittest.TestCase):
+    def _parse(self, segments: list[tuple[str, int, int]]) -> list[dict[str, object]]:
+        with tempfile.TemporaryDirectory() as directory:
+            raw = Path(directory) / "whisper.json"
+            raw.write_text(json.dumps({
+                "result": {"language": "en"},
+                "transcription": [
+                    {"text": text, "offsets": {"from": start, "to": end}}
+                    for text, start, end in segments
+                ],
+            }), encoding="utf-8")
+            return parse_whisper_words(raw, source_duration_ms=20341)
+
+    def test_observed_short_narration_terminal_word_is_preserved(self) -> None:
+        segments = [(f"word{index}", index * 400, index * 400 + 300) for index in range(38)]
+        segments += [
+            ("beneath", 18600, 19540), ("a", 19540, 19690),
+            ("pale", 19690, 20210), ("sky.", 20210, 21040),
+        ]
+        words = self._parse(segments)
+        self.assertEqual(len(words), 42)
+        self.assertEqual(words[-1], {
+            "index": 41, "text": "sky.", "start_ms": 20210,
+            "end_ms": 20341, "confidence": None,
+        })
+        self.assertTrue(all(0 <= word["start_ms"] < word["end_ms"] <= 20341 for word in words))
+        self.assertEqual([(word["start_ms"], word["end_ms"]) for word in words[:-1]],
+                         [(start, end) for _, start, end in segments[:-1]])
+
+    def test_invalid_terminal_and_intermediate_timestamps_still_fail(self) -> None:
+        for segments in [
+            [("sky.", 20210, 22342)],
+            [("sky.", 20341, 22342)],
+            [("pale", 19690, 21040), ("sky.", 20210, 21300)],
+            [("pale", 19690, 20220), ("sky.", 20210, 21040)],
+            [("sky.", -1, 21040)],
+            [("sky.", 20210, 20000)],
+        ]:
+            with self.subTest(segments=segments), self.assertRaises(WhisperOutputError):
+                self._parse(segments)
 
 
 def _sha256(data: bytes) -> str:
@@ -511,7 +556,7 @@ class TranscriptionJobTest(unittest.TestCase):
     def test_timestamp_beyond_duration_tolerance_is_rejected(self) -> None:
         raw_document = _whisper_output()
         last = raw_document["transcription"][-1]
-        last["offsets"]["to"] = 13000
+        last["offsets"]["to"] = 14001
         result, _, _, _ = self._run(process=FakeProcessRunner(raw_document=raw_document))
         self.assert_error(result, "ASR_OUTPUT_INVALID")
 

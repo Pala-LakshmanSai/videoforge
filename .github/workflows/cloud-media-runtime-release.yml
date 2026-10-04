@@ -121,7 +121,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$PACKAGE" = videoforge-cloud-media-runtime-private
-          test "$IMAGE_DIGEST" = sha256:d054d17bef2178593d96b8d579c41446f272330044e79ef1bbde976a859f2c62
+          test "$IMAGE_DIGEST" = sha256:8ffb9239eafe74147031f5aa15e88f7a009524ed29e7f680873b13f8a94550c9
           gh api "users/$OWNER/packages/container/$PACKAGE" > "$RUNNER_TEMP/private-package.json"
           python -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/private-package.json"))["visibility"]=="private"'
           printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$OWNER" --password-stdin

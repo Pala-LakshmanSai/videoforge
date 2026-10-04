@@ -165,6 +165,14 @@ def _canonical_words(
             raise WhisperOutputError(f"word {index} starts after the source duration")
         if repaired_zero_duration:
             end_ms = min(source_duration_ms, start_ms + 10)
+        if (
+            index == len(candidates) - 1
+            and candidate.start_ms < source_duration_ms
+            and source_duration_ms < end_ms <= source_duration_ms + CHUNK_TRAILING_TOLERANCE_MS
+        ):
+            # Whisper can extend the final spoken word into its padded decoding window.
+            # Preserve that word without accepting out-of-bounds intermediate timestamps.
+            end_ms = source_duration_ms
         if not allow_trailing_overhang and end_ms > source_duration_ms + TIMESTAMP_TOLERANCE_MS:
             raise WhisperOutputError(f"word {index} exceeds the source duration tolerance")
         end_ms = min(end_ms, source_duration_ms)
