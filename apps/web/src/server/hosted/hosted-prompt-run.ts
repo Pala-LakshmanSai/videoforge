@@ -10,6 +10,7 @@ import {
 import { type ImageStyleProfileDocument, type Sha256Digest } from "@videoforge/contracts";
 import {
   compileImagePrompt,
+  PipelineDomainError,
   naturalDocumentaryLiteralCharacterLimit,
   derivePromptStyleTreatment,
   planPromptBatches,
@@ -17,6 +18,7 @@ import {
   verifyCompiledImagePrompt,
   type CompiledImagePrompt,
   type PromptBatchPlan,
+  type PromptRequestPolicy,
   type PromptSceneInput,
   type PromptWriterSceneOutput,
 } from "@videoforge/pipeline/prompts";
@@ -24,6 +26,7 @@ import {
 import {
   HostedPromptExecutionError,
   HostedRunwarePromptWriter,
+  hostedPromptBatchPlanHash,
   type HostedAcceptedPromptBatch,
   type HostedPromptBatchPlanBinding,
   type HostedPromptContinuationOptions,
@@ -325,7 +328,9 @@ export function hostedPromptAuthority(input: {
     accepted: null,
   });
   const authority = Object.freeze({ ...base, recordedInputHash: promptExecutionInputHash(base) });
-  hostedPromptBatchPlan(authority);
+  // Authority parsing must not require an existing run to fit newer instructions.
+  // Fresh preparation validates the selected current policy separately.
+  hostedPromptBatchPlan(authority, "legacy");
   return authority;
 }
 
@@ -343,7 +348,10 @@ export const HOSTED_PROMPT_BATCH_MAX_OUTPUT_TOKENS = 14_336 as const;
  * The planner changes only request grouping; it never changes scene boundaries,
  * scene order, or the prompt-execution input hash.
  */
-export function hostedPromptBatchPlan(authority: PromptExecutionAuthority): PromptBatchPlan {
+export function hostedPromptBatchPlan(
+  authority: PromptExecutionAuthority,
+  requestPolicy: PromptRequestPolicy = "physical-placement-v2",
+): PromptBatchPlan {
   let literalCharacterLimit: number | undefined;
   try {
     literalCharacterLimit = naturalDocumentaryLiteralCharacterLimit(authority);
@@ -362,12 +370,49 @@ export function hostedPromptBatchPlan(authority: PromptExecutionAuthority): Prom
     storyContext: authority.storyContext,
     continuityTags: authority.continuityTags,
     scenes: authority.scenes,
-    options: { maxOutputTokens: HOSTED_PROMPT_BATCH_MAX_OUTPUT_TOKENS },
+    options: { maxOutputTokens: HOSTED_PROMPT_BATCH_MAX_OUTPUT_TOKENS, requestPolicy },
   });
+}
+
+/** Existing runs select their exact sealed plan, never the newest request default. */
+export async function recoverHostedPromptBatchPlan(
+  authority: PromptExecutionAuthority,
+  binding: HostedPromptBatchPlanBinding,
+): Promise<PromptBatchPlan> {
+  for (const policy of ["physical-placement-v2", "legacy", "physical-placement-v1"] as const) {
+    let candidate: PromptBatchPlan;
+    try {
+      candidate = hostedPromptBatchPlan(authority, policy);
+    } catch (error) {
+      // A larger new instruction may not fit a legacy run's single-scene budget.
+      // Only this known sizing rejection is a non-match; other defects propagate.
+      if (
+        error instanceof PipelineDomainError &&
+        error.failure.code === "PROMPT_INPUT_INVALID" &&
+        error.failure.message ===
+          "A single prompt scene exceeds the conservative request budget; reduce its context before dispatch."
+      )
+        continue;
+      throw error;
+    }
+    if (
+      candidate.batchCount === binding.plannedBatchCount &&
+      candidate.totalScenes === binding.plannedSceneCount &&
+      (await hostedPromptBatchPlanHash(candidate)) === binding.batchPlanHash
+    ) {
+      // New policies are domain-separated by request_policy in the hashed document;
+      // legacy omits it. Two different policies cannot match absent a SHA collision.
+      return candidate;
+    }
+  }
+  throw new HostedPromptExecutionError("HOSTED_PROMPT_INPUT_INVALID", "FAILED", false, null);
 }
 
 export function hostedPromptBatchPlanDocument(plan: PromptBatchPlan): Record<string, unknown> {
   return {
+    ...(plan.requestPolicy === undefined || plan.requestPolicy === "legacy"
+      ? {}
+      : { request_policy: plan.requestPolicy }),
     schema_version: "videoforge-hosted-prompt-batch-plan/v1",
     planner_version: plan.planVersion,
     batch_id_prefix: plan.batchIdPrefix,

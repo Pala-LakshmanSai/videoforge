@@ -108,6 +108,8 @@ export async function recoverClaimedHostedPromptBatch(input: {
     entry.batch.scenes,
     input.retryOfRequestHash ? 2 : 1,
     input.retryOfRequestHash ?? null,
+    1,
+    input.plan.requestPolicy ?? "legacy",
   );
   if (
     expected.request.taskUUID !== input.taskUUID ||
@@ -117,15 +119,16 @@ export async function recoverClaimedHostedPromptBatch(input: {
   )
     throw invalidPlanBinding();
   let recovered;
-  try { recovered =
-    input.recordedResult ??
-    (await retrieveRunwareTextTaskDetails({
-      apiKey: input.apiKey,
-      originalTaskUUID: input.taskUUID,
-      originalRequestBytes: input.requestBytes,
-      originalRequestSha256: input.requestHash,
-      fetch: input.fetcher,
-    }));
+  try {
+    recovered =
+      input.recordedResult ??
+      (await retrieveRunwareTextTaskDetails({
+        apiKey: input.apiKey,
+        originalTaskUUID: input.taskUUID,
+        originalRequestBytes: input.requestBytes,
+        originalRequestSha256: input.requestHash,
+        fetch: input.fetcher,
+      }));
   } catch (error) {
     if (error instanceof RunwareArchivedTaskRejectedError)
       throw new HostedPromptArchivedOutputInvalidError(error.responseHash, 0, null);
@@ -151,6 +154,7 @@ export async function recoverClaimedHostedPromptBatch(input: {
   });
   let evidence: RunwarePromptAttemptEvidence | null = null;
   const writer = new RunwarePromptWriter({
+    requestPolicy: input.plan.requestPolicy ?? "legacy",
     transport: {
       async dispatch(request) {
         if (
@@ -265,6 +269,8 @@ export async function dispatchOneHostedPromptBatch(input: {
     entry.batch.scenes,
     input.retryOfRequestHash ? 2 : 1,
     input.retryOfRequestHash ?? null,
+    1,
+    input.plan.requestPolicy ?? "legacy",
   );
   const claimed = await input.claim({
     batchOrdinal: input.batchOrdinal,
@@ -283,6 +289,7 @@ export async function dispatchOneHostedPromptBatch(input: {
   let result: RunwarePromptTransportResult | null = null;
   let evidence: RunwarePromptAttemptEvidence | null = null;
   const writer = new RunwarePromptWriter({
+    requestPolicy: input.plan.requestPolicy ?? "legacy",
     transport: {
       async dispatch(request) {
         if (
@@ -461,6 +468,9 @@ function actualCostMicroUsd(
  */
 function hostedPromptBatchPlanDocument(plan: PromptBatchPlan): Record<string, unknown> {
   return {
+    ...(plan.requestPolicy === undefined || plan.requestPolicy === "legacy"
+      ? {}
+      : { request_policy: plan.requestPolicy }),
     schema_version: "videoforge-hosted-prompt-batch-plan/v1",
     planner_version: plan.planVersion,
     batch_id_prefix: plan.batchIdPrefix,
@@ -525,6 +535,7 @@ async function validatePlanBeforeDispatch(
       continuityTags: batch.continuityTags,
       scenes: batch.scenes,
       options: {
+        requestPolicy: plan.requestPolicy ?? "legacy",
         maxInputTokens: plan.maxInputTokens,
         maxOutputTokens: plan.maxOutputTokens,
       },
@@ -645,6 +656,8 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
           entry.batch.scenes,
           saved.retryOfRequestHash ? 2 : 1,
           saved.retryOfRequestHash ?? null,
+          1,
+          this.plan.requestPolicy ?? "legacy",
         );
         if (
           saved.requestHash !== request.requestSha256 ||
@@ -705,6 +718,7 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
           },
         };
         const writer = new RunwarePromptWriter({
+          requestPolicy: this.plan.requestPolicy ?? "legacy",
           transport,
           evidenceSink: {
             record(evidence) {

@@ -4,6 +4,9 @@ import test from "node:test";
 
 import {
   IN_IMAGE_SHOT_ROLES,
+  NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH,
+  PHYSICAL_PLACEMENT_WRITER_INSTRUCTION,
+  PHYSICAL_PLACEMENT_V2_WRITER_INSTRUCTION,
   PipelineDomainError,
   RUNWARE_PROMPT_MAX_OUTPUT_TOKENS,
   RUNWARE_PROMPT_OUTPUT_FIXED_TOKENS,
@@ -121,6 +124,101 @@ class ScriptedTransport {
     return step(request);
   }
 }
+
+test("legacy v24/v25 request bytes and UUIDs stay pinned for both attempts", () => {
+  const goldens = [
+    [
+      false,
+      1,
+      "sha256:e5bff7f222239c20723898b7c77b4e20672507ec94dd570b3a2638c92db19dea",
+      "a3eef738-0ea8-40a4-8f2f-d6c6cac4a42b",
+    ],
+    [
+      false,
+      2,
+      "sha256:dfda6971c055b4295a39537052383527007be4afd5cefc7d4237defa3bbd4c9a",
+      "c98f571a-4cfa-4290-89c5-e4d616b4c481",
+    ],
+    [
+      true,
+      1,
+      "sha256:9e96e64b4424096daf845d9b0c6d504fc5f77cba23581614654e11aa9c6f4380",
+      "433f3485-1aff-4880-b532-b272bf9b8728",
+    ],
+    [
+      true,
+      2,
+      "sha256:39da9754b4c311ab8e34d75d5a439ee38ffeddf409c903af0469bce777a3e10c",
+      "70475eda-d1e4-46e9-a6aa-e1d76a22004b",
+    ],
+  ];
+  for (const [natural, attempt, expectedHash, expectedUuid] of goldens) {
+    const base = makeBatch(2);
+    const batch = natural
+      ? buildPromptBatch({
+          ...base,
+          projectTitle: base.sanitizedProjectTitle,
+          styleProfileHash: NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH,
+          styleTreatment: {
+            ...base.styleTreatment,
+            style_profile_hash: NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH,
+          },
+          literalCharacterLimit: 180,
+        })
+      : base;
+    const lineage = attempt === 2 ? `sha256:${"f".repeat(64)}` : null;
+    const legacy = buildRunwarePromptRequest(batch, batch.scenes, attempt, lineage, 1, "legacy");
+    assert.ok(Buffer.byteLength(legacy.request.settings.systemPrompt) <= 6000);
+    assert.equal(legacy.requestSha256, expectedHash);
+    assert.equal(legacy.request.taskUUID, expectedUuid);
+    assert.equal(
+      createHash("sha256").update(legacy.requestBytes).digest("hex"),
+      expectedHash.slice(7),
+    );
+    assert.deepEqual(buildRunwarePromptRequest(batch, batch.scenes, attempt, lineage), legacy);
+    for (const [policy, version, instruction] of [
+      ["physical-placement-v1", "v26", PHYSICAL_PLACEMENT_WRITER_INSTRUCTION],
+      ["physical-placement-v2", "v27", PHYSICAL_PLACEMENT_V2_WRITER_INSTRUCTION],
+    ]) {
+      const current = buildRunwarePromptRequest(batch, batch.scenes, attempt, lineage, 1, policy);
+      assert.ok(Buffer.byteLength(current.request.settings.systemPrompt) <= 7000);
+      assert.equal(current.requestVersion, `runware-gemini-3.5-flash-prompt-request-${version}`);
+      assert.notEqual(current.request.taskUUID, expectedUuid);
+      assert.notEqual(current.requestSha256, expectedHash);
+      assert.equal(
+        current.request.settings.systemPrompt.replace(` ${instruction}`, ""),
+        legacy.request.settings.systemPrompt,
+      );
+      assert.deepEqual(current.request.messages, legacy.request.messages);
+      assert.equal(current.request.settings.maxTokens, legacy.request.settings.maxTokens);
+      assert.equal(
+        buildRunwarePromptRequest(batch, batch.scenes, attempt, lineage, 1, policy).requestBytes,
+        current.requestBytes,
+      );
+    }
+  }
+});
+
+test("new writer policy dispatches its exact selected request once", async () => {
+  const batch = makeBatch(1);
+  const transport = new ScriptedTransport([(request) => success(request)]);
+  const value = new RunwarePromptWriter({
+    requestPolicy: "physical-placement-v2",
+    transport,
+    evidenceSink: { record() {} },
+    maximumBatchCostUsd: 0.01,
+  });
+  await value.write(batch);
+  assert.equal(transport.requests.length, 1);
+  assert.equal(
+    transport.requests[0].requestBytes,
+    buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "physical-placement-v2")
+      .requestBytes,
+  );
+  assert.match(PHYSICAL_PLACEMENT_V2_WRITER_INSTRUCTION, /Exempt genuine HANDS_ACTION close-ups/u);
+  assert.match(PHYSICAL_PLACEMENT_V2_WRITER_INSTRUCTION, /Preserve every narrated collaborator/u);
+  assert.throws(() => buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "unknown"));
+});
 
 test("request construction revalidates the exact style-only v2 projection", () => {
   const batch = makeBatch(1);

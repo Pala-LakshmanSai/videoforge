@@ -15,10 +15,14 @@ import {
   SHORT_FORM_SCHEDULER_CONFIG,
   SHORT_FORM_SCHEDULER_VERSION,
   WORD_BOUNDARY_SCHEDULER_VERSION,
+  NARRATION_SHOT_SCHEDULER_VERSION,
+  NARRATION_SHOT_SHORT_SCHEDULER_VERSION,
   SCRIPT_SHORT_FORM_SCHEDULER_VERSION,
   SUPPORTED_SCHEDULER_CONFIG,
   SUPPORTED_SCHEDULER_VERSION,
 } from "../dist/src/index.js";
+
+import { hasSupportedPhysicalHandAction } from "../dist/src/scheduler/scheduler.js";
 
 const SHA_A = `sha256:${"a".repeat(64)}`;
 const SHA_B = `sha256:${"b".repeat(64)}`;
@@ -915,4 +919,196 @@ test("word-boundary fallback keeps the original coverage band when it fits and l
       ),
     ).sha256,
   );
+});
+
+test("legacy V2 through V5 retain golden plan hashes after fresh shot eligibility", async () => {
+  const hashes = {
+    "scheduler-v2": "sha256:fc09534a100d03ef1324ea2297a4be7069a00118d500d8da4ebedd0664ff0a1c",
+    "scheduler-v3": "sha256:41a0151c7e9e86e50ec95f0a79e4a26fa72781b053e6aa8de73d4a2dde740271",
+    "scheduler-v4": "sha256:6e5e580f3a01bba51f9169e4fda2a0e860c42e1bbdaad7f2db52cd47c0b70f54",
+    "scheduler-v5": "sha256:e85817cf296291c8afe4b849c8910e138ccc59abc83e8c7ac0ddedff1321706a",
+  };
+  for (const [version, hash] of Object.entries(hashes)) {
+    const plan = requireSuccess(
+      await scheduleTimeline(await propertyRequest(982341, createTranscriptValue(), version)),
+    );
+    assert.equal(plan.sha256, hash, version);
+  }
+});
+
+for (const phrase of [
+  "Homeowners blame developers for building where it is unsafe.",
+  "The policy is working.",
+  "The developers work together.",
+  "On the other hand the housing policy failed.",
+  "They hold the keys to success.",
+  "They hold power and lift spirits.",
+  "We touch base and tap into public support.",
+  "The blame is in the hands of developers.",
+  "A crane lifts the cardboard box.",
+  "The bottle holds a flower stem.",
+  "We watch a robotic arm lifting a cardboard box.",
+  "They hold beliefs about the box.",
+]) {
+  test(`fresh hands eligibility excludes abstraction or unsupported contact: ${phrase}`, () => {
+    assert.equal(hasSupportedPhysicalHandAction(phrase), false);
+  });
+}
+
+for (const phrase of [
+  "The worker lifts the cardboard box.",
+  "She holds up a flowerpot.",
+  "A gardener is holding a clay flowerpot by its rim.",
+  "Hold the valve handle firmly.",
+  "She threads a needle.",
+  "He is tightening a screw with a screwdriver.",
+  "Run your fingers across the rind.",
+  "She ties a shoelace.",
+  "Placing the cardboard box inside the trunk.",
+]) {
+  test(`fresh hands eligibility retains physical interaction: ${phrase}`, () => {
+    assert.equal(hasSupportedPhysicalHandAction(phrase), true);
+  });
+}
+
+for (const [oldVersion, freshVersion, durationMs] of [
+  [SUPPORTED_SCHEDULER_VERSION, NARRATION_SHOT_SCHEDULER_VERSION, 40_000],
+  [WORD_BOUNDARY_SCHEDULER_VERSION, NARRATION_SHOT_SHORT_SCHEDULER_VERSION, 18_019],
+]) {
+  test(`${freshVersion} preserves ${oldVersion} timing, layout, seed and IDs; never cycles into hands`, async () => {
+    const transcript = createPropertyTranscript({
+      durationMs,
+      phraseStarts:
+        durationMs > 30_000
+          ? [0, 4_000, 8_000, 12_000, 16_000, 20_000, 24_000, 28_000, 32_000, 36_000]
+          : [0, 4_000, 8_000, 12_000, 16_000],
+      wordQuantumMs: 200,
+    });
+    let legacyHands = 0;
+    for (const seed of [0, 982341, 4294967295]) {
+      const old = requireSuccess(
+        await scheduleTimeline(await propertyRequest(seed, transcript, oldVersion)),
+      );
+      const request = await propertyRequest(seed, transcript, freshVersion);
+      const fresh = requireSuccess(await scheduleTimeline(request));
+      const replay = requireSuccess(await scheduleTimeline(request));
+      assert.equal(fresh.sha256, replay.sha256);
+      assert.equal(fresh.value.scheduler_version, freshVersion);
+      assert.equal(fresh.value.seed, old.value.seed);
+      assert.equal(fresh.value.total_frames, old.value.total_frames);
+      const withoutRole = ({ in_image_shot_role: _role, ...segment }) => segment;
+      assert.deepEqual(fresh.value.segments.map(withoutRole), old.value.segments.map(withoutRole));
+      for (let index = 0; index < fresh.value.segments.length; index++) {
+        const previous = old.value.segments[index];
+        const next = fresh.value.segments[index];
+        legacyHands += Number(previous.in_image_shot_role === "HANDS_ACTION");
+        assert.notEqual(next.in_image_shot_role, "HANDS_ACTION");
+        if (previous.in_image_shot_role !== "HANDS_ACTION")
+          assert.equal(next.in_image_shot_role, previous.in_image_shot_role);
+      }
+    }
+    assert.ok(legacyHands > 0, "fixture must exercise cyclic hands assignment");
+    assert.equal(schedulerConfigForVersion(freshVersion).timing_scheduler_version, oldVersion);
+  });
+}
+
+test("fresh V7 retains the production word-boundary fallback without new timing or layout", async () => {
+  const transcript = JSON.parse(
+    readFileSync(
+      new URL("./fixtures/j1tts-word-boundary-transcript.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  const before = requireSuccess(
+    await scheduleTimeline(
+      await propertyRequest(42107, transcript, WORD_BOUNDARY_SCHEDULER_VERSION),
+    ),
+  );
+  const request = await propertyRequest(42107, transcript, NARRATION_SHOT_SHORT_SCHEDULER_VERSION);
+  const after = requireSuccess(await scheduleTimeline(request));
+  const withoutRole = ({ in_image_shot_role: _role, ...segment }) => segment;
+  assert.deepEqual(after.value.segments.map(withoutRole), before.value.segments.map(withoutRole));
+  const coverage = assertExactTimelineCoverage(after.value, transcript);
+  assert.ok(coverage.avatarRatio > 0.24 && coverage.avatarRatio <= 0.26);
+  const work = await compileCompleteWorkPlan({
+    revision: request.revision,
+    transcript: request.transcript,
+    timeline: after,
+    schedulerConfigHash: await sha256CanonicalJson(
+      schedulerConfigForVersion(NARRATION_SHOT_SHORT_SCHEDULER_VERSION),
+    ),
+    selectedSpanAudio: materializedSpans(after.value, transcript.source.duration_ms),
+  });
+  assert.equal(work.ok, true, work.ok ? "" : JSON.stringify(work.error));
+});
+
+test("homeowner blame narration never receives a forced hands shot in fresh long timelines", async () => {
+  const transcript = createPropertyTranscript({
+    durationMs: 40_000,
+    phraseStarts: [0, 4_000, 8_000, 12_000, 16_000, 20_000, 24_000, 28_000, 32_000, 36_000],
+    wordQuantumMs: 400,
+  });
+  const tokens = "Homeowners blame developers for building where it is considered unsafe.".split(
+    " ",
+  );
+  for (const phrase of transcript.phrases) {
+    for (let index = phrase.word_start; index < phrase.word_end_exclusive; index++)
+      transcript.words[index].text = tokens[index - phrase.word_start];
+    phrase.text = tokens.join(" ");
+  }
+  transcript.text = transcript.words.map((word) => word.text).join(" ");
+  const plan = requireSuccess(
+    await scheduleTimeline(
+      await propertyRequest(982341, transcript, NARRATION_SHOT_SCHEDULER_VERSION),
+    ),
+  );
+  const images = plan.value.segments.filter(
+    (segment) => segment.timeline_composition !== "AVATAR_FULL",
+  );
+  assert.ok(images.length > 0);
+  assert.ok(images.every((segment) => segment.in_image_shot_role !== "HANDS_ACTION"));
+});
+
+test("fresh hands eligibility only removes hands roles, preserving wider physical-action views", async () => {
+  const transcript = createPropertyTranscript({
+    durationMs: 40_000,
+    phraseStarts: [0, 4_000, 8_000, 12_000, 16_000, 20_000, 24_000, 28_000, 32_000, 36_000],
+    wordQuantumMs: 400,
+  });
+  const tokens = "The worker lifts the heavy cardboard box beside the car.".split(" ");
+  for (const phrase of transcript.phrases) {
+    for (let index = phrase.word_start; index < phrase.word_end_exclusive; index++)
+      transcript.words[index].text = tokens[index - phrase.word_start];
+    phrase.text = tokens.join(" ");
+  }
+  transcript.text = transcript.words.map((word) => word.text).join(" ");
+  let widerSupportedActions = 0;
+  for (const [oldVersion, freshVersion] of [
+    [SUPPORTED_SCHEDULER_VERSION, NARRATION_SHOT_SCHEDULER_VERSION],
+    [WORD_BOUNDARY_SCHEDULER_VERSION, NARRATION_SHOT_SHORT_SCHEDULER_VERSION],
+  ]) {
+    for (const seed of [0, 982341, 4294967295]) {
+      const before = requireSuccess(
+        await scheduleTimeline(await propertyRequest(seed, transcript, oldVersion)),
+      );
+      const after = requireSuccess(
+        await scheduleTimeline(await propertyRequest(seed, transcript, freshVersion)),
+      );
+      for (const [index, previous] of before.value.segments.entries()) {
+        const next = after.value.segments[index];
+        if (previous.in_image_shot_role !== "HANDS_ACTION") {
+          assert.equal(next.in_image_shot_role, previous.in_image_shot_role);
+          widerSupportedActions += Number(
+            previous.in_image_shot_role !== undefined &&
+              hasSupportedPhysicalHandAction(previous.phrase),
+          );
+        } else if (hasSupportedPhysicalHandAction(previous.phrase)) {
+          assert.equal(next.in_image_shot_role, "HANDS_ACTION");
+        } else {
+          assert.notEqual(next.in_image_shot_role, "HANDS_ACTION");
+        }
+      }
+    }
+  }
+  assert.ok(widerSupportedActions > 0, "fixture must preserve non-hands views of real lifting");
 });

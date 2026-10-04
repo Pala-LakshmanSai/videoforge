@@ -68,7 +68,33 @@ export const WORD_BOUNDARY_SCHEDULER_CONFIG = Object.freeze({
   short_form_boundary_fallback_maximum: 0.26,
 });
 
+/** Fresh revisions keep their predecessor's timing/seed behavior; only shot eligibility changes. */
+export const NARRATION_SHOT_SCHEDULER_VERSION = "scheduler-v6";
+export const NARRATION_SHOT_SHORT_SCHEDULER_VERSION = "scheduler-v7";
+export const NARRATION_SHOT_SCHEDULER_CONFIG = Object.freeze({
+  ...SUPPORTED_SCHEDULER_CONFIG,
+  schema_version: "deterministic-timeline-scheduler-config/v6",
+  timing_scheduler_version: SUPPORTED_SCHEDULER_VERSION,
+  shot_role_policy: "physical-hands-only-v1",
+});
+export const NARRATION_SHOT_SHORT_SCHEDULER_CONFIG = Object.freeze({
+  ...WORD_BOUNDARY_SCHEDULER_CONFIG,
+  schema_version: "deterministic-timeline-scheduler-config/v7",
+  timing_scheduler_version: WORD_BOUNDARY_SCHEDULER_VERSION,
+  shot_role_policy: "physical-hands-only-v1",
+});
+
+/** Preserve timing draws and segment identities when selecting the new role policy. */
+export function schedulerTimingVersion(version: string): string {
+  if (version === NARRATION_SHOT_SCHEDULER_VERSION) return SUPPORTED_SCHEDULER_VERSION;
+  if (version === NARRATION_SHOT_SHORT_SCHEDULER_VERSION) return WORD_BOUNDARY_SCHEDULER_VERSION;
+  return version;
+}
+
 export function schedulerConfigForVersion(version: string) {
+  if (version === NARRATION_SHOT_SCHEDULER_VERSION) return NARRATION_SHOT_SCHEDULER_CONFIG;
+  if (version === NARRATION_SHOT_SHORT_SCHEDULER_VERSION)
+    return NARRATION_SHOT_SHORT_SCHEDULER_CONFIG;
   if (version === WORD_BOUNDARY_SCHEDULER_VERSION) return WORD_BOUNDARY_SCHEDULER_CONFIG;
   if (version === SUPPORTED_SCHEDULER_VERSION) return SUPPORTED_SCHEDULER_CONFIG;
   if (version === SHORT_FORM_SCHEDULER_VERSION) return SHORT_FORM_SCHEDULER_CONFIG;

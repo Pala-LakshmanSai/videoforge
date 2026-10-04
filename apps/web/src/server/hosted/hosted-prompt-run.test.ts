@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH } from "@videoforge/pipeline";
 import { promptStyleTreatmentPositiveSuffix } from "@videoforge/pipeline/prompts";
+import * as promptRuntime from "@videoforge/pipeline/prompts";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -14,6 +15,8 @@ import {
 import {
   hostedPromptAuthority,
   hostedPromptBatchPlan,
+  recoverHostedPromptBatchPlan,
+  hostedPromptBatchPlanDocument,
   runHostedPromptExecution,
 } from "./hosted-prompt-run";
 import {
@@ -249,6 +252,230 @@ function adaptivePlan(batch: PromptBatch) {
     scenes: batch.scenes,
   });
 }
+
+describe("versioned prompt request recovery", () => {
+  function authorityFor(natural: boolean) {
+    const base = hostedPromptAuthority({
+      plan: plan({ scenes: scenes(20) }),
+      identity,
+      reservedCostMicroUsd: 2_000_000,
+    });
+    if (!natural) return base;
+    const profile = JSON.parse(
+      readFileSync(
+        "../../project-context/evidence/natural_documentary_image_style_v1.json",
+        "utf8",
+      ),
+    );
+    const treatment = derivePromptStyleTreatment(
+      profile.visual_profile,
+      NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH,
+    );
+    return {
+      ...base,
+      styleProfileHash: NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH,
+      styleTreatment: treatment,
+      style: {
+        positiveSuffix: promptStyleTreatmentPositiveSuffix(treatment),
+        negativeSuffix: profile.prompt_profile.negative_suffix,
+        fullImageGuidance: profile.prompt_profile.full_image_guidance,
+        splitImageGuidance: profile.prompt_profile.split_image_guidance,
+      },
+    };
+  }
+
+  it("recovers legacy when newer instruction cannot fit and stops at its exact match", async () => {
+    const base = authorityFor(false);
+    const authority = { ...base, scenes: [base.scenes[0]!] };
+    const legacy = hostedPromptBatchPlan(authority, "legacy");
+    const binding = {
+      plannedBatchCount: legacy.batchCount,
+      plannedSceneCount: legacy.totalScenes,
+      batchPlanHash: await hostedPromptBatchPlanHash(legacy),
+    };
+    const original = promptRuntime.planPromptBatches;
+    const seen: unknown[] = [];
+    const planner = vi.spyOn(promptRuntime, "planPromptBatches").mockImplementation((input) => {
+      seen.push(input.options?.requestPolicy);
+      return original(
+        input.options?.requestPolicy === "physical-placement-v2"
+          ? {
+              ...input,
+              options: {
+                ...input.options,
+                maxInputTokens: legacy.batches[0]!.estimatedInputTokens,
+              },
+            }
+          : input,
+      );
+    });
+    try {
+      // Exercises an actual planner budget rejection, not an invented provider error.
+      expect(await recoverHostedPromptBatchPlan(authority, binding)).toEqual(legacy);
+      expect(seen).toEqual(["physical-placement-v2", "legacy"]);
+      seen.length = 0;
+      authorityFor(false);
+      expect(seen).toEqual(["legacy"]);
+      const defect = new Error("unexpected planner defect");
+      planner.mockImplementation(() => {
+        throw defect;
+      });
+      await expect(recoverHostedPromptBatchPlan(authority, binding)).rejects.toBe(defect);
+    } finally {
+      planner.mockRestore();
+    }
+  });
+
+  it.each([false, true])("pins legacy plan hash for natural=%s", async (natural) => {
+    const legacy = hostedPromptBatchPlan(authorityFor(natural), "legacy");
+    expect(hostedPromptBatchPlanDocument(legacy)).not.toHaveProperty("request_policy");
+    expect(await hostedPromptBatchPlanHash(legacy)).toBe(
+      natural
+        ? "sha256:59e6f6f57323819b4ff45c01f0918dcd73877afe4f3171a4db7ebe5f31302f83"
+        : "sha256:09dc0a31c0f2d4f33617175545a4d718378a0cdb548d0328c7b0c2870bb1cc18",
+    );
+  });
+
+  for (const natural of [false, true]) {
+    it.each(["legacy", "physical-placement-v1", "physical-placement-v2"] as const)(
+      `selects sealed %s policy, recovers without inference, and resumes unchanged (natural=${natural})`,
+      async (policy) => {
+        const authority = authorityFor(natural);
+        const planned = hostedPromptBatchPlan(authority, policy);
+        const binding = {
+          plannedBatchCount: planned.batchCount,
+          plannedSceneCount: planned.totalScenes,
+          batchPlanHash: await hostedPromptBatchPlanHash(planned),
+        };
+        const recoveredPlan = await recoverHostedPromptBatchPlan(authority, binding);
+        expect(recoveredPlan).toEqual(planned);
+        expect(hostedPromptBatchPlan(authority).requestPolicy).toBe("physical-placement-v2");
+        const fetcher = successfulPromptFetcher();
+        const results: Parameters<
+          NonNullable<Parameters<typeof dispatchOneHostedPromptBatch>[0]["recordResult"]>
+        >[0][] = [];
+        const accepted = await dispatchOneHostedPromptBatch({
+          apiKey: "runware-test-key-at-least-twenty-characters",
+          plan: recoveredPlan,
+          persistedBinding: binding,
+          batchOrdinal: 0,
+          remainingReservationMicroUsd: 2_000_000,
+          claim: async () => true,
+          recordResult: async (result) => {
+            results.push(result);
+          },
+          fetcher,
+        });
+        expect(accepted).not.toBeNull();
+        expect(fetcher).toHaveBeenCalledTimes(1);
+        const saved = accepted!;
+        const task = JSON.parse(saved.requestBytes)[0];
+        fetcher.mockClear();
+        const restored = await recoverClaimedHostedPromptBatch({
+          apiKey: "runware-test-key-at-least-twenty-characters",
+          plan: recoveredPlan,
+          persistedBinding: binding,
+          batchOrdinal: 0,
+          taskUUID: task.taskUUID,
+          requestBytes: saved.requestBytes,
+          requestHash: saved.requestHash,
+          reservationMicroUsd: 2_000_000,
+          recordedResult: results[0]!.result,
+          fetcher,
+        });
+        expect(restored.scenes).toEqual(saved.scenes);
+        expect(fetcher).not.toHaveBeenCalled();
+        const fullBatch = {
+          ...planned.batches[0]!.batch,
+          scenes: planned.batches.flatMap((entry) => entry.batch.scenes),
+        };
+        const continued = await new HostedRunwarePromptWriter(
+          "configured-test-key-value",
+          recoveredPlan,
+          fetcher,
+          undefined,
+          binding,
+          {
+            reservationMicroUsd: 2_000_000,
+            acceptedBatches: [
+              {
+                ...saved,
+                scenes: saved.scenes.map(({ sceneOrdinal, scene, writerOutput }) => ({
+                  sceneOrdinal,
+                  sceneId: scene.sceneId,
+                  writerOutput,
+                })),
+              },
+            ],
+            beforeBatchSubmit: async () => {},
+          },
+        ).write(fullBatch);
+        expect(continued.output.scenes.slice(0, saved.scenes.length)).toEqual(
+          saved.scenes.map((scene) => scene.writerOutput),
+        );
+        expect(fetcher).toHaveBeenCalledTimes(planned.batchCount - 1);
+        for (const [, init] of fetcher.mock.calls) {
+          expect(JSON.parse(String(init?.body))[0].settings.systemPrompt).toBe(
+            task.settings.systemPrompt,
+          );
+        }
+        fetcher.mockClear();
+        const replacementClaim = vi.fn(async () => true);
+        await expect(
+          dispatchOneHostedPromptBatch({
+            apiKey: "runware-test-key-at-least-twenty-characters",
+            plan: recoveredPlan,
+            persistedBinding: binding,
+            batchOrdinal: 0,
+            remainingReservationMicroUsd: 249_999,
+            retryOfRequestHash: saved.requestHash,
+            claim: replacementClaim,
+            fetcher,
+          }),
+        ).rejects.toMatchObject({ problemCode: "HOSTED_PROMPT_INPUT_INVALID" });
+        expect(replacementClaim).not.toHaveBeenCalled();
+        expect(fetcher).not.toHaveBeenCalled();
+        const replacement = await dispatchOneHostedPromptBatch({
+          apiKey: "runware-test-key-at-least-twenty-characters",
+          plan: recoveredPlan,
+          persistedBinding: binding,
+          batchOrdinal: 0,
+          remainingReservationMicroUsd: 2_000_000,
+          retryOfRequestHash: saved.requestHash,
+          claim: replacementClaim,
+          fetcher,
+        });
+        expect(replacementClaim).toHaveBeenCalledTimes(1);
+        expect(fetcher).toHaveBeenCalledTimes(1);
+        const replacementTask = JSON.parse(replacement!.requestBytes)[0];
+        expect(replacementTask.taskUUID).not.toBe(task.taskUUID);
+        expect(replacementTask.settings.systemPrompt).toBe(task.settings.systemPrompt);
+        expect(JSON.parse(replacementTask.messages[0].content).attempt_index).toBe(2);
+        fetcher.mockClear();
+        await expect(
+          recoverHostedPromptBatchPlan(authority, { ...binding, batchPlanHash: digest }),
+        ).rejects.toMatchObject({ problemCode: "HOSTED_PROMPT_INPUT_INVALID" });
+        const claim = vi.fn(async () => true);
+        await expect(
+          dispatchOneHostedPromptBatch({
+            apiKey: "runware-test-key-at-least-twenty-characters",
+            plan: {
+              ...recoveredPlan,
+              requestPolicy: policy === "legacy" ? "physical-placement-v2" : "legacy",
+            },
+            persistedBinding: binding,
+            batchOrdinal: 0,
+            remainingReservationMicroUsd: 2_000_000,
+            claim,
+            fetcher,
+          }),
+        ).rejects.toMatchObject({ problemCode: "HOSTED_PROMPT_INPUT_INVALID" });
+        expect(claim).not.toHaveBeenCalled();
+        expect(fetcher).not.toHaveBeenCalled();
+      },
+    );
+  }
+});
 
 describe("hosted prompt authority", () => {
   it("rejects impossible Natural Documentary fixed budgets as unpaid input failures before planning", () => {

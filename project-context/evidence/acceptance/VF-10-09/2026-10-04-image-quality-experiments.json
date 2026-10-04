@@ -1,27 +1,136 @@
 {
-  "at": "2026-10-04T11:30:58.256Z",
+  "at": "2026-10-04",
   "images": {
-    "calls": 40,
-    "complete": 40,
-    "credits": 32,
-    "usdEstimate": 0.16,
+    "calls": 80,
+    "complete": 80,
+    "credits": 64.0,
+    "usdEstimate": 0.32,
     "model": "z-image",
     "aspectRatio": "16:9",
     "safetyChecker": true
   },
   "vision": {
     "model": "google:gemini@3.1-flash-lite",
-    "calls": 8,
-    "complete": 8,
-    "reportedUsd": 0.0034189999999999997,
-    "selectedLabelsAgreement": 8,
-    "falseAccept": 0,
-    "falseReject": 0,
-    "qualification": "Pilot only; eight selected cases do not establish production accuracy."
+    "calls": 40,
+    "complete": 40,
+    "reportedUsd": 0.016947,
+    "labelMethod": "Independent assistant visual review using view_image on all 40 original files; no automated reviews read. These are human-style judgment labels, not labels supplied by a human.",
+    "scope": "Severe limb anatomy, person torso visibility in trunk scenes, coherent hand ownership in hands scenes. Cropped heads, ordinary occlusion and aesthetics are not rejection reasons. Subject/action/narration relevance beyond those criteria was not scored.",
+    "independentLabelCounts": {
+      "PASS": 33,
+      "REJECT": 6,
+      "UNCERTAIN": 1
+    },
+    "agreement": 34,
+    "falseAcceptAgainstIndependentLabels": 0,
+    "falseRejectAgainstIndependentLabels": 5,
+    "disagreements": [
+      {
+        "id": "hands-E-4",
+        "independentLabel": "PASS",
+        "reviewerVerdict": "REJECT"
+      },
+      {
+        "id": "trunk-D-2",
+        "independentLabel": "PASS",
+        "reviewerVerdict": "REJECT"
+      },
+      {
+        "id": "hands-E-2",
+        "independentLabel": "PASS",
+        "reviewerVerdict": "REJECT"
+      },
+      {
+        "id": "trunk-E-1",
+        "independentLabel": "PASS",
+        "reviewerVerdict": "REJECT"
+      },
+      {
+        "id": "trunk-A-2",
+        "independentLabel": "UNCERTAIN",
+        "reviewerVerdict": "REJECT"
+      },
+      {
+        "id": "trunk-C-2",
+        "independentLabel": "PASS",
+        "reviewerVerdict": "REJECT"
+      }
+    ],
+    "qualification": "NOT QUALIFIED: disagreements on plausible occlusion/finger detail; two scene families insufficient for general gate; no human ground truth."
   },
   "capUsd": 5,
-  "estimatedCombinedUsd": 0.163419,
+  "estimatedCombinedUsd": 0.457601,
   "pending": 0,
   "gpuCreated": 0,
-  "productionImageJobsReplayed": 0
+  "productionImageJobsReplayed": 0,
+  "writer": {
+    "model": "google:gemini@3.5-flash",
+    "calls": 3,
+    "complete": 3,
+    "reportedUsd": 0.120654,
+    "versions": [
+      "v25",
+      "v26",
+      "v27"
+    ],
+    "qualification": "v26 did not reliably emit physical placement; v27 did in 3/3 tested whole-person scenes and retained hands-only jar control. Image quality is separately scored."
+  },
+  "rounds": {
+    "prompt_variants": 40,
+    "actual_writer_legacy_v26": 32,
+    "actual_writer_v27": 8
+  },
+  "anatomyGuarantee": false,
+  "outputReviewGateActivated": false,
+  "round3IndependentReview": {
+    "primary_counts": {
+      "legacy": {
+        "acceptable": 12,
+        "reject": 4,
+        "uncertain": 0
+      },
+      "current_v26": {
+        "acceptable": 11,
+        "reject": 4,
+        "uncertain": 1
+      }
+    },
+    "trunk_and_door_person_visible": {
+      "legacy": {
+        "count": 0,
+        "out_of": 4
+      },
+      "current_v26": {
+        "count": 1,
+        "out_of": 4
+      }
+    },
+    "definite_extra_participant": [
+      "qual-current-collaborators-2"
+    ],
+    "takeaways": [
+      "Current homeowner and policy writer outputs escape forced hand-only framing; corresponding images depict coherent people/places.",
+      "V26 does not reliably preserve a resident for trunk/door scenes: three of four current outputs lack resident body, versus four of four legacy.",
+      "One current two-mover scene introduces a third person.",
+      "Required manual scenes generally preserve two hands and contact; current-valve-2 has uncertain center-fastener contact.",
+      "Round3 does not qualify a production no-bad-images claim and must not be pooled with v27 as the same candidate."
+    ]
+  },
+  "round4IndependentReview": {
+    "counts": {
+      "reject": 1,
+      "uncertain": 2,
+      "acceptable_with_framing_caveat": 2,
+      "acceptable": 3
+    },
+    "definite_extra_hand_images": [
+      "body-v27-current-jar-1"
+    ],
+    "connected_substantial_torso_in_trunk": 2,
+    "doors_with_only_torso_edge": 2,
+    "correct_two_mover_count": 2,
+    "mover_images_with_face_occlusion": 2,
+    "conclusion": "V27 produced connected substantial torsos in both trunk samples and retained two movers in both sofa samples, but one jar image has three hands and both door images remain mostly arm-only framing. It does not qualify prompt-only general prevention or an 8/8 quality pass."
+  },
+  "rolloutConclusion": "Publish tested input safeguards only: no filler, fresh-only hand-role eligibility, versioned physical-placement writer. v27 improved trunk body presence in two samples but still produced a third-hand jar and weak door framing. Output review gate remains unimplemented and unqualified."
 }
