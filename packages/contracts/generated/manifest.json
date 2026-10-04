@@ -167,8 +167,8 @@
     {
       "source": "project-context/evidence/generation_work_manifest.schema.json",
       "destination": "generated/schemas/generation_work_manifest.schema.json",
-      "bytes": 4660,
-      "sha256": "sha256:da150901a168e80a915960b09dc919eda3e1cb1a724f70a8ec80d376e50d96cb"
+      "bytes": 11845,
+      "sha256": "sha256:0444c6e328b8894456f756868622ecf7e40d811e6efe854c5749355c3f66d0c2"
     },
     {
       "source": "project-context/evidence/render_work_manifest.schema.json",

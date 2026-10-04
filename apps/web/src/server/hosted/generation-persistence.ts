@@ -273,7 +273,7 @@ export class HostedCanonicalTimingPersistence implements HostedGenerationPersist
       const videoPlan = await transaction.query<{
         selections: unknown;
         coverage_percent: number;
-        replacement_policy: "LEGACY_PREFIX_V1" | "WHOLE_SCENE_V2";
+        replacement_policy: "LEGACY_PREFIX_V1" | "WHOLE_SCENE_V2" | "OPENING_180_V3";
       }>(
         "SELECT selections, coverage_percent, replacement_policy FROM hosted_video_plans WHERE account_id=$1 AND workspace_id=$2 AND project_revision_id=$3",
         [input.snapshot.accountId, input.snapshot.workspaceId, input.snapshot.projectRevisionId],

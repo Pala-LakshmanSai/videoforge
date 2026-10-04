@@ -544,7 +544,7 @@ The original 7% rollout used resolved-render-manifest/v2 and render-job-input/v2
 Optional Seedance fallback (0244): only allowlisted definite, bounded failures retain their pinned original accepted IMAGE/live receipt, with paid identity and actual charge unchanged. Missing/tombstoned sources, unknown submissions, invalid costs, cancellation and price changes cannot satisfy readiness. Mixed manifests bind the exact SUCCEEDED clip subset and original images; all-static fallback uses version1 with no fake VIDEO asset. Safe final failure uses the existing RENDERING/lease barrier. Canonical replay preserves saved selections; null opted-in selections complete with padded requests, while legacy revisions never opt in.
 
 
-## Published whole scene coverage control (2026-10-03)
+## Historical whole scene coverage control (2026-10-03)
 
 Published hosted create/v3 and preflight/v2 carry validated integer video_coverage_percent. Migration248 pins coverage plus WHOLE_SCENE_V2 replacement policy in the per-revision video-plan record; old rows retain immutable LEGACY_PREFIX_V1 7% semantics and successors copy exact values. Manifest/render input v3 carries whole-scene policy and immutable selection hash even for Off/all-fallback; v1/v2 remain readable for legacy work. SQL, TypeScript and Python independently verify full-scene equality and the pinned percentage budget. Production role/RLS/tenant and replay checks pass. Fresh paid-film acceptance remains separate. Details: [combined plan](tasks/SEEDANCE_VIDEO_PLAN.md#whole-scene-replacement-follow-up).
 
@@ -558,3 +558,17 @@ Migration0250 adds hosted_voiceover_jobs and saved_voiceover_voices with forced 
 Migration0253 adds tenant-private `hosted_script_projects`. POST `/api/v2/hosted/script-projects` accepts `videoforge-hosted-script-project/v1`, exact project options, script and voice ID with an idempotency key. It saves a real project before a media revision; Queue and detail expose narration state without inventing an audio asset. A project-scoped Workflow and shared driver claim TTS under an account-specific narration guard independent of video admission. Saved provider identity is retrieval-only after uncertainty. Streaming MP3 measurement, private R2 persistence, the existing revision/upload receipt commit and deterministic ASR submission complete the handoff. Direct-audio create/v3 remains unchanged. Queued deletion cancels intake under the project lock; generating/preparing/uncertain work cannot be archived. Rollback preserves accepted intakes and requires draining them before returning to an older application reader.
 
 Migration0254 grants runtime INSERT on the existing forced-RLS `project_inputs` table so the original script accompanies its generated-audio revision. Existing tenant guards and composite keys remain; no SELECT, UPDATE or DELETE permission is added. Production acceptance exposed the missing historical privilege, and native rollback plus runtime own/foreign-account insertion checks cover the correction.
+
+## Mandatory opening contract — 2026-10-04
+
+Fresh revisions pin scheduler-v8/v9 and OPENING_180_V3 without rewriting existing policies,
+selections or paid identities. Hosted create/v3 and preflight/v2 retain the same integer
+video_coverage_percent field; only the new pinned policy interprets it against duration after
+180 seconds. Catalog and estimates expose required_opening_seconds separately. Generation work
+manifest/v2 pins scheduler_version and permits zero avatar spans/counts only for V8/V9; historical
+v1 keeps its positive-avatar checks. Native rendering consumes the already qualified v3 resolved
+manifest: server-owned opening selection/readiness/materialization gates require every opening
+scene's successful full clip and translate only the effective overall renderer ceiling. Never
+interpret that derived ceiling as the user's remaining coverage choice. Legacy v1/v2/v3 readers,
+receipts and immutable outputs remain. Primary budget and fallback rules live in the scheduler
+domain; additive migration0267 and its production readback are tracked in CURRENT_STATE.yaml.

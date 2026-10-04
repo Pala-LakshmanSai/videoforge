@@ -81,9 +81,12 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // These measured ceilings retain every provider, validator, fixture, and CPU quarantine check.
 // Shared API capacity adds 11 measured production bytes for WAITING narration observation;
 // staging stays within its existing ceiling. Provider implementations remain dynamic.
+// Versioned opening scheduler metadata adds 1,516 production bytes. The matching
+// staging closure includes the current account-pool source and adds 10,479 bytes.
+// Exact measured ceilings; dynamic provider and native/fixture quarantine stays enforced.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_813_312,
-  "wrangler.staging.jsonc": 2_806_268,
+  "wrangler.production.jsonc": 2_814_828,
+  "wrangler.staging.jsonc": 2_816_747,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",

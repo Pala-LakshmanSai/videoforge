@@ -3,6 +3,7 @@ import { planVNextResolvedRenderManifest, type AcceptedAssetBinding } from "@vid
 import type { TransactionalSqlExecutor } from "@videoforge/control-plane";
 
 import type { HostedR2BucketBinding } from "./configuration";
+import { openingVideoBudget } from "./hosted-video-plan";
 import { canonicalJson, exactHostedRenderSubmission, type HostedCpuSubmission } from "./submission";
 import { HostedRenderPlanAppendDatabase } from "./hosted-serverless-callback";
 import {
@@ -529,19 +530,24 @@ export function createHostedV209RenderHandoff(input: {
       const rawVideos = ready.acceptedVideos ?? [];
       const rawVideoPlan = ready.videoPlan ? record(ready.videoPlan) : null;
       if (
-        rawVideoPlan?.replacement_policy === "WHOLE_SCENE_V2" &&
-        (typeof rawVideoPlan.coverage_percent !== "number" ||
-          !Number.isSafeInteger(rawVideoPlan.coverage_percent))
+        ["WHOLE_SCENE_V2", "OPENING_180_V3"].includes(String(rawVideoPlan?.replacement_policy)) &&
+        (typeof rawVideoPlan!.coverage_percent !== "number" ||
+          !Number.isSafeInteger(rawVideoPlan!.coverage_percent))
       )
         throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
-      const videoPolicy =
-        rawVideoPlan?.replacement_policy === "WHOLE_SCENE_V2"
-          ? {
-              coveragePercent: rawVideoPlan.coverage_percent as number,
-              replacementPolicy: "WHOLE_SCENE_V2" as const,
-              selectionSha256: text(rawVideoPlan.selection_sha256, SHA256),
-            }
-          : undefined;
+      const videoPolicy = ["WHOLE_SCENE_V2", "OPENING_180_V3"].includes(
+        String(rawVideoPlan?.replacement_policy),
+      )
+        ? {
+            coveragePercent:
+              rawVideoPlan!.replacement_policy === "OPENING_180_V3"
+                ? openingVideoBudget(timeline.value, rawVideoPlan!.coverage_percent as number)
+                    .rendererCoveragePercent
+                : (rawVideoPlan!.coverage_percent as number),
+            replacementPolicy: "WHOLE_SCENE_V2" as const,
+            selectionSha256: text(rawVideoPlan!.selection_sha256, SHA256),
+          }
+        : undefined;
       if (
         rawVideoPlan &&
         rawVideoPlan.replacement_policy !== undefined &&

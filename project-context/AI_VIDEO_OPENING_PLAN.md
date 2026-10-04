@@ -1,0 +1,29 @@
+# AI video opening — V2-09 / VF-10-09
+
+User decision, 4 October 2026: fresh videos use full-screen generated scene footage for the first 180 seconds, independently of the selected coverage percentage. The percentage applies only to the remaining film. Videos shorter than 180 seconds use footage throughout. Whole scenes crossing 3:00 finish as footage; their post-opening frames count toward the remaining-duration budget before optional scenes are selected. Hard cuts, narration, media quality and private ownership remain.
+
+## Implementation and release sequence
+
+1. Start from the latest verified production source in an isolated checkout. Preserve all unrelated work and existing revision/provider identities.
+2. Pin a new immutable opening policy on fresh revisions. Preserve legacy percentage and prefix policies through recovery and exports.
+3. Version the scheduler: create full-image source tasks for every opening scene, preserving words, timing, scene bounds and the existing later compositions. Source images become footage; no opening still or avatar composition reaches the final video.
+4. Require every opening scene's successful whole clip at both selection and render barriers. Retain existing optional-scene fallback after the opening. Uncertain paid submissions retain their original identities.
+5. Select optional complete scenes with the existing spreading/fill algorithm, using only duration after 180 seconds. Show the separate opening and remaining coverage in Create, preflight, Progress and costs.
+6. Add regression checks for Off/custom/preset percentages, short/exact/long durations, crossing scenes, forged/missing opening clips, failed opening clips, old-policy compatibility, private scope, immutable replay and recovery.
+7. Run affected packages, web/Worker types, changed-file lint, both bundles, context and secret checks. Rehearse additive SQL under native runtime roles with rollback and verify historical preimages and permissions.
+8. Push the reviewed source; apply the guarded additive migration and publish the exact production bundle while retaining settings, secrets, Workflow registrations and qualified runtime pins. Keep the prior binary available for rollback.
+9. Verify production assets/status and real Chrome Create/Progress/Review/Library. Complete a bounded provider-backed canary, verify its private artifact and playback, and confirm any test rentals are clean. Test the 180-second boundary with deterministic full-duration plans; do not describe a short canary as long-form editorial proof.
+10. Record exact source, Worker, checks, artifact and resource evidence in CURRENT_STATE and existing GPT Space Pages. Preserve broader unresolved gates.
+
+The user explicitly authorizes implementation, required testing, remote publication and production deployment without another confirmation. Paid acceptance is bounded internally and stops on uncertain identity, unresolved cleanup or changed provider price; accepted work is never blindly replayed.
+
+## Local regression evidence
+
+Scheduler suite: 51 passing tests, including 40/180/181 second and 10 minute opening schedules,
+exact precursor word/frame boundaries, preserved later compositions, replay hashes, short
+zero-avatar work plans and rejection of opening avatars. Hosted screen suite: 240 passing tests,
+including 60 second Off footage cost, 600 second 7% remaining coverage, unchanged slider/custom
+submission and visible Progress scene-video work at zero optional percentage. Owned tests lint
+clean; contracts and pipeline builds pass. These are provider-free local checks, not production
+playback, paid image/video quality, invoice or rental-cleanup proof. Root CURRENT_STATE records
+subsequent deployment and external acceptance.

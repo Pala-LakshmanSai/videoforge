@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TimelinePlanDocument } from "@videoforge/contracts";
-import { planHostedVideoSelections } from "./hosted-video-plan";
+import { planHostedVideoSelections, openingVideoBudget } from "./hosted-video-plan";
 
 function timeline(count: number): TimelinePlanDocument {
   return {
@@ -158,5 +158,100 @@ describe("whole scene coverage policy", () => {
     expect(() => planHostedVideoSelections(timeline(6), policy(percent))).toThrow(
       "HOSTED_VIDEO_POLICY_INVALID",
     );
+  });
+});
+
+describe("independent three-minute opening", () => {
+  const openingTimeline = (count: number) =>
+    ({
+      ...timeline(count),
+      segments: timeline(count).segments.map((s) => ({
+        ...s,
+        timeline_composition: "IMAGE_FULL",
+        required_slots: { image: { task_key: `image:${s.segment_id}` } },
+      })),
+    }) as TimelinePlanDocument;
+  it.each([0, 7, 15, 25, 50, 75, 100, 33])(
+    "requires every opening scene at %i percent and budgets only the remainder",
+    (percent) => {
+      const input = openingTimeline(120); // 10 minutes; first36 scenes mandatory.
+      const selections = planHostedVideoSelections(input, {
+        coveragePercent: percent,
+        replacementPolicy: "OPENING_180_V3",
+      });
+      const mandatory = selections.filter((s) => Number(s.segmentId.split("-")[1]) < 36);
+      const optional = selections.filter((s) => Number(s.segmentId.split("-")[1]) >= 36);
+      expect(mandatory).toHaveLength(36);
+      expect(optional.reduce((sum, s) => sum + s.videoFrameCount, 0)).toBeLessThanOrEqual(
+        Math.floor((12600 * percent) / 100),
+      );
+      const priorOptional = planHostedVideoSelections(
+        { total_frames: 12600, segments: input.segments.slice(36) },
+        { coveragePercent: percent, replacementPolicy: "WHOLE_SCENE_V2" },
+      );
+      expect(optional).toEqual(priorOptional);
+      expect(
+        planHostedVideoSelections(input, {
+          coveragePercent: percent,
+          replacementPolicy: "OPENING_180_V3",
+        }),
+      ).toEqual(selections);
+    },
+  );
+  it.each([4, 36])(
+    "fully covers short and exact180second films even at zero percent (%i scenes)",
+    (count) => {
+      const input = openingTimeline(count);
+      const selections = planHostedVideoSelections(input, {
+        coveragePercent: 0,
+        replacementPolicy: "OPENING_180_V3",
+      });
+      expect(selections).toHaveLength(count);
+      expect(selections.reduce((sum, s) => sum + s.videoFrameCount, 0)).toBe(input.total_frames);
+      expect(openingVideoBudget(input, 0).rendererCoveragePercent).toBe(100);
+    },
+  );
+  it("finishes a crossing scene in motion and consumes its tail before optional coverage", () => {
+    const input = openingTimeline(120);
+    const segments = input.segments.map((s, i) => ({
+      ...s,
+      start_frame: i < 36 ? s.start_frame : s.start_frame + 30,
+      end_frame_exclusive: i < 35 ? s.end_frame_exclusive : s.end_frame_exclusive + 30,
+    }));
+    const crossing = { ...input, total_frames: input.total_frames + 30, segments };
+    expect(openingVideoBudget(crossing, 7)).toMatchObject({
+      mandatoryFrames: 5430,
+      crossingFrames: 30,
+      optionalFrames: 854,
+    });
+    const selections = planHostedVideoSelections(crossing, {
+      coveragePercent: 0,
+      replacementPolicy: "OPENING_180_V3",
+    });
+    expect(selections).toHaveLength(36);
+    expect(selections.at(-1)?.videoFrameCount).toBe(180);
+  });
+  it("rejects avatar, split and oversized opening scenes instead of silently skipping them", () => {
+    for (const composition of ["AVATAR_FULL", "AVATAR_SPLIT_IMAGE"]) {
+      const input = timeline(120);
+      (input.segments as TimelinePlanDocument["segments"][number][])[0] = {
+        ...input.segments[0],
+        timeline_composition: composition,
+      } as TimelinePlanDocument["segments"][number];
+      expect(() =>
+        planHostedVideoSelections(input, {
+          coveragePercent: 0,
+          replacementPolicy: "OPENING_180_V3",
+        }),
+      ).toThrow("HOSTED_VIDEO_OPENING_TIMELINE_INVALID");
+    }
+    const input = openingTimeline(120);
+    (input.segments as TimelinePlanDocument["segments"][number][])[0] = {
+      ...input.segments[0]!,
+      end_frame_exclusive: 358,
+    };
+    expect(() =>
+      planHostedVideoSelections(input, { coveragePercent: 7, replacementPolicy: "OPENING_180_V3" }),
+    ).toThrow("HOSTED_VIDEO_OPENING_TIMELINE_INVALID");
   });
 });

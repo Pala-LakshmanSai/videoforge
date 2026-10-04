@@ -155,7 +155,11 @@ export async function compileCompleteWorkPlan(
 
   const imageSegments = request.timeline.value.segments.filter(hasImage);
   const avatarSegments = request.timeline.value.segments.filter(isAvatarSegment);
-  if (imageSegments.length === 0 || avatarSegments.length === 0) {
+  if (
+    imageSegments.length === 0 ||
+    (avatarSegments.length === 0 &&
+      !["scheduler-v8", "scheduler-v9"].includes(request.revision.value.scheduler_version))
+  ) {
     return fail("Complete work plan requires image and avatar work.", ["timeline", "segments"]);
   }
 
@@ -245,7 +249,14 @@ export async function compileCompleteWorkPlan(
 
   try {
     const generationWorkManifest = await validateAndHashContractDocument("generationWorkManifest", {
-      schema_version: "generation-work-manifest/v1",
+      schema_version: ["scheduler-v8", "scheduler-v9"].includes(
+        request.revision.value.scheduler_version,
+      )
+        ? "generation-work-manifest/v2"
+        : "generation-work-manifest/v1",
+      ...(["scheduler-v8", "scheduler-v9"].includes(request.revision.value.scheduler_version)
+        ? { scheduler_version: request.revision.value.scheduler_version }
+        : {}),
       project_revision_id: request.timeline.value.project_revision_id,
       revision_config_hash: request.revision.sha256,
       timeline_plan_hash: request.timeline.sha256,

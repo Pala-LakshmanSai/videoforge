@@ -103,9 +103,12 @@ nearest-timestamp frame duplication/resampling (the equivalent of `fps=30:round=
 
 ## Timeline grammar
 
-- Start at 00:00 with `AVATAR_FULL` unless a later user decision overrides the cold-open rule.
-- Target 21–22% total avatar coverage.
-- Target approximately half of avatar time in `AVATAR_FULL` and half in `AVATAR_SPLIT_IMAGE`.
+- Fresh V8/V9 revisions start with full-screen AI scene video and require it throughout the first
+  180 seconds, or the whole film if shorter. No opening still, avatar or split is allowed.
+  Complete crossing scenes finish as footage; selected coverage applies only after 180 seconds.
+- The immutable legacy precursor starts with `AVATAR_FULL` and targets 21–22% total avatar
+  coverage with approximately half full/half split. Fresh V8/V9 replace its opening avatars
+  without reallocating the later schedule; final whole-video avatar ratios may differ.
 - Normal avatar clip: 2–6 seconds, approximately 3.7 seconds average; six seconds is the normal hard maximum.
 - A strong opening sentence may extend only to seven seconds. No later avatar appearance may use that exception.
 - Target avatar cadence: one appearance every 14–20 seconds, adjusted to phrase boundaries.
@@ -115,6 +118,11 @@ nearest-timestamp frame duplication/resampling (the equivalent of `fps=30:round=
 - No silent visual montage; narration drives the entire edit.
 
 These limits reproduce the measured reference cadence and bound independent SoulX work units. They do not establish or imply that VRAM consumption scales linearly with clip duration; only measured runtime evidence may support a memory claim.
+
+DEC_VIDEO_OPENING_001 owns the current opening exception. Exact scene bounds, crossing-suffix
+budget and required successful footage barriers are normative in
+[07_PIPELINE_AND_SCHEDULER.md](07_PIPELINE_AND_SCHEDULER.md#mandatory-ai-video-opening--2026-10-04).
+Legacy revisions retain their original grammar and media identities.
 
 ## Built-in default visual language
 
@@ -164,6 +172,6 @@ Before delivery verify:
 - MP4 is seekable and plays in the user's Chrome.
 
 
-## Published whole scene motion and selectable coverage (2026-10-03)
+## Historical published whole scene coverage (2026-10-03; fresh opening supersedes this)
 
 DEC_VIDEO_SCENE_001 and DEC_VIDEO_COVERAGE_001 are published in source 89cfe121: each accepted WHOLE_SCENE_V2 clip replaces a complete IMAGE_FULL scene within the user-selected finished-video coverage ceiling. Create accepts integers 0–100%, default 7%; zero skips scene footage, high values saturate at eligible scene capacity, and avatars retain their timing/layout. Whole-scene underfill is valid; no silent overshoot. Existing LEGACY_PREFIX_V1 plans retain their immutable 7% prefixes and outputs. Migration248, qualified Desktop0.1.47/Cloud readers and provider-free composition checks pass. Fresh paid whole-film/editorial acceptance remains separate. See [the combined implementation plan](tasks/SEEDANCE_VIDEO_PLAN.md#whole-scene-replacement-follow-up) and CURRENT_STATE.yaml.

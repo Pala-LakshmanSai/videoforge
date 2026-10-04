@@ -14,10 +14,14 @@ import {
 } from "../errors.js";
 import type { SchedulerPort, SchedulerRequest } from "./ports.js";
 import {
+  AI_VIDEO_OPENING_SECONDS,
+  AI_VIDEO_OPENING_SCHEDULER_VERSION,
+  AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION,
   SCHEDULER_SHOT_ROLES,
   NARRATION_SHOT_SCHEDULER_VERSION,
   NARRATION_SHOT_SHORT_SCHEDULER_VERSION,
   schedulerTimingVersion,
+  schedulerHasAiVideoOpening,
   WORD_BOUNDARY_SCHEDULER_VERSION,
   WORD_BOUNDARY_SCHEDULER_CONFIG,
   SHORT_FORM_SCHEDULER_CONFIG,
@@ -129,7 +133,8 @@ function validateSchedulerInput(
     revision.scheduler_version !== SCRIPT_SHORT_FORM_SCHEDULER_VERSION &&
     revision.scheduler_version !== WORD_BOUNDARY_SCHEDULER_VERSION &&
     revision.scheduler_version !== NARRATION_SHOT_SCHEDULER_VERSION &&
-    revision.scheduler_version !== NARRATION_SHOT_SHORT_SCHEDULER_VERSION
+    revision.scheduler_version !== NARRATION_SHOT_SHORT_SCHEDULER_VERSION &&
+    !schedulerHasAiVideoOpening(revision.scheduler_version)
   ) {
     return fail(
       "TIMELINE_INVALID",
@@ -143,6 +148,8 @@ function validateSchedulerInput(
           WORD_BOUNDARY_SCHEDULER_VERSION,
           NARRATION_SHOT_SCHEDULER_VERSION,
           NARRATION_SHOT_SHORT_SCHEDULER_VERSION,
+          AI_VIDEO_OPENING_SCHEDULER_VERSION,
+          AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION,
         ],
       },
     );
@@ -617,7 +624,8 @@ export function validateTimelineSemantics(
   plan: TimelinePlanDocument,
   transcript: TranscriptTimingDocument,
 ): PipelineFailure | null {
-  if (plan.segments[0]?.timeline_composition !== "AVATAR_FULL") {
+  const hasAiVideoOpening = schedulerHasAiVideoOpening(plan.scheduler_version);
+  if (!hasAiVideoOpening && plan.segments[0]?.timeline_composition !== "AVATAR_FULL") {
     return fail(
       "TIMELINE_INVALID",
       "The timeline must begin with a full-screen avatar cold open.",
@@ -635,6 +643,15 @@ export function validateTimelineSemantics(
   let previousAvatarComposition: "AVATAR_FULL" | "AVATAR_SPLIT_IMAGE" | null = null;
 
   for (const [index, segment] of plan.segments.entries()) {
+    const isOpeningScene =
+      hasAiVideoOpening && segment.source_audio_start_ms < AI_VIDEO_OPENING_SECONDS * 1_000;
+    if (isOpeningScene && segment.timeline_composition !== "IMAGE_FULL") {
+      return fail("TIMELINE_INVALID", "Opening scenes must use full-screen AI-video image slots.", [
+        "segments",
+        index,
+        "timeline_composition",
+      ]);
+    }
     if (segmentIds.has(segment.segment_id)) {
       return fail("TIMELINE_INVALID", "Timeline segment IDs must be unique.", [
         "segments",
@@ -684,11 +701,14 @@ export function validateTimelineSemantics(
     const durationMs = segment.source_audio_end_ms - segment.source_audio_start_ms;
     if (
       segment.timeline_composition === "IMAGE_FULL" &&
-      (durationMs < IMAGE_MINIMUM_MS || durationMs > IMAGE_MAXIMUM_MS)
+      (durationMs < (isOpeningScene ? AVATAR_MINIMUM_MS : IMAGE_MINIMUM_MS) ||
+        durationMs > IMAGE_MAXIMUM_MS)
     ) {
       return fail(
         "TIMELINE_INVALID",
-        "Full-image scenes must remain between three and seven seconds.",
+        isOpeningScene
+          ? "Opening scenes must remain between two and seven seconds."
+          : "Full-image scenes must remain between three and seven seconds.",
         ["segments", index],
       );
     }
@@ -734,7 +754,10 @@ export function validateTimelineSemantics(
     plan.scheduler_version,
     true,
   );
-  if (avatarRatio < coverageRange.minimum || avatarRatio > coverageRange.maximum) {
+  if (
+    !hasAiVideoOpening &&
+    (avatarRatio < coverageRange.minimum || avatarRatio > coverageRange.maximum)
+  ) {
     return fail(
       "TIMELINE_INVALID",
       coverageRange.minimum === SHORT_FORM_SCHEDULER_CONFIG.short_form_target_avatar_ratio_minimum
@@ -743,7 +766,10 @@ export function validateTimelineSemantics(
       ["segments"],
     );
   }
-  if (Math.abs(fullAvatarFrames - splitAvatarFrames) > frameForMilliseconds(OPENER_MAXIMUM_MS)) {
+  if (
+    !hasAiVideoOpening &&
+    Math.abs(fullAvatarFrames - splitAvatarFrames) > frameForMilliseconds(OPENER_MAXIMUM_MS)
+  ) {
     return fail(
       "TIMELINE_INVALID",
       "Full and split avatar cumulative shares must remain near-even.",
@@ -901,7 +927,7 @@ function buildTimelinePlan(
     );
   }
 
-  return {
+  const plan: TimelinePlanDocument = {
     schema_version: "timeline-plan/v1",
     project_revision_id: revision.project_revision_id,
     revision_config_hash: request.revision.sha256,
@@ -912,6 +938,21 @@ function buildTimelinePlan(
     total_frames: totalFrames,
     segments: createTimelineSegments(request, ranges, variation),
   };
+  if (!schedulerHasAiVideoOpening(revision.scheduler_version)) return plan;
+
+  // Validate the unchanged predecessor schedule before removing opening avatar work. Its
+  // original coverage and balance remain authoritative; the opening does not rebalance the tail.
+  const precursorFailure = validateTimelineSemantics(
+    { ...plan, scheduler_version: schedulerTimingVersion(revision.scheduler_version) },
+    transcript,
+  );
+  if (precursorFailure !== null) return precursorFailure;
+  const openingRanges = ranges.map((range) =>
+    boundaryMilliseconds(transcript, range.startIndex) < AI_VIDEO_OPENING_SECONDS * 1_000
+      ? { ...range, timelineComposition: "IMAGE_FULL" as const }
+      : range,
+  );
+  return { ...plan, segments: createTimelineSegments(request, openingRanges, variation) };
 }
 
 /**

@@ -97,6 +97,17 @@ const SHA256_ROUND_CONSTANTS = new Uint32Array([
   0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
 ]);
 
+export function sceneFootageTargetSeconds(
+  durationMs: number,
+  percent: number,
+  openingSeconds = 0,
+): number {
+  const seconds = durationMs / 1000;
+  return (
+    Math.min(seconds, openingSeconds) + (Math.max(0, seconds - openingSeconds) * percent) / 100
+  );
+}
+
 export interface CatalogResponse {
   readonly default_image_style_version_id?: string;
   readonly video_generation?: {
@@ -105,6 +116,7 @@ export interface CatalogResponse {
     readonly coverage_min_percent?: number;
     readonly coverage_max_percent?: number;
     readonly adjustable_coverage_supported?: boolean;
+    readonly required_opening_seconds?: number;
     readonly usd_per_second: number;
     readonly resolution: string;
     readonly aspect_ratio: string;
@@ -780,6 +792,7 @@ interface HostedCost {
     readonly seedance_usd?: number;
     readonly seedance_reported_usd?: number;
     readonly seedance_coverage_percent?: number;
+    readonly seedance_required_opening_seconds?: number;
     readonly seedance_actual_coverage_percent?: number | null;
     readonly seedance_planned_coverage_percent?: number | null;
     readonly seedance_eligible_coverage_percent?: number | null;
@@ -1098,6 +1111,9 @@ interface HostedMediaPaginationResponse {
 
 interface HostedSceneFootageCoverage {
   readonly requested_coverage_percent: number;
+  readonly required_opening_seconds?: number;
+  readonly opening_planned_seconds?: number;
+  readonly opening_completed_seconds?: number;
   readonly planned_coverage_percent: number | null;
   readonly actual_coverage_percent: number | null;
   readonly eligible_coverage_percent?: number | null;
@@ -1111,6 +1127,7 @@ function sceneFootageCoverageFromCost(
   if (estimate?.seedance_coverage_percent === undefined) return null;
   return {
     requested_coverage_percent: estimate.seedance_coverage_percent,
+    required_opening_seconds: estimate.seedance_required_opening_seconds,
     planned_coverage_percent: estimate.seedance_planned_coverage_percent ?? null,
     actual_coverage_percent: estimate.seedance_actual_coverage_percent ?? null,
     eligible_coverage_percent: estimate.seedance_eligible_coverage_percent,
@@ -1121,7 +1138,7 @@ function sceneFootageCoverageFromCost(
 function SceneFootageCoverage({ coverage }: { coverage: HostedSceneFootageCoverage | null }) {
   if (!coverage) return null;
   const percent = (value: number) => `${Number(value.toFixed(1))}%`;
-  if (coverage.requested_coverage_percent === 0)
+  if (coverage.requested_coverage_percent === 0 && !coverage.required_opening_seconds)
     return (
       <p className="helper" aria-label="Scene footage coverage">
         Scene footage off · $0.
@@ -1130,7 +1147,10 @@ function SceneFootageCoverage({ coverage }: { coverage: HostedSceneFootageCovera
   return (
     <div className="scene-footage-coverage" aria-label="Scene footage coverage">
       <p className="helper">
-        Scene footage · Requested up to {percent(coverage.requested_coverage_percent)}
+        {coverage.required_opening_seconds
+          ? "First 3 minutes: AI video only · Afterward "
+          : "Scene footage · Requested up to "}
+        {percent(coverage.requested_coverage_percent)}
         {coverage.planned_coverage_percent === null
           ? " · Planning pending"
           : ` · Planned ${percent(coverage.planned_coverage_percent)}`}
@@ -1138,7 +1158,15 @@ function SceneFootageCoverage({ coverage }: { coverage: HostedSceneFootageCovera
           ? " · Completed coverage pending"
           : ` · Completed ${percent(coverage.actual_coverage_percent)}`}
       </p>
-      {coverage.planned_coverage_percent === 0 ? (
+      {coverage.required_opening_seconds && coverage.opening_completed_seconds !== undefined ? (
+        <p className="helper">
+          Opening footage completed: {coverage.opening_completed_seconds.toFixed(1)}s
+          {coverage.opening_planned_seconds === undefined
+            ? ""
+            : ` / ${coverage.opening_planned_seconds.toFixed(1)}s`}
+        </p>
+      ) : null}
+      {coverage.planned_coverage_percent === 0 && !coverage.required_opening_seconds ? (
         <p className="helper">No full scene fits. Scene footage skipped.</p>
       ) : coverage.planned_coverage_percent !== null &&
         coverage.planned_coverage_percent < coverage.requested_coverage_percent ? (
@@ -3608,11 +3636,13 @@ export function HostedCreateProjectScreen() {
                 />
               </div>
               <p id="video-coverage-help" className="helper">
-                {coverageValid
-                  ? videoCoveragePercent === 0
-                    ? "Scene footage off · $0."
-                    : `Up to ${videoCoveragePercent}% of your video. Full scenes only.`
-                  : "Use a whole percentage from 0 through 100."}
+                {!coverageValid
+                  ? "Use a whole percentage from 0 through 100."
+                  : catalog.data.video_generation?.required_opening_seconds
+                    ? `First 3 minutes: AI video only. Afterward: ${videoCoveragePercent === 0 ? "no optional footage" : `up to ${videoCoveragePercent}% coverage`}. Full scenes only.`
+                    : videoCoveragePercent === 0
+                      ? "Scene footage off · $0."
+                      : `Up to ${videoCoveragePercent}% of your video. Full scenes only.`}
               </p>
               {!coverageSupported ? (
                 <p className="validation validation-danger">
@@ -3622,10 +3652,16 @@ export function HostedCreateProjectScreen() {
               {coverageValid && voiceoverDurationMs !== null ? (
                 <p className="helper" aria-label="Preliminary scene footage estimate">
                   Scene footage: up to{" "}
-                  {(((voiceoverDurationMs / 1000) * videoCoveragePercent) / 100).toFixed(2)}s
-                  {videoCoveragePercent === 0
+                  {sceneFootageTargetSeconds(
+                    voiceoverDurationMs,
+                    videoCoveragePercent,
+                    catalog.data.video_generation.required_opening_seconds,
+                  ).toFixed(2)}
+                  s
+                  {!catalog.data.video_generation.required_opening_seconds &&
+                  videoCoveragePercent === 0
                     ? " · $0"
-                    : ` · Base estimate ${formatUsd((((voiceoverDurationMs / 1000) * videoCoveragePercent) / 100) * catalog.data.video_generation.usd_per_second)}`}
+                    : ` · Base estimate ${formatUsd(sceneFootageTargetSeconds(voiceoverDurationMs, videoCoveragePercent, catalog.data.video_generation.required_opening_seconds) * catalog.data.video_generation.usd_per_second)}`}
                 </p>
               ) : null}
             </fieldset>
@@ -5777,7 +5813,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     (stage) =>
       !(
         stage.id === "video-generation" &&
-        query.data.cost?.api_estimate?.seedance_coverage_percent === 0
+        query.data.cost?.api_estimate?.seedance_coverage_percent === 0 &&
+        !query.data.cost?.api_estimate?.seedance_required_opening_seconds
       ) &&
       !["prepare", "technical-check"].includes(stage.id) &&
       !["Prepare", "Prepare project", "Technical check"].includes(stage.label),
@@ -6201,7 +6238,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   // atomic batch-progress commit, so both belong in the live viewer.
   const acceptedPrompts = prompts;
   const promptProgress = query.data.prompt_progress;
-  const promptCapacityHeld = promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT";
+  const promptCapacityHeld =
+    promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT";
   const promptWritingActive =
     promptWriting.isPending ||
     ["STARTING", "RUNNING", "RETRYING"].includes(promptStage?.status ?? "");
@@ -6333,7 +6371,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         (stage) =>
           stage.status === "FAILED" ||
           (stage.id === "prompt-writing" &&
-            (promptCapacityHeld || promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW")),
+            (promptCapacityHeld ||
+              promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW")),
       )
       .map((stage) => stage.id),
   );
@@ -6620,7 +6659,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               detail={
                 query.data.generation_provider === "KIE_FAL"
                   ? cost?.api_estimate
-                    ? `${cost.api_estimate.kie_images} Kie images + ${cost.api_estimate.fal_avatar_seconds.toFixed(1)}s Fal avatar${cost.api_estimate.seedance_seconds === undefined ? "" : ` + ${cost.api_estimate.seedance_seconds.toFixed(1)}s scene footage${cost.api_estimate.seedance_coverage_percent === undefined ? "" : ` (up to ${cost.api_estimate.seedance_coverage_percent}%)`}`} · published-rate estimate`
+                    ? `${cost.api_estimate.kie_images} Kie images + ${cost.api_estimate.fal_avatar_seconds.toFixed(1)}s Fal avatar${cost.api_estimate.seedance_seconds === undefined ? "" : ` + ${cost.api_estimate.seedance_seconds.toFixed(1)}s scene footage${cost.api_estimate.seedance_coverage_percent === undefined ? "" : ` (up to ${cost.api_estimate.seedance_coverage_percent}%${cost.api_estimate.seedance_required_opening_seconds ? " after 3:00" : ""})`}`} · published-rate estimate`
                     : "Calculated when planning finishes"
                   : cost?.cap_usd == null
                     ? undefined
@@ -6951,10 +6990,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                     ? promptCapacityHeld
                       ? "The prompt provider was busy. Saved prompts remain intact; contact support before continuing."
                       : promptProgress?.problem_code === "HOSTED_PROMPT_OUTPUT_INVALID"
-                      ? "The original provider result was invalid. Saved prompts are intact; another paid batch will not be sent automatically."
-                      : promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
-                        ? "Prompt writing is paused while provider credits are unavailable. Saved prompts remain intact."
-                        : "No new prompt batch will be sent automatically."
+                        ? "The original provider result was invalid. Saved prompts are intact; another paid batch will not be sent automatically."
+                        : promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
+                          ? "Prompt writing is paused while provider credits are unavailable. Saved prompts remain intact."
+                          : "No new prompt batch will be sent automatically."
                     : acceptedPrompts.length > 0
                       ? "Accepted prompts saved."
                       : "Waiting for prompt writing."}
@@ -7134,22 +7173,22 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                   ? promptCapacityHeld
                     ? "Prompt writing needs review."
                     : generationStopped
-                    ? "Generation stopped."
-                    : generationWaitingForGpu
-                      ? query.data.generation_provider === "KIE_FAL"
-                        ? "Waiting for API generation."
-                        : "Waiting for GPUs."
-                      : promptStage?.status === "COMPLETE"
-                        ? query.data.generation_provider === "KIE_FAL" ||
-                          (query.data.gpu_transport === "QUALIFIED_EXACT" &&
-                            query.data.gpu_readiness.dispatch_available === true)
-                          ? "Ready to generate."
-                          : "Waiting for GPU qualification."
-                        : promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
-                          ? "Prompt writing is paused for provider credits."
-                          : promptAutoStartError
-                            ? "Automatic image prompt writing could not start."
-                            : "Writing image prompts…"
+                      ? "Generation stopped."
+                      : generationWaitingForGpu
+                        ? query.data.generation_provider === "KIE_FAL"
+                          ? "Waiting for API generation."
+                          : "Waiting for GPUs."
+                        : promptStage?.status === "COMPLETE"
+                          ? query.data.generation_provider === "KIE_FAL" ||
+                            (query.data.gpu_transport === "QUALIFIED_EXACT" &&
+                              query.data.gpu_readiness.dispatch_available === true)
+                            ? "Ready to generate."
+                            : "Waiting for GPU qualification."
+                          : promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
+                            ? "Prompt writing is paused for provider credits."
+                            : promptAutoStartError
+                              ? "Automatic image prompt writing could not start."
+                              : "Writing image prompts…"
                   : "Transcription complete; generation planning is starting."}
           </strong>
           {renderHandoff.isError && !query.data.generation ? (
@@ -7182,8 +7221,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                 {promptCapacityHeld
                   ? "Saved prompts remain intact. Contact support to review this held request; no new request will be sent automatically."
                   : promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
-                  ? "Saved prompts remain intact. Check again after provider credits are available."
-                  : "Scene prompts are generated automatically."}
+                    ? "Saved prompts remain intact. Check again after provider credits are available."
+                    : "Scene prompts are generated automatically."}
               </span>
               {promptAutoStartError ? <span>{promptWriting.error.message}</span> : null}
               {promptAutoStartError ? (

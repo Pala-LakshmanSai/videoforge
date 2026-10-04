@@ -1,3 +1,8 @@
+Mandatory AI opening: the 2026-10-04 user decision requires full-screen AI scene video for the
+first 180 seconds independently of selected coverage; the percentage applies only afterward.
+Read AI_VIDEO_OPENING_PLAN.md and the selected opening profile. Existing revisions remain
+immutable. CURRENT_STATE.yaml owns implementation, production, paid acceptance and cleanup truth.
+
 Throughput planning follow-up: read `api_throughput_plan_2026_10_04` and the follow-up section in API_CAPACITY_PLAN.md. Target40 completed30–40minute Cloud videos/day; optional independent Kie/Fal accounts at unchanged cost; Runware unchanged. This is a plan, not an implemented pooling release.
 
 Shared API capacity work: follow `api_capacity_2026_10_04` in CURRENT_STATE.yaml and API_CAPACITY_PLAN.md. Shared provider controls are published; actual account quotas and ten-user paid throughput remain unverified. Existing release evidence below remains historical.
@@ -22,7 +27,7 @@ Cloud audio save recovery retains bounded uploads and truthful failures. Read `c
 
 Catalog/preflight/Create readiness is published at `8ae9e4e3` / Worker `8c5981cf`; admission-derived access supersedes its former account list. See CURRENT_STATE.yaml and the Cloud readiness/admission evidence.
 
-Whole-scene coverage retains migration248 and Desktop0.1.47: integer0–100%, default7%, whole-scene underfill without overshoot; legacy plans/outputs preserved. Assets/HTTP/Chrome pass; fresh paid/editorial gates remain. Read `whole_scene_motion_plan_2026_10_03` in CURRENT_STATE.yaml and `tasks/SEEDANCE_VIDEO_PLAN.md#whole-scene-replacement-follow-up`.
+Whole-scene coverage retains migration248 and Desktop0.1.47: integer 0–100%, default 7%, whole-scene underfill without overshoot; legacy plans/outputs preserved. Assets/HTTP/Chrome pass; fresh paid/editorial gates remain. Read `whole_scene_motion_plan_2026_10_03` in CURRENT_STATE.yaml and `tasks/SEEDANCE_VIDEO_PLAN.md#whole-scene-replacement-follow-up`.
 
 Progress simplification retains internal gates, elapsed and released-compute labels. Read `progress_stage_simplification_2026_10_03` in CURRENT_STATE.yaml for historical limits.
 

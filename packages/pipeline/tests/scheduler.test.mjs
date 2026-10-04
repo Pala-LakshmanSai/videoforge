@@ -20,9 +20,14 @@ import {
   SCRIPT_SHORT_FORM_SCHEDULER_VERSION,
   SUPPORTED_SCHEDULER_CONFIG,
   SUPPORTED_SCHEDULER_VERSION,
+  AI_VIDEO_OPENING_SCHEDULER_VERSION,
+  AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION,
 } from "../dist/src/index.js";
 
-import { hasSupportedPhysicalHandAction } from "../dist/src/scheduler/scheduler.js";
+import {
+  hasSupportedPhysicalHandAction,
+  validateTimelineSemantics,
+} from "../dist/src/scheduler/scheduler.js";
 
 const SHA_A = `sha256:${"a".repeat(64)}`;
 const SHA_B = `sha256:${"b".repeat(64)}`;
@@ -1112,3 +1117,175 @@ test("fresh hands eligibility only removes hands roles, preserving wider physica
   }
   assert.ok(widerSupportedActions > 0, "fixture must preserve non-hands views of real lifting");
 });
+
+for (const durationMs of [40_000, 180_000, 181_000, 600_000]) {
+  test(`scheduler-v8 reserves the opening and preserves precursor boundaries for ${durationMs}ms`, async () => {
+    const transcript = createPropertyTranscript({
+      durationMs,
+      phraseStarts: Array.from(
+        { length: Math.ceil(durationMs / 5_000) },
+        (_, index) => index * 5_000,
+      ),
+    });
+    const precursor = requireSuccess(
+      await scheduleTimeline(
+        await propertyRequest(982_341, transcript, NARRATION_SHOT_SCHEDULER_VERSION),
+      ),
+    );
+    const request = await propertyRequest(982_341, transcript, AI_VIDEO_OPENING_SCHEDULER_VERSION);
+    const opening = requireSuccess(await scheduleTimeline(request));
+    assert.equal(opening.sha256, requireSuccess(await scheduleTimeline(request)).sha256);
+    assert.equal(opening.value.scheduler_version, AI_VIDEO_OPENING_SCHEDULER_VERSION);
+    assert.equal(opening.value.total_frames, precursor.value.total_frames);
+    assert.equal(opening.value.segments.length, precursor.value.segments.length);
+    assert.equal(validateTimelineSemantics(opening.value, transcript), null);
+
+    let nextFrame = 0;
+    let nextWord = 0;
+    let nextSourceMs = 0;
+    const boundaryFields = [
+      "start_frame",
+      "end_frame_exclusive",
+      "source_audio_start_ms",
+      "source_audio_end_ms",
+      "word_start",
+      "word_end_exclusive",
+      "phrase",
+    ];
+    for (const [index, segment] of opening.value.segments.entries()) {
+      const previous = precursor.value.segments[index];
+      for (const field of boundaryFields) assert.equal(segment[field], previous[field], field);
+      assert.equal(segment.start_frame, nextFrame);
+      assert.equal(segment.word_start, nextWord);
+      assert.equal(segment.source_audio_start_ms, nextSourceMs);
+      if (segment.source_audio_start_ms < 180_000) {
+        assert.equal(segment.timeline_composition, "IMAGE_FULL");
+        assert.deepEqual(Object.keys(segment.required_slots), ["image"]);
+        const duration = segment.source_audio_end_ms - segment.source_audio_start_ms;
+        assert.ok(duration >= 2_000 && duration <= 7_000);
+      } else {
+        assert.equal(segment.timeline_composition, previous.timeline_composition);
+        assert.equal(segment.segment_id, previous.segment_id);
+        assert.deepEqual(segment.required_slots, previous.required_slots);
+      }
+      nextFrame = segment.end_frame_exclusive;
+      nextWord = segment.word_end_exclusive;
+      nextSourceMs = segment.source_audio_end_ms;
+    }
+    assert.equal(nextFrame, opening.value.total_frames);
+    assert.equal(nextWord, transcript.words.length);
+    assert.equal(nextSourceMs, durationMs);
+    if (durationMs <= 180_000)
+      assert.ok(
+        opening.value.segments.every((segment) => segment.timeline_composition === "IMAGE_FULL"),
+      );
+    if (durationMs === 181_000)
+      assert.ok(
+        opening.value.segments.some(
+          (segment) =>
+            segment.source_audio_start_ms < 180_000 &&
+            segment.source_audio_end_ms > 180_000 &&
+            segment.timeline_composition === "IMAGE_FULL",
+        ),
+      );
+    if (durationMs === 600_000) {
+      assert.ok(
+        opening.value.segments.some((segment) => segment.timeline_composition !== "IMAGE_FULL"),
+      );
+      const compiled = requireSuccess(
+        await compileCompleteWorkPlan({
+          revision: request.revision,
+          transcript: request.transcript,
+          timeline: opening,
+          schedulerConfigHash: await sha256CanonicalJson(
+            schedulerConfigForVersion(AI_VIDEO_OPENING_SCHEDULER_VERSION),
+          ),
+          selectedSpanAudio: materializedSpans(opening.value, durationMs),
+        }),
+      );
+      assert.ok(compiled.generationWorkManifest.value.avatar_spans.length > 0);
+      assert.ok(
+        compiled.generationWorkManifest.value.avatar_spans.every(
+          (span) => span.selected_start_ms >= 180_000,
+        ),
+      );
+    }
+
+    const withAvatarOpening = structuredClone(opening.value);
+    withAvatarOpening.segments[0] = precursor.value.segments[0];
+    const failure = validateTimelineSemantics(withAvatarOpening, transcript);
+    assert.equal(failure.code, "TIMELINE_INVALID");
+    assert.deepEqual(failure.path, ["segments", 0, "timeline_composition"]);
+  });
+}
+
+for (const [name, durationMs, schedulerVersion, transcriptFactory, seed] of [
+  ["40-second", 40_000, AI_VIDEO_OPENING_SCHEDULER_VERSION, createTranscriptValue, 982_341],
+  [
+    "19-second J1TTS",
+    null,
+    AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION,
+    () =>
+      JSON.parse(
+        readFileSync(new URL("./fixtures/j1tts-short-transcript.json", import.meta.url), "utf8"),
+      ),
+    1000527468,
+  ],
+  [
+    "short word-boundary fallback",
+    null,
+    AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION,
+    () =>
+      JSON.parse(
+        readFileSync(
+          new URL("./fixtures/j1tts-word-boundary-transcript.json", import.meta.url),
+          "utf8",
+        ),
+      ),
+    42107,
+  ],
+]) {
+  test(`${name} opening compiles a versioned complete work plan without avatar work`, async () => {
+    const transcript = transcriptFactory();
+    if (durationMs !== null) assert.equal(transcript.source.duration_ms, durationMs);
+    const request = await propertyRequest(seed, transcript, schedulerVersion);
+    const timeline = requireSuccess(await scheduleTimeline(request));
+    assert.ok(
+      timeline.value.segments.every((segment) => segment.timeline_composition === "IMAGE_FULL"),
+    );
+    assert.equal(validateTimelineSemantics(timeline.value, transcript), null);
+    const compileRequest = {
+      revision: request.revision,
+      transcript: request.transcript,
+      timeline,
+      schedulerConfigHash: await sha256CanonicalJson(schedulerConfigForVersion(schedulerVersion)),
+      selectedSpanAudio: [],
+    };
+    const compiled = requireSuccess(await compileCompleteWorkPlan(compileRequest));
+    const replay = requireSuccess(await compileCompleteWorkPlan(compileRequest));
+    const work = compiled.generationWorkManifest.value;
+    assert.equal(work.schema_version, "generation-work-manifest/v2");
+    assert.equal(work.scheduler_version, schedulerVersion);
+    assert.deepEqual(work.avatar_spans, []);
+    assert.equal(work.cost_counts.avatar_generation_count, 0);
+    assert.equal(work.cost_counts.selected_span_audio_count, 0);
+    assert.equal(work.cost_counts.selected_span_audio_ms, 0);
+    assert.equal(work.image_slots.length, timeline.value.segments.length);
+    assert.equal(compiled.generationWorkManifest.sha256, replay.generationWorkManifest.sha256);
+    assert.equal(compiled.renderWorkManifest.sha256, replay.renderWorkManifest.sha256);
+    assert.ok(
+      compiled.renderWorkManifest.value.segments.every(
+        (segment) =>
+          segment.timeline_composition === "IMAGE_FULL" &&
+          segment.avatar_crop_authority === "NOT_APPLICABLE",
+      ),
+    );
+    const { scheduler_version: _openingVersion, ...legacyWork } = work;
+    await assert.rejects(
+      validateAndHashContractDocument("generationWorkManifest", {
+        ...legacyWork,
+        schema_version: "generation-work-manifest/v1",
+      }),
+    );
+  });
+}

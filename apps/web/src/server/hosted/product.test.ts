@@ -208,69 +208,74 @@ describe("approved final MP4 download", () => {
     ["episode.final.wav", "episode.final.mp4"],
     ["Café – 你好.mp3", "Café – 你好.mp4"],
     ["na\r\nme.mp3", "na__me.mp4"],
-  ])("downloads the approved MP4 using saved voiceover filename %s", async (sourceFilename, filename) => {
-    testState.approvedDownloadRows.push({
-      object_key: key,
-      content_length: bytes.length,
-      checksum_sha256: checksum,
-      voiceover_filename: sourceFilename,
-    });
-    const digest = Uint8Array.from(Buffer.from("a".repeat(64), "hex")).buffer;
-    const head = vi.fn(async () => ({
-      size: bytes.length,
-      httpMetadata: { contentType: "video/mp4" },
-      checksums: { sha256: digest },
-    }));
-    const get = vi.fn(async () => ({
-      size: bytes.length,
-      httpMetadata: { contentType: "video/mp4" },
-      body: new ReadableStream({
-        start(controller) {
-          controller.enqueue(bytes);
-          controller.close();
-        },
-      }),
-    }));
-    try {
-      const result = await handleHostedProductRequest(
-        request(path, "GET"),
-        { PRIVATE_ARTIFACTS: { head, get } } as unknown as HostedRuntimeEnvironment,
-        config,
-        executionContext,
-      );
-      expect(result?.status).toBe(200);
-      const disposition = result?.headers.get("content-disposition");
-      if (sourceFilename === "Café – 你好.mp3") {
-        expect(disposition).toContain(`filename*=UTF-8''${encodeURIComponent(filename!)}`);
-      } else {
-        expect(disposition).toBe(`attachment; filename="${filename}"`);
+  ])(
+    "downloads the approved MP4 using saved voiceover filename %s",
+    async (sourceFilename, filename) => {
+      testState.approvedDownloadRows.push({
+        object_key: key,
+        content_length: bytes.length,
+        checksum_sha256: checksum,
+        voiceover_filename: sourceFilename,
+      });
+      const digest = Uint8Array.from(Buffer.from("a".repeat(64), "hex")).buffer;
+      const head = vi.fn(async () => ({
+        size: bytes.length,
+        httpMetadata: { contentType: "video/mp4" },
+        checksums: { sha256: digest },
+      }));
+      const get = vi.fn(async () => ({
+        size: bytes.length,
+        httpMetadata: { contentType: "video/mp4" },
+        body: new ReadableStream({
+          start(controller) {
+            controller.enqueue(bytes);
+            controller.close();
+          },
+        }),
+      }));
+      try {
+        const result = await handleHostedProductRequest(
+          request(path, "GET"),
+          { PRIVATE_ARTIFACTS: { head, get } } as unknown as HostedRuntimeEnvironment,
+          config,
+          executionContext,
+        );
+        expect(result?.status).toBe(200);
+        const disposition = result?.headers.get("content-disposition");
+        if (sourceFilename === "Café – 你好.mp3") {
+          expect(disposition).toContain(`filename*=UTF-8''${encodeURIComponent(filename!)}`);
+        } else {
+          expect(disposition).toBe(`attachment; filename="${filename}"`);
+        }
+        expect(result?.headers.get("content-length")).toBe(String(bytes.length));
+        expect(result?.headers.get("x-videoforge-artifact-sha256")).toBe(checksum);
+        expect(Array.from(new Uint8Array(await result!.arrayBuffer()))).toEqual(Array.from(bytes));
+        expect(head).toHaveBeenCalledWith(key);
+        expect(get).toHaveBeenCalledWith(key, undefined);
+        const query = testState.query.mock.calls.find(([sql]) =>
+          String(sql).includes(
+            "SELECT authority.object_key, authority.issued_content_length AS content_length",
+          ),
+        );
+        expect(String(query?.[0])).toContain(
+          "review.output_checksum_sha256 = authority.issued_checksum_sha256",
+        );
+        expect(String(query?.[0])).toContain("attempt.project_revision_id = revision.id");
+        expect(String(query?.[0])).toContain(
+          "voiceover.metadata->>'filename' AS voiceover_filename",
+        );
+        expect(String(query?.[0])).toContain("voiceover.id = revision.voiceover_asset_id");
+        expect(String(query?.[0])).toContain("voiceover.account_id = revision.account_id");
+        expect(String(query?.[0])).toContain("voiceover.workspace_id = revision.workspace_id");
+        expect(String(query?.[0])).toContain("attempt.state = 'SUCCEEDED'");
+        expect(String(query?.[0])).toContain(
+          "attempt.result_object_key = result_document.object_key",
+        );
+      } finally {
+        testState.approvedDownloadRows.length = 0;
       }
-      expect(result?.headers.get("content-length")).toBe(String(bytes.length));
-      expect(result?.headers.get("x-videoforge-artifact-sha256")).toBe(checksum);
-      expect(Array.from(new Uint8Array(await result!.arrayBuffer()))).toEqual(Array.from(bytes));
-      expect(head).toHaveBeenCalledWith(key);
-      expect(get).toHaveBeenCalledWith(key, undefined);
-      const query = testState.query.mock.calls.find(([sql]) =>
-        String(sql).includes(
-          "SELECT authority.object_key, authority.issued_content_length AS content_length",
-        ),
-      );
-      expect(String(query?.[0])).toContain(
-        "review.output_checksum_sha256 = authority.issued_checksum_sha256",
-      );
-      expect(String(query?.[0])).toContain("attempt.project_revision_id = revision.id");
-      expect(String(query?.[0])).toContain("voiceover.metadata->>'filename' AS voiceover_filename");
-      expect(String(query?.[0])).toContain("voiceover.id = revision.voiceover_asset_id");
-      expect(String(query?.[0])).toContain("voiceover.account_id = revision.account_id");
-      expect(String(query?.[0])).toContain("voiceover.workspace_id = revision.workspace_id");
-      expect(String(query?.[0])).toContain("attempt.state = 'SUCCEEDED'");
-      expect(String(query?.[0])).toContain(
-        "attempt.result_object_key = result_document.object_key",
-      );
-    } finally {
-      testState.approvedDownloadRows.length = 0;
-    }
-  });
+    },
+  );
 
   it.each(["bytes=2-5", "bytes=-4"])(
     "serves seekable candidate preview on a stable authenticated URL: %s",
@@ -2569,17 +2574,35 @@ describe("hosted product route contract", () => {
 
   it("shows persisted prompt capacity refusal as a support hold after Progress is reopened", () => {
     const projected = hostedPromptProgressForCapacityHold({
-      state: "DISPATCHING", problem_code: null, capacity_hold: true,
-      accepted_scenes: 25, total_scenes: 100, active_batch_ordinal: 2,
+      state: "DISPATCHING",
+      problem_code: null,
+      capacity_hold: true,
+      accepted_scenes: 25,
+      total_scenes: 100,
+      active_batch_ordinal: 2,
     });
-    expect(projected).toMatchObject({ state: "UNKNOWN", action_required: true, can_retry: false,
-      active_batch_ordinal: null, accepted_scenes: 25 });
-    expect(hostedPromptWritingState("RUNNING", true, { acceptedScenes: 25, totalScenes: 100,
-      problemCode: projected?.problem_code })).toMatchObject({ status: "ACTION_REQUIRED",
-      progressPercent: 25, detail: expect.stringContaining("Contact support") });
+    expect(projected).toMatchObject({
+      state: "UNKNOWN",
+      action_required: true,
+      can_retry: false,
+      active_batch_ordinal: null,
+      accepted_scenes: 25,
+    });
+    expect(
+      hostedPromptWritingState("RUNNING", true, {
+        acceptedScenes: 25,
+        totalScenes: 100,
+        problemCode: projected?.problem_code,
+      }),
+    ).toMatchObject({
+      status: "ACTION_REQUIRED",
+      progressPercent: 25,
+      detail: expect.stringContaining("Contact support"),
+    });
     expect(hostedPromptProgressForCapacityHold(null)).toBeNull();
-    expect(hostedPromptProgressForCapacityHold({ state: "SUCCEEDED", capacity_hold: true }))
-      .toEqual({ state: "SUCCEEDED", capacity_hold: true });
+    expect(
+      hostedPromptProgressForCapacityHold({ state: "SUCCEEDED", capacity_hold: true }),
+    ).toEqual({ state: "SUCCEEDED", capacity_hold: true });
   });
 
   it("does not report image prompts complete merely because a timeline exists", () => {
@@ -2944,6 +2967,132 @@ describe("hosted product route contract", () => {
           expect(stage.detail).toContain("original still");
           expect(stage.detail).toContain("actual motion (up to 7% target)");
         }
+      } finally {
+        testState.query.mockImplementation(priorQuery);
+        testState.projectRows[0] = priorProject;
+      }
+    },
+  );
+
+  it.each([false, true])(
+    "counts only post-180 frames in coverage, including crossing suffix, with optional fallback=%s",
+    async (fallback) => {
+      const priorQuery = testState.query.getMockImplementation()!;
+      const priorProject = testState.projectRows[0]!;
+      testState.projectRows[0] = { ...priorProject, generation_provider: "KIE_FAL" };
+      const openingJobs = [
+        ...Array.from({ length: 17 }, (_, index) => ({
+          start_frame: index * 300,
+          video_frame_count: 300,
+          duration_seconds: 10.1,
+        })),
+        { start_frame: 5100, video_frame_count: 357, duration_seconds: 12 },
+      ].map((job) => ({
+        ...job,
+        state: "SUCCEEDED",
+        accepted_barrier_valid: true,
+        output_cost_usd: job.duration_seconds * 0.01336,
+      }));
+      const jobs = [
+        ...openingJobs,
+        {
+          start_frame: 5457,
+          video_frame_count: 60,
+          duration_seconds: 2.1,
+          state: fallback ? "FAILED" : "SUCCEEDED",
+          failure_code: fallback ? "SEEDANCE_RESULT_INVALID" : null,
+          static_fallback: fallback,
+          accepted_barrier_valid: !fallback,
+          output_cost_usd: 2.1 * 0.01336,
+        },
+      ];
+      testState.query.mockImplementation(async (sql, params) => {
+        if (sql.includes("FROM hosted_video_plans"))
+          return {
+            rows: [
+              {
+                replacement_policy: "OPENING_180_V3",
+                coverage_percent: 25,
+                planned_at: "2026-10-03T00:00:00Z",
+                opening_frames: 5457,
+                eligible_frames: 5817,
+                selections: jobs.map((job) => ({
+                  videoFrameCount: job.video_frame_count,
+                  durationSeconds: job.duration_seconds,
+                })),
+              },
+            ],
+            affectedRows: 1,
+          };
+        if (sql.includes("FROM hosted_video_jobs job"))
+          return { rows: jobs, affectedRows: jobs.length };
+        if (sql.includes("SELECT plan.id, plan.canonical_document_hash"))
+          return {
+            rows: [
+              {
+                final_frame_count: 6000,
+                image_scene_count: 20,
+                avatar_frame_count: 183,
+                planned_tasks: 21,
+                completed_tasks: 21,
+                failed_tasks: 0,
+              },
+            ],
+            affectedRows: 1,
+          };
+        return priorQuery(sql, params);
+      });
+      try {
+        const result = await handleHostedProductRequest(
+          request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+          {},
+          stagingConfig,
+          executionContext,
+        );
+        expect(result?.status).toBe(200);
+        const body = (await result!.json()) as {
+          scene_footage_coverage: {
+            requested_coverage_percent: number;
+            required_opening_seconds: number;
+            opening_planned_seconds: number;
+            opening_completed_seconds: number;
+            planned_coverage_percent: number;
+            actual_coverage_percent: number;
+            eligible_coverage_percent: number;
+            fallback_count: number;
+          };
+          cost: {
+            api_estimate: {
+              seedance_required_opening_seconds: number;
+              seedance_actual_coverage_percent: number;
+              seedance_reported_usd: number;
+            };
+          };
+          stages: { id: string; status: string; progress_percent: number }[];
+        };
+        expect(body.scene_footage_coverage).toMatchObject({
+          requested_coverage_percent: 25,
+          required_opening_seconds: 180,
+          opening_planned_seconds: 180,
+          opening_completed_seconds: 180,
+          fallback_count: fallback ? 1 : 0,
+        });
+        expect(body.scene_footage_coverage.planned_coverage_percent).toBeCloseTo(19.5);
+        expect(body.scene_footage_coverage.actual_coverage_percent).toBeCloseTo(
+          fallback ? 9.5 : 19.5,
+        );
+        expect(body.scene_footage_coverage.eligible_coverage_percent).toBeCloseTo(69.5);
+        expect(body.cost.api_estimate.seedance_required_opening_seconds).toBe(180);
+        expect(body.cost.api_estimate.seedance_actual_coverage_percent).toBeCloseTo(
+          fallback ? 9.5 : 19.5,
+        );
+        expect(body.cost.api_estimate.seedance_reported_usd).toBeCloseTo(
+          jobs.reduce((sum, job) => sum + job.output_cost_usd, 0),
+        );
+        expect(body.stages.find((stage) => stage.id === "video-generation")).toMatchObject({
+          status: "COMPLETE",
+          progress_percent: 100,
+        });
       } finally {
         testState.query.mockImplementation(priorQuery);
         testState.projectRows[0] = priorProject;
@@ -3764,7 +3913,7 @@ describe("adjustable scene footage router contract", () => {
   );
 
   it.each([0, 7, 15, 25, 50, 75, 100, 23])(
-    "preflight/v2 reports finished-video target and base estimate at %s percent",
+    "preflight/v2 reports required opening independent of selected percentage at %s percent",
     async (coverage) => {
       installReadyPresets();
       try {
@@ -3787,8 +3936,9 @@ describe("adjustable scene footage router contract", () => {
           estimate: {
             motion: {
               requested_coverage_percent: coverage,
-              target_seconds: (60 * coverage) / 100,
-              preliminary_usd: ((60 * coverage) / 100) * 0.01336,
+              target_seconds: 60,
+              required_opening_seconds: 60,
+              preliminary_usd: 60 * 0.01336,
             },
           },
         });
@@ -3804,7 +3954,7 @@ describe("adjustable scene footage router contract", () => {
   );
 
   it.each([0, 7, 15, 25, 50, 75, 100, 23])(
-    "create/v3 pins immutable WHOLE_SCENE_V2 at %s percent",
+    "create/v3 pins immutable OPENING_180_V3 at %s percent",
     async (coverage) => {
       installReadyPresets();
       testState.query.mockClear();
@@ -3837,7 +3987,7 @@ describe("adjustable scene footage router contract", () => {
           testState.scopeRows[0]!.workspace_id,
           body.project_revision_id,
           coverage,
-          "WHOLE_SCENE_V2",
+          "OPENING_180_V3",
         ]);
       } finally {
         clearReadyPresets();
@@ -3914,7 +4064,7 @@ describe("adjustable scene footage router contract", () => {
         const pin = testState.query.mock.calls.find(([sql]) =>
           sql.includes("videoforge_pin_hosted_video_plan"),
         );
-        expect(pin?.[1]?.slice(3)).toEqual([7, "WHOLE_SCENE_V2"]);
+        expect(pin?.[1]?.slice(3)).toEqual([7, "OPENING_180_V3"]);
       } finally {
         clearReadyPresets();
       }
@@ -3947,7 +4097,7 @@ describe("adjustable scene footage router contract", () => {
     }
   });
 
-  it("explicit Off creates and pins zero while the enabled scene-video provider key is absent", async () => {
+  it("explicit zero optional coverage still requires the opening provider before project writes", async () => {
     installReadyPresets();
     testState.query.mockClear();
     try {
@@ -3967,11 +4117,105 @@ describe("adjustable scene footage router contract", () => {
         { ...coverageConfig, styleAnalysis: null },
         executionContext,
       );
-      expect(result?.status).toBe(201);
+      expect(result?.status).toBe(409);
       const pin = testState.query.mock.calls.find(([sql]) =>
         sql.includes("videoforge_pin_hosted_video_plan"),
       );
-      expect(pin?.[1]?.slice(3)).toEqual([0, "WHOLE_SCENE_V2"]);
+      expect(pin).toBeUndefined();
+      expect(testState.query.mock.calls.some(([sql]) => sql.includes("INSERT INTO"))).toBe(false);
+    } finally {
+      clearReadyPresets();
+    }
+  });
+
+  it("production Off refuses unavailable mandatory opening before project writes and blocks preflight", async () => {
+    installReadyPresets();
+    testState.query.mockClear();
+    const disabled = {
+      ...coverageConfig,
+      environment: "production",
+      videoGenerationEnabled: false,
+    } as HostedRuntimeConfiguration;
+    try {
+      const result = await handleHostedProductRequest(
+        request(
+          "/api/v2/hosted/projects",
+          "POST",
+          {
+            ...baseBody,
+            schema_version: "videoforge-hosted-project-create/v3",
+            video_coverage_percent: 0,
+          },
+          true,
+          { "idempotency-key": "production-off-unavailable-00000001" },
+        ),
+        createEnvironment,
+        disabled,
+        executionContext,
+      );
+      expect(result?.status).toBe(409);
+      expect(await errorCode(result)).toBe("SCENE_VIDEO_UNAVAILABLE");
+      const preflight = await handleHostedProductRequest(
+        request("/api/v2/hosted/projects/preflight", "POST", {
+          ...baseBody,
+          schema_version: "videoforge-hosted-project-preflight/v2",
+          video_coverage_percent: 0,
+        }),
+        environment,
+        disabled,
+        executionContext,
+      );
+      expect(preflight?.status).toBe(200);
+      expect(await preflight!.json()).toMatchObject({
+        ok: false,
+        ready: false,
+        video_coverage_percent: 0,
+        blockers: expect.arrayContaining([
+          expect.objectContaining({ code: "SCENE_VIDEO_UNAVAILABLE", severity: "BLOCKING" }),
+        ]),
+      });
+      expect(
+        testState.query.mock.calls.some(
+          ([sql]) =>
+            sql.includes("INSERT INTO") || sql.includes("videoforge_pin_hosted_video_plan"),
+        ),
+      ).toBe(false);
+    } finally {
+      clearReadyPresets();
+    }
+  });
+
+  it("600-second preflight adds opening footage to seven percent of the remaining duration", async () => {
+    installReadyPresets();
+    try {
+      const result = await handleHostedProductRequest(
+        request("/api/v2/hosted/projects/preflight", "POST", {
+          ...baseBody,
+          voiceover: { ...baseBody.voiceover, duration_ms: 600_000 },
+          schema_version: "videoforge-hosted-project-preflight/v2",
+          video_coverage_percent: 7,
+        }),
+        environment,
+        coverageConfig,
+        executionContext,
+      );
+      expect(result?.status).toBe(200);
+      const body = (await result!.json()) as {
+        ready: boolean;
+        estimate: {
+          motion: {
+            requested_coverage_percent: number;
+            required_opening_seconds: number;
+            target_seconds: number;
+            preliminary_usd: number;
+          };
+        };
+      };
+      expect(body.ready).toBe(true);
+      expect(body.estimate.motion.requested_coverage_percent).toBe(7);
+      expect(body.estimate.motion.required_opening_seconds).toBe(180);
+      expect(body.estimate.motion.target_seconds).toBeCloseTo(209.4);
+      expect(body.estimate.motion.preliminary_usd).toBeCloseTo(209.4 * 0.01336);
     } finally {
       clearReadyPresets();
     }
@@ -4029,77 +4273,88 @@ describe("adjustable scene footage router contract", () => {
     }
   });
 
-  it("replays the saved 75-percent pending request after feature disable without repinning or reserving", async () => {
-    installReadyPresets();
-    testState.query.mockClear();
-    try {
-      const body = {
-        ...baseBody,
-        schema_version: "videoforge-hosted-project-create/v3",
-        video_coverage_percent: 75,
-      };
-      const headers = { "idempotency-key": "coverage-replay-75-00000000000001" };
-      const first = await handleHostedProductRequest(
-        request("/api/v2/hosted/projects", "POST", body, true, headers),
-        createEnvironment,
-        coverageConfig,
-        executionContext,
-      );
-      expect(first?.status).toBe(201);
-      const created = (await first!.json()) as { project_id: string; project_revision_id: string };
-      const reservation = testState.query.mock.calls.find(([sql]) =>
-        sql.includes("INSERT INTO artifact_reservations"),
-      )![1]!;
-      const savedHash = testState.query.mock.calls.find(([sql]) =>
-        sql.includes("INSERT INTO hosted_project_create_requests"),
-      )![1]![4];
-      testState.createReplayRows.push({
-        request_sha256: savedHash,
-        state: "UPLOAD_PENDING",
-        project_id: created.project_id,
-        project_revision_id: created.project_revision_id,
-        upload_reservation_id: reservation[0],
-        object_key: reservation[6],
-        content_type: reservation[7],
-        content_length: reservation[8],
-        checksum_sha256: reservation[9],
-        expires_at: new Date(Date.now() + 15 * 60_000).toISOString(),
-      });
+  it.each(["staging", "production"] as const)(
+    "replays the saved 75-percent request after %s feature disable without repinning or reserving",
+    async (environmentName) => {
+      installReadyPresets();
       testState.query.mockClear();
-      const replay = await handleHostedProductRequest(
-        request("/api/v2/hosted/projects", "POST", body, true, headers),
-        createEnvironment,
-        { ...coverageConfig, videoGenerationEnabled: false, styleAnalysis: null },
-        executionContext,
-      );
-      expect(replay?.status).toBe(201);
-      expect(await replay!.json()).toMatchObject({
-        project_id: created.project_id,
-        project_revision_id: created.project_revision_id,
-        state: "UPLOAD_PENDING",
-      });
-      expect(
-        testState.query.mock.calls.some(
-          ([sql]) =>
-            sql.includes("INSERT INTO") || sql.includes("videoforge_pin_hosted_video_plan"),
-        ),
-      ).toBe(false);
-      const changed = await handleHostedProductRequest(
-        request(
-          "/api/v2/hosted/projects",
-          "POST",
-          { ...body, video_coverage_percent: 100 },
-          true,
-          headers,
-        ),
-        createEnvironment,
-        { ...coverageConfig, videoGenerationEnabled: false },
-        executionContext,
-      );
-      expect(changed?.status).toBe(409);
-      expect(await errorCode(changed)).toBe("PROJECT_IDEMPOTENCY_CONFLICT");
-    } finally {
-      clearReadyPresets();
-    }
-  });
+      try {
+        const body = {
+          ...baseBody,
+          schema_version: "videoforge-hosted-project-create/v3",
+          video_coverage_percent: 75,
+        };
+        const headers = { "idempotency-key": "coverage-replay-75-00000000000001" };
+        const first = await handleHostedProductRequest(
+          request("/api/v2/hosted/projects", "POST", body, true, headers),
+          createEnvironment,
+          coverageConfig,
+          executionContext,
+        );
+        expect(first?.status).toBe(201);
+        const created = (await first!.json()) as {
+          project_id: string;
+          project_revision_id: string;
+        };
+        const reservation = testState.query.mock.calls.find(([sql]) =>
+          sql.includes("INSERT INTO artifact_reservations"),
+        )![1]!;
+        const savedHash = testState.query.mock.calls.find(([sql]) =>
+          sql.includes("INSERT INTO hosted_project_create_requests"),
+        )![1]![4];
+        testState.createReplayRows.push({
+          request_sha256: savedHash,
+          state: "UPLOAD_PENDING",
+          project_id: created.project_id,
+          project_revision_id: created.project_revision_id,
+          upload_reservation_id: reservation[0],
+          object_key: reservation[6],
+          content_type: reservation[7],
+          content_length: reservation[8],
+          checksum_sha256: reservation[9],
+          expires_at: new Date(Date.now() + 15 * 60_000).toISOString(),
+        });
+        testState.query.mockClear();
+        const replay = await handleHostedProductRequest(
+          request("/api/v2/hosted/projects", "POST", body, true, headers),
+          createEnvironment,
+          {
+            ...coverageConfig,
+            environment: environmentName,
+            videoGenerationEnabled: false,
+            styleAnalysis: null,
+          },
+          executionContext,
+        );
+        expect(replay?.status).toBe(201);
+        expect(await replay!.json()).toMatchObject({
+          project_id: created.project_id,
+          project_revision_id: created.project_revision_id,
+          state: "UPLOAD_PENDING",
+        });
+        expect(
+          testState.query.mock.calls.some(
+            ([sql]) =>
+              sql.includes("INSERT INTO") || sql.includes("videoforge_pin_hosted_video_plan"),
+          ),
+        ).toBe(false);
+        const changed = await handleHostedProductRequest(
+          request(
+            "/api/v2/hosted/projects",
+            "POST",
+            { ...body, video_coverage_percent: 100 },
+            true,
+            headers,
+          ),
+          createEnvironment,
+          { ...coverageConfig, environment: environmentName, videoGenerationEnabled: false },
+          executionContext,
+        );
+        expect(changed?.status).toBe(409);
+        expect(await errorCode(changed)).toBe("PROJECT_IDEMPOTENCY_CONFLICT");
+      } finally {
+        clearReadyPresets();
+      }
+    },
+  );
 });

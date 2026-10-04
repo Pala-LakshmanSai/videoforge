@@ -7054,163 +7054,333 @@ export const canonicalSchemaDocuments = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://videoforge.local/schemas/generation-work-manifest-v1.json",
     "title": "VideoForge Generation Work Manifest v1",
-    "type": "object",
-    "additionalProperties": false,
-    "required": [
-      "schema_version",
-      "project_revision_id",
-      "revision_config_hash",
-      "timeline_plan_hash",
-      "transcript_document_hash",
-      "scheduler_config_hash",
-      "selection_authority",
-      "echo_audio_policy",
-      "prompt_batches",
-      "image_slots",
-      "avatar_spans",
-      "cost_counts"
-    ],
-    "properties": {
-      "schema_version": {
-        "const": "generation-work-manifest/v1"
-      },
-      "project_revision_id": {
-        "$ref": "#/$defs/id"
-      },
-      "revision_config_hash": {
-        "$ref": "#/$defs/sha256"
-      },
-      "timeline_plan_hash": {
-        "$ref": "#/$defs/sha256"
-      },
-      "transcript_document_hash": {
-        "$ref": "#/$defs/sha256"
-      },
-      "scheduler_config_hash": {
-        "$ref": "#/$defs/sha256"
-      },
-      "selection_authority": {
-        "const": "DETERMINISTIC_CODE"
-      },
-      "echo_audio_policy": {
+    "oneOf": [
+      {
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "full_voiceover_dispatched",
-          "sample_rate_hz",
-          "channels",
-          "context_padding_ms"
+          "schema_version",
+          "project_revision_id",
+          "revision_config_hash",
+          "timeline_plan_hash",
+          "transcript_document_hash",
+          "scheduler_config_hash",
+          "selection_authority",
+          "echo_audio_policy",
+          "prompt_batches",
+          "image_slots",
+          "avatar_spans",
+          "cost_counts"
         ],
         "properties": {
-          "full_voiceover_dispatched": {
-            "const": false
+          "schema_version": {
+            "const": "generation-work-manifest/v1"
           },
-          "sample_rate_hz": {
-            "const": 16000
+          "project_revision_id": {
+            "$ref": "#/$defs/id"
           },
-          "channels": {
-            "const": 1
+          "revision_config_hash": {
+            "$ref": "#/$defs/sha256"
           },
-          "context_padding_ms": {
-            "const": 500
-          }
-        }
-      },
-      "prompt_batches": {
-        "type": "array",
-        "minItems": 1,
-        "maxItems": 800,
-        "items": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "batch_id",
-            "ordinal",
-            "scene_task_keys"
-          ],
-          "properties": {
-            "batch_id": {
-              "$ref": "#/$defs/id"
-            },
-            "ordinal": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 799
-            },
-            "scene_task_keys": {
-              "type": "array",
-              "minItems": 1,
-              "maxItems": 50,
-              "uniqueItems": true,
-              "items": {
-                "$ref": "#/$defs/id"
+          "timeline_plan_hash": {
+            "$ref": "#/$defs/sha256"
+          },
+          "transcript_document_hash": {
+            "$ref": "#/$defs/sha256"
+          },
+          "scheduler_config_hash": {
+            "$ref": "#/$defs/sha256"
+          },
+          "selection_authority": {
+            "const": "DETERMINISTIC_CODE"
+          },
+          "echo_audio_policy": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "full_voiceover_dispatched",
+              "sample_rate_hz",
+              "channels",
+              "context_padding_ms"
+            ],
+            "properties": {
+              "full_voiceover_dispatched": {
+                "const": false
+              },
+              "sample_rate_hz": {
+                "const": 16000
+              },
+              "channels": {
+                "const": 1
+              },
+              "context_padding_ms": {
+                "const": 500
+              }
+            }
+          },
+          "prompt_batches": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 800,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "batch_id",
+                "ordinal",
+                "scene_task_keys"
+              ],
+              "properties": {
+                "batch_id": {
+                  "$ref": "#/$defs/id"
+                },
+                "ordinal": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 799
+                },
+                "scene_task_keys": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 50,
+                  "uniqueItems": true,
+                  "items": {
+                    "$ref": "#/$defs/id"
+                  }
+                }
+              }
+            }
+          },
+          "image_slots": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20000,
+            "items": {
+              "$ref": "#/$defs/imageSlot"
+            }
+          },
+          "avatar_spans": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20000,
+            "items": {
+              "$ref": "#/$defs/avatarSpan"
+            }
+          },
+          "cost_counts": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "prompt_batch_count",
+              "image_prompt_count",
+              "image_generation_count",
+              "avatar_generation_count",
+              "selected_span_audio_count",
+              "selected_span_audio_ms",
+              "render_segment_count"
+            ],
+            "properties": {
+              "prompt_batch_count": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "image_prompt_count": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "image_generation_count": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "avatar_generation_count": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "selected_span_audio_count": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "selected_span_audio_ms": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3600000
+              },
+              "render_segment_count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20000
               }
             }
           }
         }
       },
-      "image_slots": {
-        "type": "array",
-        "minItems": 1,
-        "maxItems": 20000,
-        "items": {
-          "$ref": "#/$defs/imageSlot"
-        }
-      },
-      "avatar_spans": {
-        "type": "array",
-        "minItems": 1,
-        "maxItems": 20000,
-        "items": {
-          "$ref": "#/$defs/avatarSpan"
-        }
-      },
-      "cost_counts": {
+      {
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "prompt_batch_count",
-          "image_prompt_count",
-          "image_generation_count",
-          "avatar_generation_count",
-          "selected_span_audio_count",
-          "selected_span_audio_ms",
-          "render_segment_count"
+          "schema_version",
+          "project_revision_id",
+          "revision_config_hash",
+          "timeline_plan_hash",
+          "transcript_document_hash",
+          "scheduler_config_hash",
+          "selection_authority",
+          "echo_audio_policy",
+          "prompt_batches",
+          "image_slots",
+          "avatar_spans",
+          "cost_counts",
+          "scheduler_version"
         ],
         "properties": {
-          "prompt_batch_count": {
-            "type": "integer",
-            "minimum": 1
+          "schema_version": {
+            "const": "generation-work-manifest/v2"
           },
-          "image_prompt_count": {
-            "type": "integer",
-            "minimum": 1
+          "project_revision_id": {
+            "$ref": "#/$defs/id"
           },
-          "image_generation_count": {
-            "type": "integer",
-            "minimum": 1
+          "revision_config_hash": {
+            "$ref": "#/$defs/sha256"
           },
-          "avatar_generation_count": {
-            "type": "integer",
-            "minimum": 1
+          "timeline_plan_hash": {
+            "$ref": "#/$defs/sha256"
           },
-          "selected_span_audio_count": {
-            "type": "integer",
-            "minimum": 1
+          "transcript_document_hash": {
+            "$ref": "#/$defs/sha256"
           },
-          "selected_span_audio_ms": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 3600000
+          "scheduler_config_hash": {
+            "$ref": "#/$defs/sha256"
           },
-          "render_segment_count": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 20000
+          "selection_authority": {
+            "const": "DETERMINISTIC_CODE"
+          },
+          "echo_audio_policy": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "full_voiceover_dispatched",
+              "sample_rate_hz",
+              "channels",
+              "context_padding_ms"
+            ],
+            "properties": {
+              "full_voiceover_dispatched": {
+                "const": false
+              },
+              "sample_rate_hz": {
+                "const": 16000
+              },
+              "channels": {
+                "const": 1
+              },
+              "context_padding_ms": {
+                "const": 500
+              }
+            }
+          },
+          "prompt_batches": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 800,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "batch_id",
+                "ordinal",
+                "scene_task_keys"
+              ],
+              "properties": {
+                "batch_id": {
+                  "$ref": "#/$defs/id"
+                },
+                "ordinal": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 799
+                },
+                "scene_task_keys": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 50,
+                  "uniqueItems": true,
+                  "items": {
+                    "$ref": "#/$defs/id"
+                  }
+                }
+              }
+            }
+          },
+          "image_slots": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20000,
+            "items": {
+              "$ref": "#/$defs/imageSlot"
+            }
+          },
+          "avatar_spans": {
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 20000,
+            "items": {
+              "$ref": "#/$defs/avatarSpan"
+            }
+          },
+          "cost_counts": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "prompt_batch_count",
+              "image_prompt_count",
+              "image_generation_count",
+              "avatar_generation_count",
+              "selected_span_audio_count",
+              "selected_span_audio_ms",
+              "render_segment_count"
+            ],
+            "properties": {
+              "prompt_batch_count": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "image_prompt_count": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "image_generation_count": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "avatar_generation_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "selected_span_audio_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "selected_span_audio_ms": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 3600000
+              },
+              "render_segment_count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20000
+              }
+            }
+          },
+          "scheduler_version": {
+            "enum": [
+              "scheduler-v8",
+              "scheduler-v9"
+            ]
           }
         }
       }
-    },
+    ],
     "$defs": {
       "id": {
         "type": "string",

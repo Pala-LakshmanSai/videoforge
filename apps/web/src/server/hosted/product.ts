@@ -233,6 +233,7 @@ export function hostedRevisionConfigV2(input: {
   readonly voiceoverAssetId: string;
   readonly voiceoverSha256: string;
   readonly voiceoverDurationMs: number;
+  readonly aiVideoOpening?: boolean;
   readonly avatarProfileId: string;
   readonly avatarProfileVersionId: string;
   readonly avatarDisplayName: string;
@@ -284,7 +285,13 @@ export function hostedRevisionConfigV2(input: {
       avatar_quality_profile_id: null,
     },
     spend_cap_usd: null,
-    scheduler_version: input.voiceoverDurationMs <= 30_000 ? "scheduler-v7" : "scheduler-v6",
+    scheduler_version: input.aiVideoOpening
+      ? input.voiceoverDurationMs <= 30_000
+        ? "scheduler-v9"
+        : "scheduler-v8"
+      : input.voiceoverDurationMs <= 30_000
+        ? "scheduler-v7"
+        : "scheduler-v6",
     scheduler_seed: input.schedulerSeed,
     prompt_writer_version: "scene-prompt-writer-v1",
     prompt_compiler_version: "mage-prompt-compiler-v1",
@@ -3030,7 +3037,11 @@ async function styleAnalyze(
         ["google:gemini@3.1-flash-lite", "STYLE", rowString(target, "version_id")],
       );
       if (capacity.rows[0]?.gate?.acquired !== true)
-        return { ...target, capacity_wait: true, retry_at: capacity.rows[0]?.gate?.retryAt ?? null };
+        return {
+          ...target,
+          capacity_wait: true,
+          retry_at: capacity.rows[0]?.gate?.retryAt ?? null,
+        };
       const reservation = await transaction.query<HostedPresetRow>(
         `SELECT * FROM public.videoforge_reserve_hosted_style_analysis($1,$2,$3)`,
         [rowString(target, "version_id"), requestHash, runId],
@@ -3079,9 +3090,17 @@ async function styleAnalyze(
     const preparedRow = prepared as HostedPresetRow;
     preparedVersionId = rowString(preparedRow, "version_id");
     if (preparedRow.capacity_wait === true)
-      return response({ error: { code: "STYLE_ANALYSIS_CAPACITY_WAIT",
-        message: "The style provider is busy. Try Analyze again after the shared cooldown." },
-        state: "DRAFT", retry_at: preparedRow.retry_at }, 429);
+      return response(
+        {
+          error: {
+            code: "STYLE_ANALYSIS_CAPACITY_WAIT",
+            message: "The style provider is busy. Try Analyze again after the shared cooldown.",
+          },
+          state: "DRAFT",
+          retry_at: preparedRow.retry_at,
+        },
+        429,
+      );
     if (preparedRow.already_analyzed === true) {
       const profile = plainRecord(preparedRow.profile_payload);
       return response({
@@ -3147,9 +3166,21 @@ async function styleAnalyze(
       taskUUID: preparedRunId,
       onCapacityRefused: async (value) => {
         await createNeonExecutor(pool).transaction(async (transaction) => {
-          await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", scope.account_id]);
-          await transaction.query("SELECT public.videoforge_record_runware_text_capacity($1,$2,$3,$4,$5,$6)",
-            ["STYLE", preparedVersionId, preparedRunId, rowString(preparedRow, "request_hash"), value.responseHash, value.retryAfterMs]);
+          await transaction.query("SELECT set_config($1,$2,true)", [
+            "videoforge.account_id",
+            scope.account_id,
+          ]);
+          await transaction.query(
+            "SELECT public.videoforge_record_runware_text_capacity($1,$2,$3,$4,$5,$6)",
+            [
+              "STYLE",
+              preparedVersionId,
+              preparedRunId,
+              rowString(preparedRow, "request_hash"),
+              value.responseHash,
+              value.retryAfterMs,
+            ],
+          );
         });
       },
     });
@@ -4358,6 +4389,7 @@ async function catalog(
               coverage_min_percent: 0,
               coverage_max_percent: 100,
               adjustable_coverage_supported: true,
+              required_opening_seconds: 180,
               usd_per_second: 0.01336,
               resolution: "720p",
               aspect_ratio: "16:9",
@@ -4901,7 +4933,8 @@ const PROMPT_WRITER_STATES: ReadonlyMap<
 export function hostedPromptProgressForCapacityHold(
   progress: Record<string, unknown> | null,
 ): Record<string, unknown> | null {
-  if (!progress || progress.state === "SUCCEEDED" || progress.capacity_hold !== true) return progress;
+  if (!progress || progress.state === "SUCCEEDED" || progress.capacity_hold !== true)
+    return progress;
   return {
     ...progress,
     state: "UNKNOWN",
@@ -4921,7 +4954,14 @@ export function hostedPromptWritingState(
     readonly problemCode?: unknown;
   },
 ): {
-  readonly status: "COMPLETE" | "FAILED" | "BLOCKED" | "RETRY_WAIT" | "RUNNING" | "WAITING" | "ACTION_REQUIRED";
+  readonly status:
+    | "COMPLETE"
+    | "FAILED"
+    | "BLOCKED"
+    | "RETRY_WAIT"
+    | "RUNNING"
+    | "WAITING"
+    | "ACTION_REQUIRED";
   readonly progressPercent: number;
   readonly detail: string;
 } {
@@ -4929,8 +4969,10 @@ export function hostedPromptWritingState(
   if (progress?.problemCode === "HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT") {
     return {
       status: "ACTION_REQUIRED",
-      progressPercent: progress.totalScenes > 0
-        ? Math.min(99, Math.floor((progress.acceptedScenes / progress.totalScenes) * 100)) : 0,
+      progressPercent:
+        progress.totalScenes > 0
+          ? Math.min(99, Math.floor((progress.acceptedScenes / progress.totalScenes) * 100))
+          : 0,
       detail: `The prompt provider was busy. ${progress.acceptedScenes} saved prompts remain intact. Contact support to review this held request before continuing; no new request will be sent automatically.`,
     };
   }
@@ -5060,11 +5102,16 @@ async function projectPreflight(
     const videoCoveragePercent =
       input.videoCoveragePercent ?? (config.videoGenerationEnabled ? 7 : 0);
     const blockers: HostedPreflightBlocker[] = [];
-    if (videoCoveragePercent > 0 && !config.videoGenerationEnabled)
+    if (
+      ((videoCoveragePercent > 0 || config.environment === "production") &&
+        !config.videoGenerationEnabled) ||
+      (config.videoGenerationEnabled && !config.styleAnalysis)
+    )
       blockers.push({
         code: "SCENE_VIDEO_UNAVAILABLE",
-        message:
-          "Scene video generation is unavailable. Set video footage coverage to Off or try again when it is available.",
+        message: config.videoGenerationEnabled
+          ? "AI video opening is unavailable. Try again when scene video generation is available."
+          : "Scene video generation is unavailable. Set video footage coverage to Off or try again when it is available.",
         severity: "BLOCKING",
       });
     if (facts.cleanupPending)
@@ -5158,11 +5205,20 @@ async function projectPreflight(
         generation_mode: input.generationMode,
         motion: {
           requested_coverage_percent: videoCoveragePercent,
-          target_seconds: ((input.voiceover.durationMs / 1000) * videoCoveragePercent) / 100,
+          target_seconds: config.videoGenerationEnabled
+            ? Math.min(180, input.voiceover.durationMs / 1000) +
+              (Math.max(0, input.voiceover.durationMs / 1000 - 180) * videoCoveragePercent) / 100
+            : ((input.voiceover.durationMs / 1000) * videoCoveragePercent) / 100,
+          required_opening_seconds: config.videoGenerationEnabled
+            ? Math.min(180, input.voiceover.durationMs / 1000)
+            : 0,
           preliminary_usd:
-            (((input.voiceover.durationMs / 1000) * videoCoveragePercent) / 100) * 0.01336,
+            (config.videoGenerationEnabled
+              ? Math.min(180, input.voiceover.durationMs / 1000) +
+                (Math.max(0, input.voiceover.durationMs / 1000 - 180) * videoCoveragePercent) / 100
+              : ((input.voiceover.durationMs / 1000) * videoCoveragePercent) / 100) * 0.01336,
           detail:
-            "Preliminary scene-video estimate. Whole scenes and avatar time can reduce coverage; request timing allowances and Cloud compute can add cost. Exact planned footage cost is shown after scheduling.",
+            "First 3 minutes use AI video. Selected coverage applies only afterward. Whole crossing scenes finish in video; request timing allowances and Cloud compute add cost. Exact planned cost follows scheduling.",
         },
       },
       blockers,
@@ -5181,7 +5237,11 @@ export async function validateScriptProjectPresets(
   config: HostedRuntimeConfiguration,
   input: Omit<ProjectCreateInput, "voiceover">,
 ) {
-  if ((input.videoCoveragePercent ?? 0) > 0 && !config.videoGenerationEnabled)
+  if (
+    (((input.videoCoveragePercent ?? 0) > 0 || config.environment === "production") &&
+      !config.videoGenerationEnabled) ||
+    (config.videoGenerationEnabled && !config.styleAnalysis)
+  )
     throw new Error("SCENE_VIDEO_UNAVAILABLE");
   if (input.executionBackend === "RUNPOD_POD") {
     const readiness = await hostedCloudProjectReadiness(transaction, config);
@@ -5291,7 +5351,11 @@ export async function createProject(
         }
         return replay;
       }
-      if (videoCoveragePercent > 0 && !config.videoGenerationEnabled)
+      if (
+        ((videoCoveragePercent > 0 || config.environment === "production") &&
+          !config.videoGenerationEnabled) ||
+        (config.videoGenerationEnabled && !config.styleAnalysis)
+      )
         throw new Error("SCENE_VIDEO_UNAVAILABLE");
       if (
         await hostedAccountCleanupPending(
@@ -5348,6 +5412,7 @@ export async function createProject(
         voiceoverAssetId: assetId,
         voiceoverSha256: input.voiceover.checksumSha256,
         voiceoverDurationMs: input.voiceover.durationMs,
+        aiVideoOpening: config.videoGenerationEnabled,
         avatarProfileId: rowString(avatar, "profile_id"),
         avatarProfileVersionId: rowString(avatar, "version_id"),
         avatarDisplayName: rowString(avatar, "profile_name"),
@@ -5444,14 +5509,13 @@ export async function createProject(
         ],
       );
       if (config.videoGenerationEnabled) {
-        if (videoCoveragePercent > 0 && !config.styleAnalysis)
-          throw new Error("HOSTED_VIDEO_GENERATION_KEY_MISSING");
+        if (!config.styleAnalysis) throw new Error("HOSTED_VIDEO_GENERATION_KEY_MISSING");
         await transaction.query("SELECT public.videoforge_pin_hosted_video_plan($1,$2,$3,$4,$5)", [
           scope.account_id,
           scope.workspace_id,
           revisionId,
           videoCoveragePercent,
-          "WHOLE_SCENE_V2",
+          "OPENING_180_V3",
         ]);
       }
       await transaction.query(`UPDATE assets SET project_revision_id = $1 WHERE id = $2`, [
@@ -6338,7 +6402,11 @@ export async function createVoiceoverContext(
         ["google:gemma@4-31b", "CONTEXT", projectId],
       );
       if (capacity.rows[0]?.gate?.acquired !== true)
-        return { created: false, capacity_wait: true, retry_at: capacity.rows[0]?.gate?.retryAt ?? null };
+        return {
+          created: false,
+          capacity_wait: true,
+          retry_at: capacity.rows[0]?.gate?.retryAt ?? null,
+        };
       const result = await transaction.query<{ prepared: unknown }>(
         `SELECT public.${
           redispatchable
@@ -6369,8 +6437,15 @@ export async function createVoiceoverContext(
       return plainRecord(result.rows[0]?.prepared);
     });
     if (claimed?.capacity_wait === true)
-      return response({ schema_version: "videoforge-hosted-context-response/v1",
-        state: "WAITING", retry_at: claimed.retry_at, replayed: false }, 202);
+      return response(
+        {
+          schema_version: "videoforge-hosted-context-response/v1",
+          state: "WAITING",
+          retry_at: claimed.retry_at,
+          replayed: false,
+        },
+        202,
+      );
     if (!claimed || claimed.created !== true)
       return response({ error: { code: "HOSTED_CONTEXT_ALREADY_CLAIMED" } }, 409);
     // A redispatch reuses the existing revision context row, so the authoritative id is the one the
@@ -6384,9 +6459,21 @@ export async function createVoiceoverContext(
       apiKey: config.styleAnalysis.apiKey,
       onCapacityRefused: async (value) => {
         await createNeonExecutor(pool).transaction(async (transaction) => {
-          await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", scope.account_id]);
-          await transaction.query("SELECT public.videoforge_record_runware_text_capacity($1,$2,$3,$4,$5,$6)",
-            ["CONTEXT", projectId, identity.attemptId, preparedRequest.requestHash, value.responseHash, value.retryAfterMs]);
+          await transaction.query("SELECT set_config($1,$2,true)", [
+            "videoforge.account_id",
+            scope.account_id,
+          ]);
+          await transaction.query(
+            "SELECT public.videoforge_record_runware_text_capacity($1,$2,$3,$4,$5,$6)",
+            [
+              "CONTEXT",
+              projectId,
+              identity.attemptId,
+              preparedRequest.requestHash,
+              value.responseHash,
+              value.retryAfterMs,
+            ],
+          );
         });
       },
     });
@@ -7961,13 +8048,15 @@ async function projectDetail(
       const videoPlan = await transaction.query(
         `SELECT selections,planned_at,coverage_percent,replacement_policy,selection_sha256,
           (SELECT sum(scene.end_frame_exclusive-scene.start_frame) FROM timeline_segments scene
+            WHERE scene.account_id=$1 AND scene.workspace_id=$2 AND scene.project_revision_id=$3 AND scene.start_frame<5400) AS opening_frames,
+          (SELECT sum(scene.end_frame_exclusive-scene.start_frame) FROM timeline_segments scene
             WHERE scene.account_id=$1 AND scene.workspace_id=$2 AND scene.project_revision_id=$3
               AND scene.timeline_composition='IMAGE_FULL' AND scene.end_frame_exclusive-scene.start_frame<=357) AS eligible_frames
           FROM hosted_video_plans WHERE account_id=$1 AND workspace_id=$2 AND project_revision_id=$3`,
         [scope.account_id, scope.workspace_id, currentRevisionId],
       );
       const videoJobs = await transaction.query(
-        `SELECT job.*, (public.videoforge_hosted_video_static_fallback(job.state,job.failure_code,job.output_cost_usd,job.duration_seconds)
+        `SELECT job.*, (SELECT scene.start_frame FROM timeline_segments scene WHERE scene.account_id=job.account_id AND scene.workspace_id=job.workspace_id AND scene.project_revision_id=job.project_revision_id AND scene.segment_key=job.segment_id) AS start_frame, (public.videoforge_hosted_video_static_fallback(job.state,job.failure_code,job.output_cost_usd,job.duration_seconds)
           AND job.output_asset_id IS NULL AND job.output_receipt_id IS NULL AND job.output_sha256 IS NULL
           AND job.output_bytes IS NULL AND job.output_probe IS NULL
           AND EXISTS(SELECT 1 FROM hosted_api_generation_jobs source
@@ -8511,33 +8600,71 @@ async function projectDetail(
     const videoUncertain = videoJobs.some((job) => job.state === "UNKNOWN_NO_RETRY");
     const apiPlan = detail.generation as Record<string, unknown> | null;
     const finalFrameCount = numberOrNull(apiPlan?.final_frame_count);
+    const requiredOpening = videoPlan?.replacement_policy === "OPENING_180_V3";
+    const openingFrames = requiredOpening ? (numberOrNull(videoPlan?.opening_frames) ?? 0) : 0;
+    const openingDurationFrames = requiredOpening ? Math.min(finalFrameCount ?? 0, 5400) : 0;
+    const coverageFrames =
+      requiredOpening && finalFrameCount !== null
+        ? Math.max(0, finalFrameCount - 5400)
+        : finalFrameCount;
     const actualVideoCoverage =
-      finalFrameCount !== null && finalFrameCount > 0
-        ? (acceptedVideoJobs.reduce(
-            (sum, job) => sum + (numberOrNull(job.video_frame_count) ?? 0),
-            0,
-          ) *
+      coverageFrames !== null && coverageFrames > 0
+        ? (acceptedVideoJobs.reduce((sum, job) => {
+            const frames = numberOrNull(job.video_frame_count) ?? 0;
+            return (
+              sum +
+              (requiredOpening
+                ? Math.max(0, Math.min(frames, Number(job.start_frame) + frames - 5400))
+                : frames)
+            );
+          }, 0) *
             100) /
-          finalFrameCount
-        : null;
+          coverageFrames
+        : requiredOpening && coverageFrames === 0
+          ? 0
+          : null;
     const plannedVideoCoverage =
-      videoPlan?.planned_at && finalFrameCount !== null && finalFrameCount > 0
-        ? (videoSelections.reduce(
+      videoPlan?.planned_at && coverageFrames !== null && coverageFrames > 0
+        ? ((videoSelections.reduce(
             (sum, selection) => sum + (numberOrNull(selection.videoFrameCount) ?? 0),
             0,
-          ) *
+          ) -
+            openingDurationFrames) *
             100) /
-          finalFrameCount
-        : null;
+          coverageFrames
+        : requiredOpening && coverageFrames === 0
+          ? 0
+          : null;
     const eligibleVideoCoverage =
-      finalFrameCount !== null &&
-      finalFrameCount > 0 &&
+      coverageFrames !== null &&
+      coverageFrames > 0 &&
       numberOrNull(videoPlan?.eligible_frames) !== null
-        ? (Number(videoPlan!.eligible_frames) * 100) / finalFrameCount
-        : null;
+        ? (Math.max(0, Number(videoPlan!.eligible_frames) - openingDurationFrames) * 100) /
+          coverageFrames
+        : requiredOpening && coverageFrames === 0
+          ? 0
+          : null;
     const sceneFootageCoverage = videoPlan
       ? {
           requested_coverage_percent: requestedVideoCoverage,
+          ...(requiredOpening
+            ? {
+                required_opening_seconds: 180,
+                opening_planned_seconds: Math.min(openingFrames, openingDurationFrames) / 30,
+                opening_completed_seconds:
+                  acceptedVideoJobs
+                    .filter((job) => Number(job.start_frame) < 5400)
+                    .reduce(
+                      (sum, job) =>
+                        sum +
+                        Math.min(
+                          numberOrNull(job.video_frame_count) ?? 0,
+                          5400 - Number(job.start_frame),
+                        ),
+                      0,
+                    ) / 30,
+              }
+            : {}),
           planned_coverage_percent: plannedVideoCoverage,
           actual_coverage_percent: actualVideoCoverage,
           eligible_coverage_percent: eligibleVideoCoverage,
@@ -8718,7 +8845,7 @@ async function projectDetail(
           : "Generate and verify the planned scene images.",
         eta_ms: null,
       },
-      ...(videoPlan && requestedVideoCoverage > 0
+      ...(videoPlan && (requestedVideoCoverage > 0 || requiredOpening)
         ? [
             {
               id: "video-generation",
@@ -8889,6 +9016,7 @@ async function projectDetail(
                     0,
                   ),
                   seedance_coverage_percent: requestedVideoCoverage,
+                  ...(requiredOpening ? { seedance_required_opening_seconds: 180 } : {}),
                   seedance_planned_coverage_percent: plannedVideoCoverage,
                   seedance_eligible_coverage_percent: eligibleVideoCoverage,
                   seedance_actual_coverage_percent: actualVideoCoverage,

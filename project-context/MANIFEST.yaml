@@ -1,11 +1,11 @@
 schema_version: "2.0"
 project: VideoForge
 phase_source: CURRENT_STATE.yaml
-last_updated: "2026-09-06"
+last_updated: "2026-10-04"
 source_of_truth: project-context
 
-current_selected_profile: v2_09_api_capacity
-current_selected_brief: tasks/VF-10-09.md
+current_selected_profile: v2_09_ai_video_opening
+current_selected_brief: AI_VIDEO_OPENING_PLAN.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -25,6 +25,11 @@ conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
 target_profile_word_budget: 15000
 
 read_profiles:
+  v2_09_ai_video_opening:
+    - AI_VIDEO_OPENING_PLAN.md
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - 11_COST_SPEED_BUDGET.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
   v2_09_api_capacity:
     - tasks/VF-10-09.md
     - API_CAPACITY_PLAN.md
@@ -263,9 +268,10 @@ approved_decisions:
   DEC_AVATAR_004: one_native_clip_two_layouts
   DEC_AVATAR_005: tenant_private_reusable_avatar_hub
   DEC_AVATAR_010: superseded_soulx_pro_historical_attempts_only
-  DEC_VIDEO_GENERATION_001: pinned_seedance_720p_variable_whole_scene_coverage_with_legacy7_compatibility
+  DEC_VIDEO_GENERATION_001: pinned_seedance_720p_mandatory_opening_remaining_whole_scene_coverage_legacy_policies_preserved
   DEC_VIDEO_SCENE_001: published_immutable_whole_scene_replacement_legacy_prefix_preserved
-  DEC_VIDEO_COVERAGE_001: published_integer0to100_finished_video_coverage_default7
+  DEC_VIDEO_COVERAGE_001: integer0to100_remaining_video_coverage_default7_for_new_opening_policy_legacy_finished_video_preserved
+  DEC_VIDEO_OPENING_001: mandatory_first180seconds_full_scene_AI_video_outside_selected_percent_no_opening_still_fallback
   DEC_API_GENERATION_001: fresh_kie_z_image_and_fal_flashhead_audio_to_video
   DEC_IMAGE_REGENERATION_001: new_per_image_fal_z_image_turbo_original_media_immutable
   DEC_BUILD_001: hosted_linux_heavy_builds_no_mac_dependency
@@ -294,9 +300,9 @@ approved_decisions:
   DEC_PERSONAL_WORKER_001: optional_local_or_qualified_runpod_media_execution
   DEC_RUNPOD_003: superseded_two_serverless_lanes_historical_only
   DEC_RUNTIME_001: kie_fal_api_generation_and_tenant_worker_render_no_manual_pods
-  DEC_SCHEDULER_001: seeded_deterministic_bounded_variation_with_versioned_physical_hand_eligibility
-  DEC_SCHEDULER_002: approximately_22_percent_avatar_even_full_split
-  DEC_SCOPE_001: image_only_broll
+  DEC_SCHEDULER_001: immutable_v8v9_opening_mask_after_validated_v2v5_precursor_physical_hand_eligibility_preserved
+  DEC_SCHEDULER_002: legacy_precursor_avatar22percent_balance_new_opening_replaces_prefix_without_tail_rebalance
+  DEC_SCOPE_001: historical_image_only_superseded_by_approved_scene_video_and_mandatory_opening
   DEC_STYLE_001: tenant_private_immutable_image_styles
   DEC_STYLE_002: natural_documentary_v1_explicit_default
   DEC_STYLE_003: one_time_runware_gemini_style_analysis

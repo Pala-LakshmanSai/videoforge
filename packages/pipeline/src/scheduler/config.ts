@@ -84,14 +84,46 @@ export const NARRATION_SHOT_SHORT_SCHEDULER_CONFIG = Object.freeze({
   shot_role_policy: "physical-hands-only-v1",
 });
 
+export const AI_VIDEO_OPENING_SECONDS = 180;
+export const AI_VIDEO_OPENING_SCHEDULER_VERSION = "scheduler-v8";
+export const AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION = "scheduler-v9";
+
+/** Preserve predecessor timing, then reserve the opening scenes for full-screen AI video. */
+export const AI_VIDEO_OPENING_SCHEDULER_CONFIG = Object.freeze({
+  ...NARRATION_SHOT_SCHEDULER_CONFIG,
+  schema_version: "deterministic-timeline-scheduler-config/v8",
+  opening_seconds: AI_VIDEO_OPENING_SECONDS,
+  opening_scene_boundary_policy: "whole-scene-start-before-opening-end-v1",
+  opening_image_minimum_ms: SUPPORTED_SCHEDULER_CONFIG.avatar_minimum_ms,
+});
+export const AI_VIDEO_OPENING_SHORT_SCHEDULER_CONFIG = Object.freeze({
+  ...NARRATION_SHOT_SHORT_SCHEDULER_CONFIG,
+  schema_version: "deterministic-timeline-scheduler-config/v9",
+  opening_seconds: AI_VIDEO_OPENING_SECONDS,
+  opening_scene_boundary_policy: "whole-scene-start-before-opening-end-v1",
+  opening_image_minimum_ms: SUPPORTED_SCHEDULER_CONFIG.avatar_minimum_ms,
+});
+
+export function schedulerHasAiVideoOpening(version: string): boolean {
+  return (
+    version === AI_VIDEO_OPENING_SCHEDULER_VERSION ||
+    version === AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION
+  );
+}
+
 /** Preserve timing draws and segment identities when selecting the new role policy. */
 export function schedulerTimingVersion(version: string): string {
+  if (version === AI_VIDEO_OPENING_SCHEDULER_VERSION) return SUPPORTED_SCHEDULER_VERSION;
+  if (version === AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION) return WORD_BOUNDARY_SCHEDULER_VERSION;
   if (version === NARRATION_SHOT_SCHEDULER_VERSION) return SUPPORTED_SCHEDULER_VERSION;
   if (version === NARRATION_SHOT_SHORT_SCHEDULER_VERSION) return WORD_BOUNDARY_SCHEDULER_VERSION;
   return version;
 }
 
 export function schedulerConfigForVersion(version: string) {
+  if (version === AI_VIDEO_OPENING_SCHEDULER_VERSION) return AI_VIDEO_OPENING_SCHEDULER_CONFIG;
+  if (version === AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION)
+    return AI_VIDEO_OPENING_SHORT_SCHEDULER_CONFIG;
   if (version === NARRATION_SHOT_SCHEDULER_VERSION) return NARRATION_SHOT_SCHEDULER_CONFIG;
   if (version === NARRATION_SHOT_SHORT_SCHEDULER_VERSION)
     return NARRATION_SHOT_SHORT_SCHEDULER_CONFIG;

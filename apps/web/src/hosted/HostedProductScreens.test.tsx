@@ -5760,9 +5760,7 @@ describe("hosted product journey", () => {
       ).toBeInTheDocument();
       if (timingRepair) {
         expect(screen.getAllByText(/Transcription lost speech timing/u).length).toBeGreaterThan(0);
-        expect(
-          screen.queryByRole("button", { name: "Retry" }),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
         expect(screen.getByText("Needs attention")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Retry planning" })).not.toBeInTheDocument();
         expect(screen.queryByText(/This will retry planning only/u)).not.toBeInTheDocument();
@@ -6106,7 +6104,10 @@ describe("hosted product journey", () => {
             {
               id: "prompt-writing",
               name: "Write image prompts",
-              status: problemCode === "HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT" ? "ACTION_REQUIRED" : "FAILED",
+              status:
+                problemCode === "HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT"
+                  ? "ACTION_REQUIRED"
+                  : "FAILED",
               progress_percent: 0,
             },
           ],
@@ -7445,8 +7446,9 @@ function coverageCatalog(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function coverageVoiceover() {
-  const bytes = new ArrayBuffer(44 + 640_000);
+function coverageVoiceover(durationSeconds = 20) {
+  const audioBytes = durationSeconds * 32_000;
+  const bytes = new ArrayBuffer(44 + audioBytes);
   const view = new DataView(bytes);
   const write = (offset: number, value: string) =>
     [...value].forEach((character, index) =>
@@ -7464,18 +7466,134 @@ function coverageVoiceover() {
   view.setUint16(32, 2, true);
   view.setUint16(34, 16, true);
   write(36, "data");
-  view.setUint32(40, 640_000, true);
+  view.setUint32(40, audioBytes, true);
   return new File([bytes], "coverage.wav", { type: "audio/wav" });
 }
 
-async function fillCoverageCreateForm() {
+async function fillCoverageCreateForm(durationSeconds = 20) {
   fireEvent.change(await screen.findByLabelText("Video title"), {
     target: { value: "Coverage test" },
   });
   fireEvent.change(screen.getByLabelText("Final voiceover"), {
-    target: { files: [coverageVoiceover()] },
+    target: { files: [coverageVoiceover(durationSeconds)] },
   });
 }
+
+it("keeps the required AI opening and its price when optional footage is Off", async () => {
+  const preflights: Record<string, unknown>[] = [];
+  const creates: Record<string, unknown>[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith("/project-catalog"))
+        return Response.json(
+          coverageCatalog({
+            video_generation: {
+              ...coverageCatalog().video_generation,
+              required_opening_seconds: 180,
+            },
+          }),
+        );
+      if (path.endsWith("/preflight")) {
+        preflights.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+        return Response.json({ ok: true, ready: true });
+      }
+      creates.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      throw new TypeError("network connection lost");
+    }),
+  );
+  renderHosted(<HostedCreateProjectScreen />);
+  await fillCoverageCreateForm(60);
+  fireEvent.click(screen.getByRole("button", { name: "Off" }));
+  expect(
+    screen.getByText(
+      "First 3 minutes: AI video only. Afterward: no optional footage. Full scenes only.",
+    ),
+  ).toBeInTheDocument();
+  await waitFor(() =>
+    expect(screen.getByLabelText("Preliminary scene footage estimate")).toHaveTextContent(
+      "60.00s · Base estimate $0.80",
+    ),
+  );
+  expect(screen.getByLabelText("Coverage percent")).toHaveValue(0);
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
+  await waitFor(() => expect(creates).toHaveLength(1));
+  expect(preflights[0]).toMatchObject({ video_coverage_percent: 0 });
+  expect(creates[0]).toMatchObject({ video_coverage_percent: 0 });
+});
+
+it("estimates the required opening plus selected coverage of the remaining narration", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json(
+        coverageCatalog({
+          video_generation: {
+            ...coverageCatalog().video_generation,
+            required_opening_seconds: 180,
+          },
+        }),
+      ),
+    ),
+  );
+  renderHosted(<HostedCreateProjectScreen />);
+  await fillCoverageCreateForm(600);
+  await waitFor(() =>
+    expect(screen.getByLabelText("Preliminary scene footage estimate")).toHaveTextContent(
+      "209.40s · Base estimate $2.80",
+    ),
+  );
+  expect(screen.getByLabelText("Coverage percent")).toHaveValue(7);
+  expect(
+    screen.getByText(
+      "First 3 minutes: AI video only. Afterward: up to 7% coverage. Full scenes only.",
+    ),
+  ).toBeInTheDocument();
+});
+
+it("preserves slider and custom coverage submissions with the required opening", async () => {
+  const preflights: Record<string, unknown>[] = [];
+  const creates: Record<string, unknown>[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (path.endsWith("/project-catalog"))
+        return Response.json(
+          coverageCatalog({
+            video_generation: {
+              ...coverageCatalog().video_generation,
+              required_opening_seconds: 180,
+            },
+          }),
+        );
+      if (path.endsWith("/preflight")) {
+        preflights.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+        return Response.json({ ok: true, ready: true });
+      }
+      creates.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      throw new TypeError("network connection lost");
+    }),
+  );
+  renderHosted(<HostedCreateProjectScreen />);
+  await fillCoverageCreateForm();
+  fireEvent.change(screen.getByLabelText("Video footage coverage slider"), {
+    target: { value: "75" },
+  });
+  expect(screen.getByLabelText("Coverage percent")).toHaveValue(75);
+  fireEvent.change(screen.getByLabelText("Coverage percent"), { target: { value: "23" } });
+  expect(screen.getByLabelText("Video footage coverage slider")).toHaveValue("23");
+  expect(
+    screen.getByText(
+      "First 3 minutes: AI video only. Afterward: up to 23% coverage. Full scenes only.",
+    ),
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
+  await waitFor(() => expect(creates).toHaveLength(1));
+  expect(preflights[0]).toMatchObject({ video_coverage_percent: 23 });
+  expect(creates[0]).toMatchObject({ video_coverage_percent: 23 });
+});
 
 it.each([0, 7, 15, 25, 50, 75, 100, 23])(
   "pins coverage %s into preflight, create and identical network retries",
@@ -8167,6 +8285,60 @@ it.each([0, 75])(
     }
   },
 );
+
+it("shows the required opening scene-video stage when optional footage coverage is zero", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        project: {
+          id: "required-opening",
+          title: "Required opening",
+          revision_id: "revision",
+          revision_state: "LOCKED",
+        },
+        generation_provider: "KIE_FAL",
+        attempts: [],
+        generation: null,
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: gpuReadiness,
+        stages: [
+          {
+            id: "video-generation",
+            name: "Generate scene videos",
+            status: "RUNNING",
+            progress_percent: 50,
+          },
+          { id: "render", name: "Assemble final video", status: "PENDING" },
+        ],
+        cost: {
+          api_estimate: {
+            kie_images: 12,
+            kie_usd: 0.048,
+            fal_avatar_seconds: 0,
+            fal_usd: 0,
+            seedance_seconds: 180,
+            seedance_usd: 2.4048,
+            seedance_coverage_percent: 0,
+            seedance_required_opening_seconds: 180,
+            seedance_planned_coverage_percent: 0,
+            seedance_actual_coverage_percent: 0,
+            seedance_fallback_count: 0,
+            pricing_checked_at: "2026-10-04",
+          },
+        },
+      }),
+    ),
+  );
+  renderHosted(<HostedProjectScreen projectId="required-opening" />);
+  expect(await screen.findByLabelText("Scene footage coverage")).toHaveTextContent(
+    "First 3 minutes: AI video only · Afterward 0%",
+  );
+  expect(stageRow("Generate scene videos")).toHaveTextContent(/running/i);
+  expect(screen.getByLabelText("Generate scene videos elapsed time")).toBeInTheDocument();
+  expect(screen.queryByText("Scene footage off · $0.")).not.toBeInTheDocument();
+  expect(screen.queryByText("No full scene fits. Scene footage skipped.")).not.toBeInTheDocument();
+});
 
 it("queues script and voice in one Create action, preserving identity after a lost response", async () => {
   const submissions: { body: string; key: string }[] = [];

@@ -129,7 +129,7 @@ Preserve accepted `scheduler-v2`. A versioned PRNG derives only from
 their own version as that namespace. Same inputs/version/seed produce identical
 frame boundaries, compositions, asset slots, and shot roles.
 
-Fresh image-quality revisions select `scheduler-v6` for long narration and `scheduler-v7` for
+Historical image-quality revisions select `scheduler-v6` for long narration and `scheduler-v7` for
 short narration. These use the V2/V5 parent's timing and segment-ID seed namespace respectively,
 so the new behavior changes only eligible shot roles. Compute the old candidate first: preserve
 every non-HANDS_ACTION role, and retain HANDS_ACTION only for supported physical contact. Abstract
@@ -139,7 +139,7 @@ V2–V5 behavior and saved revisions remain immutable. Golden hashes and timing/
 must pass before publication. Do not silently alter the legacy rotation or force every physical
 action into a hands-only view.
 
-Algorithm:
+Legacy precursor algorithm (fresh V8/V9 apply the mandatory opening policy below afterward):
 
 1. Start frame 0 with `AVATAR_FULL` on a natural 2–6-second phrase. A strong complete opening sentence
    may use 4–7 seconds.
@@ -161,6 +161,38 @@ Algorithm:
     seconds, every word/source/frame interval is covered once, and all image scenes are legal.
 
 No LLM chooses timing, composition, crop, or boundaries.
+
+### Mandatory AI video opening — 2026-10-04
+
+DEC_VIDEO_OPENING_001 supersedes the legacy cold open for fresh revisions. Narration longer than
+30 seconds pins `scheduler-v8`; shorter narration pins `scheduler-v9`. Each version preserves the
+V2/V5 timing namespace and physical-hand eligibility. First construct and validate the unchanged
+legacy precursor, including its avatar coverage and balance. Then convert every scene whose
+source start is before 180,000 ms to `IMAGE_FULL` with its own full-screen image source task.
+Retain exact words, phrase text, source times and frame boundaries. Later compositions and avatar
+work remain at their precursor positions; do not redistribute the removed opening avatar share.
+Converted opening scenes retain the precursor's 2–7-second bound; later full-image scenes remain
+3–7 seconds and avatars retain their bounds and full/split alternation. All saved V2–V7 plans remain
+immutable. A film ending within 180 seconds has no avatar spans; its versioned generation work
+manifest permits zero avatar/span counts without weakening historical manifest checks.
+
+Pin `OPENING_180_V3` only for fresh revisions. Every scene starting before frame 5,400 requires a
+successful accepted whole-scene video clip. No opening still, full avatar, split composition or
+still fallback may reach rendering. A scene crossing 3:00 finishes in motion to preserve its
+whole-word scene boundary. Require exact successful opening job/asset/receipt coverage at both
+video readiness and render materialization. Definite optional failures after the opening retain
+the existing whole-scene still fallback; unknown submissions retain exact paid identity and never
+replay. Old `LEGACY_PREFIX_V1` and `WHOLE_SCENE_V2` revisions retain their original selection rules.
+
+For total frames T and selected integer percentage P, the remaining-duration budget is
+`floor(max(0,T-5400)*P/100)`. Only a crossing scene's frames after 5,400 consume that budget;
+opening frames before it never do. Deduct that suffix before applying the existing deterministic
+whole-scene spread/fill algorithm to later eligible scenes. Underfill remains valid. The crossing
+scene stays required even at P=0 or when its suffix exceeds the optional budget. Keep requested
+remaining coverage distinct from mandatory opening duration and final overall footage share.
+Create estimates are preliminary; exact provider cost uses padded selected request durations.
+Release steps and remaining acceptance gates are in [AI_VIDEO_OPENING_PLAN.md](AI_VIDEO_OPENING_PLAN.md)
+and CURRENT_STATE.yaml.
 
 ### Ranga-close acceptance
 
@@ -350,10 +382,10 @@ behind an earlier admitted project is queue waiting, not evidence of RunPod plac
 
 ## DEC_VIDEO_GENERATION_001 — 2026-10-02
 
-Fresh projects pin Seedance1.0ProFast at Runware720p16:9 (bytedance:2@2,1248x704), with immutable integer 0–100% finished-video coverage under WHOLE_SCENE_V2, default 7%. Complete IMAGE_FULL scenes fit the selected ceiling without overshoot; narration/avatar timing and source images remain intact. Clips start after their exact images accept and overlap remaining image/avatar work. Source/provider identities, accepted clips, costs and barriers are tenant-private and durable; uncertain inference is never resubmitted. Fresh whole-scene rendering uses version3 contracts, including Off/all-fallback, with strict native geometry/duration checks and hard cuts. Definite bounded optional clip failures keep the verified original still throughout the scene and retain their reported charge; unknown submissions, price changes and cancellation remain fenced. Requested/planned/accepted coverage and still fallbacks are reported. Fresh requests retain 0.1s duration headroom and exact saved selections on replay. Historical LEGACY_PREFIX_V1 plans retain 7% prefix behavior and their saved v1/v2 render identity. See DEC_VIDEO_SCENE_001, DEC_VIDEO_COVERAGE_001, tasks/SEEDANCE_VIDEO_PLAN.md and CURRENT_STATE.yaml for publication and separate paid acceptance gates.
+Fresh scene video retains the pinned Seedance1.0ProFast provider model, native geometry, padded duration checks, source receipts, private cost attribution and no-replay identity. The mandatory opening policy and remaining-duration percentage are owned by DEC_VIDEO_OPENING_001 above; legacy plans keep their original render contract and selection identities. Publication and paid acceptance remain distinct in CURRENT_STATE.yaml.
 
 
-## Published whole scene motion and selectable coverage (2026-10-03)
+## Historical whole scene coverage (2026-10-03; fresh opening supersedes this)
 
 DEC_VIDEO_SCENE_001 and DEC_VIDEO_COVERAGE_001 are published in source 89cfe121: each accepted WHOLE_SCENE_V2 clip replaces a complete IMAGE_FULL scene within the user-selected finished-video coverage ceiling. Create accepts integers 0–100%, default 7%; zero skips scene footage, high values saturate at eligible scene capacity, and avatars retain their timing/layout. Whole-scene underfill is valid; no silent overshoot. Existing LEGACY_PREFIX_V1 plans retain their immutable 7% prefixes and outputs. Migration248, qualified Desktop0.1.47/Cloud readers and provider-free composition checks pass. Fresh paid whole-film/editorial acceptance remains separate. See [the combined implementation plan](tasks/SEEDANCE_VIDEO_PLAN.md#whole-scene-replacement-follow-up) and CURRENT_STATE.yaml.
 
@@ -361,9 +393,9 @@ DEC_VIDEO_SCENE_001 and DEC_VIDEO_COVERAGE_001 are published in source 89cfe121:
 
 DEC_VOICEOVER_001 makes J1TTS narration the first durable stage of script-created projects. One Create video action saves the script, voice and exact preset choices before any TTS submission. Queue intake remains accepted while capacity is busy; a revision is written only after real generated audio has a verified checksum and measured duration. A generated MP3 is the final canonical narration and follows the same voiceover validation/upload/timed-ASR stages. TTS shares the global admission lock and one/account, two/global provider-workload ceiling with existing videos/previews. Busy preparation performs no provider POST. Existing fair video admission waits around active TTS, preserving lease counters and reconciliation. Ambiguous TTS submissions retain their capacity and never automatically replay; known provider IDs permit retrieval-only recovery.
 
-## Short voiceover compatibility — 2026-10-04
+## Historical short voiceover precursor compatibility — 2026-10-04
 
-Fresh10–30second voiceovers now pin `scheduler-v5`. It first attempts V4's20–24% short coverage envelope; only if no legal complete word-boundary plan exists may it use20–26%. The18.019second production narration has boundaries at3.470s and4.440s and cannot fit the prior20–24% band. The V5 fallback preserves whole words,3–7second image scenes, bounded avatar scenes, complete source coverage and hard cuts. Longer-than30seconds still pins V2's21–22%. Published V2/V3/V4 configuration hashes and existing revisions stay immutable; preserve the failed V4 qualification revision rather than rewriting its history. Regression fixtures cover both real19.087s and18.019s timing patterns.
+The V5 precursor for 10–30 second voiceovers pins `scheduler-v5`; fresh V9 applies the mandatory opening after validating it. It first attempts V4's20–24% short coverage envelope; only if no legal complete word-boundary plan exists may it use20–26%. The18.019second production narration has boundaries at3.470s and4.440s and cannot fit the prior20–24% band. The V5 fallback preserves whole words,3–7second image scenes, bounded avatar scenes, complete source coverage and hard cuts. The long precursor retains V2's 21–22% target; fresh V8 masks its opening. Published V2/V3/V4 configuration hashes and existing revisions stay immutable; preserve the failed V4 qualification revision rather than rewriting its history. Regression fixtures cover both real19.087s and18.019s timing patterns.
 
 ## Shared API capacity — 2026-10-04
 

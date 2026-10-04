@@ -1374,6 +1374,12 @@
       "name": "cloud_asr_recovery_voiceover_reader",
       "filename": "0266_cloud_asr_recovery_voiceover_reader.sql",
       "sha256": "sha256:176fe5b41e20b0f2165c1caf278d704445224aa53a560f09ed1b422943c0fc9c"
+    },
+    {
+      "version": 267,
+      "name": "hosted_video_opening",
+      "filename": "0267_hosted_video_opening.sql",
+      "sha256": "sha256:82618989c40b00744ca3800518259e5e37fe21544f60fcce55d78a6d75b53185"
     }
   ]
 }

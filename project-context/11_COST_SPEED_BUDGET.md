@@ -238,15 +238,34 @@ temporary disk USD0.013889/h (USD0.733889/h all-in). Actual returned CPU/RAM/res
 must pass approved bounds before execution. VideoForge speed,45-minute scratch peaks and settled
 billing remain unmeasured; no reliability/capacity guarantee follows from the listing.
 
-## Seedance7% integration (2026-10-03)
+## Historical Seedance7% integration (2026-10-03)
 
 Seedance1.0ProFast bytedance:2@2,720p16:9: published Runware rate verified2026-10-02 is USD0.01336/generated second. Seven percent of30minutes is126motion seconds, nominalUSD1.68336; API minimum1.2seconds and0.1second rounding can generate a small unused tail. Planning uses generated duration for projected cost; exact task cost is recorded before media acceptance, including charged invalid outputs. Implementation qualification cap isUSD4 provider/compute, with no30minute paid benchmark. Four inference jobs may be outstanding; result acceptance is serial to fit Worker memory. Parallel stage durations are not added to wall-clock elapsed time.
 
 
-## Published whole scene coverage control (2026-10-03)
+## Historical whole scene coverage control (2026-10-03)
 
 Published coverage changes fresh scene-footage ceilings from fixed 7% to the immutable per-revision user choice; default stays 7% and legacy plans keep their original selections. Projected motion cost uses actual selected padded provider-request durations and configured rate metadata. Pre-timeline estimates are preliminary. Off has no Seedance calls/charges; definite failed clips retain actual charges and reduce accepted coverage. Higher coverage preserves the existing four-job concurrency bound. No new paid test authority is inferred from the earlier USD4 run. This release used USD0 new provider generation/paid compute; fresh paid high-coverage performance and final invoices remain unverified. Details: [combined plan](tasks/SEEDANCE_VIDEO_PLAN.md#whole-scene-replacement-follow-up).
 
 ## Voiceover generation accounting — 2026-10-04
 
 J1TTS uses the approved supplied subscription key and provider usage rather than GPU compute. The initial authenticated usage read reports used_today0, limit0, remaining null; the supplied dashboard labels the plan unlimited. These are provider/subscription observations, not an invoice or a unit-price claim. No software token enables additional subscriptions or GPU fallback. Direct uploads incur no J1TTS call. Each generation is explicit and durably claimed; uncertain submissions never retry automatically. Existing image/avatar/Cloud costs and cleanup remain independently accountable.
+
+## Mandatory opening and remaining coverage cost — 2026-10-04
+
+DEC_VIDEO_OPENING_001 adds required footage independently of the selected remaining-duration
+percentage. Before scheduling, nominal footage seconds are
+`min(duration_seconds,180) + max(0,duration_seconds-180)*coverage_percent/100`. A 60-second
+film at Off estimates 60 seconds; a 600-second film at 7% estimates 209.4 seconds; a 30-minute
+film at 7% estimates 293.4 seconds. Using the existing configured USD0.01336/second rate, these
+nominal scene-video estimates are USD0.8016, USD2.797584 and USD3.919824 respectively. They are
+arithmetic examples using the existing rate, not fresh price verification or invoices.
+
+Exact planning uses selected whole scenes, crossing-suffix allocation and padded provider request
+durations; whole-scene underfill and provider headroom can change the amount. Off disables only
+optional later footage for OPENING_180_V3, so required opening calls still cost money. Mandatory
+opening failures retain their actual charges and stop completion; they cannot lower cost by
+substituting a still. Legacy Off retains zero scene-video calls. Keep projected reserves, actual
+reported provider charges and final invoices separate. Existing concurrency, cancellation,
+uncertain-identity fences and finite compute shutdown remain. Current acceptance spend and
+resource state live only in CURRENT_STATE.yaml.

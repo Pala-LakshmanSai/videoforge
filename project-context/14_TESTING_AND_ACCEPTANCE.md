@@ -246,7 +246,7 @@ commercial permission is clearer than the source artifacts establish.
 
 ## Scheduler and Ranga style gate
 
-The accepted deterministic-scheduler baseline is preserved. Regression/property tests enforce:
+The accepted legacy deterministic-scheduler baseline is preserved. Its regression/property tests enforce:
 
 - only three compositions;
 - frame 0 full avatar;
@@ -400,7 +400,7 @@ placement, runtime-ready, download, render, technical checking, upload and termi
 Retained-media or repeated-source fixtures do not establish fresh Kie/Fal/editorial quality.
 
 
-## Published whole scene coverage control (2026-10-03)
+## Historical whole scene coverage control (2026-10-03)
 
 Published source 89cfe121 passes focused Create/preflight/idempotency, integer 0/custom/default/all presets, exact successor inheritance, zero-job completion, whole-scene selection and native SQL/renderer rejection of partial clips. Synthetic FFmpeg proves no still tail through every selected scene frame with unchanged narration/timing; requested/planned/accepted coverage and padded-duration costs, legacy compatibility, tenant denial and UNKNOWN no replay pass. Both backend contracts have provider-free fixtures; qualified Desktop0.1.47/Cloud runtime, production HTTP and live Chrome controls pass. These checks do not establish a fresh paid Create-to-Review film, full-film playback/editorial acceptance, a 30-minute speedup or final invoices. Broad CI retains baseline failures. Details: [combined plan](tasks/SEEDANCE_VIDEO_PLAN.md#whole-scene-replacement-follow-up).
 
@@ -408,6 +408,19 @@ Published source 89cfe121 passes focused Create/preflight/idempotency, integer 0
 
 Verify private saved/starred state and dropdown ordering, script picker/paste, no TTS on selection/editing, one provider submission per durable UUID, altered-body conflict, ambiguous-response no replay, refresh recovery, exact-ID status/audio, foreign-owner404, shared admission, and unchanged direct upload/ASR/render. Prove a real generated MP3 decodes and meets the10s–60min voiceover contract. Live Chrome and production publication are separate from fixtures; full generated-video playback/download and cleanup require their own evidence.
 
-## Short voiceover compatibility — 2026-10-04
+## Historical short voiceover compatibility — 2026-10-04
 
-Fresh voiceovers longer than15seconds and at most30seconds pin `scheduler-v4`, extending the established20–24% short-clip avatar envelope while preserving exact `scheduler-v2` and `scheduler-v3` configurations/hashes and all historical revision pins. V3 still selects for10–15seconds; longer-than30seconds selects V2's21–22%. Whole-word cuts, continuous source coverage,3–7second image scenes, bounded avatar scenes, immutable work-plan provenance and output grammar remain. The real19.087second J1TTS canary has no word boundary in V2's4.00–4.20second avatar window; preserve that failed revision and use a fresh V4 revision for acceptance. Regression data is de-identified in `packages/pipeline/tests/fixtures/j1tts-short-transcript.json`.
+The historical V4 rollout selected `scheduler-v4` for voiceovers longer than15seconds and at most30seconds, extending the established20–24% short-clip avatar envelope while preserving exact `scheduler-v2` and `scheduler-v3` configurations/hashes and all historical revision pins. V3 still selects for10–15seconds; longer-than30seconds selects V2's21–22%. Whole-word cuts, continuous source coverage,3–7second image scenes, bounded avatar scenes, immutable work-plan provenance and output grammar remain. The real19.087second J1TTS canary has no word boundary in V2's4.00–4.20second avatar window; preserve that failed revision and use a fresh V4 revision for acceptance. Regression data is de-identified in `packages/pipeline/tests/fixtures/j1tts-short-transcript.json`.
+
+## Mandatory opening acceptance — 2026-10-04
+
+DEC_VIDEO_OPENING_001 requires regression proof that all opening scenes are full-screen footage,
+including short films and the scene crossing 3:00. Check exact words/source/frame coverage,
+unchanged later avatar positions, immutable replay, remaining-duration budget, Off/custom/preset
+choices, required-failure blocking, no optional still fallback inside the opening and old-policy
+compatibility. Short V8/V9 work plans must contain zero avatar work without weakening legacy v1.
+UI proof distinguishes the mandatory opening from optional percentage and still displays the
+scene-video stage when that percentage is zero. Provider-free fixtures do not establish generated
+footage quality, a production Create-to-Review film or long-form performance. Current production
+Chrome, paid artifact, cleanup and invoice evidence remain separate in CURRENT_STATE.yaml and
+AI_VIDEO_OPENING_PLAN.md.
