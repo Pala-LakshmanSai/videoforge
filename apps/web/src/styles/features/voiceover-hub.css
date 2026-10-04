@@ -560,7 +560,7 @@
 .voice-select-option[aria-selected="true"] {
   background: #d488a318;
 }
-.voice-select-option > span {
+.voice-select-option > .voice-select-name {
   flex: 1;
   min-width: 0;
   display: grid;
@@ -575,7 +575,7 @@
   font-size: 11px;
   color: var(--muted);
 }
-.voice-select-option > svg {
+.voice-select-actions > svg {
   color: #e0b575;
   flex-shrink: 0;
 }
@@ -653,5 +653,93 @@
   .voice-card,
   .voice-hub-search {
     transition: none;
+  }
+}
+
+.voice-select-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+.voice-select-listen {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid #ffffff16;
+  border-radius: 50%;
+  color: #e9b1c5;
+  background: #d488a30d;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.voice-select-listen:hover,
+.voice-select-listen.is-previewing {
+  color: #fff;
+  border-color: #d488a380;
+  background: #d488a32b;
+}
+.voice-select-listen:focus-visible,
+.voice-select-preview button:focus-visible {
+  outline: 2px solid #e9b1c5;
+  outline-offset: 2px;
+}
+.voice-select-listen:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.voice-select-preview {
+  position: sticky;
+  bottom: -6px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 6px -6px -6px;
+  padding: 12px;
+  background: #26202e;
+  border-top: 1px solid #d488a330;
+  color: #e9b1c5;
+}
+.voice-select-preview > span {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.voice-select-preview strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.voice-select-preview small {
+  color: #c5becb;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.voice-select-preview button {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.voice-select-loading {
+  animation: voice-sample-spin 1s linear infinite;
+}
+@keyframes voice-sample-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .voice-select-loading {
+    animation: none;
   }
 }

@@ -1,4 +1,14 @@
-import { Check, ChevronDown, Search, Star } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Headphones,
+  LoaderCircle,
+  Pause,
+  Play,
+  Search,
+  Star,
+  X,
+} from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { compareVoices, matchesVoiceName, type Voice } from "./voice-library";
 
@@ -21,10 +31,64 @@ export function VoiceSelect({
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const [above, setAbove] = useState(false);
+  const audio = useRef<HTMLAudioElement>(null);
+  const playbackRequest = useRef(0);
+  const [preview, setPreview] = useState<Voice | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [previewError, setPreviewError] = useState(false);
+  function stopPreview() {
+    playbackRequest.current += 1;
+    audio.current?.pause();
+    setPreview(null);
+    setPlaying(false);
+    setLoading(false);
+    setPreviewError(false);
+  }
+  function playAudio(element: HTMLAudioElement) {
+    const request = ++playbackRequest.current;
+    setLoading(true);
+    setPreviewError(false);
+    void element.play().catch(() => {
+      if (request === playbackRequest.current) {
+        setLoading(false);
+        setPlaying(false);
+        setPreviewError(true);
+      }
+    });
+  }
+  function listen(voice: Voice) {
+    if (!voice.preview_url || disabled) return;
+    if (preview?.voice_id === voice.voice_id && audio.current) {
+      if (playing || loading) {
+        playbackRequest.current += 1;
+        audio.current.pause();
+        setPlaying(false);
+        setLoading(false);
+      } else {
+        if (previewError || audio.current.error) audio.current.load();
+        playAudio(audio.current);
+      }
+    } else {
+      stopPreview();
+      setLoading(true);
+      setPreview(voice);
+    }
+  }
+  useEffect(() => {
+    const element = audio.current;
+    if (!preview || !element) return;
+    playAudio(element);
+    return () => {
+      playbackRequest.current += 1;
+      element.pause();
+    };
+  }, [preview]);
   const selected = voices.find((voice) => voice.voice_id === value);
   const visible = voices.filter((voice) => matchesVoiceName(voice, query)).sort(compareVoices);
   const activeIndex = Math.min(active, Math.max(0, visible.length - 1));
   function close() {
+    stopPreview();
     setOpen(false);
     setQuery("");
     setActive(0);
@@ -56,6 +120,13 @@ export function VoiceSelect({
     <div
       className="voice-select"
       ref={root}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          input.current?.focus();
+          close();
+        }
+      }}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) close();
       }}
@@ -70,6 +141,8 @@ export function VoiceSelect({
           role="combobox"
           aria-label="Script voice"
           aria-expanded={open}
+          aria-haspopup="grid"
+          aria-keyshortcuts="Alt+P"
           aria-controls={open ? `${id}-list` : undefined}
           aria-autocomplete="list"
           aria-activedescendant={open && visible.length ? `${id}-option-${activeIndex}` : undefined}
@@ -85,11 +158,13 @@ export function VoiceSelect({
             openMenu();
           }}
           onKeyDown={(event) => {
-            if (event.key === "Escape") {
+            if (event.altKey && event.key.toLowerCase() === "p" && open) {
+              event.preventDefault();
+              if (visible[activeIndex]) listen(visible[activeIndex]);
+            } else if (event.key === "Escape") {
               event.preventDefault();
               close();
-            } else if (event.key === "Tab") close();
-            else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
               event.preventDefault();
               if (!open) {
                 openMenu();
@@ -125,38 +200,117 @@ export function VoiceSelect({
           <ChevronDown size={17} aria-hidden="true" />
         </button>
       </div>
+      {preview && (
+        <audio
+          ref={audio}
+          key={preview.voice_id}
+          src={preview.preview_url ?? undefined}
+          aria-label={`${preview.name} voice sample`}
+          onPlaying={() => {
+            setPlaying(true);
+            setLoading(false);
+            setPreviewError(false);
+          }}
+          onPause={() => {
+            setPlaying(false);
+            setLoading(false);
+          }}
+          onEnded={() => {
+            setPlaying(false);
+            setLoading(false);
+          }}
+          onError={() => {
+            playbackRequest.current += 1;
+            setPlaying(false);
+            setLoading(false);
+            setPreviewError(true);
+          }}
+        />
+      )}
       {open && !disabled && (
         <div className={`voice-select-menu ${above ? "voice-select-menu-above" : ""}`}>
           <p className="voice-select-hint">
             {query.trim()
               ? `${visible.length} matching voices`
-              : "Your favorites first · Search by name"}
+              : "Your favorites first · Listen before choosing"}
           </p>
-          <div role="listbox" id={`${id}-list`} aria-label="Voice options">
+          <div role="grid" id={`${id}-list`} aria-label="Voice options">
             {visible.map((voice, index) => (
               <div
                 key={voice.voice_id}
                 id={`${id}-option-${index}`}
-                role="option"
+                role="row"
                 ref={index === activeIndex ? activeOption : undefined}
                 aria-selected={voice.voice_id === value}
                 className={`voice-select-option ${index === activeIndex ? "is-active" : ""}`}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => choose(voice)}
               >
-                <span>
+                <span role="gridcell" className="voice-select-name">
                   <strong>{voice.name}</strong>
                   <small>{voice.tags || "Narration voice"}</small>
                 </span>
-                {voice.starred ? (
-                  <Star size={15} fill="currentColor" aria-label="Starred" />
-                ) : voice.saved ? (
-                  <small>Saved</small>
-                ) : null}
-                {voice.voice_id === value && <Check size={16} aria-label="Selected" />}
+                <span role="gridcell" className="voice-select-actions">
+                  {voice.starred ? (
+                    <Star size={15} fill="currentColor" aria-label="Starred" />
+                  ) : voice.saved ? (
+                    <small>Saved</small>
+                  ) : null}
+                  {voice.voice_id === value && <Check size={16} aria-label="Selected" />}
+                  <button
+                    type="button"
+                    className={`voice-select-listen ${preview?.voice_id === voice.voice_id ? "is-previewing" : ""}`}
+                    tabIndex={index === activeIndex ? 0 : -1}
+                    disabled={!voice.preview_url}
+                    aria-label={
+                      !voice.preview_url
+                        ? `Preview unavailable for ${voice.name}`
+                        : `${preview?.voice_id === voice.voice_id && (playing || loading) ? "Pause" : "Listen to"} ${voice.name}`
+                    }
+                    title={
+                      voice.preview_url
+                        ? "Listen to sample · Alt+P for highlighted voice"
+                        : "No sample available"
+                    }
+                    onFocus={() => setActive(index)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setActive(index);
+                      listen(voice);
+                    }}
+                  >
+                    {preview?.voice_id === voice.voice_id && loading ? (
+                      <LoaderCircle size={17} className="voice-select-loading" aria-hidden="true" />
+                    ) : preview?.voice_id === voice.voice_id && playing ? (
+                      <Pause size={17} aria-hidden="true" />
+                    ) : (
+                      <Play size={17} aria-hidden="true" />
+                    )}
+                  </button>
+                </span>
               </div>
             ))}
           </div>
+          {preview && (
+            <div className="voice-select-preview" role="status">
+              <Headphones size={16} aria-hidden="true" />
+              <span>
+                <strong>{preview.name}</strong>
+                <small>
+                  {previewError
+                    ? "Couldn't play sample. Try again."
+                    : loading
+                      ? "Loading sample…"
+                      : playing
+                        ? "Playing sample · Your selection is unchanged"
+                        : "Sample ready · Listen again anytime"}
+                </small>
+              </span>
+              <button type="button" aria-label="Stop voice sample" onClick={stopPreview}>
+                <X size={16} aria-hidden="true" />
+              </button>
+            </div>
+          )}
           {!visible.length && (
             <p className="voice-select-empty" role="status">
               No matching voices. Try the start of a name.

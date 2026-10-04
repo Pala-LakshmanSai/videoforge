@@ -334,7 +334,7 @@ it("reselecting a voice leaves existing narration intact and locking closes the 
   fireEvent.focus(picker);
   view.rerender(<VoiceSelect voices={voices} value="alice" disabled onChange={change} />);
   expect(picker).toBeDisabled();
-  expect(screen.queryByRole("listbox")).toBeNull();
+  expect(screen.queryByRole("grid")).toBeNull();
   expect(change).not.toHaveBeenCalled();
 });
 
@@ -387,13 +387,13 @@ it("uses the same prefix search in the script picker with keyboard selection and
   await waitFor(() => expect(picker).toHaveValue("Alice"));
   fireEvent.focus(picker);
   fireEvent.change(picker, { target: { value: " B " } });
-  const list = screen.getByRole("listbox", { name: "Voice options" });
-  expect(within(list).getAllByRole("option")).toHaveLength(2);
+  const list = screen.getByRole("grid", { name: "Voice options" });
+  expect(within(list).getAllByRole("row")).toHaveLength(2);
   expect(within(list).queryByText("Alice")).toBeNull();
-  expect(within(list).getAllByRole("option")[0]).toHaveTextContent("Brian");
+  expect(within(list).getAllByRole("row")[0]).toHaveTextContent("Brian");
   fireEvent.keyDown(picker, { key: "Enter" });
   expect(picker).toHaveValue("Brian");
-  expect(screen.queryByRole("listbox")).toBeNull();
+  expect(screen.queryByRole("grid")).toBeNull();
   fireEvent.focus(picker);
   fireEvent.change(picker, { target: { value: "zzz" } });
   expect(screen.getByText(/No matching voices/)).toBeVisible();
@@ -401,10 +401,89 @@ it("uses the same prefix search in the script picker with keyboard selection and
   expect(picker).toHaveValue("Brian");
   fireEvent.focus(picker);
   fireEvent.pointerDown(document.body);
-  expect(screen.queryByRole("listbox")).toBeNull();
+  expect(screen.queryByRole("grid")).toBeNull();
   expect(
     fetcher.mock.calls.every(
       (call) => call.length === 1 || !(call[1] as RequestInit | undefined)?.method,
     ),
   ).toBe(true);
+});
+
+it("previews inside the picker without selecting or submitting, and stops on dismissal", async () => {
+  const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+  const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+  const change = vi.fn();
+  const samples = voices.map((v) => ({ ...v, preview_url: `/${v.voice_id}.mp3` }));
+  const { container } = render(
+    <VoiceSelect voices={samples} value="alice" disabled={false} onChange={change} />,
+  );
+  const picker = screen.getByRole("combobox", { name: "Script voice" });
+  fireEvent.focus(picker);
+  fireEvent.click(screen.getByRole("button", { name: "Listen to Bob" }));
+  expect(change).not.toHaveBeenCalled();
+  expect(picker).toHaveAttribute("aria-expanded", "true");
+  expect(screen.getByText("Loading sample…")).toBeVisible();
+  const bob = screen.getByLabelText("Bob voice sample");
+  fireEvent.playing(bob);
+  fireEvent.click(screen.getByRole("button", { name: "Pause Bob" }));
+  expect(pause).toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "Listen to Bob" })).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Listen to Alice" }));
+  expect(container.querySelectorAll("audio")).toHaveLength(1);
+  expect(screen.queryByLabelText("Bob voice sample")).toBeNull();
+  fireEvent.keyDown(picker, { key: "Escape" });
+  expect(container.querySelector("audio")).toBeNull();
+  expect(picker).toHaveValue("Alice");
+  expect(change).not.toHaveBeenCalled();
+  expect(play).toHaveBeenCalledTimes(2);
+});
+
+it("supports keyboard samples, unavailable voices, error retry, and disabled cleanup", async () => {
+  const play = vi
+    .spyOn(HTMLMediaElement.prototype, "play")
+    .mockRejectedValueOnce(new Error("network"))
+    .mockResolvedValue();
+  vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+  const load = vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => {});
+  const change = vi.fn();
+  const view = render(
+    <VoiceSelect voices={voices} value="alice" disabled={false} onChange={change} />,
+  );
+  const picker = screen.getByRole("combobox", { name: "Script voice" });
+  fireEvent.focus(picker);
+  expect(screen.getByRole("button", { name: "Preview unavailable for Bob" })).toBeDisabled();
+  fireEvent.keyDown(picker, { key: "p", altKey: true });
+  await screen.findByText("Couldn't play sample. Try again.");
+  fireEvent.click(screen.getByRole("button", { name: "Listen to Alice" }));
+  expect(load).toHaveBeenCalledOnce();
+  fireEvent.playing(screen.getByLabelText("Alice voice sample"));
+  fireEvent.ended(screen.getByLabelText("Alice voice sample"));
+  expect(screen.getByRole("button", { name: "Listen to Alice" })).toBeVisible();
+  view.rerender(<VoiceSelect voices={voices} value="alice" disabled onChange={change} />);
+  expect(view.container.querySelector("audio")).toBeNull();
+  expect(screen.queryByRole("grid")).toBeNull();
+  expect(change).not.toHaveBeenCalled();
+  expect(play).toHaveBeenCalledTimes(2);
+});
+
+it("ignores a stale playback rejection after switching voices", async () => {
+  let rejectFirst: (reason: Error) => void = () => {};
+  vi.spyOn(HTMLMediaElement.prototype, "play")
+    .mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectFirst = reject;
+        }),
+    )
+    .mockResolvedValue();
+  vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+  const samples = voices.map((v) => ({ ...v, preview_url: `/${v.voice_id}.mp3` }));
+  render(<VoiceSelect voices={samples} value="alice" disabled={false} onChange={vi.fn()} />);
+  fireEvent.focus(screen.getByRole("combobox", { name: "Script voice" }));
+  fireEvent.click(screen.getByRole("button", { name: "Listen to Alice" }));
+  fireEvent.click(screen.getByRole("button", { name: "Listen to Bob" }));
+  fireEvent.playing(screen.getByLabelText("Bob voice sample"));
+  rejectFirst(new Error("aborted"));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Pause Bob" })).toBeVisible());
+  expect(screen.queryByText("Couldn't play sample. Try again.")).toBeNull();
 });
