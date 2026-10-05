@@ -2,12 +2,13 @@ voice_filters_2026_10_05:
   checkpoint: V2-09
   selected_task: VF-10-09
   read_profile: v2_09_short_live_e2e
-  status: PRODUCTION_ACTIVE_REAL_CHROME_FILTERS_VERIFIED
+  status: DROPDOWN_POLISH_IMPLEMENTED_LOCAL_VALIDATION_IN_PROGRESS
   branch: codex/voice-filters
   base_source: 610b7bed
   production_source: 77781a02c1aa6d73780d117b7bffbd700ca52738
   production_version: 7be46efd-14ad-43d9-bce5-0d55f55e4495
   user_authority: Implement_useful_voice_catalog_filters_from_plan_through_production;new_paid_generation_compute_USD0.
+  dropdown_followup: User17_14_requires_polished_themed_listboxes_checks_counts_disabled_states_keyboard_typeahead_scroll_and_responsive_placement.
   behavior: Gender_explicit_accent_language_region_style_tone_use_case_preview_availability_sort_counts_reset_before_pagination;existing_prefix_search_tabs_privacy_preserved.
   validation: Focused39PASS;Web_Worker_types_changed_lint_both_builds_bundle_context_secrets_PASS;installed_Chrome1280_and390px_PASS;live1117catalog_combination_prefix_reset_tabs_and9_613061s_preview_end_errornull_PASS.
   provider_spend: USD0_new_generation_or_compute.

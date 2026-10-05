@@ -7,6 +7,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 import { VoiceoverHub, ScriptVoiceover } from "./VoiceoverHub";
 import { VoiceSelect } from "./VoiceSelect";
+import { VoiceFilterSelect } from "./VoiceFilterSelect";
 const voices = [
   {
     voice_id: "alice",
@@ -537,18 +538,14 @@ it("combines counted voice filters with search, library tabs, sorting and resets
   wrap(<VoiceoverHub />);
   await screen.findByRole("heading", { name: "Alice - British" });
   fireEvent.click(screen.getByRole("button", { name: /^All voices/ }));
-  fireEvent.change(screen.getByLabelText("Gender", { exact: true }), {
-    target: { value: "female" },
-  });
+  chooseFilter("Gender", "Female");
   expect(screen.queryByRole("heading", { name: "Bob - American" })).toBeNull();
-  expect(
-    within(screen.getByLabelText("Accent", { exact: true })).getByRole("option", {
-      name: "American (0)",
-    }),
-  ).toBeDisabled();
-  fireEvent.change(screen.getByLabelText("Accent", { exact: true }), {
-    target: { value: "indian" },
-  });
+  fireEvent.click(screen.getByRole("combobox", { name: "Accent" }));
+  expect(screen.getByRole("option", { name: "American 0" })).toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
+  fireEvent.click(screen.getByRole("option", { name: "Indian 1" }));
   expect(screen.getByRole("heading", { name: "Bea - Indian" })).toBeVisible();
   expect(screen.queryByRole("heading", { name: "Alice - British" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: /^Saved/ }));
@@ -556,22 +553,14 @@ it("combines counted voice filters with search, library tabs, sorting and resets
   fireEvent.click(screen.getByRole("button", { name: "Explore all voices" }));
   expect(screen.getByRole("heading", { name: "Bea - Indian" })).toBeVisible();
   fireEvent.click(screen.getByRole("button", { name: "Remove Accent filter" }));
-  fireEvent.change(screen.getByLabelText("Style / tone", { exact: true }), {
-    target: { value: "calm" },
-  });
-  fireEvent.change(screen.getByLabelText("Use case", { exact: true }), {
-    target: { value: "narrative story" },
-  });
-  fireEvent.change(screen.getByLabelText("Language / region", { exact: true }), {
-    target: { value: "gb" },
-  });
+  chooseFilter("Style / tone", "Calm");
+  chooseFilter("Use case", "Narrative Story");
+  chooseFilter("Language / region", "United Kingdom");
   expect(screen.getByRole("heading", { name: "Alice - British" })).toBeVisible();
   fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
   fireEvent.click(screen.getByLabelText("Has audio preview"));
   expect(screen.queryByRole("heading", { name: "Bob - American" })).toBeNull();
-  fireEvent.change(screen.getByLabelText("Sort", { exact: true }), {
-    target: { value: "reverse" },
-  });
+  chooseFilter("Sort", "Name Z–A");
   expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
     "Bea - Indian",
     "Alice - British",
@@ -603,9 +592,7 @@ it("filters the complete catalog beyond the first page and resets pagination", a
   expect(screen.queryByRole("heading", { name: "Voice 69" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Show more voices" }));
   expect(screen.getByRole("heading", { name: "Voice 69" })).toBeVisible();
-  fireEvent.change(screen.getByLabelText("Gender", { exact: true }), {
-    target: { value: "female" },
-  });
+  chooseFilter("Gender", "Female");
   expect(screen.getByRole("heading", { name: "Voice 69" })).toBeVisible();
   expect(screen.queryByRole("button", { name: "Show more voices" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
@@ -631,9 +618,70 @@ it("sorts saved voices alphabetically when explicitly requested, preserving the 
     "Zoe",
     "Alice",
   ]);
-  fireEvent.change(screen.getByLabelText("Sort", { exact: true }), { target: { value: "name" } });
+  chooseFilter("Sort", "Name A–Z");
   expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
     "Alice",
     "Zoe",
   ]);
+});
+
+function chooseFilter(label: string, option: string) {
+  fireEvent.click(screen.getByRole("combobox", { name: label }));
+  fireEvent.click(screen.getByRole("option", { name: new RegExp(`^${option}(?: |$)`) }));
+}
+
+it("navigates styled filter menus with keyboard, skips unavailable options and dismisses safely", () => {
+  const change = vi.fn();
+  const options = [
+    { value: "", label: "Any gender" },
+    { value: "female", label: "Female", count: 0, disabled: true },
+    { value: "male", label: "Male", count: 1 },
+    { value: "unspecified", label: "Not specified", count: 0, disabled: true },
+  ];
+  const view = render(
+    <VoiceFilterSelect label="Gender" value="" options={options} onChange={change} />,
+  );
+  const trigger = screen.getByRole("combobox", { name: "Gender" });
+  trigger.focus();
+  fireEvent.keyDown(trigger, { key: "ArrowDown" });
+  expect(trigger).toHaveAttribute("aria-expanded", "true");
+  expect(screen.getByRole("option", { name: "Any gender" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  fireEvent.click(screen.getByRole("option", { name: "Female 0" }));
+  expect(change).not.toHaveBeenCalled();
+  fireEvent.keyDown(trigger, { key: "ArrowDown" });
+  expect(trigger.getAttribute("aria-activedescendant")).toBe(
+    screen.getByRole("option", { name: "Male 1" }).id,
+  );
+  fireEvent.keyDown(trigger, { key: "Enter" });
+  expect(change).toHaveBeenCalledWith("male");
+  expect(trigger).toHaveFocus();
+  expect(screen.queryByRole("listbox")).toBeNull();
+  fireEvent.click(trigger);
+  fireEvent.keyDown(trigger, { key: "End" });
+  expect(trigger.getAttribute("aria-activedescendant")).toBe(
+    screen.getByRole("option", { name: "Male 1" }).id,
+  );
+  fireEvent.keyDown(trigger, { key: "Home" });
+  fireEvent.keyDown(trigger, { key: "m" });
+  expect(trigger.getAttribute("aria-activedescendant")).toBe(
+    screen.getByRole("option", { name: "Male 1" }).id,
+  );
+  fireEvent.keyDown(trigger, { key: "Escape" });
+  expect(screen.queryByRole("listbox")).toBeNull();
+  fireEvent.click(trigger);
+  fireEvent.pointerDown(document.body);
+  expect(screen.queryByRole("listbox")).toBeNull();
+  fireEvent.click(trigger);
+  fireEvent.blur(trigger, { relatedTarget: document.body });
+  expect(screen.queryByRole("listbox")).toBeNull();
+  fireEvent.click(trigger);
+  view.rerender(
+    <VoiceFilterSelect label="Gender" value="" options={options} disabled onChange={change} />,
+  );
+  expect(screen.queryByRole("listbox")).toBeNull();
+  expect(trigger).toBeDisabled();
+  expect(change).toHaveBeenCalledTimes(1);
 });

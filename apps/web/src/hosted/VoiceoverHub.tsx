@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { VoiceSelect } from "./VoiceSelect";
+import { VoiceFilterSelect } from "./VoiceFilterSelect";
 import {
   compareVoices,
   emptyVoiceFilters,
@@ -208,37 +209,20 @@ export function VoiceoverHub() {
           a.label.localeCompare(b.label),
       );
     return (
-      <label className="voice-facet" key={facet}>
-        <span>{voiceFilterLabels[facet]}</span>
-        <select
-          aria-label={voiceFilterLabels[facet]}
-          value={traitsFilter[facet]}
-          disabled={voices.isPending || Boolean(voices.error)}
-          onChange={(event) =>
-            setTraitsFilter((current) => ({ ...current, [facet]: event.target.value }))
-          }
-        >
-          <option value="">
-            Any{" "}
-            {facet === "useCase"
-              ? "use case"
-              : facet === "region"
-                ? "language / region"
-                : facet === "style"
-                  ? "style / tone"
-                  : facet}
-          </option>
-          {options.map((option) => (
-            <option
-              key={option.value}
-              value={option.value}
-              disabled={!option.count && traitsFilter[facet] !== option.value}
-            >
-              {option.label} ({option.count.toLocaleString()})
-            </option>
-          ))}
-        </select>
-      </label>
+      <VoiceFilterSelect
+        key={facet}
+        label={voiceFilterLabels[facet]}
+        value={traitsFilter[facet]}
+        disabled={voices.isPending || Boolean(voices.error)}
+        onChange={(value) => setTraitsFilter((current) => ({ ...current, [facet]: value }))}
+        options={[
+          { value: "", label: `Any ${voiceFilterLabels[facet].toLowerCase()}` },
+          ...options.map((option) => ({
+            ...option,
+            disabled: !option.count && traitsFilter[facet] !== option.value,
+          })),
+        ]}
+      />
     );
   }
   const displayed = visible.slice(0, limit);
@@ -413,18 +397,18 @@ export function VoiceoverHub() {
               </button>
             ))}
           </div>
-          <label className="voice-sort">
-            <span>Sort</span>
-            <select
-              aria-label="Sort"
+          <div className="voice-sort">
+            <VoiceFilterSelect
+              label="Sort"
               value={selectedSort}
-              onChange={(event) => setSort(event.target.value)}
-            >
-              <option value="name">Name A–Z</option>
-              <option value="reverse">Name Z–A</option>
-              <option value="favorites">Favorites first</option>
-            </select>
-          </label>
+              onChange={setSort}
+              options={[
+                { value: "name", label: "Name A–Z" },
+                { value: "reverse", label: "Name Z–A" },
+                { value: "favorites", label: "Favorites first" },
+              ]}
+            />
+          </div>
           <p className="voice-results-count" role="status">
             {voices.isPending
               ? "Loading library…"

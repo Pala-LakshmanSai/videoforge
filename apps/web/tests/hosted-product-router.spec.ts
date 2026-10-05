@@ -752,7 +752,7 @@ test("finished video appears in Library and the legacy viewer downloads without 
 for (const width of [1280, 390]) {
   test(`Voice filters combine and reset at ${width}px without generating narration`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
     const voices = [
       {
@@ -790,20 +790,45 @@ for (const width of [1280, 390]) {
     await page.route("**/api/v2/voiceovers/voices", (route) => route.fulfill({ json: { voices } }));
     await page.goto("/voiceovers");
     await expect(page.getByRole("heading", { name: "Bob - American" })).toBeVisible();
-    await page.getByLabel("Gender", { exact: true }).selectOption("female");
+    const gender = page.getByRole("combobox", { name: "Gender", exact: true });
+    await gender.click();
+    await expect(page.getByRole("listbox", { name: "Gender" })).toBeVisible();
+    expect(
+      await page.getByRole("listbox").evaluate((list) => {
+        const bounds = list.getBoundingClientRect();
+        return (
+          bounds.left >= 0 &&
+          bounds.right <= window.innerWidth &&
+          bounds.bottom <= window.innerHeight
+        );
+      }),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath(`dropdown-${width}.png`),
+    });
+    await gender.press("Escape");
+    await expect(page.getByRole("listbox")).toHaveCount(0);
+    await expect(gender).toBeFocused();
+    await gender.click();
+    await page.getByRole("option", { name: /^Female(?: |$)/ }).click();
     await expect(page.getByRole("heading", { name: "Bob - American" })).toHaveCount(0);
-    await page.getByLabel("Accent", { exact: true }).selectOption("british");
-    await page.getByLabel("Language / region", { exact: true }).selectOption("gb");
+    await page.getByRole("combobox", { name: "Accent", exact: true }).click();
+    await page.getByRole("option", { name: /^British(?: |$)/ }).click();
+    await page.getByRole("combobox", { name: "Language / region", exact: true }).click();
+    await page.getByRole("option", { name: /^United Kingdom(?: |$)/ }).click();
     await page.getByText("More filters", { exact: true }).click();
-    await page.getByLabel("Style / tone", { exact: true }).selectOption("calm");
-    await page.getByLabel("Use case", { exact: true }).selectOption("narrative story");
+    await page.getByRole("combobox", { name: "Style / tone", exact: true }).click();
+    await page.getByRole("option", { name: /^Calm(?: |$)/ }).click();
+    await page.getByRole("combobox", { name: "Use case", exact: true }).click();
+    await page.getByRole("option", { name: /^Narrative Story(?: |$)/ }).click();
     await expect(page.getByRole("article")).toHaveCount(1);
     await expect(page.getByRole("heading", { name: "Alice - British" })).toBeVisible();
     await page.getByLabel("Has audio preview").check();
     await expect(page.getByRole("heading", { name: "No matching voices" })).toBeVisible();
     await page.getByRole("button", { name: "Clear filters", exact: true }).first().click();
     await expect(page.getByRole("article")).toHaveCount(3);
-    await page.getByLabel("Sort", { exact: true }).selectOption("reverse");
+    await page.getByRole("combobox", { name: "Sort", exact: true }).click();
+    await page.getByRole("option", { name: /^Name Z–A(?: |$)/ }).click();
     await expect(page.getByRole("article").first()).toContainText("Bob - American");
     await page.getByRole("searchbox", { name: "Search voices" }).fill(" b ");
     await expect(page.getByRole("article")).toHaveCount(2);
