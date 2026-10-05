@@ -5,12 +5,19 @@ cloud_compute_cost_2026_10_05:
   plan: CLOUD_COMPUTE_COST_PLAN.md
   branch: codex/cloud-compute-cost
   base_source: 9edd3fb8
-  status: VERIFIED_READY_FOR_PRODUCTION_PUBLICATION
+  status: PRODUCTION_PUBLISHED_VERIFIED_LIVE_COST_DISPLAY
   authority: User_GPU_uptime_actual_rate_cost_display_and_existing_production_publication_permission
   provider_spend: USD0_no_new_paid_work
-  paid_compute_shutdown: No_new_compute_started_existing_user_generation_preserved
+  paid_compute_shutdown: No_new_compute;complete_RunPod_inventory_zeroPods_at2026_10_05T09_26_55Z;active_generations_leases_waiters0_historical_UNKNOWN_preserved
   validation: Web465_PASS_Chrome3_PASS_Workerd_PASS_types_ESLint_contracts_context_both_builds_PASS_native8projects23rentals_actual_runtime_ROLLBACK_tenant_isolation_PASS
-  remaining_gates: Production_publication_asset_readbacks_and_live_Chrome_pending;inherited_audit_limits_separate
+  production_source: 78c48dcc8ca9855ad81dfc7088921f669ba2e29f
+  production_version: 3184f912-8683-41c1-85c1-eb9c3caedbd7
+  production_traffic_percent: 100
+  native_migration: 274
+  publication: Exact30publicAssets_55bindings27secrets3WorkflowIdentities_routes_domains_crons_traffic_redaction_and_anon401_preserved;healthy_driver_not_restarted
+  production_chrome: Owner_GPU8m52s_USD0_1086_totalUSD1_4903;retained_GPU1m33s_USD0_0191_totalUSD0_2036;breakdown_and_stopped_clocks_PASS;180second1080p_playback_advances_errorNull;20_333008second1080p_fullplay_endedTrue_errorNull
+  evidence: evidence/acceptance/VF-10-09/2026-10-05-cloud-compute-cost.md
+  remaining_gates: No_scoped_publication_gate;amounts_estimated_unpriced_narration_uncertain_launches_and_inherited_fullCI_Local_longform_invoice_limits_separate
 
 production_reliability_audit_2026_10_05:
   checkpoint: V2-09
@@ -7254,15 +7261,15 @@ repository:
   published: true
   branch: codex/cloud-compute-cost
   branch_upstream: origin/codex/cloud-compute-cost
-  branch_published: false
-  current_source_head: "332b7092ee45f6e5379cec7099c29c6ae85c5c09"
-  current_source_head_semantics: verified_production_reliability_executable_source_evidence_commits_follow
+  branch_published: true
+  current_source_head: "78c48dcc8ca9855ad81dfc7088921f669ba2e29f"
+  current_source_head_semantics: verified_cloud_compute_cost_executable_source_evidence_commits_follow
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Resolve Git HEAD; executable source332b7092 is published as Worker37d37bb8. Evidence handoff commits follow; primary unrelated work remains preserved."
+  current_source_head_note: "Resolve Git HEAD; executable source78c48dcc is published as Worker3184f912. Evidence handoff commits follow; primary unrelated work remains preserved."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
-  working_tree_expected: clean_tracked_after_production_reliability_audit_handoff_commit
+  working_tree_expected: clean_tracked_after_cloud_compute_cost_handoff_commit
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
 live_development:
@@ -9612,8 +9619,8 @@ recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
   milestone: Cloud_compute_cost_display
-  status: VERIFIED_READY_FOR_PRODUCTION_PUBLICATION
-  dependency_status: production332b7092_Worker37d37bb8_native274_new_Workflow_registrations_and_observer_verified;open_CI_external_Local_capacity_gates_named
+  status: PRODUCTION_PUBLISHED_VERIFIED_LIVE_COST_DISPLAY
+  dependency_status: production78c48dcc_Worker3184f912_native274_live_cost_Chrome_native_role_and_preserved_registration_driver_verified;open_CI_external_Local_capacity_invoice_gates_named
   authorization_status: User_GPU_uptime_combined_all_API_RunPod_cost_display_and_existing_production_publication_permission;no_new_paid_work
   task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current
