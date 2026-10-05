@@ -229,11 +229,20 @@
   color: #aeb8d4;
   font-size: 11px;
 }
-.central-video-byline > span:nth-child(2) {
+.central-creator {
+  display: grid;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  gap: 3px;
+  overflow-wrap: anywhere;
+}
+.central-creator strong {
+  font-size: 11px;
+  font-weight: 500;
+  color: #cbd3e8;
+}
+.central-creator > span {
+  font-size: 10px;
+  color: #98a5c7;
 }
 .central-avatar {
   display: grid;

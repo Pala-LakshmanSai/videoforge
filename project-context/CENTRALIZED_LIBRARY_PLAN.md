@@ -19,7 +19,7 @@ negatives, complete history/search/filter/pagination, checksum/range/download re
 dock, responsive accessible player, native Chrome playback and checksum-matching synthetic download,
 types/lint/build/quarantine/context/secrets. Production/native-schema acceptance is separate.
 
-## Production proposal — approval pending
+## Approved production proposal
 
 Implementation source `e81dacc`; current production read-only status matches source `4660b1b9` /
 Worker `9872d035-f9b0-47fb-81fb-b15d16155c03`, native ledger274.
@@ -27,7 +27,7 @@ Worker `9872d035-f9b0-47fb-81fb-b15d16155c03`, native ledger274.
 Apply only additive migration `0275_hosted_centralized_library.sql` and its registered hash, with the
 fixed-function EXECUTE grant for the existing runtime role. Preserve all existing migration rows and
 RLS policies. First recheck the live migration chain, function owner BYPASSRLS capability, exact session
-qualification and deployed source/configuration. Stop on concurrent source/schema drift or wrong owner.
+qualification and deployed source/configuration. Reconcile concurrent source/schema drift in the same task; never overwrite another release. Stop on wrong owner.
 
 Publish the reviewed source's rebuilt web assets and Worker to the existing VideoForge production
 service. Preserve all bindings/secrets, three Workflow identities, routes/domain/crons, redaction,
@@ -45,7 +45,10 @@ R2 read/egress billing remains ordinary account usage; no new subscription or re
 No paid generation test is requested. Unrelated provider inventory is not refreshed during local work.
 
 The implementation playbook requires an exact combined deployment proposal after safe local work.
-No current-task external mutation or production publication has been approved yet.
+User approval on 2026-10-05 explicitly requests visible creator details and production publication,
+including reconciliation with the concurrent voiceover-filter release. Scope and USD0 new provider /
+compute / retained-resource cap are unchanged. Include published voice-filter source77781a02 and
+acceptance2dfc1bf9; stop and reconcile any further concurrent release before deployment.
 
 ## Validation and evidence
 

@@ -131,6 +131,13 @@ test("owner collection supports search, creator filters, keyboard playback and e
   });
   await page.goto("/centralized-library");
   await expect(page.locator(".central-video")).toHaveCount(6);
+  for (let index = 0; index < outputs.length; index++) {
+    const card = page.locator(".central-video").nth(index);
+    await expect(
+      card.getByText(`Created by ${outputs[index]!.creator_name}`, { exact: true }),
+    ).toBeVisible();
+    await expect(card.getByText(outputs[index]!.creator_email, { exact: true })).toBeVisible();
+  }
   const dock = page.getByRole("navigation", { name: "Primary navigation" });
   await expect(
     dock.getByRole("link", { name: "Centralized Library", exact: true }),

@@ -62,7 +62,11 @@ describe("centralized collection", () => {
     );
     vi.stubGlobal("fetch", fetch);
     const client = show(true);
-    fireEvent.click(await screen.findByRole("button", { name: "Watch Harbor film" }));
+    await screen.findByRole("button", { name: "Watch Harbor film" });
+    const card = screen.getByRole("article");
+    expect(within(card).getByText("Created by Alex")).toBeVisible();
+    expect(within(card).getByText("alex@example.test")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Watch Harbor film" }));
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByRole("link", { name: "Download MP4" })).toHaveAttribute(
       "href",

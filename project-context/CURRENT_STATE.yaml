@@ -25,8 +25,8 @@ centralized_library_2026_10_05:
   branch: codex/centralized-library
   base_source: 610b7bed
   implementation_commit: e81dacc1e2a9db2d3798a13645ba8bc8c481519e
-  status: LOCAL_VERIFIED_PUBLICATION_APPROVAL_PENDING
-  authority: User_requested_exact_owner_collection_local_code_fixture_tests_read_only_preflight_only
+  status: CREATOR_DETAILS_AND_PRODUCTION_PUBLICATION_AUTHORIZED
+  authority: User_2026_10_05_visible_creator_details_push_production_preserve_concurrent_voice_filters
   decision: DEC_LIBRARY_001
   project_memory: Project58_Index78_Coverage73_guarded_writes_and_readbacks_PASS_prior_production_facts_and_other_projects_preserved
   migration: 275_local_only_native_ledger274_function_absent
@@ -35,7 +35,7 @@ centralized_library_2026_10_05:
   canonical_verify: FAIL_inherited132format_missing_uv0_8_13_existing4173_Workerd_port_preserved
   provider_spend: USD0_no_new_inference_rentals_retained_resources
   paid_compute_shutdown: No_task_compute_started_or_restarted_unrelated_inventory_not_refreshed
-  remaining_gates: Exact_publication_approval_native275_runtime_auth_allUser_liveChrome_fullfilm_downloadChecksum_configParity
+  remaining_gates: Native275_runtime_auth_allUser_liveChrome_fullfilm_downloadChecksum_configParity
   evidence: evidence/acceptance/VF-10-09/2026-10-05-centralized-library.md
 
 automatic_library_delivery_2026_10_05:
@@ -2773,7 +2773,7 @@ task_stage: bounded_mutation
 application_code_changes_authorized: true
 provider_calls_authorized: true
 read_only_provider_calls_authorized: true
-remote_or_cloud_mutations_authorized: false
+remote_or_cloud_mutations_authorized: true
 credential_access_authorized: true
 gpu_use_authorized: false
 maximum_external_spend_usd: 0
@@ -9667,24 +9667,24 @@ v2_09_historical_consumed_native_authority:
   note: "Continuing user authorization permits source repairs and fresh exact successor records; it does not replay this consumed click. Retained qualified deployment remains present and idle."
 
 provider_authority: &v2_09_provider_authority_current
-  mode: read_only
-  provider: Configured_Neon_metadata_and_public_Worker_status
+  mode: deployment
+  provider: Cloudflare_Neon
   cap_usd: 0
   paid_generation_authorized: false
   non_transferable: true
   authorized_by_user_at: "2026-10-05"
-  resources: ["neon:production", "cloudflare:videoforge-public-status"]
-  authorized_operations: [resource_identity_lookup]
-  allowed_operations: [resource_identity_lookup]
+  resources: ["neon:production", "cloudflare:videoforge-production-runtime"]
+  authorized_operations: [metadata_migration, application_deploy, configuration_readback, artifact_verification, resource_identity_lookup]
+  allowed_operations: [metadata_migration, application_deploy, configuration_readback, artifact_verification, resource_identity_lookup]
 
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
   milestone: Centralized_Library
-  status: LOCAL_VERIFIED_PUBLICATION_APPROVAL_PENDING
+  status: CREATOR_DETAILS_AND_PRODUCTION_PUBLICATION_AUTHORIZED
   dependency_status: local223_Chrome4_native_READ_ONLY_preflight_bothBuilds_PASS
-  authorization_status: User_local_code_fixture_tests_scoped_read_only_only_publication_pending
-  task_stage: read_only_preflight
+  authorization_status: User_creator_details_and_production_publication_with_voice_filter_preservation
+  task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current
   read_profile: v2_09_centralized_library
   task_brief: CENTRALIZED_LIBRARY_PLAN.md
@@ -9693,7 +9693,7 @@ recommended_next_task:
   provider_calls_authorized: true
   read_only_provider_calls_authorized: true
   maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: false
+  remote_or_cloud_mutations_authorized: true
   credential_access_authorized: true
   credential_value_read_authorized: true
   model_downloads_authorized: false
@@ -9704,7 +9704,7 @@ recommended_next_task:
   application_code_changes_authorized: true
   spend_usd: 0
   resources: []
-  authorized_operations: [provider_free_implementation_tests_Chrome, configured_READ_ONLY_preflight]
+  authorized_operations: [metadata_migration, application_deploy, configuration_readback, artifact_verification, resource_identity_lookup]
 
 
 verification:

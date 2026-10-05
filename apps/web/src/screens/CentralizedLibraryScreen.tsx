@@ -110,7 +110,10 @@ function VideoCard({
           <span className="central-avatar" aria-hidden="true">
             {video.creator_name.slice(0, 1).toUpperCase()}
           </span>
-          <span title={video.creator_email}>{video.creator_name}</span>
+          <span className="central-creator">
+            <strong>Created by {video.creator_name}</strong>
+            <span>{video.creator_email}</span>
+          </span>
           <span className="central-ready">{video.available ? "Ready" : "Unavailable"}</span>
         </div>
         <h2 title={video.title}>{video.title}</h2>
