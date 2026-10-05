@@ -26,3 +26,40 @@ Cloudflare OAuth initially expired; the existing Wrangler session refreshed norm
 New paid generation and compute: USD 0. No compute was started or stopped; provider/Pod inventory was not refreshed for this UI change, so no new zero-Pod claim is made. Existing cleanup/resource lifecycle remains unchanged. Stable provider-free localhost4173/4174 development service restored to its original owned release checkout after isolated Chrome tests. Inherited broad CI, Local, representative long-form/concurrent throughput, funding/quotas, editorial and invoice gates remain separate.
 
 Detailed private preparation/publication/hash readbacks live under the primary checkout `.videoforge/voice-filters-20261005/release2`; no credentials or private logs are committed. Product/release plan: `project-context/VOICE_FILTERS_PLAN.md`.
+
+
+## 17:14 follow-up — dropdown interior polish
+
+User requires the menu interior to match the application. Browser-native selects cannot provide
+consistent macOS option styling; five facets and sorting now share a small themed listbox control,
+reusing the script picker's interaction pattern without new dependencies. Dark panel, 42px rows,
+selected checks, count badges, readable zero-match choices, hover/focus states and bounded scrolling
+are included. Keyboard arrows skip disabled options; Home/End, typeahead, Enter/Space, Escape, Tab
+and outside dismissal preserve selection until a valid choice. Above/below placement fits available
+space. Script picker, preferences and narration generation remain unchanged.
+
+- Source implementation `fa067845`; executable `3fe3eadd4b95ee87b5bed4d032a291fae33f985b`;
+  production Worker `7a495e15-b324-4d15-992f-73833a4b57a6` at 100%, branch `codex/voice-filters`.
+- Fresh preflight detected concurrent publication `abd49b6e` / Worker
+  `89477b1c-dce3-49ab-9867-1316afc16fac`; merged that source before rebuilding. The centralized
+  library's code/configuration is preserved. This prior Worker remains the rollback version.
+- 44 focused tests pass (40 voice/provider/picker and four centralized-library checks).
+  Installed Chrome workflows pass at 1280px and 390px, checking menu bounds, Escape/focus,
+  combinations, counts, sorting/reset and no POST requests. Web/Worker types, owned lint,
+  both builds and production bundle guard, context validation, tracked-secret scan and diff pass.
+  Context warnings for optional assets and inherited read-profile budgets remain.
+- Signed-in production: Saved gender menu displays Female0/Male1/Not specified0 with readable
+  unavailable states. Arrow navigation skips them; Enter selects Male; Escape/Tab dismiss correctly.
+  Full catalog1117, Female362, Female+British8, UK4, Calm3, Narrative Story2; reverse sort shows
+  Isabel then Annabel. Region list is 300px tall for 1260px content; typeahead reaches UK.
+  Empty/search/reset and Saved1 preservation pass; centralized navigation is still present.
+- All 37 public asset bytes match; anonymous catalog401; 55 bindings, 27 secret names and three
+  Workflow registration identities preserved. Server bundle equals current baseline after only
+  source-path normalization. No schema change, migration, workflow restart or provider generation.
+- Existing full preview acceptance above remains historical; preview was not rerun for this UI-only
+  follow-up. Broad CI, Local, long-form, provider funding/quotas, editorial and invoice gates remain
+  independent. New paid generation/compute USD0; no compute started/stopped or fresh inventory claim.
+
+Private review screenshot: `.videoforge/voice-filters-20261005/production-dropdown-saved.png`.
+Private guarded publication, byte proofs and Chrome summary: same folder's `release3/`.
+Stable provider-free development server was restored after isolated Chrome checks.

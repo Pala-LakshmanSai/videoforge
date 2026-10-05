@@ -2,14 +2,16 @@ voice_filters_2026_10_05:
   checkpoint: V2-09
   selected_task: VF-10-09
   read_profile: v2_09_short_live_e2e
-  status: DROPDOWN_POLISH_GREEN_READY_FOR_GUARDED_PUBLICATION
+  status: PRODUCTION_ACTIVE_THEMED_DROPDOWNS_REAL_CHROME_VERIFIED
   branch: codex/voice-filters
   base_source: 610b7bed
-  production_source: 77781a02c1aa6d73780d117b7bffbd700ca52738
-  production_version: 7be46efd-14ad-43d9-bce5-0d55f55e4495
+  production_source: 3fe3eadd4b95ee87b5bed4d032a291fae33f985b
+  production_version: 7a495e15-b324-4d15-992f-73833a4b57a6
   user_authority: Implement_useful_voice_catalog_filters_from_plan_through_production;new_paid_generation_compute_USD0.
   dropdown_baseline: abd49b6e_Worker89477b1c_merged_preserving_concurrent_centralized_library_release.
-  dropdown_validation: Focused44PASS_including40voice_and4centralized;Chrome1280_and390px_PASS;types_lint_builds_bundle_context_secrets_diff_PASS.
+  dropdown_validation: Focused44PASS_including40voice_and4centralized;Chrome1280_and390px_PASS;types_lint_builds_bundle_context_secrets_diff_PASS;live_Saved_disabled_states_arrow_skip_Enter_Escape_Tab_typeahead_bounded_scroll_five_facets_sort_empty_reset_PASS.
+  dropdown_publication: Fresh_abd49b6e_baseline_preserved;37public_asset_hashes_55bindings_27secrets_3WorkflowIdentities_and_100percent_source_verified;server_bundle_identical_after_path_normalization;rollback_Worker89477b1c.
+  dropdown_evidence: evidence/acceptance/VF-10-09/2026-10-05-voice-filters.md
   dropdown_followup: User17_14_requires_polished_themed_listboxes_checks_counts_disabled_states_keyboard_typeahead_scroll_and_responsive_placement.
   behavior: Gender_explicit_accent_language_region_style_tone_use_case_preview_availability_sort_counts_reset_before_pagination;existing_prefix_search_tabs_privacy_preserved.
   validation: Focused39PASS;Web_Worker_types_changed_lint_both_builds_bundle_context_secrets_PASS;installed_Chrome1280_and390px_PASS;live1117catalog_combination_prefix_reset_tabs_and9_613061s_preview_end_errornull_PASS.
@@ -7333,10 +7335,10 @@ repository:
   branch: codex/voice-filters
   branch_upstream: origin/codex/voice-filters
   branch_published: true
-  current_source_head: "abd49b6e0da3f3290bf26a72c764a7993223d981"
+  current_source_head: "3fe3eadd4b95ee87b5bed4d032a291fae33f985b"
   current_source_head_semantics: executable_release_identity_recorded_after_publication_evidence_commits_follow
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Resolve Git HEAD; production baseline abd49b6e / Worker89477b1c was merged before dropdown publication to preserve the concurrently published centralized library. Evidence handoff commits follow; unrelated work remains preserved."
+  current_source_head_note: "Resolve Git HEAD; executable3fe3eadd / Worker7a495e15 is published with themed voice dropdowns and the concurrent centralized library preserved. Evidence handoff commits follow; unrelated work remains preserved."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
