@@ -1,0 +1,108 @@
+{
+  "checkpoint": "V2-09",
+  "task": "VF-10-09",
+  "decision": "DEC_PROGRESS_007",
+  "source": "34cdd788e802cb26b30dfecb4b2271ef86493c08",
+  "workerVersion": "052d3dd9-89e6-454f-bec0-f7e32bb6f8e8",
+  "trafficPercent": 100,
+  "branch": "codex/video-generation-progress",
+  "backendSourceUnchanged": true,
+  "schemaChanges": 0,
+  "focusedUiTests": 265,
+  "productionConfigurationTests": 18,
+  "installedChromeJourneys": 15,
+  "responsiveWidths": [
+    1440,
+    977,
+    320
+  ],
+  "liveProgress": {
+    "imagesAccepted": 36,
+    "avatarAccepted": 10,
+    "videosAccepted": 14,
+    "videosTotal": 14,
+    "videoElapsedSeconds": 317,
+    "videoPercent": 100,
+    "matchingGradient": true,
+    "overflow": false
+  },
+  "publicAssets": 36,
+  "bindings": 55,
+  "secrets": 27,
+  "workflowIdentities": 3,
+  "cronAndDomainPreserved": true,
+  "liveLibraryHttp": {
+    "sessions": [
+      {
+        "owner": false,
+        "privateOutputs": 1,
+        "detailsMatchCentral": true,
+        "centralStatus": 403
+      },
+      {
+        "owner": true,
+        "privateOutputs": 14,
+        "detailsMatchCentral": true,
+        "centralStatus": 200
+      },
+      {
+        "owner": false,
+        "privateOutputs": 1,
+        "detailsMatchCentral": true,
+        "centralStatus": 403
+      },
+      {
+        "owner": false,
+        "privateOutputs": 2,
+        "detailsMatchCentral": true,
+        "centralStatus": 403
+      },
+      {
+        "owner": false,
+        "privateOutputs": 0,
+        "detailsMatchCentral": true,
+        "centralStatus": 403
+      },
+      {
+        "owner": false,
+        "privateOutputs": 0,
+        "detailsMatchCentral": true,
+        "centralStatus": 403
+      },
+      {
+        "owner": false,
+        "privateOutputs": 0,
+        "detailsMatchCentral": true,
+        "centralStatus": 403
+      }
+    ],
+    "centralOutputs": 30,
+    "allMetadata": true,
+    "namedGeneratedVoices": 3,
+    "avatarOff": 1,
+    "anonDenied": true,
+    "unsafeOriginDeleteDenied": true,
+    "foreignWatchDenied": true,
+    "range206": true,
+    "downloadChecksum": true,
+    "downloadBytes": 10953398
+  },
+  "newInferenceComputeRetainedResourcesUsd": 0,
+  "newWorkflowInstances": 0,
+  "driverRestart": false,
+  "unrelatedComputeInventory": "not refreshed; task created no paid compute",
+  "remainingGates": [
+    "inherited aggregate formatting and uv baseline",
+    "Local and long-form provider/editorial/invoice",
+    "native saved production download policy"
+  ],
+  "nativeChromePlayback": {
+    "durationSeconds": 20.333008,
+    "ended": true,
+    "error": null,
+    "width": 1920,
+    "height": 1080
+  },
+  "deleteConfirmationCancelFocusRestored": true,
+  "retainedCentralCards": 30
+}

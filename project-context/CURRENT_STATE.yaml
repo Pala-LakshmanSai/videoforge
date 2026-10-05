@@ -1,10 +1,13 @@
 video_generation_progress_2026_10_05:
-  status: LOCAL_VERIFIED_RELEASE_PENDING
+  status: PRODUCTION_VERIFIED
   checkpoint: V2-09
   read_profile: v2_09_video_generation_progress
   task_brief: VIDEO_GENERATION_PROGRESS_PLAN.md
   branch: codex/video-generation-progress
   authority: User_matching_scene_video_progress_UI_and_production_publication
+  executable_commit: "34cdd788e802cb26b30dfecb4b2271ef86493c08"
+  worker_version: "052d3dd9-89e6-454f-bec0-f7e32bb6f8e8"
+  traffic_percent: 100
   base_executable: "6c1f010aae7864a10aa5c214d674ac1f3d83f54c"
   base_worker: "784e63b4-e48b-4d59-832d-89a5577d03ca"
   native_migration: 277
@@ -13,6 +16,11 @@ video_generation_progress_2026_10_05:
   driver_restart: false
   local_validation: focused265_config18_installedChrome15_types_lint_bothBuilds_quarantines_context_secrets_PASS
   backend_schema_changes: none
+  live_progress: matching_three_tracks_complete_scene_videos14_of14_timer5m17s_no_overflow
+  live_compatibility: seven_HTTP_sessions_private_metadata_owner_central30_other403_anon401_Watch206_full_MP4_SHA256_PASS
+  native_Chrome_media: full20_333008s_1080p_ended_errorNull_DeleteCancel_focusRestored_30cards_retained
+  release_configuration: publicAssets36_bindings55_secrets27_WorkflowIdentities3_crons_domain_preserved
+  evidence: evidence/acceptance/VF-10-09/2026-10-05-video-generation-progress.md
   unrelated_compute_inventory: NOT_REFRESHED_UI_ONLY_TASK
   remaining_gates: inherited_broad_CI_Local_long_form_provider_editorial_invoice_native_saved_download_policy_separate
 
@@ -7418,10 +7426,10 @@ repository:
   branch: codex/video-generation-progress
   branch_upstream: origin/codex/video-generation-progress
   branch_published: true
-  current_source_head: "6c1f010aae7864a10aa5c214d674ac1f3d83f54c"
+  current_source_head: "34cdd788e802cb26b30dfecb4b2271ef86493c08"
   current_source_head_semantics: executable_release_identity_recorded_after_publication_evidence_commits_follow
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Resolve Git HEAD; executable6c1f010a / Worker784e63b4 publishes completed-video settings in both libraries, native277. Shared UI cleanup, library deletion/creator filters and themed voice dropdowns remain. Evidence commits follow; unrelated work preserved."
+  current_source_head_note: "Resolve Git HEAD; executable34cdd788 / Worker052d3dd9 adds matching Scene videos graphics to image/avatar Progress. Backend/schema unchanged; native277 predecessor retained. Library metadata/creator/delete, shared cleanup and voice filters remain. Evidence commits follow; unrelated work preserved."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
@@ -9770,7 +9778,7 @@ recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
   milestone: Video_generation_progress
-  status: LOCAL_GREEN_VIDEO_GENERATION_PROGRESS
+  status: PRODUCTION_GREEN_VIDEO_GENERATION_PROGRESS
   dependency_status: focused265_config18_Chrome15_types_lint_builds_quarantines_context_secrets_PASS
   authorization_status: User_matching_scene_video_progress_graphic_and_production_preserving_other_changes
   task_stage: bounded_mutation
