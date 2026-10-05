@@ -56,7 +56,7 @@ const MAX_STYLE_ANALYSIS_BYTES = 30 * 1024 * 1024;
 const MAX_STYLE_REFERENCES = 8;
 const MIN_STYLE_REFERENCES = 3;
 export const HOSTED_UPLOAD_TIMEOUT_MS = 300_000;
-const HOSTED_CREATE_SCHEMA = "videoforge-hosted-project-create/v4";
+const HOSTED_CREATE_SCHEMA = "videoforge-hosted-project-create/v5";
 const VIDEO_COVERAGE_PRESETS = [0, 7, 15, 25, 50, 75, 100] as const;
 const VOICEOVER_TYPES = new Set(["audio/mpeg", "audio/wav"]);
 const MAX_HOSTED_VOICEOVER_FILENAME = 160;
@@ -1169,7 +1169,7 @@ function SceneFootageCoverage({ coverage }: { coverage: HostedSceneFootageCovera
     <div className="scene-footage-coverage" aria-label="Scene footage coverage">
       <p className="helper">
         {coverage.required_opening_seconds
-          ? `First ${openingDurationLabel(coverage.required_opening_seconds)}: AI video only · Afterward `
+          ? `First ${openingDurationLabel(coverage.required_opening_seconds)}: videos replace photos · Afterward `
           : "Scene footage · Requested up to "}
         {percent(coverage.requested_coverage_percent)}
         {coverage.planned_coverage_percent === null
@@ -2851,6 +2851,7 @@ export function HostedCreateProjectScreen() {
     "PERSONAL_WORKER",
   );
   const [avatarVersionId, setAvatarVersionId] = useState("");
+  const [avatarEnabled, setAvatarEnabled] = useState(true);
   const [styleVersionId, setStyleVersionId] = useState("");
   const [voiceover, setVoiceover] = useState<File | null>(null);
   const [voiceoverDragOver, setVoiceoverDragOver] = useState(false);
@@ -2890,7 +2891,8 @@ export function HostedCreateProjectScreen() {
     scriptInput,
     title.trim(),
     executionBackend,
-    avatarVersionId,
+    avatarEnabled,
+    avatarEnabled ? avatarVersionId : null,
     styleVersionId,
     applyExtraPromptKeywords,
     extraPromptKeywords.trim(),
@@ -3011,7 +3013,7 @@ export function HostedCreateProjectScreen() {
       label: voiceoverSource === "script" ? "Script & voice" : "Voiceover",
       complete: voiceoverSource === "script" ? scriptReady : Boolean(voiceover),
     },
-    { label: "Avatar", complete: Boolean(avatarVersionId) },
+    ...(avatarEnabled ? [{ label: "Avatar", complete: Boolean(avatarVersionId) }] : []),
     { label: "Image style", complete: Boolean(styleVersionId) },
   ];
   useEffect(() => {
@@ -3069,7 +3071,7 @@ export function HostedCreateProjectScreen() {
       catalog.data?.video_generation?.adjustable_coverage_supported !== false);
   const canPreflight = Boolean(
     title.trim() &&
-      avatarVersionId &&
+      (!avatarEnabled || avatarVersionId) &&
       styleVersionId &&
       (voiceoverSource === "script" ? scriptReady : voiceover) &&
       keywordsValid &&
@@ -3121,13 +3123,14 @@ export function HostedCreateProjectScreen() {
         readJson<HostedPreflightResponse>("/api/v2/hosted/projects/preflight", {
           method: "POST",
           body: JSON.stringify({
-            schema_version: "videoforge-hosted-project-preflight/v3",
+            schema_version: "videoforge-hosted-project-preflight/v4",
             video_coverage_percent: videoCoveragePercent,
             ai_video_opening_enabled: openingEnabled,
             ai_video_opening_seconds: effectiveOpeningSeconds,
             execution_backend: executionBackend,
             title: title.trim(),
-            avatar_profile_version_id: avatarVersionId,
+            avatar_profile_version_id: avatarEnabled ? avatarVersionId : null,
+            avatar_enabled: avatarEnabled,
             image_style_version_id: styleVersionId,
             extra_prompt_keywords: applyExtraPromptKeywords ? extraPromptKeywords.trim() : "",
             apply_extra_prompt_keywords: applyExtraPromptKeywords,
@@ -3188,12 +3191,13 @@ export function HostedCreateProjectScreen() {
         if (!creationLocked && !currentExecution.current.ready)
           throw new Error(currentExecution.current.message);
         const body = JSON.stringify({
-          schema_version: "videoforge-hosted-script-project/v2",
+          schema_version: "videoforge-hosted-script-project/v3",
           title: title.trim(),
           script: scriptInput.script,
           voice_id: scriptInput.voiceId,
           execution_backend: executionBackend,
-          avatar_profile_version_id: avatarVersionId,
+          avatar_profile_version_id: avatarEnabled ? avatarVersionId : null,
+          avatar_enabled: avatarEnabled,
           image_style_version_id: styleVersionId,
           video_coverage_percent: videoCoveragePercent,
           ai_video_opening_enabled: openingEnabled,
@@ -3244,7 +3248,8 @@ export function HostedCreateProjectScreen() {
         ai_video_opening_seconds: effectiveOpeningSeconds,
         execution_backend: executionBackend,
         title: title.trim(),
-        avatar_profile_version_id: avatarVersionId,
+        avatar_profile_version_id: avatarEnabled ? avatarVersionId : null,
+        avatar_enabled: avatarEnabled,
         image_style_version_id: styleVersionId,
         extra_prompt_keywords: applyExtraPromptKeywords ? extraPromptKeywords.trim() : "",
         apply_extra_prompt_keywords: applyExtraPromptKeywords,
@@ -3483,32 +3488,65 @@ export function HostedCreateProjectScreen() {
               </header>
               <div className="create-section-grid">
                 <div className="field preset-field">
-                  <VisualPresetSelect
-                    id="hosted-avatar-select"
-                    label="Avatar"
-                    options={catalog.data.avatars.map((avatar) => ({
-                      id: avatar.version_id,
-                      imageUrl: avatar.thumbnail_url ?? "",
-                      meta: `Version ${avatar.version_number}${
-                        avatar.avatar_video_source_ready === false ? " · no avatar video yet" : ""
-                      }`,
-                      name: avatar.name,
-                    }))}
-                    selectedId={avatarVersionId}
-                    onChange={(value) => {
-                      setAvatarVersionId(value);
-                      setPreflightResult(null);
-                    }}
-                  />
-                  <div className="preset-select-actions">
-                    <Link
-                      className="button button-secondary"
-                      to="/avatars/new"
-                      search={{ returnTo: "/projects/new" } as never}
-                    >
-                      <UserPlus size={15} /> New avatar
-                    </Link>
+                  <div className="opening-footage-control">
+                    <div className="opening-footage-header">
+                      <div className="opening-footage-copy">
+                        <label htmlFor="avatar-enabled">Avatar</label>
+                        <p id="avatar-enabled-help" className="helper">
+                          {avatarEnabled
+                            ? "Your usual presenter appearances and split-screen scenes."
+                            : "Full-screen footage. No avatar generation."}
+                        </p>
+                      </div>
+                      <label className="opening-footage-switch">
+                        <input
+                          id="avatar-enabled"
+                          type="checkbox"
+                          aria-label="Include avatar"
+                          aria-describedby="avatar-enabled-help"
+                          checked={avatarEnabled}
+                          disabled={creationLocked}
+                          onChange={(event) => {
+                            setAvatarEnabled(event.target.checked);
+                            setPreflightResult(null);
+                          }}
+                        />
+                        <span className="opening-footage-switch-track" aria-hidden="true" />
+                      </label>
+                    </div>
                   </div>
+                  {avatarEnabled ? (
+                    <>
+                      <VisualPresetSelect
+                        id="hosted-avatar-select"
+                        label="Avatar"
+                        options={catalog.data.avatars.map((avatar) => ({
+                          id: avatar.version_id,
+                          imageUrl: avatar.thumbnail_url ?? "",
+                          meta: `Version ${avatar.version_number}${
+                            avatar.avatar_video_source_ready === false
+                              ? " · no avatar video yet"
+                              : ""
+                          }`,
+                          name: avatar.name,
+                        }))}
+                        selectedId={avatarVersionId}
+                        onChange={(value) => {
+                          setAvatarVersionId(value);
+                          setPreflightResult(null);
+                        }}
+                      />
+                      <div className="preset-select-actions">
+                        <Link
+                          className="button button-secondary"
+                          to="/avatars/new"
+                          search={{ returnTo: "/projects/new" } as never}
+                        >
+                          <UserPlus size={15} /> New avatar
+                        </Link>
+                      </div>
+                    </>
+                  ) : null}
                 </div>
                 <div className="field preset-field">
                   <VisualPresetSelect
@@ -3678,7 +3716,9 @@ export function HostedCreateProjectScreen() {
                   <label htmlFor="full-video-opening">Full video opening</label>
                   <p id="opening-footage-help" className="helper">
                     {openingEnabled
-                      ? "AI video throughout the opening. Coverage percent applies afterward."
+                      ? avatarEnabled
+                        ? "Videos replace photos, including beside your avatar. Coverage applies afterward."
+                        : "Full-screen videos throughout the opening. Coverage applies afterward."
                       : "Coverage percent applies to the entire video."}
                   </p>
                 </div>
@@ -3773,7 +3813,7 @@ export function HostedCreateProjectScreen() {
                 {!coverageValid
                   ? "Use a whole percentage from 0 through 100."
                   : openingEnabled && openingValid
-                    ? `First ${openingDurationLabel(effectiveOpeningSeconds)}: AI video only. Afterward: ${videoCoveragePercent === 0 ? "no optional footage" : `up to ${videoCoveragePercent}% coverage`}. Full scenes only.`
+                    ? `First ${openingDurationLabel(effectiveOpeningSeconds)}: videos replace photos${avatarEnabled ? ", with your usual avatar appearances" : ""}. Afterward: ${videoCoveragePercent === 0 ? "no optional footage" : `up to ${videoCoveragePercent}% coverage`}. Full scenes only.`
                     : videoCoveragePercent === 0
                       ? "Scene footage off · $0."
                       : `Up to ${videoCoveragePercent}% of your video. Full scenes only.`}

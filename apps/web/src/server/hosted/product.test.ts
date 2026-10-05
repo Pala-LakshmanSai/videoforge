@@ -3093,9 +3093,14 @@ describe("hosted product route contract", () => {
     },
   );
 
-  it.each([false, true])(
-    "counts only post-180 frames in coverage, including crossing suffix, with optional fallback=%s",
-    async (fallback) => {
+  it.each([
+    [false, false],
+    [true, false],
+    [false, true],
+    [true, true],
+  ])(
+    "counts only post-180 frames with fallback=%s and preserved avatars=%s",
+    async (fallback, composition) => {
       const priorQuery = testState.query.getMockImplementation()!;
       const priorProject = testState.projectRows[0]!;
       testState.projectRows[0] = { ...priorProject, generation_provider: "KIE_FAL" };
@@ -3113,7 +3118,7 @@ describe("hosted product route contract", () => {
         output_cost_usd: job.duration_seconds * 0.01336,
       }));
       const jobs = [
-        ...openingJobs,
+        ...(composition ? openingJobs.slice(3) : openingJobs),
         {
           start_frame: 5457,
           video_frame_count: 60,
@@ -3130,10 +3135,13 @@ describe("hosted product route contract", () => {
           return {
             rows: [
               {
-                replacement_policy: "OPENING_180_V3",
+                replacement_policy: composition ? "FOOTAGE_COMPOSITION_V5" : "OPENING_180_V3",
+                opening_seconds: 180,
+                planned_remaining_frames: 117,
+                eligible_remaining_frames: 417,
                 coverage_percent: 25,
                 planned_at: "2026-10-03T00:00:00Z",
-                opening_frames: 5457,
+                opening_frames: composition ? 4500 : 5457,
                 eligible_frames: 5817,
                 selections: jobs.map((job) => ({
                   videoFrameCount: job.video_frame_count,
@@ -3192,8 +3200,8 @@ describe("hosted product route contract", () => {
         expect(body.scene_footage_coverage).toMatchObject({
           requested_coverage_percent: 25,
           required_opening_seconds: 180,
-          opening_planned_seconds: 180,
-          opening_completed_seconds: 180,
+          opening_planned_seconds: composition ? 150 : 180,
+          opening_completed_seconds: composition ? 150 : 180,
           fallback_count: fallback ? 1 : 0,
         });
         expect(body.scene_footage_coverage.planned_coverage_percent).toBeCloseTo(19.5);
@@ -4121,6 +4129,70 @@ describe("adjustable scene footage router contract", () => {
         const payload = JSON.parse(String(revision?.[1]?.[21]));
         expect(payload.scheduler_version).toBe(enabled ? "scheduler-v10" : "scheduler-v6");
         expect(payload.ai_video_opening_seconds).toBe(enabled ? seconds : undefined);
+      } finally {
+        clearReadyPresets();
+      }
+    },
+  );
+
+  it.each([
+    [true, true],
+    [false, true],
+    [false, false],
+  ])(
+    "create/v5 pins avatar=%s with scene video available=%s; Off needs no avatar preset",
+    async (avatarEnabled, videoAvailable) => {
+      installReadyPresets();
+      if (!avatarEnabled) {
+        testState.presetAvatarRows.length = 0;
+        testState.runtimeSourceRows.length = 0;
+      }
+      testState.query.mockClear();
+      try {
+        const result = await handleHostedProductRequest(
+          request(
+            "/api/v2/hosted/projects",
+            "POST",
+            {
+              ...baseBody,
+              schema_version: "videoforge-hosted-project-create/v5",
+              avatar_enabled: avatarEnabled,
+              avatar_profile_version_id: avatarEnabled ? baseBody.avatar_profile_version_id : null,
+              video_coverage_percent: videoAvailable ? 7 : 0,
+              ai_video_opening_enabled: videoAvailable,
+              ai_video_opening_seconds: videoAvailable ? 180 : 0,
+            },
+            true,
+            { "idempotency-key": "composition-create-00000000001" },
+          ),
+          createEnvironment,
+          { ...coverageConfig, videoGenerationEnabled: videoAvailable },
+          executionContext,
+        );
+        expect(result?.status).toBe(201);
+        const revision = testState.query.mock.calls.find(([sql]) =>
+          sql.includes("INSERT INTO project_revisions"),
+        );
+        const payload = JSON.parse(String(revision?.[1]?.[21]));
+        expect(payload).toMatchObject({
+          scheduler_version: "scheduler-v12",
+          avatar_enabled: avatarEnabled,
+          ai_video_opening_seconds: videoAvailable ? 180 : 0,
+        });
+        if (!avatarEnabled) {
+          expect(payload.avatar_binding).toBeNull();
+          expect(revision?.[1]?.slice(6, 13)).toEqual(Array(7).fill(null));
+          expect(
+            testState.query.mock.calls.some(([sql]) =>
+              sql.includes("LEFT JOIN assets AS runtime_source"),
+            ),
+          ).toBe(false);
+        }
+        expect(
+          testState.query.mock.calls
+            .find(([sql]) => sql.includes("videoforge_pin_hosted_video_plan"))?.[1]
+            ?.slice(3),
+        ).toEqual([videoAvailable ? 7 : 0, "FOOTAGE_COMPOSITION_V5", videoAvailable ? 180 : 0]);
       } finally {
         clearReadyPresets();
       }

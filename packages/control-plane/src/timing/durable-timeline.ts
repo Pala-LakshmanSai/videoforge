@@ -170,6 +170,7 @@ export async function prepareDurableDeterministicTimeline(
     schedulerConfigForVersion(
       revision.value.scheduler_version,
       revision.value.ai_video_opening_seconds,
+      revision.value.avatar_enabled,
     ) === null
   ) {
     throw new DurableTimelineError(
@@ -205,6 +206,7 @@ export async function prepareDurableDeterministicTimeline(
   const schedulerConfig = schedulerConfigForVersion(
     revision.value.scheduler_version,
     revision.value.ai_video_opening_seconds,
+    revision.value.avatar_enabled,
   );
   if (!schedulerConfig) {
     throw new DurableTimelineError("TIMELINE_INPUT_MISMATCH", "Unsupported scheduler version.");

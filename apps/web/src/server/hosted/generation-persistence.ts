@@ -277,7 +277,8 @@ export class HostedCanonicalTimingPersistence implements HostedGenerationPersist
           | "LEGACY_PREFIX_V1"
           | "WHOLE_SCENE_V2"
           | "OPENING_180_V3"
-          | "OPENING_CONFIG_V4";
+          | "OPENING_CONFIG_V4"
+          | "FOOTAGE_COMPOSITION_V5";
         opening_seconds: number;
       }>(
         "SELECT selections, coverage_percent, replacement_policy, opening_seconds FROM hosted_video_plans WHERE account_id=$1 AND workspace_id=$2 AND project_revision_id=$3",
@@ -313,7 +314,9 @@ export class HostedCanonicalTimingPersistence implements HostedGenerationPersist
             planHostedVideoSelections(timeline, {
               coveragePercent: videoPlan.rows[0]!.coverage_percent,
               replacementPolicy: videoPlan.rows[0]!.replacement_policy,
-              ...(videoPlan.rows[0]!.replacement_policy === "OPENING_CONFIG_V4"
+              ...(["OPENING_CONFIG_V4", "FOOTAGE_COMPOSITION_V5"].includes(
+                videoPlan.rows[0]!.replacement_policy,
+              )
                 ? { openingSeconds: videoPlan.rows[0]!.opening_seconds }
                 : {}),
             }),

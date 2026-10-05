@@ -502,6 +502,7 @@ export async function coordinateHostedGeneration(input: {
   const schedulerConfig = schedulerConfigForVersion(
     revision.value.scheduler_version,
     revision.value.ai_video_opening_seconds,
+    revision.value.avatar_enabled,
   );
   if (!schedulerConfig) reject("HOSTED_GENERATION_SCHEDULER_VERSION_UNSUPPORTED");
   const schedulerConfigSha256 = await sha256CanonicalJson(schedulerConfig);

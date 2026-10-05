@@ -208,7 +208,8 @@ function validFilename(value: string): boolean {
 
 interface ProjectCreateInput {
   readonly title: string;
-  readonly avatarVersionId: string;
+  readonly avatarVersionId: string | null;
+  readonly avatarEnabled?: boolean;
   readonly styleVersionId: string;
   readonly optionalScript: string | null;
   readonly extraPromptKeywords: string | null;
@@ -256,16 +257,17 @@ export function hostedRevisionConfigV2(input: {
   readonly voiceoverAssetId: string;
   readonly voiceoverSha256: string;
   readonly voiceoverDurationMs: number;
+  readonly avatarEnabled?: boolean;
   readonly aiVideoOpening?: boolean;
   readonly aiVideoOpeningSeconds?: number;
-  readonly avatarProfileId: string;
-  readonly avatarProfileVersionId: string;
-  readonly avatarDisplayName: string;
-  readonly avatarProfileHash: string;
-  readonly avatarRuntimeSourceAssetId: string;
-  readonly avatarRuntimeSourceSha256: string;
-  readonly avatarSourcePreparationVersion: string;
-  readonly avatarSourceValidationProfileVersion: string;
+  readonly avatarProfileId: string | null;
+  readonly avatarProfileVersionId: string | null;
+  readonly avatarDisplayName: string | null;
+  readonly avatarProfileHash: string | null;
+  readonly avatarRuntimeSourceAssetId: string | null;
+  readonly avatarRuntimeSourceSha256: string | null;
+  readonly avatarSourcePreparationVersion: string | null;
+  readonly avatarSourceValidationProfileVersion: string | null;
   readonly imageStyleVersionId: string;
   readonly styleProfileHash: string;
   readonly schedulerSeed: number;
@@ -284,18 +286,21 @@ export function hostedRevisionConfigV2(input: {
     title: input.title,
     voiceover_asset_id: input.voiceoverAssetId,
     voiceover_sha256: input.voiceoverSha256,
-    avatar_binding: {
-      avatar_profile_id: input.avatarProfileId,
-      avatar_profile_version_id: input.avatarProfileVersionId,
-      avatar_display_name_snapshot: input.avatarDisplayName,
-      avatar_profile_hash: input.avatarProfileHash,
-      runtime_source_asset_id: input.avatarRuntimeSourceAssetId,
-      runtime_source_sha256: input.avatarRuntimeSourceSha256,
-      source_preparation_version: input.avatarSourcePreparationVersion,
-      source_validation_profile_version: input.avatarSourceValidationProfileVersion,
-      compatibility_state_at_preflight: "UNTESTED" as const,
-      compatibility_evidence: null,
-    },
+    avatar_binding:
+      input.avatarEnabled === false
+        ? null
+        : {
+            avatar_profile_id: input.avatarProfileId,
+            avatar_profile_version_id: input.avatarProfileVersionId,
+            avatar_display_name_snapshot: input.avatarDisplayName,
+            avatar_profile_hash: input.avatarProfileHash,
+            runtime_source_asset_id: input.avatarRuntimeSourceAssetId,
+            runtime_source_sha256: input.avatarRuntimeSourceSha256,
+            source_preparation_version: input.avatarSourcePreparationVersion,
+            source_validation_profile_version: input.avatarSourceValidationProfileVersion,
+            compatibility_state_at_preflight: "UNTESTED" as const,
+            compatibility_evidence: null,
+          },
     optional_script: input.optionalScript ?? null,
     image_style_version_id: input.imageStyleVersionId,
     style_profile_hash: input.styleProfileHash,
@@ -309,21 +314,31 @@ export function hostedRevisionConfigV2(input: {
       avatar_quality_profile_id: null,
     },
     spend_cap_usd: null,
-    ...(input.aiVideoOpeningSeconds && input.aiVideoOpening
+    ...(input.avatarEnabled !== undefined
+      ? {
+          avatar_enabled: input.avatarEnabled,
+          ai_video_opening_seconds: input.aiVideoOpeningSeconds ?? 0,
+        }
+      : {}),
+    ...(input.avatarEnabled === undefined && input.aiVideoOpeningSeconds && input.aiVideoOpening
       ? { ai_video_opening_seconds: input.aiVideoOpeningSeconds }
       : {}),
     scheduler_version:
-      input.aiVideoOpening && input.aiVideoOpeningSeconds
+      input.avatarEnabled !== undefined
         ? input.voiceoverDurationMs <= 30_000
-          ? "scheduler-v11"
-          : "scheduler-v10"
-        : input.aiVideoOpening
+          ? "scheduler-v13"
+          : "scheduler-v12"
+        : input.aiVideoOpening && input.aiVideoOpeningSeconds
           ? input.voiceoverDurationMs <= 30_000
-            ? "scheduler-v9"
-            : "scheduler-v8"
-          : input.voiceoverDurationMs <= 30_000
-            ? "scheduler-v7"
-            : "scheduler-v6",
+            ? "scheduler-v11"
+            : "scheduler-v10"
+          : input.aiVideoOpening
+            ? input.voiceoverDurationMs <= 30_000
+              ? "scheduler-v9"
+              : "scheduler-v8"
+            : input.voiceoverDurationMs <= 30_000
+              ? "scheduler-v7"
+              : "scheduler-v6",
     scheduler_seed: input.schedulerSeed,
     prompt_writer_version: "scene-prompt-writer-v1",
     prompt_compiler_version: "mage-prompt-compiler-v1",
@@ -353,8 +368,11 @@ export function parseProjectOptions(
     record.title !== record.title.trim() ||
     !record.title ||
     record.title.length > 240 ||
-    typeof record.avatar_profile_version_id !== "string" ||
-    !UUID.test(record.avatar_profile_version_id) ||
+    !(
+      (record.avatar_enabled === false && record.avatar_profile_version_id === null) ||
+      (typeof record.avatar_profile_version_id === "string" &&
+        UUID.test(record.avatar_profile_version_id))
+    ) ||
     typeof record.image_style_version_id !== "string" ||
     !UUID.test(record.image_style_version_id) ||
     (record.video_coverage_percent !== undefined &&
@@ -369,10 +387,25 @@ export function parseProjectOptions(
   const generationMode = record.generation_mode;
   const userSeed = record.user_seed;
   const executionBackend = record.execution_backend;
+  const compositionControls = [
+    "videoforge-hosted-project-create/v5",
+    "videoforge-hosted-project-preflight/v4",
+    "videoforge-hosted-script-project/v3",
+  ].includes(String(record.schema_version));
   const configurableOpening =
+    compositionControls ||
     record.schema_version === "videoforge-hosted-project-create/v4" ||
     record.schema_version === "videoforge-hosted-project-preflight/v3" ||
     record.schema_version === "videoforge-hosted-script-project/v2";
+  if (
+    (compositionControls && typeof record.avatar_enabled !== "boolean") ||
+    (!compositionControls && record.avatar_enabled !== undefined) ||
+    (compositionControls &&
+      (record.avatar_enabled === false
+        ? record.avatar_profile_version_id !== null
+        : record.avatar_profile_version_id === null))
+  )
+    return null;
   const openingEnabled = record.ai_video_opening_enabled;
   const openingSeconds = record.ai_video_opening_seconds;
   if (
@@ -414,7 +447,8 @@ export function parseProjectOptions(
   }
   return {
     title: record.title,
-    avatarVersionId: record.avatar_profile_version_id,
+    avatarVersionId: record.avatar_profile_version_id as string | null,
+    ...(compositionControls ? { avatarEnabled: record.avatar_enabled as boolean } : {}),
     styleVersionId: record.image_style_version_id,
     optionalScript: typeof optionalScript === "string" ? optionalScript : null,
     extraPromptKeywords: typeof extraPromptKeywords === "string" ? extraPromptKeywords : null,
@@ -455,7 +489,11 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
     "execution_backend",
   ];
   const schemaVersion = record.schema_version;
+  const compositionControls =
+    schemaVersion === "videoforge-hosted-project-create/v5" ||
+    schemaVersion === "videoforge-hosted-project-preflight/v4";
   const configurableOpening =
+    compositionControls ||
     schemaVersion === "videoforge-hosted-project-create/v4" ||
     schemaVersion === "videoforge-hosted-project-preflight/v3";
   const coverageSchema =
@@ -465,6 +503,7 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
   const allowedKeys = coverageSchema
     ? [
         ...v2Keys,
+        ...(compositionControls ? ["avatar_enabled"] : []),
         "video_coverage_percent",
         ...(configurableOpening ? ["ai_video_opening_enabled", "ai_video_opening_seconds"] : []),
       ]
@@ -491,8 +530,11 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
     record.title !== record.title.trim() ||
     record.title.length < 1 ||
     record.title.length > 240 ||
-    typeof record.avatar_profile_version_id !== "string" ||
-    !UUID.test(record.avatar_profile_version_id) ||
+    !(
+      (record.avatar_enabled === false && record.avatar_profile_version_id === null) ||
+      (typeof record.avatar_profile_version_id === "string" &&
+        UUID.test(record.avatar_profile_version_id))
+    ) ||
     typeof record.image_style_version_id !== "string" ||
     !UUID.test(record.image_style_version_id) ||
     !record.voiceover ||
@@ -1346,11 +1388,14 @@ async function materializeSystemStyle(
 export async function resolveProjectPresets(
   transaction: SqlExecutor,
   scope: HostedScope,
-  avatarVersionId: string,
+  avatarVersionId: string | null,
   styleVersionId: string,
-): Promise<{ readonly avatar: HostedPresetRow; readonly style: HostedPresetRow } | null> {
-  const avatar = await transaction.query<HostedPresetRow>(
-    `SELECT profile.id AS profile_id, profile.name AS profile_name,
+): Promise<{ readonly avatar: HostedPresetRow | null; readonly style: HostedPresetRow } | null> {
+  const avatar =
+    avatarVersionId === null
+      ? { rows: [] }
+      : await transaction.query<HostedPresetRow>(
+          `SELECT profile.id AS profile_id, profile.name AS profile_name,
             profile.scope_kind, version.id AS version_id, version.profile_hash,
             version.profile_payload, version.original_asset_id,
             version.runtime_source_asset_id, version.runtime_source_binary_sha256,
@@ -1368,8 +1413,8 @@ export async function resolveProjectPresets(
         )
       ORDER BY CASE WHEN profile.account_id = $1 AND profile.workspace_id = $2 THEN 0 ELSE 1 END
       LIMIT 1`,
-    [scope.account_id, scope.workspace_id, avatarVersionId],
-  );
+          [scope.account_id, scope.workspace_id, avatarVersionId],
+        );
   const style = await transaction.query<HostedPresetRow>(
     `SELECT style.id AS style_id, style.name AS style_name, style.scope_kind,
             version.id AS version_id, version.style_profile_hash,
@@ -1393,10 +1438,11 @@ export async function resolveProjectPresets(
   );
   const avatarSource = avatar.rows[0];
   const styleSource = style.rows[0];
-  if (!avatarSource || !styleSource) return null;
+  if ((avatarVersionId !== null && !avatarSource) || !styleSource) return null;
   return {
-    avatar:
-      avatarSource.scope_kind === "SYSTEM"
+    avatar: !avatarSource
+      ? null
+      : avatarSource.scope_kind === "SYSTEM"
         ? await materializeSystemAvatar(transaction, scope, avatarSource)
         : avatarSource,
     style:
@@ -5160,8 +5206,8 @@ async function projectPreflight(
           input.executionBackend === "RUNPOD_POD"
             ? await hostedCloudProjectReadiness(transaction, config)
             : null,
-        avatarReady: avatar.rows.length > 0,
-        avatarRuntimeSourceQualified: runtimeSourceQualified,
+        avatarReady: input.avatarEnabled === false || avatar.rows.length > 0,
+        avatarRuntimeSourceQualified: input.avatarEnabled === false || runtimeSourceQualified,
         qualifiedAvatarName: qualifiedAvatarName === null ? null : String(qualifiedAvatarName),
         styleReady: style.rows.length > 0,
         workers: workers.count,
@@ -5248,17 +5294,20 @@ async function projectPreflight(
     const gpuProductState = hostedGpuProductState(gpuReadiness);
     return response({
       schema_version:
-        input.aiVideoOpeningSeconds !== undefined
-          ? "videoforge-hosted-project-preflight/v3"
-          : input.videoCoveragePercent === null
-            ? "videoforge-hosted-project-preflight/v1"
-            : "videoforge-hosted-project-preflight/v2",
+        input.avatarEnabled !== undefined
+          ? "videoforge-hosted-project-preflight/v4"
+          : input.aiVideoOpeningSeconds !== undefined
+            ? "videoforge-hosted-project-preflight/v3"
+            : input.videoCoveragePercent === null
+              ? "videoforge-hosted-project-preflight/v1"
+              : "videoforge-hosted-project-preflight/v2",
       ...(input.aiVideoOpeningSeconds !== undefined
         ? {
             ai_video_opening_enabled: input.aiVideoOpeningEnabled,
             ai_video_opening_seconds: openingSeconds,
           }
         : {}),
+      ...(input.avatarEnabled !== undefined ? { avatar_enabled: input.avatarEnabled } : {}),
       video_coverage_percent: videoCoveragePercent,
       ok,
       ready: ok,
@@ -5270,9 +5319,13 @@ async function projectPreflight(
         cap_usd: null,
         detail:
           input.executionBackend === "RUNPOD_POD"
-            ? "Cloud media compute adds cost to Kie image and Fal generation usage."
+            ? input.avatarEnabled === false
+              ? "Cloud media compute adds cost to image and scene-video generation."
+              : "Cloud media compute adds cost to Kie image and Fal generation usage."
             : config.apiGeneration
-              ? "Kie image and Fal compute usage is billed after generation."
+              ? input.avatarEnabled === false
+                ? "Image and scene-video usage is billed after generation. Avatar generation is off."
+                : "Kie image and Fal compute usage is billed after generation."
               : gpuProductState.estimateDetail,
         voiceover_bytes: input.voiceover.contentLength,
         duration_ms: input.voiceover.durationMs,
@@ -5326,13 +5379,14 @@ export async function validateScriptProjectPresets(
   );
   if (!resolved) throw new Error("PROJECT_PRESET_NOT_READY");
   if (
+    input.avatarEnabled !== false &&
     !(config.apiGeneration ? avatarRuntimeSourceReadyForApi : avatarRuntimeSourceQualified)(
-      await readAvatarRuntimeSource(transaction, scope, rowString(resolved.avatar, "version_id")),
+      await readAvatarRuntimeSource(transaction, scope, rowString(resolved.avatar!, "version_id")),
     )
   )
     throw new Error("AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED");
   return {
-    avatar_profile_version_id: rowString(resolved.avatar, "version_id"),
+    avatar_profile_version_id: resolved.avatar ? rowString(resolved.avatar, "version_id") : null,
     image_style_version_id: rowString(resolved.style, "version_id"),
   };
 }
@@ -5448,11 +5502,12 @@ export async function createProject(
       // pass-through source, so a project pinned to one burns the image lane and settles the pair
       // FAILED. Preflight is a browser convenience; this is the API-level guard.
       if (
+        input.avatarEnabled !== false &&
         !(config.apiGeneration ? avatarRuntimeSourceReadyForApi : avatarRuntimeSourceQualified)(
           await readAvatarRuntimeSource(
             transaction,
             scope,
-            rowString(resolved.avatar, "version_id"),
+            rowString(resolved.avatar!, "version_id"),
           ),
         )
       ) {
@@ -5478,18 +5533,25 @@ export async function createProject(
         voiceoverAssetId: assetId,
         voiceoverSha256: input.voiceover.checksumSha256,
         voiceoverDurationMs: input.voiceover.durationMs,
+        ...(input.avatarEnabled !== undefined ? { avatarEnabled: input.avatarEnabled } : {}),
         aiVideoOpening: resolvedAiVideoOpeningSeconds(input, config) > 0,
         ...(input.aiVideoOpeningSeconds !== undefined
           ? { aiVideoOpeningSeconds: input.aiVideoOpeningSeconds }
           : {}),
-        avatarProfileId: rowString(avatar, "profile_id"),
-        avatarProfileVersionId: rowString(avatar, "version_id"),
-        avatarDisplayName: rowString(avatar, "profile_name"),
-        avatarProfileHash: rowString(avatar, "profile_hash"),
-        avatarRuntimeSourceAssetId: rowString(avatar, "runtime_source_asset_id"),
-        avatarRuntimeSourceSha256: rowString(avatar, "runtime_source_binary_sha256"),
-        avatarSourcePreparationVersion: rowString(avatar, "source_preparation_profile"),
-        avatarSourceValidationProfileVersion: rowString(avatar, "source_validation_profile"),
+        avatarProfileId: avatar ? rowString(avatar, "profile_id") : null,
+        avatarProfileVersionId: avatar ? rowString(avatar, "version_id") : null,
+        avatarDisplayName: avatar ? rowString(avatar, "profile_name") : null,
+        avatarProfileHash: avatar ? rowString(avatar, "profile_hash") : null,
+        avatarRuntimeSourceAssetId: avatar ? rowString(avatar, "runtime_source_asset_id") : null,
+        avatarRuntimeSourceSha256: avatar
+          ? rowString(avatar, "runtime_source_binary_sha256")
+          : null,
+        avatarSourcePreparationVersion: avatar
+          ? rowString(avatar, "source_preparation_profile")
+          : null,
+        avatarSourceValidationProfileVersion: avatar
+          ? rowString(avatar, "source_validation_profile")
+          : null,
         imageStyleVersionId: rowString(style, "version_id"),
         styleProfileHash: rowString(style, "style_profile_hash"),
         schedulerSeed,
@@ -5556,13 +5618,13 @@ export async function createProject(
           input.title,
           assetId,
           input.voiceover.checksumSha256,
-          rowString(avatar, "profile_id"),
-          rowString(avatar, "version_id"),
-          rowString(avatar, "profile_hash"),
-          rowString(avatar, "runtime_source_asset_id"),
-          rowString(avatar, "runtime_source_binary_sha256"),
-          rowString(avatar, "source_preparation_profile"),
-          rowString(avatar, "source_validation_profile"),
+          avatar ? rowString(avatar, "profile_id") : null,
+          avatar ? rowString(avatar, "version_id") : null,
+          avatar ? rowString(avatar, "profile_hash") : null,
+          avatar ? rowString(avatar, "runtime_source_asset_id") : null,
+          avatar ? rowString(avatar, "runtime_source_binary_sha256") : null,
+          avatar ? rowString(avatar, "source_preparation_profile") : null,
+          avatar ? rowString(avatar, "source_validation_profile") : null,
           rowString(style, "style_id"),
           rowString(style, "version_id"),
           rowString(style, "style_profile_hash"),
@@ -5577,7 +5639,7 @@ export async function createProject(
           input.executionBackend,
         ],
       );
-      if (config.videoGenerationEnabled) {
+      if (config.videoGenerationEnabled || input.avatarEnabled !== undefined) {
         if (input.aiVideoOpeningSeconds !== undefined) {
           await transaction.query(
             "SELECT public.videoforge_pin_hosted_video_plan($1,$2,$3,$4,$5,$6)",
@@ -5586,7 +5648,11 @@ export async function createProject(
               scope.workspace_id,
               revisionId,
               videoCoveragePercent,
-              input.aiVideoOpeningSeconds > 0 ? "OPENING_CONFIG_V4" : "WHOLE_SCENE_V2",
+              input.avatarEnabled !== undefined
+                ? "FOOTAGE_COMPOSITION_V5"
+                : input.aiVideoOpeningSeconds > 0
+                  ? "OPENING_CONFIG_V4"
+                  : "WHOLE_SCENE_V2",
               input.aiVideoOpeningSeconds,
             ],
           );
@@ -7530,7 +7596,8 @@ async function projectDetail(
         `SELECT project.id, project.name AS title, project.created_at,
                 project.generation_provider, revision.id AS revision_id,
                 revision.locked_at, revision.status AS revision_state,
-                revision.media_execution_backend
+                revision.media_execution_backend,
+                coalesce((revision.revision_config_payload->>'avatar_enabled')::boolean, true) AS avatar_enabled
            FROM projects AS project
            JOIN project_revisions AS revision
              ON revision.account_id = project.account_id
@@ -8133,8 +8200,16 @@ async function projectDetail(
       const videoPlan = await transaction.query(
         `SELECT selections,planned_at,coverage_percent,replacement_policy,selection_sha256,
           CASE WHEN replacement_policy='OPENING_180_V3' THEN 180 ELSE opening_seconds END AS opening_seconds,
-          (SELECT sum(scene.end_frame_exclusive-scene.start_frame) FROM timeline_segments scene
-            WHERE scene.account_id=$1 AND scene.workspace_id=$2 AND scene.project_revision_id=$3 AND scene.start_frame<30*(CASE WHEN replacement_policy='OPENING_180_V3' THEN 180 ELSE opening_seconds END)) AS opening_frames,
+          (SELECT sum(CASE WHEN replacement_policy='FOOTAGE_COMPOSITION_V5' THEN least(scene.end_frame_exclusive,opening_seconds*30)-scene.start_frame ELSE scene.end_frame_exclusive-scene.start_frame END) FROM timeline_segments scene
+            WHERE scene.account_id=$1 AND scene.workspace_id=$2 AND scene.project_revision_id=$3 AND scene.start_frame<30*(CASE WHEN replacement_policy='OPENING_180_V3' THEN 180 ELSE opening_seconds END)
+              AND (replacement_policy<>'FOOTAGE_COMPOSITION_V5' OR scene.timeline_composition<>'AVATAR_FULL')) AS opening_frames,
+          (SELECT coalesce(sum(greatest(0,scene.end_frame_exclusive-greatest(scene.start_frame,opening_seconds*30))),0)
+            FROM jsonb_array_elements(selections) chosen JOIN timeline_segments scene
+              ON scene.account_id=$1 AND scene.workspace_id=$2 AND scene.project_revision_id=$3 AND scene.segment_key=chosen->>'segmentId') AS planned_remaining_frames,
+          (SELECT coalesce(sum(greatest(0,scene.end_frame_exclusive-greatest(scene.start_frame,opening_seconds*30))),0) FROM timeline_segments scene
+            WHERE scene.account_id=$1 AND scene.workspace_id=$2 AND scene.project_revision_id=$3
+              AND (scene.timeline_composition='IMAGE_FULL' OR (scene.timeline_composition='AVATAR_SPLIT_IMAGE' AND scene.start_frame<opening_seconds*30))
+              AND scene.end_frame_exclusive-scene.start_frame<=357) AS eligible_remaining_frames,
           (SELECT sum(scene.end_frame_exclusive-scene.start_frame) FROM timeline_segments scene
             WHERE scene.account_id=$1 AND scene.workspace_id=$2 AND scene.project_revision_id=$3
               AND scene.timeline_composition='IMAGE_FULL' AND scene.end_frame_exclusive-scene.start_frame<=357) AS eligible_frames
@@ -8686,9 +8761,13 @@ async function projectDetail(
     const videoUncertain = videoJobs.some((job) => job.state === "UNKNOWN_NO_RETRY");
     const apiPlan = detail.generation as Record<string, unknown> | null;
     const finalFrameCount = numberOrNull(apiPlan?.final_frame_count);
-    const requiredOpening = ["OPENING_180_V3", "OPENING_CONFIG_V4"].includes(
-      String(videoPlan?.replacement_policy),
-    );
+    const avatarEnabled = detail.project.avatar_enabled !== false;
+    const requiredOpening =
+      ["OPENING_180_V3", "OPENING_CONFIG_V4", "FOOTAGE_COMPOSITION_V5"].includes(
+        String(videoPlan?.replacement_policy),
+      ) &&
+      (videoPlan?.replacement_policy === "OPENING_180_V3" ||
+        Number(videoPlan?.opening_seconds) > 0);
     const openingSeconds =
       videoPlan?.replacement_policy === "OPENING_180_V3"
         ? 180
@@ -8734,11 +8813,12 @@ async function projectDetail(
           : null;
     const plannedVideoCoverage =
       videoPlan?.planned_at && coverageFrames !== null && coverageFrames > 0
-        ? ((videoSelections.reduce(
-            (sum, selection) => sum + (numberOrNull(selection.videoFrameCount) ?? 0),
-            0,
-          ) -
-            openingDurationFrames) *
+        ? ((videoPlan.replacement_policy === "FOOTAGE_COMPOSITION_V5"
+            ? Number(videoPlan.planned_remaining_frames ?? 0)
+            : videoSelections.reduce(
+                (sum, selection) => sum + (numberOrNull(selection.videoFrameCount) ?? 0),
+                0,
+              ) - openingDurationFrames) *
             100) /
           coverageFrames
         : requiredOpening && coverageFrames === 0
@@ -8748,7 +8828,10 @@ async function projectDetail(
       coverageFrames !== null &&
       coverageFrames > 0 &&
       numberOrNull(videoPlan?.eligible_frames) !== null
-        ? (Math.max(0, Number(videoPlan!.eligible_frames) - openingDurationFrames) * 100) /
+        ? ((videoPlan!.replacement_policy === "FOOTAGE_COMPOSITION_V5"
+            ? Number(videoPlan!.eligible_remaining_frames ?? 0)
+            : Math.max(0, Number(videoPlan!.eligible_frames) - openingDurationFrames)) *
+            100) /
           coverageFrames
         : requiredOpening && coverageFrames === 0
           ? 0
@@ -8993,7 +9076,7 @@ async function projectDetail(
                   ? "Confirming the saved Runware task. No duplicate generation request is sent."
                   : videoComplete && videoSelections.length === 0
                     ? `No complete image scene fits the requested ${requestedVideoCoverage}% coverage. Original images are used throughout those scenes.`
-                    : `${videoAccepted} of ${videoSelections.length} clips accepted${videoFallback ? ` · ${videoFallback} ${videoFallback === 1 ? "scene kept as its original still" : "scenes kept as their original stills"}` : ""} · ${requiredOpening ? `First 3 minutes: AI video only · Afterward: up to ${requestedVideoCoverage}% coverage${actualVideoCoverage === null ? "" : ` (${actualVideoCoverage.toFixed(2)}% actual)`}` : actualVideoCoverage === null ? `Up to ${requestedVideoCoverage}% motion target` : `${actualVideoCoverage.toFixed(2)}% actual motion (up to ${requestedVideoCoverage}% target)`} · 720p 16:9.${videoComplete ? "" : " Runs alongside images and avatars as source images become ready."}`,
+                    : `${videoAccepted} of ${videoSelections.length} clips accepted${videoFallback ? ` · ${videoFallback} ${videoFallback === 1 ? "scene kept as its original still" : "scenes kept as their original stills"}` : ""} · ${requiredOpening ? `First ${openingSeconds / 60} minutes: videos replace photos · Afterward: up to ${requestedVideoCoverage}% coverage${actualVideoCoverage === null ? "" : ` (${actualVideoCoverage.toFixed(2)}% actual)`}` : actualVideoCoverage === null ? `Up to ${requestedVideoCoverage}% motion target` : `${actualVideoCoverage.toFixed(2)}% actual motion (up to ${requestedVideoCoverage}% target)`} · 720p 16:9.${videoComplete ? "" : " Runs alongside images and avatars as source images become ready."}`,
               eta_ms: null,
             },
           ]
@@ -9080,7 +9163,9 @@ async function projectDetail(
             : "Final review opens after the technical check passes.",
         eta_ms: null,
       },
-    ];
+    ].filter(
+      (stage) => avatarEnabled || !["audio-spanning", "avatar-generation"].includes(stage.id),
+    );
     const queueRow = detail.queue as Record<string, unknown> | null;
     const queue = queueRow
       ? {
@@ -9342,8 +9427,10 @@ async function projectDetail(
       generation_provider: projectApiGeneration ? "KIE_FAL" : "RUNPOD",
       gpu_transport: gpuReadiness.gpu_transport,
       gpu_readiness: gpuReadiness,
-      gpu_lanes: gpuLaneActivity,
-      span_audio: spanAudioProgress,
+      gpu_lanes: avatarEnabled
+        ? gpuLaneActivity
+        : gpuLaneActivity.filter((lane) => lane.lane !== "soulx_avatar"),
+      span_audio: avatarEnabled ? spanAudioProgress : null,
       generation:
         detail.generation === null
           ? null

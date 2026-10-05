@@ -20,7 +20,8 @@
       "enum": [
         "resolved-render-manifest/v1",
         "resolved-render-manifest/v2",
-        "resolved-render-manifest/v3"
+        "resolved-render-manifest/v3",
+        "resolved-render-manifest/v4"
       ]
     },
     "project_revision_id": {
@@ -238,7 +239,10 @@
         "type": "object",
         "properties": {
           "schema_version": {
-            "const": "resolved-render-manifest/v3"
+            "enum": [
+              "resolved-render-manifest/v3",
+              "resolved-render-manifest/v4"
+            ]
           }
         }
       },
@@ -279,6 +283,75 @@
         },
         "properties": {
           "video_policy": {}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "schema_version": {
+            "enum": [
+              "resolved-render-manifest/v1",
+              "resolved-render-manifest/v2",
+              "resolved-render-manifest/v3"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "segments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "if": {
+                "properties": {
+                  "timeline_composition": {
+                    "const": "AVATAR_SPLIT_IMAGE"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "accepted_assets": {
+                    "type": "object",
+                    "not": {
+                      "required": [
+                        "video"
+                      ],
+                      "properties": {
+                        "video": {}
+                      }
+                    }
+                  },
+                  "render": {
+                    "type": "object",
+                    "not": {
+                      "anyOf": [
+                        {
+                          "required": [
+                            "video_source_profile"
+                          ],
+                          "properties": {
+                            "video_source_profile": {}
+                          }
+                        },
+                        {
+                          "required": [
+                            "video_frame_count"
+                          ],
+                          "properties": {
+                            "video_frame_count": {}
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -924,6 +997,9 @@
             },
             "source_background": {
               "$ref": "#/$defs/asset"
+            },
+            "video": {
+              "$ref": "#/$defs/asset"
             }
           }
         },
@@ -991,6 +1067,14 @@
                 "split-right-zoom-v2",
                 "split-right-zoom-v3"
               ]
+            },
+            "video_source_profile": {
+              "const": "seedance-pro-fast-1248x704-v1"
+            },
+            "video_frame_count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 360
             }
           },
           "allOf": [
@@ -1170,6 +1254,81 @@
                   "source_background": {
                     "$ref": "#/$defs/asset"
                   }
+                }
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "accepted_assets": {
+                "required": [
+                  "video"
+                ],
+                "type": "object",
+                "properties": {
+                  "video": {}
+                }
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "render": {
+                "required": [
+                  "video_source_profile",
+                  "video_frame_count"
+                ],
+                "type": "object",
+                "properties": {
+                  "video_source_profile": {},
+                  "video_frame_count": {}
+                }
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "render": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "video_source_profile"
+                    ],
+                    "type": "object",
+                    "properties": {
+                      "video_source_profile": {}
+                    }
+                  },
+                  {
+                    "required": [
+                      "video_frame_count"
+                    ],
+                    "type": "object",
+                    "properties": {
+                      "video_frame_count": {}
+                    }
+                  }
+                ]
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "accepted_assets": {
+                "required": [
+                  "video"
+                ],
+                "type": "object",
+                "properties": {
+                  "video": {}
                 }
               }
             },

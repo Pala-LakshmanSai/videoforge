@@ -719,9 +719,16 @@ class RenderJob:
                 "Resolved render manifest belongs to another project revision.",
                 retryable=False,
             )
-        whole_scene = manifest["schema_version"] == "resolved-render-manifest/v3"
-        if whole_scene != (document["schema_version"] == "render-job-input/v3") or (
-            whole_scene and document.get("video_policy") != manifest.get("video_policy")
+        whole_scene = manifest["schema_version"] in (
+            "resolved-render-manifest/v3",
+            "resolved-render-manifest/v4",
+        )
+        composition_video = manifest["schema_version"] == "resolved-render-manifest/v4"
+        if (
+            whole_scene
+            != (document["schema_version"] in ("render-job-input/v3", "render-job-input/v4"))
+            or composition_video != (document["schema_version"] == "render-job-input/v4")
+            or (whole_scene and document.get("video_policy") != manifest.get("video_policy"))
         ):
             raise _RenderFailure(
                 "RENDER_INPUT_INVALID",
@@ -747,7 +754,13 @@ class RenderJob:
                 next_frame = segment["end_frame_exclusive"]
                 if segment["accepted_assets"].get("video") is not None:
                     if (
-                        segment["timeline_composition"] != "IMAGE_FULL"
+                        (
+                            segment["timeline_composition"] != "IMAGE_FULL"
+                            and not (
+                                composition_video
+                                and segment["timeline_composition"] == "AVATAR_SPLIT_IMAGE"
+                            )
+                        )
                         or frames > 357
                         or segment["render"].get("video_frame_count") != frames
                     ):

@@ -139,11 +139,14 @@ export async function createScriptProject(
     const raw = await parseHostedJson(request, "SCRIPT_PROJECT_INVALID", 524288);
     if (raw instanceof Response) return raw;
     const body = plainRecord(raw);
-    const configurableOpening = body?.schema_version === "videoforge-hosted-script-project/v2";
+    const compositionControls = body?.schema_version === "videoforge-hosted-script-project/v3";
+    const configurableOpening =
+      compositionControls || body?.schema_version === "videoforge-hosted-script-project/v2";
     const allowed = [
       "schema_version",
       "title",
       "avatar_profile_version_id",
+      ...(compositionControls ? ["avatar_enabled"] : []),
       "image_style_version_id",
       "extra_prompt_keywords",
       "apply_extra_prompt_keywords",
@@ -458,9 +461,11 @@ export async function advanceScriptProject(
   const body = {
     ...intake.options,
     schema_version:
-      intake.options.ai_video_opening_enabled === undefined
-        ? "videoforge-hosted-project-create/v3"
-        : "videoforge-hosted-project-create/v4",
+      intake.options.avatar_enabled !== undefined
+        ? "videoforge-hosted-project-create/v5"
+        : intake.options.ai_video_opening_enabled === undefined
+          ? "videoforge-hosted-project-create/v3"
+          : "videoforge-hosted-project-create/v4",
     optional_script: intake.script,
     voiceover: intake.audio.metadata,
   };

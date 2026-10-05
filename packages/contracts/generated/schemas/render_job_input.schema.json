@@ -19,7 +19,8 @@
       "enum": [
         "render-job-input/v1",
         "render-job-input/v2",
-        "render-job-input/v3"
+        "render-job-input/v3",
+        "render-job-input/v4"
       ]
     },
     "project_revision_id": {
@@ -229,7 +230,10 @@
         "type": "object",
         "properties": {
           "schema_version": {
-            "const": "render-job-input/v3"
+            "enum": [
+              "render-job-input/v3",
+              "render-job-input/v4"
+            ]
           }
         }
       },

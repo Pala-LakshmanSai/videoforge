@@ -155,20 +155,20 @@
     {
       "source": "project-context/evidence/project_revision_config.schema.json",
       "destination": "generated/schemas/project_revision_config.schema.json",
-      "bytes": 7471,
-      "sha256": "sha256:bda02e42b17e14aa33f088f9b3541df8684e302f6cb2d76497139367ccc55447"
+      "bytes": 13554,
+      "sha256": "sha256:b1e54092349be126101f0118edeeaa79949b148518b2bbd88194c14cfe1cdd2d"
     },
     {
       "source": "project-context/evidence/timeline_plan.schema.json",
       "destination": "generated/schemas/timeline_plan.schema.json",
-      "bytes": 7051,
-      "sha256": "sha256:b2ec7b552f0b710f281e5c0ef3240f62b1e932050c54f151d8d9d1a7b686e912"
+      "bytes": 10061,
+      "sha256": "sha256:f46d982d91b2681aa9ddd6450beb87b8fd94b8b07dabf51692e875ec805506c2"
     },
     {
       "source": "project-context/evidence/generation_work_manifest.schema.json",
       "destination": "generated/schemas/generation_work_manifest.schema.json",
-      "bytes": 11903,
-      "sha256": "sha256:f3ef3c1ef332618d264b8ddb6262d5721ecc229cdab4ce9d093c549fb6821115"
+      "bytes": 11961,
+      "sha256": "sha256:5fd3877ca19dd5ff88aa3748fc9d3294adfafab698cb672baf97eb15a3d5b6ee"
     },
     {
       "source": "project-context/evidence/render_work_manifest.schema.json",
@@ -179,8 +179,8 @@
     {
       "source": "project-context/evidence/resolved_render_manifest.schema.json",
       "destination": "generated/schemas/resolved_render_manifest.schema.json",
-      "bytes": 33214,
-      "sha256": "sha256:094ba003bc4b1ec3120f9f2523a403bfaf06a6be433979a0b4d8b2b30d31a958"
+      "bytes": 37504,
+      "sha256": "sha256:b4c3ab9201e7d459d010013a1db549713a9fb96ab4b75c4909a1572ec8dd5a18"
     },
     {
       "source": "project-context/evidence/production_manifest.schema.json",
@@ -221,8 +221,8 @@
     {
       "source": "project-context/evidence/render_job_input.schema.json",
       "destination": "generated/schemas/render_job_input.schema.json",
-      "bytes": 5814,
-      "sha256": "sha256:77f6d61a246441b42061a3dd503d223d5925fa9749601be2ea52128615b07559"
+      "bytes": 5911,
+      "sha256": "sha256:2000851b3ccbfd52c35995ceecc601e866030038cda73f3b6e707e0064ccc275"
     },
     {
       "source": "project-context/evidence/technical_probe.schema.json",

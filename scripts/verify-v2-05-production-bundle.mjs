@@ -90,8 +90,8 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // Explicit API Workflow attempt timeout and retry policy add exactly 470 bytes to each
 // measured closure. No imports/dependencies or quarantine checks change.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_818_355,
-  "wrangler.staging.jsonc": 2_820_274,
+  "wrangler.production.jsonc": 2_830_382,
+  "wrangler.staging.jsonc": 2_832_301,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",

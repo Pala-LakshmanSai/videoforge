@@ -656,7 +656,10 @@ def _semantic_contract_issues(
                         "Split-image zoom profile must match the render profile version.",
                     )
                 )
-        if value["schema_version"] == "resolved-render-manifest/v3":
+        if value["schema_version"] in (
+            "resolved-render-manifest/v3",
+            "resolved-render-manifest/v4",
+        ):
             next_frame = 0
             selected_frames = 0
             segment_ids: set[str] = set()
@@ -676,7 +679,7 @@ def _semantic_contract_issues(
                 next_frame = segment["end_frame_exclusive"]
                 segment_ids.add(segment["segment_id"])
                 if (
-                    segment["timeline_composition"] == "IMAGE_FULL"
+                    segment["timeline_composition"] != "AVATAR_FULL"
                     and "video" in segment["accepted_assets"]
                 ):
                     if frames > 357 or segment["render"]["video_frame_count"] != frames:

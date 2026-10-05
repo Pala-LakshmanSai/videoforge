@@ -14,7 +14,8 @@ export type HostedVideoReplacementPolicy =
   | "LEGACY_PREFIX_V1"
   | "WHOLE_SCENE_V2"
   | "OPENING_180_V3"
-  | "OPENING_CONFIG_V4";
+  | "OPENING_CONFIG_V4"
+  | "FOOTAGE_COMPOSITION_V5";
 export interface HostedVideoPolicy {
   readonly coveragePercent: number;
   readonly replacementPolicy: HostedVideoReplacementPolicy;
@@ -24,7 +25,9 @@ export interface HostedVideoPolicy {
 /** Historical policy always retains its original threshold. */
 export function hostedVideoOpeningSeconds(policy: HostedVideoPolicy): number {
   if (policy.replacementPolicy === "OPENING_180_V3") return 180;
-  if (policy.replacementPolicy !== "OPENING_CONFIG_V4") return 0;
+  if (!["OPENING_CONFIG_V4", "FOOTAGE_COMPOSITION_V5"].includes(policy.replacementPolicy)) return 0;
+  if (policy.replacementPolicy === "FOOTAGE_COMPOSITION_V5" && policy.openingSeconds === 0)
+    return 0;
   const seconds = policy.openingSeconds;
   if (!Number.isSafeInteger(seconds) || seconds! < 6 || seconds! > 3600 || seconds! % 6 !== 0)
     throw new Error("HOSTED_VIDEO_POLICY_INVALID");
@@ -40,26 +43,41 @@ export function planHostedVideoSelections(
     !Number.isSafeInteger(policy.coveragePercent) ||
     policy.coveragePercent < 0 ||
     policy.coveragePercent > 100 ||
-    !["LEGACY_PREFIX_V1", "WHOLE_SCENE_V2", "OPENING_180_V3", "OPENING_CONFIG_V4"].includes(
-      policy.replacementPolicy,
-    ) ||
+    ![
+      "LEGACY_PREFIX_V1",
+      "WHOLE_SCENE_V2",
+      "OPENING_180_V3",
+      "OPENING_CONFIG_V4",
+      "FOOTAGE_COMPOSITION_V5",
+    ].includes(policy.replacementPolicy) ||
     (policy.replacementPolicy === "LEGACY_PREFIX_V1" && policy.coveragePercent !== 7)
   )
     throw new Error("HOSTED_VIDEO_POLICY_INVALID");
   const openingSeconds = hostedVideoOpeningSeconds(policy);
   if (openingSeconds > 0) {
     const openingFrames = openingSeconds * 30;
-    const opening = timeline.segments.filter((segment) => segment.start_frame < openingFrames);
+    const preserveAvatar = policy.replacementPolicy === "FOOTAGE_COMPOSITION_V5";
+    const opening = timeline.segments.filter(
+      (segment) =>
+        segment.start_frame < openingFrames &&
+        (!preserveAvatar || segment.timeline_composition !== "AVATAR_FULL"),
+    );
     if (
       opening.some(
         (segment) =>
-          segment.timeline_composition !== "IMAGE_FULL" ||
+          (segment.timeline_composition !== "IMAGE_FULL" &&
+            !(preserveAvatar && segment.timeline_composition === "AVATAR_SPLIT_IMAGE")) ||
           segment.end_frame_exclusive <= segment.start_frame ||
           segment.end_frame_exclusive - segment.start_frame > MAX_VIDEO_FRAMES,
       )
     )
       throw new Error("HOSTED_VIDEO_OPENING_TIMELINE_INVALID");
-    const budget = openingVideoBudget(timeline, policy.coveragePercent, openingSeconds);
+    const budget = openingVideoBudget(
+      timeline,
+      policy.coveragePercent,
+      openingSeconds,
+      preserveAvatar,
+    );
     // Reuse the exact whole-scene spread/fill algorithm with the remaining-duration budget.
     const optional = planHostedVideoSelections(
       {
@@ -70,12 +88,15 @@ export function planHostedVideoSelections(
     );
     return [
       ...opening.map((segment) => {
-        if (segment.timeline_composition !== "IMAGE_FULL")
+        if (segment.timeline_composition === "AVATAR_FULL")
           throw new Error("HOSTED_VIDEO_TIMELINE_INVALID");
         const videoFrameCount = segment.end_frame_exclusive - segment.start_frame;
         return {
           segmentId: segment.segment_id,
-          sourceTaskKey: segment.required_slots.image.task_key,
+          sourceTaskKey:
+            segment.timeline_composition === "IMAGE_FULL"
+              ? segment.required_slots.image.task_key
+              : segment.required_slots.right_image.task_key,
           videoFrameCount,
           durationSeconds: Math.max(1.2, Math.ceil((videoFrameCount + 3) / 3) / 10),
         };
@@ -84,7 +105,10 @@ export function planHostedVideoSelections(
     ];
   }
   const target = Math.floor((timeline.total_frames * policy.coveragePercent) / 100);
-  if (policy.replacementPolicy === "WHOLE_SCENE_V2") {
+  if (
+    policy.replacementPolicy === "WHOLE_SCENE_V2" ||
+    policy.replacementPolicy === "FOOTAGE_COMPOSITION_V5"
+  ) {
     const candidates = timeline.segments.filter(
       (segment) =>
         segment.timeline_composition === "IMAGE_FULL" &&
@@ -183,23 +207,31 @@ export function openingVideoBudget(
   timeline: Pick<TimelinePlanDocument, "total_frames" | "segments">,
   coveragePercent: number,
   openingSeconds = 180,
+  preserveAvatar = false,
 ) {
   if (
     !Number.isSafeInteger(openingSeconds) ||
-    openingSeconds < 6 ||
+    openingSeconds < (preserveAvatar ? 0 : 6) ||
     openingSeconds > 3600 ||
     openingSeconds % 6 !== 0
   )
     throw new Error("HOSTED_VIDEO_POLICY_INVALID");
   const openingFrames = openingSeconds * 30;
   const mandatoryFrames = timeline.segments
-    .filter((segment) => segment.start_frame < openingFrames)
+    .filter(
+      (segment) =>
+        segment.start_frame < openingFrames &&
+        (!preserveAvatar || segment.timeline_composition !== "AVATAR_FULL"),
+    )
     .reduce((sum, segment) => sum + segment.end_frame_exclusive - segment.start_frame, 0);
   const remainingFrames = Math.max(0, timeline.total_frames - openingFrames);
-  const crossingFrames = Math.max(
-    0,
-    mandatoryFrames - Math.min(timeline.total_frames, openingFrames),
-  );
+  const crossingFrames = timeline.segments
+    .filter(
+      (segment) =>
+        segment.start_frame < openingFrames &&
+        (!preserveAvatar || segment.timeline_composition !== "AVATAR_FULL"),
+    )
+    .reduce((sum, segment) => sum + Math.max(0, segment.end_frame_exclusive - openingFrames), 0);
   const optionalFrames = Math.max(
     0,
     Math.floor((remainingFrames * coveragePercent) / 100) - crossingFrames,

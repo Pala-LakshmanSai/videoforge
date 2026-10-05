@@ -530,35 +530,49 @@ export function createHostedV209RenderHandoff(input: {
       const rawVideos = ready.acceptedVideos ?? [];
       const rawVideoPlan = ready.videoPlan ? record(ready.videoPlan) : null;
       if (
-        ["WHOLE_SCENE_V2", "OPENING_180_V3", "OPENING_CONFIG_V4"].includes(
-          String(rawVideoPlan?.replacement_policy),
-        ) &&
+        [
+          "WHOLE_SCENE_V2",
+          "OPENING_180_V3",
+          "OPENING_CONFIG_V4",
+          "FOOTAGE_COMPOSITION_V5",
+        ].includes(String(rawVideoPlan?.replacement_policy)) &&
         (typeof rawVideoPlan!.coverage_percent !== "number" ||
           !Number.isSafeInteger(rawVideoPlan!.coverage_percent))
       )
         throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
       if (
-        rawVideoPlan?.replacement_policy === "OPENING_CONFIG_V4" &&
-        (typeof rawVideoPlan.opening_seconds !== "number" ||
-          !Number.isSafeInteger(rawVideoPlan.opening_seconds) ||
-          rawVideoPlan.opening_seconds < 6 ||
-          rawVideoPlan.opening_seconds > 3600 ||
-          rawVideoPlan.opening_seconds % 6 !== 0)
+        ["OPENING_CONFIG_V4", "FOOTAGE_COMPOSITION_V5"].includes(
+          String(rawVideoPlan?.replacement_policy),
+        ) &&
+        (typeof rawVideoPlan!.opening_seconds !== "number" ||
+          !Number.isSafeInteger(rawVideoPlan!.opening_seconds) ||
+          rawVideoPlan!.opening_seconds <
+            (rawVideoPlan!.replacement_policy === "FOOTAGE_COMPOSITION_V5" ? 0 : 6) ||
+          rawVideoPlan!.opening_seconds > 3600 ||
+          rawVideoPlan!.opening_seconds % 6 !== 0)
       )
         throw new Error("HOSTED_V209_RENDER_VIDEO_POLICY_INVALID");
-      const videoPolicy = ["WHOLE_SCENE_V2", "OPENING_180_V3", "OPENING_CONFIG_V4"].includes(
-        String(rawVideoPlan?.replacement_policy),
-      )
+      const videoPolicy = [
+        "WHOLE_SCENE_V2",
+        "OPENING_180_V3",
+        "OPENING_CONFIG_V4",
+        "FOOTAGE_COMPOSITION_V5",
+      ].includes(String(rawVideoPlan?.replacement_policy))
         ? {
-            coveragePercent: ["OPENING_180_V3", "OPENING_CONFIG_V4"].includes(
-              String(rawVideoPlan!.replacement_policy),
-            )
+            coveragePercent: [
+              "OPENING_180_V3",
+              "OPENING_CONFIG_V4",
+              "FOOTAGE_COMPOSITION_V5",
+            ].includes(String(rawVideoPlan!.replacement_policy))
               ? openingVideoBudget(
                   timeline.value,
                   rawVideoPlan!.coverage_percent as number,
-                  rawVideoPlan!.replacement_policy === "OPENING_CONFIG_V4"
+                  ["OPENING_CONFIG_V4", "FOOTAGE_COMPOSITION_V5"].includes(
+                    String(rawVideoPlan!.replacement_policy),
+                  )
                     ? (rawVideoPlan!.opening_seconds as number)
                     : 180,
+                  rawVideoPlan!.replacement_policy === "FOOTAGE_COMPOSITION_V5",
                 ).rendererCoveragePercent
               : (rawVideoPlan!.coverage_percent as number),
             replacementPolicy: "WHOLE_SCENE_V2" as const,
@@ -679,6 +693,8 @@ export function createHostedV209RenderHandoff(input: {
       const needsFalWideSource = Object.values(acceptedBindings).some(
         (binding) => binding.rendererSourceProfile === "fal-flashhead-512x512p25-wide-v2",
       );
+      if (needsFalWideSource && !revisionDocument.value.avatar_binding)
+        throw new Error("HOSTED_V209_RENDER_SOURCE_MISSING");
       const falWideSource = needsFalWideSource
         ? await materializeFalWideSourceSnapshot({
             database: input.runtimeDatabase,
@@ -687,16 +703,17 @@ export function createHostedV209RenderHandoff(input: {
             workspaceId: scope.workspaceId,
             projectId,
             revisionId,
-            avatarProfileVersionId: revisionDocument.value.avatar_binding.avatar_profile_version_id,
-            avatarProfileHash: revisionDocument.value.avatar_binding.avatar_profile_hash,
-            sourceAssetId: revisionDocument.value.avatar_binding.runtime_source_asset_id,
-            sourceSha256: revisionDocument.value.avatar_binding.runtime_source_sha256,
+            avatarProfileVersionId:
+              revisionDocument.value.avatar_binding!.avatar_profile_version_id,
+            avatarProfileHash: revisionDocument.value.avatar_binding!.avatar_profile_hash,
+            sourceAssetId: revisionDocument.value.avatar_binding!.runtime_source_asset_id,
+            sourceSha256: revisionDocument.value.avatar_binding!.runtime_source_sha256,
           })
         : undefined;
       if (needsFalWideSource && falWideSource === undefined)
         throw new Error("HOSTED_V209_RENDER_SOURCE_MISSING");
       const avatarSource =
-        (falWideSource ?? ready.avatarSource) === undefined
+        (falWideSource ?? ready.avatarSource) == null
           ? undefined
           : artifact(falWideSource ?? ready.avatarSource, artifactScope, {
               lane: "INPUT",
@@ -713,9 +730,11 @@ export function createHostedV209RenderHandoff(input: {
           projectId,
           projectRevisionId: revisionId,
           revisionConfigSha256: revisionDocument.sha256,
-          avatarProfileVersionId: revisionDocument.value.avatar_binding.avatar_profile_version_id,
-          avatarProfileHash: revisionDocument.value.avatar_binding.avatar_profile_hash,
-          avatarRuntimeSourceSha256: revisionDocument.value.avatar_binding.runtime_source_sha256,
+          avatarProfileVersionId:
+            revisionDocument.value.avatar_binding?.avatar_profile_version_id ?? null,
+          avatarProfileHash: revisionDocument.value.avatar_binding?.avatar_profile_hash ?? null,
+          avatarRuntimeSourceSha256:
+            revisionDocument.value.avatar_binding?.runtime_source_sha256 ?? null,
           imageStyleVersionId: revisionDocument.value.image_style_version_id,
           styleProfileHash: revisionDocument.value.style_profile_hash,
         },

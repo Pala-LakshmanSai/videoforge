@@ -562,13 +562,21 @@ test("Create keeps the configurable AI opening separate from whole-video coverag
   await coverage.fill("23");
   await expect(
     page.getByText(
-      "First 2.5 minutes: AI video only. Afterward: up to 23% coverage. Full scenes only.",
+      "First 2.5 minutes: videos replace photos, with your usual avatar appearances. Afterward: up to 23% coverage. Full scenes only.",
     ),
   ).toBeVisible();
   await expect(page.getByLabel("Preliminary scene footage estimate")).toHaveText(/20\.00s/);
   await page.setViewportSize({ width: 418, height: 900 });
   await expect(page.getByRole("group", { name: "Opening footage" })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("opening-on.png"), fullPage: true });
+  const avatarToggle = page.getByRole("checkbox", { name: "Include avatar" });
+  await expect(avatarToggle).toBeChecked();
+  await avatarToggle.uncheck();
+  await expect(page.locator("#hosted-avatar-select")).toHaveCount(0);
+  await expect(minutes).toHaveValue("2.5");
+  await expect(coverage).toHaveValue("23");
+  await avatarToggle.check();
+  await expect(page.locator("#hosted-avatar-select")).toBeVisible();
   await opening.uncheck();
   await expect(minutes).toHaveCount(0);
   await expect(coverage).toHaveValue("23");

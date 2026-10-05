@@ -609,7 +609,9 @@ export const semanticContractIssues = <Name extends ContractName>(
       }
     }
     if (
-      manifest.schema_version === "resolved-render-manifest/v3" &&
+      ["resolved-render-manifest/v3", "resolved-render-manifest/v4"].includes(
+        manifest.schema_version,
+      ) &&
       manifest.video_policy !== undefined
     ) {
       let nextFrame = 0;
@@ -632,7 +634,7 @@ export const semanticContractIssues = <Name extends ContractName>(
         nextFrame = segment.end_frame_exclusive;
         segmentIds.add(segment.segment_id);
         if (
-          segment.timeline_composition === "IMAGE_FULL" &&
+          segment.timeline_composition !== "AVATAR_FULL" &&
           segment.accepted_assets.video !== undefined
         ) {
           if (frames > 357 || segment.render.video_frame_count !== frames) {

@@ -325,7 +325,9 @@
             "scheduler-v8",
             "scheduler-v9",
             "scheduler-v10",
-            "scheduler-v11"
+            "scheduler-v11",
+            "scheduler-v12",
+            "scheduler-v13"
           ]
         }
       }

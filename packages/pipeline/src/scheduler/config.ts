@@ -84,6 +84,15 @@ export const NARRATION_SHOT_SHORT_SCHEDULER_CONFIG = Object.freeze({
   shot_role_policy: "physical-hands-only-v1",
 });
 
+export const COMPOSITION_SCHEDULER_VERSION = "scheduler-v12";
+export const COMPOSITION_SHORT_SCHEDULER_VERSION = "scheduler-v13";
+
+export function schedulerHasCompositionControls(version: string): boolean {
+  return (
+    version === COMPOSITION_SCHEDULER_VERSION || version === COMPOSITION_SHORT_SCHEDULER_VERSION
+  );
+}
+
 export const AI_VIDEO_OPENING_SECONDS = 180;
 export const AI_VIDEO_OPENING_SCHEDULER_VERSION = "scheduler-v8";
 export const AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION = "scheduler-v9";
@@ -136,6 +145,10 @@ export function schedulerAiVideoOpeningSeconds(
   version: string,
   openingSeconds?: number,
 ): number | null {
+  if (schedulerHasCompositionControls(version))
+    return openingSeconds === 0 || isValidAiVideoOpeningSeconds(openingSeconds)
+      ? openingSeconds
+      : null;
   if (schedulerHasConfigurableAiVideoOpening(version))
     return isValidAiVideoOpeningSeconds(openingSeconds) ? openingSeconds : null;
   if (openingSeconds !== undefined) return null;
@@ -144,6 +157,8 @@ export function schedulerAiVideoOpeningSeconds(
 
 /** Preserve timing draws and segment identities when selecting the new role policy. */
 export function schedulerTimingVersion(version: string): string {
+  if (version === COMPOSITION_SCHEDULER_VERSION) return SUPPORTED_SCHEDULER_VERSION;
+  if (version === COMPOSITION_SHORT_SCHEDULER_VERSION) return WORD_BOUNDARY_SCHEDULER_VERSION;
   if (version === CONFIGURABLE_AI_VIDEO_OPENING_SCHEDULER_VERSION)
     return SUPPORTED_SCHEDULER_VERSION;
   if (version === CONFIGURABLE_AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION)
@@ -155,7 +170,30 @@ export function schedulerTimingVersion(version: string): string {
   return version;
 }
 
-export function schedulerConfigForVersion(version: string, openingSeconds?: number) {
+export function schedulerConfigForVersion(
+  version: string,
+  openingSeconds?: number,
+  avatarEnabled?: boolean,
+) {
+  if (schedulerHasCompositionControls(version)) {
+    if (
+      typeof avatarEnabled !== "boolean" ||
+      schedulerAiVideoOpeningSeconds(version, openingSeconds) === null
+    )
+      return null;
+    const short = version === COMPOSITION_SHORT_SCHEDULER_VERSION;
+    return Object.freeze({
+      ...(short ? NARRATION_SHOT_SHORT_SCHEDULER_CONFIG : NARRATION_SHOT_SCHEDULER_CONFIG),
+      schema_version: short
+        ? "deterministic-timeline-scheduler-config/v13"
+        : "deterministic-timeline-scheduler-config/v12",
+      opening_seconds: openingSeconds!,
+      avatar_enabled: avatarEnabled,
+      opening_scene_boundary_policy: "whole-photo-slot-start-before-opening-end-v1",
+      composition_policy: "preserve-avatar-or-fullscreen-v1",
+    });
+  }
+  if (avatarEnabled !== undefined) return null;
   if (schedulerAiVideoOpeningSeconds(version, openingSeconds) === null) return null;
   if (schedulerHasConfigurableAiVideoOpening(version)) {
     const short = version === CONFIGURABLE_AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION;

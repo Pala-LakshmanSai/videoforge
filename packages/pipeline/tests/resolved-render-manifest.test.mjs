@@ -871,3 +871,74 @@ test("rejects revision, narration, and render-profile drift", async () => {
   assert.equal(shortResult.ok, false);
   assert.equal(shortResult.error.code, "RENDER_PLAN_INVALID");
 });
+
+test("v4 keeps avatar composition and binds split video to its photo and revision controls", async () => {
+  const request = await requestWith(
+    CANDIDATES.map((c) =>
+      c.kind === "AVATAR_CLIP"
+        ? { ...c, rendererSourceProfile: "local-fixture-centered-832x480p25-v1" }
+        : c,
+    ),
+  );
+  const revision = await validateAndHashContractDocument("projectRevisionConfig", {
+    ...request.revision.value,
+    scheduler_version: "scheduler-v12",
+    avatar_enabled: true,
+    ai_video_opening_seconds: 180,
+  });
+  const timeline = await validateAndHashContractDocument("timelinePlan", {
+    ...request.timeline.value,
+    scheduler_version: "scheduler-v12",
+    avatar_enabled: true,
+    ai_video_opening_seconds: 180,
+    revision_config_hash: revision.sha256,
+  });
+  const scene = timeline.value.segments[2];
+  const video = {
+    segmentId: scene.segment_id,
+    sourceTaskKey: "image:seg_0003:right",
+    sourceSha256: CANDIDATES[3].sha256,
+    videoFrameCount: scene.end_frame_exclusive - scene.start_frame,
+    assetId: "asset_split_video",
+    sha256: `sha256:${"8".repeat(64)}`,
+    kind: "VIDEO",
+  };
+  const input = {
+    ...request,
+    revision,
+    timeline,
+    videoAssets: [video],
+    videoPolicy: {
+      coveragePercent: 100,
+      replacementPolicy: "WHOLE_SCENE_V2",
+      selectionSha256: `sha256:${"a".repeat(64)}`,
+    },
+  };
+  const result = requireSuccess(await planVNextResolvedRenderManifest(input));
+  assert.equal(result.value.schema_version, "resolved-render-manifest/v4");
+  assert.equal(result.value.segments[2].timeline_composition, "AVATAR_SPLIT_IMAGE");
+  assert.deepEqual(result.value.segments[2].accepted_assets.right_image, {
+    asset_id: CANDIDATES[3].assetId,
+    sha256: CANDIDATES[3].sha256,
+  });
+  assert.equal(result.value.segments[2].accepted_assets.video.asset_id, video.assetId);
+  for (const change of [{ avatar_enabled: false }, { ai_video_opening_seconds: 0 }]) {
+    const forged = { ...timeline, value: { ...timeline.value, ...change } };
+    assert.equal((await planVNextResolvedRenderManifest({ ...input, timeline: forged })).ok, false);
+  }
+  assert.equal(
+    (
+      await planVNextResolvedRenderManifest({
+        ...input,
+        videoAssets: [{ ...video, sourceSha256: CANDIDATES[1].sha256 }],
+      })
+    ).ok,
+    false,
+  );
+  await assert.rejects(
+    validateAndHashContractDocument("resolvedRenderManifest", {
+      ...result.value,
+      schema_version: "resolved-render-manifest/v3",
+    }),
+  );
+});

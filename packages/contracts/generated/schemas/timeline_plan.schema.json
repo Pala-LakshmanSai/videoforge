@@ -16,85 +16,267 @@
     "segments"
   ],
   "properties": {
-    "schema_version": {"const": "timeline-plan/v1"},
-    "project_revision_id": {"type": "string", "minLength": 1, "maxLength": 160},
-    "revision_config_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
-    "scheduler_version": {"type": "string", "minLength": 1, "maxLength": 160},
-    "ai_video_opening_seconds": {"type": "integer", "minimum": 6, "maximum": 3600, "multipleOf": 6},
-    "seed": {"type": "integer", "minimum": 0, "maximum": 4294967295},
-    "output_fps_num": {"const": 30},
-    "output_fps_den": {"const": 1},
-    "total_frames": {"type": "integer", "minimum": 1},
+    "schema_version": {
+      "const": "timeline-plan/v1"
+    },
+    "project_revision_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "revision_config_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "scheduler_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "ai_video_opening_seconds": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3600,
+      "multipleOf": 6
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    "output_fps_num": {
+      "const": 30
+    },
+    "output_fps_den": {
+      "const": 1
+    },
+    "total_frames": {
+      "type": "integer",
+      "minimum": 1
+    },
     "segments": {
       "type": "array",
       "minItems": 1,
       "items": {
         "oneOf": [
-          {"$ref": "#/$defs/avatarFull"},
-          {"$ref": "#/$defs/imageFull"},
-          {"$ref": "#/$defs/avatarSplitImage"}
+          {
+            "$ref": "#/$defs/avatarFull"
+          },
+          {
+            "$ref": "#/$defs/imageFull"
+          },
+          {
+            "$ref": "#/$defs/avatarSplitImage"
+          }
         ]
       }
+    },
+    "avatar_enabled": {
+      "type": "boolean"
     }
   },
   "allOf": [
     {
-      "if": {"properties": {"scheduler_version": {"enum": ["scheduler-v10", "scheduler-v11"]}}, "required": ["scheduler_version"]},
-      "then": {"properties": {"ai_video_opening_seconds": {}}, "required": ["ai_video_opening_seconds"]},
-      "else": {"not": {"properties": {"ai_video_opening_seconds": {}}, "required": ["ai_video_opening_seconds"]}}
+      "if": {
+        "properties": {
+          "scheduler_version": {
+            "enum": [
+              "scheduler-v12",
+              "scheduler-v13"
+            ]
+          }
+        },
+        "required": [
+          "scheduler_version"
+        ]
+      },
+      "then": {
+        "required": [
+          "ai_video_opening_seconds",
+          "avatar_enabled"
+        ],
+        "properties": {
+          "ai_video_opening_seconds": {},
+          "avatar_enabled": {}
+        }
+      },
+      "else": {
+        "allOf": [
+          {
+            "not": {
+              "required": [
+                "avatar_enabled"
+              ],
+              "properties": {
+                "avatar_enabled": {}
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "scheduler_version": {
+                  "enum": [
+                    "scheduler-v10",
+                    "scheduler-v11"
+                  ]
+                }
+              },
+              "required": [
+                "scheduler_version"
+              ]
+            },
+            "then": {
+              "required": [
+                "ai_video_opening_seconds"
+              ],
+              "properties": {
+                "ai_video_opening_seconds": {
+                  "minimum": 6,
+                  "type": "integer"
+                }
+              }
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "ai_video_opening_seconds"
+                ],
+                "properties": {
+                  "ai_video_opening_seconds": {}
+                }
+              }
+            }
+          }
+        ]
+      }
     }
   ],
   "$defs": {
     "baseProperties": {
-      "segment_id": {"type": "string", "minLength": 1, "maxLength": 160},
-      "start_frame": {"type": "integer", "minimum": 0},
-      "end_frame_exclusive": {"type": "integer", "minimum": 1},
-      "source_audio_start_ms": {"type": "integer", "minimum": 0},
-      "source_audio_end_ms": {"type": "integer", "minimum": 1},
-      "phrase": {"type": "string", "minLength": 1, "maxLength": 4000},
-      "word_start": {"type": "integer", "minimum": 0},
-      "word_end_exclusive": {"type": "integer", "minimum": 1}
+      "segment_id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "start_frame": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "end_frame_exclusive": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "source_audio_start_ms": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "source_audio_end_ms": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "phrase": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4000
+      },
+      "word_start": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "word_end_exclusive": {
+        "type": "integer",
+        "minimum": 1
+      }
     },
     "avatarSlot": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["task_key", "span_audio_task_key"],
+      "required": [
+        "task_key",
+        "span_audio_task_key"
+      ],
       "properties": {
-        "task_key": {"type": "string", "minLength": 1, "maxLength": 240},
-        "span_audio_task_key": {"type": "string", "minLength": 1, "maxLength": 240}
+        "task_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "span_audio_task_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        }
       }
     },
     "imageSlot": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["task_key"],
+      "required": [
+        "task_key"
+      ],
       "properties": {
-        "task_key": {"type": "string", "minLength": 1, "maxLength": 240}
+        "task_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        }
       }
     },
     "avatarFull": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "segment_id", "start_frame", "end_frame_exclusive",
-        "source_audio_start_ms", "source_audio_end_ms", "timeline_composition",
-        "phrase", "word_start", "word_end_exclusive", "required_slots"
+        "segment_id",
+        "start_frame",
+        "end_frame_exclusive",
+        "source_audio_start_ms",
+        "source_audio_end_ms",
+        "timeline_composition",
+        "phrase",
+        "word_start",
+        "word_end_exclusive",
+        "required_slots"
       ],
       "properties": {
-        "segment_id": {"$ref": "#/$defs/baseProperties/segment_id"},
-        "start_frame": {"$ref": "#/$defs/baseProperties/start_frame"},
-        "end_frame_exclusive": {"$ref": "#/$defs/baseProperties/end_frame_exclusive"},
-        "source_audio_start_ms": {"$ref": "#/$defs/baseProperties/source_audio_start_ms"},
-        "source_audio_end_ms": {"$ref": "#/$defs/baseProperties/source_audio_end_ms"},
-        "timeline_composition": {"const": "AVATAR_FULL"},
-        "phrase": {"$ref": "#/$defs/baseProperties/phrase"},
-        "word_start": {"$ref": "#/$defs/baseProperties/word_start"},
-        "word_end_exclusive": {"$ref": "#/$defs/baseProperties/word_end_exclusive"},
+        "segment_id": {
+          "$ref": "#/$defs/baseProperties/segment_id"
+        },
+        "start_frame": {
+          "$ref": "#/$defs/baseProperties/start_frame"
+        },
+        "end_frame_exclusive": {
+          "$ref": "#/$defs/baseProperties/end_frame_exclusive"
+        },
+        "source_audio_start_ms": {
+          "$ref": "#/$defs/baseProperties/source_audio_start_ms"
+        },
+        "source_audio_end_ms": {
+          "$ref": "#/$defs/baseProperties/source_audio_end_ms"
+        },
+        "timeline_composition": {
+          "const": "AVATAR_FULL"
+        },
+        "phrase": {
+          "$ref": "#/$defs/baseProperties/phrase"
+        },
+        "word_start": {
+          "$ref": "#/$defs/baseProperties/word_start"
+        },
+        "word_end_exclusive": {
+          "$ref": "#/$defs/baseProperties/word_end_exclusive"
+        },
         "required_slots": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["avatar"],
-          "properties": {"avatar": {"$ref": "#/$defs/avatarSlot"}}
+          "required": [
+            "avatar"
+          ],
+          "properties": {
+            "avatar": {
+              "$ref": "#/$defs/avatarSlot"
+            }
+          }
         }
       }
     },
@@ -102,27 +284,60 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "segment_id", "start_frame", "end_frame_exclusive",
-        "source_audio_start_ms", "source_audio_end_ms", "timeline_composition",
-        "phrase", "word_start", "word_end_exclusive", "in_image_shot_role",
+        "segment_id",
+        "start_frame",
+        "end_frame_exclusive",
+        "source_audio_start_ms",
+        "source_audio_end_ms",
+        "timeline_composition",
+        "phrase",
+        "word_start",
+        "word_end_exclusive",
+        "in_image_shot_role",
         "required_slots"
       ],
       "properties": {
-        "segment_id": {"$ref": "#/$defs/baseProperties/segment_id"},
-        "start_frame": {"$ref": "#/$defs/baseProperties/start_frame"},
-        "end_frame_exclusive": {"$ref": "#/$defs/baseProperties/end_frame_exclusive"},
-        "source_audio_start_ms": {"$ref": "#/$defs/baseProperties/source_audio_start_ms"},
-        "source_audio_end_ms": {"$ref": "#/$defs/baseProperties/source_audio_end_ms"},
-        "timeline_composition": {"const": "IMAGE_FULL"},
-        "phrase": {"$ref": "#/$defs/baseProperties/phrase"},
-        "word_start": {"$ref": "#/$defs/baseProperties/word_start"},
-        "word_end_exclusive": {"$ref": "#/$defs/baseProperties/word_end_exclusive"},
-        "in_image_shot_role": {"$ref": "#/$defs/shotRole"},
+        "segment_id": {
+          "$ref": "#/$defs/baseProperties/segment_id"
+        },
+        "start_frame": {
+          "$ref": "#/$defs/baseProperties/start_frame"
+        },
+        "end_frame_exclusive": {
+          "$ref": "#/$defs/baseProperties/end_frame_exclusive"
+        },
+        "source_audio_start_ms": {
+          "$ref": "#/$defs/baseProperties/source_audio_start_ms"
+        },
+        "source_audio_end_ms": {
+          "$ref": "#/$defs/baseProperties/source_audio_end_ms"
+        },
+        "timeline_composition": {
+          "const": "IMAGE_FULL"
+        },
+        "phrase": {
+          "$ref": "#/$defs/baseProperties/phrase"
+        },
+        "word_start": {
+          "$ref": "#/$defs/baseProperties/word_start"
+        },
+        "word_end_exclusive": {
+          "$ref": "#/$defs/baseProperties/word_end_exclusive"
+        },
+        "in_image_shot_role": {
+          "$ref": "#/$defs/shotRole"
+        },
         "required_slots": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["image"],
-          "properties": {"image": {"$ref": "#/$defs/imageSlot"}}
+          "required": [
+            "image"
+          ],
+          "properties": {
+            "image": {
+              "$ref": "#/$defs/imageSlot"
+            }
+          }
         }
       }
     },
@@ -130,29 +345,63 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "segment_id", "start_frame", "end_frame_exclusive",
-        "source_audio_start_ms", "source_audio_end_ms", "timeline_composition",
-        "phrase", "word_start", "word_end_exclusive", "in_image_shot_role",
+        "segment_id",
+        "start_frame",
+        "end_frame_exclusive",
+        "source_audio_start_ms",
+        "source_audio_end_ms",
+        "timeline_composition",
+        "phrase",
+        "word_start",
+        "word_end_exclusive",
+        "in_image_shot_role",
         "required_slots"
       ],
       "properties": {
-        "segment_id": {"$ref": "#/$defs/baseProperties/segment_id"},
-        "start_frame": {"$ref": "#/$defs/baseProperties/start_frame"},
-        "end_frame_exclusive": {"$ref": "#/$defs/baseProperties/end_frame_exclusive"},
-        "source_audio_start_ms": {"$ref": "#/$defs/baseProperties/source_audio_start_ms"},
-        "source_audio_end_ms": {"$ref": "#/$defs/baseProperties/source_audio_end_ms"},
-        "timeline_composition": {"const": "AVATAR_SPLIT_IMAGE"},
-        "phrase": {"$ref": "#/$defs/baseProperties/phrase"},
-        "word_start": {"$ref": "#/$defs/baseProperties/word_start"},
-        "word_end_exclusive": {"$ref": "#/$defs/baseProperties/word_end_exclusive"},
-        "in_image_shot_role": {"$ref": "#/$defs/shotRole"},
+        "segment_id": {
+          "$ref": "#/$defs/baseProperties/segment_id"
+        },
+        "start_frame": {
+          "$ref": "#/$defs/baseProperties/start_frame"
+        },
+        "end_frame_exclusive": {
+          "$ref": "#/$defs/baseProperties/end_frame_exclusive"
+        },
+        "source_audio_start_ms": {
+          "$ref": "#/$defs/baseProperties/source_audio_start_ms"
+        },
+        "source_audio_end_ms": {
+          "$ref": "#/$defs/baseProperties/source_audio_end_ms"
+        },
+        "timeline_composition": {
+          "const": "AVATAR_SPLIT_IMAGE"
+        },
+        "phrase": {
+          "$ref": "#/$defs/baseProperties/phrase"
+        },
+        "word_start": {
+          "$ref": "#/$defs/baseProperties/word_start"
+        },
+        "word_end_exclusive": {
+          "$ref": "#/$defs/baseProperties/word_end_exclusive"
+        },
+        "in_image_shot_role": {
+          "$ref": "#/$defs/shotRole"
+        },
         "required_slots": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["avatar", "right_image"],
+          "required": [
+            "avatar",
+            "right_image"
+          ],
           "properties": {
-            "avatar": {"$ref": "#/$defs/avatarSlot"},
-            "right_image": {"$ref": "#/$defs/imageSlot"}
+            "avatar": {
+              "$ref": "#/$defs/avatarSlot"
+            },
+            "right_image": {
+              "$ref": "#/$defs/imageSlot"
+            }
           }
         }
       }

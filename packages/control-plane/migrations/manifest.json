@@ -1392,6 +1392,12 @@
       "name": "cloud_asr_preparation_failure_recovery",
       "filename": "0269_cloud_asr_preparation_failure_recovery.sql",
       "sha256": "sha256:f4a481bf83c963fba018001657f50d3c30de51cfd1e49a6f61f8a4fe7416e253"
+    },
+    {
+      "version": 270,
+      "name": "hosted_avatar_composition",
+      "filename": "0270_hosted_avatar_composition.sql",
+      "sha256": "sha256:4b2d02ba23185178304a54508486905c7fd0ccc0c88d25bd3d20caf93384f1de"
     }
   ]
 }

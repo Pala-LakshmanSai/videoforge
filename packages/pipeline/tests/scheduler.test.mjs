@@ -1485,3 +1485,52 @@ test("new opening pins fail closed while old versions reject configurable fields
     await assert.rejects(validateAndHashContractDocument("timelinePlan", plan));
   }
 });
+
+for (const avatarEnabled of [true, false]) {
+  for (const openingSeconds of [0, 6, 180, 3600]) {
+    test(`composition avatar=${avatarEnabled} opening=${openingSeconds} preserves timing and removes only disabled avatars`, async () => {
+      const transcriptValue = createPropertyTranscript({
+        durationMs: 600_000,
+        phraseStarts: Array.from({ length: 120 }, (_, i) => i * 5000),
+      });
+      const previous = requireSuccess(
+        await scheduleTimeline(await propertyRequest(982341, transcriptValue, "scheduler-v6")),
+      );
+      const revisionValue = {
+        ...createRevisionValue(982341, "scheduler-v12"),
+        avatar_enabled: avatarEnabled,
+        ai_video_opening_seconds: openingSeconds,
+      };
+      if (!avatarEnabled) revisionValue.avatar_binding = null;
+      const revision = await validateAndHashContractDocument(
+        "projectRevisionConfig",
+        revisionValue,
+      );
+      const transcript = await validateAndHashContractDocument("transcriptTiming", transcriptValue);
+      const request = { revision, transcript, determinism };
+      const result = requireSuccess(await scheduleTimeline(request));
+      assert.equal(validateTimelineSemantics(result.value, transcriptValue), null);
+      assert.equal(result.sha256, requireSuccess(await scheduleTimeline(request)).sha256);
+      assert.deepEqual(
+        result.value.segments.map((s) => [s.start_frame, s.end_frame_exclusive]),
+        previous.value.segments.map((s) => [s.start_frame, s.end_frame_exclusive]),
+      );
+      if (avatarEnabled) assert.deepEqual(result.value.segments, previous.value.segments);
+      else assert.ok(result.value.segments.every((s) => s.timeline_composition === "IMAGE_FULL"));
+      const work = requireSuccess(
+        await compileCompleteWorkPlan({
+          revision,
+          transcript,
+          timeline: result,
+          schedulerConfigHash: await sha256CanonicalJson(
+            schedulerConfigForVersion("scheduler-v12", openingSeconds, avatarEnabled),
+          ),
+          selectedSpanAudio: avatarEnabled ? materializedSpans(result.value, 600000) : [],
+        }),
+      );
+      assert.equal(work.generationWorkManifest.value.avatar_spans.length > 0, avatarEnabled);
+      if (!avatarEnabled)
+        assert.equal(work.generationWorkManifest.value.cost_counts.avatar_generation_count, 0);
+    });
+  }
+}

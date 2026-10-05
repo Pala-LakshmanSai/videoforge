@@ -389,7 +389,8 @@ def compile_render_command(
                     or type(motion_frames) is not int
                     or not 1 <= motion_frames <= frame_count
                     or (
-                        manifest.get("schema_version") == "resolved-render-manifest/v3"
+                        manifest.get("schema_version")
+                        in ("resolved-render-manifest/v3", "resolved-render-manifest/v4")
                         and (motion_frames > 357 or motion_frames != frame_count)
                     )
                 ):
@@ -422,7 +423,18 @@ def compile_render_command(
                 graph.append(f"[{motion_label}][{still_label}]concat=n=2:v=1:a=0[{label}]")
         elif composition == "AVATAR_SPLIT_IMAGE":
             avatar_index = add_input(accepted["avatar"]["asset_id"], still=False)
-            image_index = add_input(accepted["right_image"]["asset_id"], still=True)
+            video = accepted.get("video")
+            if video is not None:
+                if (
+                    manifest.get("schema_version") != "resolved-render-manifest/v4"
+                    or render.get("video_source_profile") != "seedance-pro-fast-1248x704-v1"
+                    or render.get("video_frame_count") != frame_count
+                    or not 1 <= frame_count <= 357
+                ):
+                    raise ValueError("invalid split-scene motion selection")
+                image_index = add_input(video["asset_id"], still=False)
+            else:
+                image_index = add_input(accepted["right_image"]["asset_id"], still=True)
             avatar_label = f"avatar{segment_index}"
             image_label = f"image{segment_index}"
             if render["avatar_source_profile"] == SOULX_SOURCE_PROFILE:
@@ -451,6 +463,14 @@ def compile_render_command(
                 )
                 graph.append(
                     f"{_image_filter(image_index, 960, frame_count, delta, profile_version=profile_version)}[{image_label}]"
+                )
+            if video is not None:
+                graph.pop()  # Replace only the right-photo filter; retain the avatar filter.
+                graph.append(
+                    f"[{image_index}:v:0]setpts=PTS-STARTPTS,"
+                    "scale=960:1080:force_original_aspect_ratio=increase:flags=lanczos,"
+                    "crop=960:1080,setsar=1,fps=30:round=near,"
+                    f"trim=end_frame={frame_count},setpts=PTS-STARTPTS,format=yuv420p[{image_label}]"
                 )
             graph.append(
                 f"[{avatar_label}][{image_label}]hstack=inputs=2,"

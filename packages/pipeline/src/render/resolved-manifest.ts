@@ -488,7 +488,11 @@ function validateTimelineBinding(request: RenderPlanRequest): PipelineFailure | 
   const timeline = request.timeline.value;
   if (
     timeline.project_revision_id !== revision.project_revision_id ||
-    timeline.revision_config_hash !== request.revision.sha256
+    timeline.revision_config_hash !== request.revision.sha256 ||
+    timeline.scheduler_version !== revision.scheduler_version ||
+    timeline.seed !== revision.scheduler_seed ||
+    timeline.avatar_enabled !== revision.avatar_enabled ||
+    timeline.ai_video_opening_seconds !== revision.ai_video_opening_seconds
   ) {
     return fail(
       "RENDER_PLAN_INVALID",
@@ -587,6 +591,11 @@ function resolvedSegment(
     };
   }
 
+  if (!revision.avatar_binding)
+    return fail("RENDER_PROFILE_MISMATCH", "Avatar scene requires its pinned avatar binding.", [
+      "revision",
+      "avatar_binding",
+    ]);
   const avatarTaskKey = segment.required_slots.avatar.task_key;
   const avatar = bindingFor(resolution, avatarTaskKey);
   if (!isAvatarSourceProfile(avatar.rendererSourceProfile)) {
@@ -750,17 +759,32 @@ export async function planResolvedRenderManifest(
     );
     const segment = segments[index];
     const timelineSegment = request.timeline.value.segments[index];
+    const compositionControls = request.timeline.value.avatar_enabled !== undefined;
+    const sourceSlot =
+      timelineSegment?.timeline_composition === "IMAGE_FULL"
+        ? timelineSegment.required_slots.image
+        : timelineSegment?.timeline_composition === "AVATAR_SPLIT_IMAGE"
+          ? timelineSegment.required_slots.right_image
+          : undefined;
+    const sourceAsset =
+      segment?.timeline_composition === "IMAGE_FULL"
+        ? segment.accepted_assets.image
+        : segment?.timeline_composition === "AVATAR_SPLIT_IMAGE"
+          ? segment.accepted_assets.right_image
+          : undefined;
     if (
       !segment ||
       !timelineSegment ||
-      segment.timeline_composition !== "IMAGE_FULL" ||
-      timelineSegment.timeline_composition !== "IMAGE_FULL" ||
+      !sourceSlot ||
+      !sourceAsset ||
+      (segment.timeline_composition !== "IMAGE_FULL" &&
+        !(compositionControls && segment.timeline_composition === "AVATAR_SPLIT_IMAGE")) ||
       video.kind !== "VIDEO" ||
       videoSegments.has(segment.segment_id) ||
-      video.sourceTaskKey !== timelineSegment.required_slots.image.task_key ||
-      video.sourceSha256 !== segment.accepted_assets.image.sha256 ||
-      video.assetId === segment.accepted_assets.image.asset_id ||
-      video.sha256 === segment.accepted_assets.image.sha256 ||
+      video.sourceTaskKey !== sourceSlot.task_key ||
+      video.sourceSha256 !== sourceAsset.sha256 ||
+      video.assetId === sourceAsset.asset_id ||
+      video.sha256 === sourceAsset.sha256 ||
       video.sha256 === request.voiceover.sha256 ||
       !SHA256_PATTERN.test(video.sha256) ||
       !video.assetId ||
@@ -791,7 +815,7 @@ export async function planResolvedRenderManifest(
         video_source_profile: "seedance-pro-fast-1248x704-v1",
         video_frame_count: video.videoFrameCount,
       },
-    };
+    } as ResolvedRenderManifestDocument["segments"][number];
   }
   if (
     videoFrames >
@@ -806,7 +830,9 @@ export async function planResolvedRenderManifest(
   const manifest: ResolvedRenderManifestDocument = {
     schema_version:
       policy !== undefined
-        ? "resolved-render-manifest/v3"
+        ? request.timeline.value.avatar_enabled !== undefined
+          ? "resolved-render-manifest/v4"
+          : "resolved-render-manifest/v3"
         : videoAssets.length
           ? "resolved-render-manifest/v2"
           : "resolved-render-manifest/v1",

@@ -162,25 +162,26 @@ Legacy precursor algorithm (On V10/V11 and historical V8/V9 apply their pinned o
 
 No LLM chooses timing, composition, crop, or boundaries.
 
-### Configurable AI video opening — 2026-10-05
+### Opening composition correction and optional avatar — 2026-10-05
 
-DEC_VIDEO_OPENING_001 now adds an independent Full video opening toggle, default On, and a
-0.1–60-minute duration in 0.1-minute increments, default 3 minutes. New create/v4, preflight/v3
-and script-project/v2 requests require ai_video_opening_enabled and ai_video_opening_seconds;
-Off normalizes seconds to zero. Pin script choices before narration so delayed continuation and
-idempotent retry never change them. Old request versions retain their fixed-opening behavior.
+Fresh requests preserve avatars during video openings.
+Replace opening photo slots with whole generated videos, including the right side of avatar
+splits. Keep normal avatar timings, frequencies, full-screen appearances and layouts exactly.
+Avatar toggle defaults On; Off converts avatar scenes to full-screen visual scenes, requires
+no avatar selection and creates no avatar/span work or corresponding progress stages. Opening
+and avatar are independent immutable choices. Remaining-timeline percentage and optional
+whole-scene spreading/fill remain; saved older policies/manifests keep their original semantics.
+Implementation and release proof are tracked in AVATAR_COMPOSITION_PLAN.md and CURRENT_STATE.yaml.
 
-Off retains exact scheduler-v6/v7 and WHOLE_SCENE_V2 whole-film coverage/spread/fill. On pins
-scheduler-v10/v11 and ai_video_opening_seconds in revision/timeline/config hashes; OPENING_CONFIG_V4
-stores matching immutable seconds. Convert precursor scenes starting before that threshold to
-IMAGE_FULL source slots, preserving words/frame bounds and later compositions. Require exact
-successful whole clips at readiness/render barriers; no required still/avatar fallback. Remaining
-budget is floor(max(0,T-opening_seconds*30)*P/100), less crossing-scene suffix before unchanged
-optional spread/fill. Short films are fully footage. Display chosen duration, remaining coverage
-and cost/progress separately. Qualified v3 render wire derives its whole-film ceiling; worker images
-remain unchanged.
+### Historical configurable AI video opening — 2026-10-05
 
-The fixed v8/v9 and OPENING_180_V3 implementation below is historical and stays immutable.
+Saved create/v4, preflight/v3 and script-project/v2 requests pin independent opening seconds
+(default180;6–3600 in six-second increments). Off retains scheduler-v6/v7 and WHOLE_SCENE_V2.
+On retains scheduler-v10/v11 and OPENING_CONFIG_V4: precursor scenes starting before the threshold
+become IMAGE_FULL, preserving words/frames/later compositions. Required whole clips cannot fall
+back to stills. Crossing suffix consumes remaining-duration coverage before optional spread/fill.
+These saved full-screen-only semantics and v3 wire stay immutable; fresh requests follow the
+avatar-preserving correction above. Fixed v8/v9 and OPENING_180_V3 also remain historical.
 
 ### Mandatory AI video opening — 2026-10-04
 

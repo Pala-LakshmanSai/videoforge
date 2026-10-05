@@ -42,11 +42,16 @@ const isRenderJobInputDocument = (value: unknown): value is RenderJobInputDocume
       "output",
       "tools",
       "cancel_token",
-      ...(value.schema_version === "render-job-input/v3" ? ["video_policy"] : []),
+      ...(["render-job-input/v3", "render-job-input/v4"].includes(String(value.schema_version))
+        ? ["video_policy"]
+        : []),
     ]) ||
-    !["render-job-input/v1", "render-job-input/v2", "render-job-input/v3"].includes(
-      String(value.schema_version),
-    ) ||
+    ![
+      "render-job-input/v1",
+      "render-job-input/v2",
+      "render-job-input/v3",
+      "render-job-input/v4",
+    ].includes(String(value.schema_version)) ||
     !isBoundedId(value.project_revision_id) ||
     !isBoundedId(value.attempt_id) ||
     !isRecord(value.resolved_render_manifest) ||
@@ -71,7 +76,7 @@ const isRenderJobInputDocument = (value: unknown): value is RenderJobInputDocume
   ) {
     return false;
   }
-  if (value.schema_version === "render-job-input/v3") {
+  if (["render-job-input/v3", "render-job-input/v4"].includes(String(value.schema_version))) {
     const policy = value.video_policy;
     if (
       !isRecord(policy) ||
@@ -380,7 +385,9 @@ export function bindHostedCpuInputDocument(
     document.schema_version !== expectedSchema &&
     !(
       kind === "RENDER" &&
-      ["render-job-input/v2", "render-job-input/v3"].includes(String(document.schema_version))
+      ["render-job-input/v2", "render-job-input/v3", "render-job-input/v4"].includes(
+        String(document.schema_version),
+      )
     )
   ) {
     throw new TypeError("Hosted CPU input document does not match its exact job kind.");

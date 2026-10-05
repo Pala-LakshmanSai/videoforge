@@ -83,9 +83,9 @@ export interface HostedLockedRevisionSnapshot {
   readonly projectId: string;
   readonly projectRevisionId: string;
   readonly revisionConfigSha256: string;
-  readonly avatarProfileVersionId: string;
-  readonly avatarProfileHash: string;
-  readonly avatarRuntimeSourceSha256: string;
+  readonly avatarProfileVersionId: string | null;
+  readonly avatarProfileHash: string | null;
+  readonly avatarRuntimeSourceSha256: string | null;
   readonly imageStyleVersionId: string;
   readonly styleProfileHash: string;
 }
@@ -234,7 +234,8 @@ function exactAvatarSourceScope(
   const snapshotMatch = FAL_SOURCE_SNAPSHOT_OBJECT_KEY.exec(artifact.objectKey);
   const match = canonicalMatch ?? originalMatch;
   const passThrough =
-    input.revisionDocument.avatar_binding.source_preparation_version === AVATAR_PASSTHROUGH_PROFILE;
+    input.revisionDocument.avatar_binding?.source_preparation_version ===
+    AVATAR_PASSTHROUGH_PROFILE;
   const system = artifact.systemSourceReference;
   const systemReferenceValid =
     system !== undefined &&
@@ -268,14 +269,14 @@ function exactAvatarSourceScope(
       !systemReferenceValid &&
       (match[1] !== input.accountId ||
         match[2] !== input.workspaceId ||
-        match[3] !== input.revisionDocument.avatar_binding.avatar_profile_id ||
-        match[4] !== input.revisionDocument.avatar_binding.avatar_profile_version_id)) ||
+        match[3] !== input.revisionDocument.avatar_binding?.avatar_profile_id ||
+        match[4] !== input.revisionDocument.avatar_binding?.avatar_profile_version_id)) ||
     artifact.accountId !== input.accountId ||
     artifact.workspaceId !== input.workspaceId ||
     artifact.projectId !== input.revision.projectId ||
     artifact.projectRevisionId !== input.revision.projectRevisionId ||
-    artifact.assetId !== input.revisionDocument.avatar_binding.runtime_source_asset_id ||
-    artifact.checksumSha256 !== input.revisionDocument.avatar_binding.runtime_source_sha256 ||
+    artifact.assetId !== input.revisionDocument.avatar_binding?.runtime_source_asset_id ||
+    artifact.checksumSha256 !== input.revisionDocument.avatar_binding?.runtime_source_sha256 ||
     artifact.lane !== "INPUT" ||
     artifact.taskKey !== null ||
     artifact.acceptedAttemptId !== null ||
@@ -444,7 +445,7 @@ function validateSoulxCropApproval(
         render.avatar_fps !== "30:round=near" ||
         (wide &&
           (input.avatarSource?.assetId !==
-            input.revisionDocument.avatar_binding.runtime_source_asset_id ||
+            input.revisionDocument.avatar_binding?.runtime_source_asset_id ||
             input.avatarSource?.checksumSha256 !== input.revision.avatarRuntimeSourceSha256)) ||
         (!wide && input.avatarSource !== undefined)
       )
@@ -489,7 +490,7 @@ function validateSoulxCropApproval(
         source.taskKey !== null ||
         source.acceptedAttemptId !== null ||
         source.barrierAcceptance !== "COMMITTED_INPUT" ||
-        source.assetId !== input.revisionDocument.avatar_binding.runtime_source_asset_id ||
+        source.assetId !== input.revisionDocument.avatar_binding?.runtime_source_asset_id ||
         source.checksumSha256 !== SOULX_SOURCE_SHA256 ||
         !["image/jpeg", "image/png"].includes(source.contentType))) ||
     (!hasSoulxFull && source !== undefined)
@@ -529,9 +530,11 @@ function validateRevision(
     document.project_id !== input.revision.projectId ||
     document.project_revision_id !== input.revision.projectRevisionId ||
     revision.sha256 !== input.revision.revisionConfigSha256 ||
-    document.avatar_binding.avatar_profile_version_id !== input.revision.avatarProfileVersionId ||
-    document.avatar_binding.avatar_profile_hash !== input.revision.avatarProfileHash ||
-    document.avatar_binding.runtime_source_sha256 !== input.revision.avatarRuntimeSourceSha256 ||
+    (document.avatar_binding?.avatar_profile_version_id ?? null) !==
+      input.revision.avatarProfileVersionId ||
+    (document.avatar_binding?.avatar_profile_hash ?? null) !== input.revision.avatarProfileHash ||
+    (document.avatar_binding?.runtime_source_sha256 ?? null) !==
+      input.revision.avatarRuntimeSourceSha256 ||
     document.image_style_version_id !== input.revision.imageStyleVersionId ||
     document.style_profile_hash !== input.revision.styleProfileHash
   ) {
@@ -569,6 +572,8 @@ export async function materializeHostedRenderPlan(
     timeline.value.revision_config_hash !== revision.sha256 ||
     timeline.value.scheduler_version !== revision.value.scheduler_version ||
     timeline.value.seed !== revision.value.scheduler_seed ||
+    timeline.value.avatar_enabled !== revision.value.avatar_enabled ||
+    timeline.value.ai_video_opening_seconds !== revision.value.ai_video_opening_seconds ||
     manifest.value.project_revision_id !== input.revision.projectRevisionId ||
     manifest.value.revision_config_hash !== revision.sha256 ||
     manifest.value.timeline_plan_hash !== timeline.sha256 ||
@@ -622,7 +627,9 @@ export async function materializeHostedRenderPlan(
   }
   validateManifestSegments(timeline.value, manifest.value, accepted, input.avatarSource);
   const policy = input.videoPolicy;
-  const wholeScene = manifest.value.schema_version === "resolved-render-manifest/v3";
+  const compositionVideo = manifest.value.schema_version === "resolved-render-manifest/v4";
+  const wholeScene =
+    compositionVideo || manifest.value.schema_version === "resolved-render-manifest/v3";
   if (
     wholeScene !== (policy !== undefined) ||
     (policy !== undefined &&
@@ -648,14 +655,23 @@ export async function materializeHostedRenderPlan(
     );
     const timelineSegment = timeline.value.segments[index];
     const segment = manifest.value.segments[index];
+    const sourceSlot =
+      timelineSegment?.timeline_composition === "IMAGE_FULL"
+        ? timelineSegment.required_slots.image
+        : timelineSegment?.timeline_composition === "AVATAR_SPLIT_IMAGE"
+          ? timelineSegment.required_slots.right_image
+          : undefined;
     if (
       !segment ||
       !timelineSegment ||
-      timelineSegment.timeline_composition !== "IMAGE_FULL" ||
-      segment.timeline_composition !== "IMAGE_FULL" ||
-      !["resolved-render-manifest/v2", "resolved-render-manifest/v3"].includes(
-        manifest.value.schema_version,
-      ) ||
+      !sourceSlot ||
+      segment.timeline_composition === "AVATAR_FULL" ||
+      (segment.timeline_composition !== "IMAGE_FULL" && !compositionVideo) ||
+      ![
+        "resolved-render-manifest/v2",
+        "resolved-render-manifest/v3",
+        "resolved-render-manifest/v4",
+      ].includes(manifest.value.schema_version) ||
       videoBySegment.has(segment.segment_id) ||
       artifact.kind !== "VIDEO" ||
       artifact.lane !== "SCENE_VIDEO" ||
@@ -667,7 +683,7 @@ export async function materializeHostedRenderPlan(
       !source ||
       source.kind !== "IMAGE" ||
       source.checksumSha256 !== video.sourceSha256 ||
-      video.sourceTaskKey !== timelineSegment.required_slots.image.task_key ||
+      video.sourceTaskKey !== sourceSlot.task_key ||
       !Number.isSafeInteger(video.videoFrameCount) ||
       video.videoFrameCount < 1 ||
       video.videoFrameCount > 360 ||
@@ -690,7 +706,7 @@ export async function materializeHostedRenderPlan(
       Math.floor((timeline.value.total_frames * (policy?.coveragePercent ?? 7)) / 100) ||
     manifest.value.segments.some(
       (segment) =>
-        segment.timeline_composition === "IMAGE_FULL" &&
+        segment.timeline_composition !== "AVATAR_FULL" &&
         segment.accepted_assets.video !== undefined &&
         !videoBySegment.has(segment.segment_id),
     )
@@ -734,11 +750,13 @@ export async function materializeHostedRenderPlan(
     project_revision_id: input.revision.projectRevisionId,
     kind: "RENDER",
     input_document: {
-      schema_version: wholeScene
-        ? "render-job-input/v3"
-        : videoBySegment.size
-          ? "render-job-input/v2"
-          : "render-job-input/v1",
+      schema_version: compositionVideo
+        ? "render-job-input/v4"
+        : wholeScene
+          ? "render-job-input/v3"
+          : videoBySegment.size
+            ? "render-job-input/v2"
+            : "render-job-input/v1",
       ...(wholeScene ? { video_policy: manifest.value.video_policy } : {}),
       project_revision_id: input.revision.projectRevisionId,
       attempt_id: input.revision.projectRevisionId,

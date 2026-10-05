@@ -233,7 +233,8 @@ describe("independent three-minute opening", () => {
   });
   it("rejects avatar, split and oversized opening scenes instead of silently skipping them", () => {
     for (const composition of ["AVATAR_FULL", "AVATAR_SPLIT_IMAGE"]) {
-      const input = timeline(120);
+      const base = timeline(120);
+      const input = { ...base, segments: [...base.segments] };
       (input.segments as TimelinePlanDocument["segments"][number][])[0] = {
         ...input.segments[0],
         timeline_composition: composition,
@@ -296,7 +297,8 @@ describe("configurable opening coverage", () => {
     },
   );
   it("retains exact fixed180 selection identity while the configurable duration changes", () => {
-    const input = timeline(120);
+    const base = timeline(120);
+    const input = { ...base, segments: [...base.segments] };
     const allImages = {
       ...input,
       segments: input.segments.map((s) => ({ ...s, timeline_composition: "IMAGE_FULL" as const })),
@@ -339,4 +341,46 @@ describe("configurable opening coverage", () => {
       ).toThrow("HOSTED_VIDEO_POLICY_INVALID");
     },
   );
+});
+
+describe("independent avatar composition and opening footage", () => {
+  it("replaces opening split photos without selecting full-avatar scenes; Off uses the original coverage plan", () => {
+    const base = timeline(120);
+    const input = { ...base, segments: [...base.segments] };
+    input.segments[1] = {
+      ...input.segments[1]!,
+      timeline_composition: "AVATAR_SPLIT_IMAGE",
+      required_slots: {
+        right_image: { task_key: "right:scene-1" },
+        avatar: { task_key: "avatar:scene-1" },
+      },
+    } as unknown as TimelinePlanDocument["segments"][number];
+    const before = structuredClone(input);
+    const policy = {
+      coveragePercent: 7,
+      replacementPolicy: "FOOTAGE_COMPOSITION_V5" as const,
+      openingSeconds: 180,
+    };
+    const chosen = planHostedVideoSelections(input, policy);
+    expect(chosen.find((s) => s.segmentId === "scene-1")?.sourceTaskKey).toBe("right:scene-1");
+    expect(chosen.some((s) => s.segmentId === "scene-0")).toBe(false);
+    for (const segment of input.segments.filter(
+      (s) => s.start_frame < 5400 && s.timeline_composition !== "AVATAR_FULL",
+    ))
+      expect(chosen.find((s) => s.segmentId === segment.segment_id)?.videoFrameCount).toBe(
+        segment.end_frame_exclusive - segment.start_frame,
+      );
+    expect(input).toEqual(before);
+    expect(planHostedVideoSelections(input, { ...policy, openingSeconds: 0 })).toEqual(
+      planHostedVideoSelections(input, { coveragePercent: 7, replacementPolicy: "WHOLE_SCENE_V2" }),
+    );
+    const budget = openingVideoBudget(input, 7, 180, true);
+    expect(budget.mandatoryFrames).toBe(3600);
+    expect(budget.remainingFrames).toBe(input.total_frames - 5400);
+    expect(
+      chosen
+        .filter((s) => Number(s.segmentId.split("-")[1]) >= 36)
+        .reduce((n, s) => n + s.videoFrameCount, 0),
+    ).toBeLessThanOrEqual(budget.optionalFrames);
+  });
 });

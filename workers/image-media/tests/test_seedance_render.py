@@ -38,6 +38,87 @@ def motion_fixture(frames: int = 60) -> RenderFixture:
 
 
 class SeedanceRenderTests(unittest.TestCase):
+    def test_split_motion_requires_v4_and_full_scene_video(self) -> None:
+        for change in ("valid", "v3", "input_v3", "partial", "short", "budget"):
+            with self.subTest(change=change):
+                fixture = motion_fixture(150)
+                policy = {
+                    "coverage_percent": 75,
+                    "replacement_policy": "WHOLE_SCENE_V2",
+                    "selection_sha256": "sha256:" + "9" * 64,
+                }
+                fixture.document.update(schema_version="render-job-input/v4", video_policy=policy)
+
+                def mutate(manifest: dict) -> None:
+                    manifest.update(
+                        schema_version="resolved-render-manifest/v4", video_policy=policy
+                    )
+                    full, split = manifest["segments"][1:]
+                    split["accepted_assets"]["video"] = full["accepted_assets"]["video"]
+                    split["render"].update(
+                        video_source_profile="seedance-pro-fast-1248x704-v1",
+                        video_frame_count=119 if change == "partial" else 120,
+                    )
+                    if change == "v3":
+                        manifest["schema_version"] = "resolved-render-manifest/v3"
+                        fixture.document["schema_version"] = "render-job-input/v3"
+                    if change == "budget":
+                        policy["coverage_percent"] = 50
+
+                fixture.replace_manifest(mutate)
+                if change == "input_v3":
+                    fixture.document["schema_version"] = "render-job-input/v3"
+                if change == "short":
+                    fixture.process.visual_durations[
+                        next(iter(fixture.process.visual_durations))
+                    ] = "3.99"
+                result = fixture.job().run(
+                    fixture.document, claimed_attempt_id=fixture.document["attempt_id"]
+                )
+                if change == "valid":
+                    self.assertEqual(result["status"], "SUCCEEDED", result)
+                    command = next(c for c in fixture.process.calls if "-filter_complex" in c)
+                    graph = command[command.index("-filter_complex") + 1]
+                    self.assertIn("hstack=inputs=2", graph)
+                    self.assertNotIn("zoompan", graph)
+                    self.assertNotIn("[motion1][still1]", graph)
+                else:
+                    self.assertEqual(result["error"]["code"], "RENDER_INPUT_INVALID", result)
+                    self.assertFalse(fixture.resolver.published)
+
+    def test_v4_avatar_off_renders_without_avatar_assets(self) -> None:
+        fixture = motion_fixture(150)
+        policy = {
+            "coverage_percent": 50,
+            "replacement_policy": "WHOLE_SCENE_V2",
+            "selection_sha256": "sha256:" + "9" * 64,
+        }
+        fixture.document.update(schema_version="render-job-input/v4", video_policy=policy)
+        fixture.document["assets"] = [
+            asset for asset in fixture.document["assets"] if asset["kind"] != "AVATAR_CLIP"
+        ]
+
+        def mutate(manifest: dict) -> None:
+            manifest.update(schema_version="resolved-render-manifest/v4", video_policy=policy)
+            image = manifest["segments"][1]["accepted_assets"]["image"]
+            for segment in manifest["segments"]:
+                if segment["timeline_composition"] == "IMAGE_FULL":
+                    continue
+                photo = segment["accepted_assets"].get("right_image", image)
+                segment.update(
+                    timeline_composition="IMAGE_FULL",
+                    accepted_assets={"image": photo},
+                    render={"image_scale": "1920:1080", "zoom_profile": "image-full-zoom-v3"},
+                )
+
+        fixture.replace_manifest(mutate)
+        result = fixture.job().run(
+            fixture.document, claimed_attempt_id=fixture.document["attempt_id"]
+        )
+        self.assertEqual(result["status"], "SUCCEEDED", result)
+        command = next(c for c in fixture.process.calls if "-filter_complex" in c)
+        self.assertNotIn("hstack", command[command.index("-filter_complex") + 1])
+
     def test_motion_prefix_keeps_narration_and_rejects_invalid_native_media(self) -> None:
         fixture = motion_fixture()
         result = fixture.job().run(
@@ -180,10 +261,11 @@ class SeedanceRenderTests(unittest.TestCase):
         ffmpeg = Path(shutil.which("ffmpeg"))
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            video, image, voiceover = (
+            video, image, voiceover, avatar = (
                 root / "motion.mp4",
                 root / "still.png",
                 root / "voiceover.wav",
+                root / "avatar.mp4",
             )
 
             def generate(*args: str) -> None:
@@ -201,6 +283,17 @@ class SeedanceRenderTests(unittest.TestCase):
                 str(video),
             )
             generate("-f", "lavfi", "-i", "color=blue:s=1280x720", "-frames:v", "1", str(image))
+            generate(
+                "-f",
+                "lavfi",
+                "-i",
+                "color=lime:s=960x960:r=25:d=2.1",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                str(avatar),
+            )
             generate(
                 "-f",
                 "lavfi",
@@ -288,6 +381,88 @@ class SeedanceRenderTests(unittest.TestCase):
             self.assertEqual(streams["video"]["nb_frames"], "90")
             self.assertEqual(streams["audio"]["sample_rate"], "48000")
             self.assertAlmostEqual(float(streams["audio"]["duration"]), 3.0, places=2)
+
+            # v4 must preserve the left avatar and replace only the right photo.
+            # Removing the avatar must produce the same moving footage at full width.
+            manifest["schema_version"] = "resolved-render-manifest/v4"
+            first = manifest["segments"][0]
+            for avatar_enabled in (True, False):
+                with self.subTest(avatar_enabled=avatar_enabled):
+                    if avatar_enabled:
+                        first["timeline_composition"] = "AVATAR_SPLIT_IMAGE"
+                        first["accepted_assets"] = {
+                            "avatar": {"asset_id": "avatar"},
+                            "right_image": {"asset_id": "still"},
+                            "video": {"asset_id": "motion"},
+                        }
+                        first["render"].update(
+                            avatar_source_profile="skyreels-centered-960x960p25-v2",
+                            avatar_crop="480:540:240:210",
+                        )
+                    else:
+                        first["timeline_composition"] = "IMAGE_FULL"
+                        first["accepted_assets"] = {
+                            "image": {"asset_id": "still"},
+                            "video": {"asset_id": "motion"},
+                        }
+                        first["render"].pop("avatar_source_profile")
+                        first["render"].pop("avatar_crop")
+                    output = root / f"v4-avatar-{avatar_enabled}.mp4"
+                    plan = compile_render_command(
+                        ffmpeg=ffmpeg,
+                        manifest=manifest,
+                        asset_paths={
+                            "motion": video,
+                            "still": image,
+                            **({"avatar": avatar} if avatar_enabled else {}),
+                        },
+                        voiceover_path=voiceover,
+                        output_path=output,
+                        input_loudness=LoudnessMeasurement(-16, -4, 2, -31, 0),
+                    )
+                    subprocess.run(plan.arguments, check=True, capture_output=True)
+                    for side, x in (("left", 0), ("right", 960)):
+                        decoded = subprocess.check_output(
+                            [
+                                str(ffmpeg),
+                                "-v",
+                                "error",
+                                "-i",
+                                str(output),
+                                "-vf",
+                                f"crop=960:1080:{x}:0,scale=1:1",
+                                "-f",
+                                "rawvideo",
+                                "-pix_fmt",
+                                "rgb24",
+                                "-",
+                            ]
+                        )
+                        self.assertEqual(len(decoded), 90 * 3)
+                        pixels = [tuple(decoded[n : n + 3]) for n in range(0, len(decoded), 3)]
+                        if avatar_enabled and side == "left":
+                            self.assertTrue(all(g > 230 and r < 15 for r, g, _ in pixels[:60]))
+                        else:
+                            self.assertTrue(all(r > 230 and b < 15 for r, _, b in pixels[:60]))
+                            self.assertGreater(len({g for _, g, _ in pixels[:60]}), 10)
+                        self.assertTrue(all(b > 230 and r < 15 for r, _, b in pixels[60:]))
+                    probe = json.loads(
+                        subprocess.check_output(
+                            [
+                                shutil.which("ffprobe"),
+                                "-v",
+                                "error",
+                                "-show_streams",
+                                "-of",
+                                "json",
+                                str(output),
+                            ]
+                        )
+                    )
+                    streams = {stream["codec_type"]: stream for stream in probe["streams"]}
+                    self.assertEqual(streams["video"]["nb_frames"], "90")
+                    self.assertEqual(streams["audio"]["sample_rate"], "48000")
+                    self.assertAlmostEqual(float(streams["audio"]["duration"]), 3.0, places=2)
 
     @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpeg required")
     def test_real_decode_exact_motion_frames_and_still_remainder(self) -> None:

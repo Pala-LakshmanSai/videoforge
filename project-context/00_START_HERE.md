@@ -1,3 +1,7 @@
+Current user correction: opening footage replaces photos while preserving normal avatar layouts.
+Separate Avatar toggle defaults On; Off uses full-screen visual scenes and skips avatar work.
+Read AVATAR_COMPOSITION_PLAN.md and CURRENT_STATE.yaml; earlier full-screen-only opening is historical.
+
 Avatar result delay: read AVATAR_RESULT_RECOVERY_PLAN.md and CURRENT_STATE.yaml for the
 observed ten-minute Cloudflare coordinator failure, bounded recovery and live release evidence.
 

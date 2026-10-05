@@ -236,3 +236,25 @@ it("keeps old pending script intake on its original create schema", async () => 
   expect(fixture.createBodies[0]?.schema_version).toBe("videoforge-hosted-project-create/v3");
   expect(fixture.createBodies[0]).not.toHaveProperty("ai_video_opening_seconds");
 });
+
+it.each([true, false])(
+  "retains avatar=%s across delayed script continuation",
+  async (avatarEnabled) => {
+    fixture.intake.options = {
+      title: "River",
+      avatar_enabled: avatarEnabled,
+      avatar_profile_version_id: avatarEnabled ? "fixture-avatar" : null,
+      ai_video_opening_enabled: true,
+      ai_video_opening_seconds: 180,
+      video_coverage_percent: 23,
+    };
+    await advance();
+    fixture.observed = "COMPLETED";
+    expect(await advance()).toBe("COMPLETE");
+    expect(fixture.createBodies[0]).toMatchObject({
+      ...(fixture.intake.options as Record<string, unknown>),
+      schema_version: "videoforge-hosted-project-create/v5",
+    });
+    expect(fixture.posts).toBe(1);
+  },
+);

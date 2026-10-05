@@ -257,3 +257,27 @@ it.each([
     expectNoVoiceSpend();
   },
 );
+
+it.each([true, false])(
+  "script/v3 freezes avatar=%s without starting narration",
+  async (avatarEnabled) => {
+    const result = await intake({
+      ...body(),
+      schema_version: "videoforge-hosted-script-project/v3",
+      avatar_enabled: avatarEnabled,
+      avatar_profile_version_id: avatarEnabled ? fixture.avatarVersionId : null,
+    });
+    expect(result.status).toBe(202);
+    expect(fixture.saved?.options).toMatchObject({
+      avatar_enabled: avatarEnabled,
+      avatar_profile_version_id: avatarEnabled ? fixture.avatarVersionId : null,
+      ai_video_opening_seconds: 180,
+      video_coverage_percent: 23,
+    });
+    if (!avatarEnabled)
+      expect(
+        query.mock.calls.some(([sql]) => sql.includes("LEFT JOIN assets AS runtime_source")),
+      ).toBe(false);
+    expectNoVoiceSpend();
+  },
+);

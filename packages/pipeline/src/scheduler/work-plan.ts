@@ -13,6 +13,7 @@ import { spanPaddedWindowMs } from "./span-padding.js";
 import {
   schedulerConfigForVersion,
   schedulerHasAiVideoOpening,
+  schedulerHasCompositionControls,
   SUPPORTED_SCHEDULER_CONFIG,
 } from "./config.js";
 import { validateTimelineSemantics } from "./scheduler.js";
@@ -89,6 +90,7 @@ function validateExactTimeline(request: CompleteWorkPlanRequest): string | null 
     request.timeline.value.scheduler_version !== request.revision.value.scheduler_version ||
     request.timeline.value.ai_video_opening_seconds !==
       request.revision.value.ai_video_opening_seconds ||
+    request.timeline.value.avatar_enabled !== request.revision.value.avatar_enabled ||
     request.timeline.value.seed !== request.revision.value.scheduler_seed ||
     request.transcript.value.source.asset_id !== request.revision.value.voiceover_asset_id ||
     request.transcript.value.source.sha256 !== request.revision.value.voiceover_sha256
@@ -150,6 +152,7 @@ export async function compileCompleteWorkPlan(
   const schedulerConfig = schedulerConfigForVersion(
     request.revision.value.scheduler_version,
     request.revision.value.ai_video_opening_seconds,
+    request.revision.value.avatar_enabled,
   );
   if (
     schedulerConfig === null ||
@@ -167,7 +170,8 @@ export async function compileCompleteWorkPlan(
   if (
     imageSegments.length === 0 ||
     (avatarSegments.length === 0 &&
-      !schedulerHasAiVideoOpening(request.revision.value.scheduler_version))
+      !schedulerHasAiVideoOpening(request.revision.value.scheduler_version) &&
+      !schedulerHasCompositionControls(request.revision.value.scheduler_version))
   ) {
     return fail("Complete work plan requires image and avatar work.", ["timeline", "segments"]);
   }
@@ -258,10 +262,13 @@ export async function compileCompleteWorkPlan(
 
   try {
     const generationWorkManifest = await validateAndHashContractDocument("generationWorkManifest", {
-      schema_version: schedulerHasAiVideoOpening(request.revision.value.scheduler_version)
-        ? "generation-work-manifest/v2"
-        : "generation-work-manifest/v1",
-      ...(schedulerHasAiVideoOpening(request.revision.value.scheduler_version)
+      schema_version:
+        schedulerHasAiVideoOpening(request.revision.value.scheduler_version) ||
+        schedulerHasCompositionControls(request.revision.value.scheduler_version)
+          ? "generation-work-manifest/v2"
+          : "generation-work-manifest/v1",
+      ...(schedulerHasAiVideoOpening(request.revision.value.scheduler_version) ||
+      schedulerHasCompositionControls(request.revision.value.scheduler_version)
         ? { scheduler_version: request.revision.value.scheduler_version }
         : {}),
       project_revision_id: request.timeline.value.project_revision_id,

@@ -7531,13 +7531,13 @@ it.each([0.1, 0.3, 0.5, 60])(
     await screen.findByText("Confirmation interrupted");
     expect(requests).toHaveLength(2);
     expect(requests[0]).toMatchObject({
-      schema_version: "videoforge-hosted-project-preflight/v3",
+      schema_version: "videoforge-hosted-project-preflight/v4",
       video_coverage_percent: 23,
       ai_video_opening_enabled: true,
       ai_video_opening_seconds: seconds,
     });
     expect(requests[1]).toMatchObject({
-      schema_version: "videoforge-hosted-project-create/v4",
+      schema_version: "videoforge-hosted-project-create/v5",
       video_coverage_percent: 23,
       ai_video_opening_enabled: true,
       ai_video_opening_seconds: seconds,
@@ -7746,7 +7746,7 @@ it("keeps the required AI opening and its price when optional footage is Off", a
   fireEvent.click(screen.getByRole("button", { name: "Off" }));
   expect(
     screen.getByText(
-      "First 3 minutes: AI video only. Afterward: no optional footage. Full scenes only.",
+      "First 3 minutes: videos replace photos, with your usual avatar appearances. Afterward: no optional footage. Full scenes only.",
     ),
   ).toBeInTheDocument();
   await waitFor(() =>
@@ -7785,7 +7785,7 @@ it("estimates the required opening plus selected coverage of the remaining narra
   expect(screen.getByLabelText("Coverage percent")).toHaveValue(7);
   expect(
     screen.getByText(
-      "First 3 minutes: AI video only. Afterward: up to 7% coverage. Full scenes only.",
+      "First 3 minutes: videos replace photos, with your usual avatar appearances. Afterward: up to 7% coverage. Full scenes only.",
     ),
   ).toBeInTheDocument();
 });
@@ -7824,7 +7824,7 @@ it("preserves slider and custom coverage submissions with the required opening",
   expect(screen.getByLabelText("Video footage coverage slider")).toHaveValue("23");
   expect(
     screen.getByText(
-      "First 3 minutes: AI video only. Afterward: up to 23% coverage. Full scenes only.",
+      "First 3 minutes: videos replace photos, with your usual avatar appearances. Afterward: up to 23% coverage. Full scenes only.",
     ),
   ).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Create video" }));
@@ -7875,13 +7875,13 @@ it.each([0, 7, 15, 25, 50, 75, 100, 23])(
     fireEvent.click(screen.getByRole("button", { name: "Create video" }));
     await waitFor(() => expect(creates).toHaveLength(1));
     expect(preflights[0]).toMatchObject({
-      schema_version: "videoforge-hosted-project-preflight/v3",
+      schema_version: "videoforge-hosted-project-preflight/v4",
       video_coverage_percent: coverage,
       ai_video_opening_enabled: false,
       ai_video_opening_seconds: 0,
     });
     expect(JSON.parse(creates[0]!.body)).toMatchObject({
-      schema_version: "videoforge-hosted-project-create/v4",
+      schema_version: "videoforge-hosted-project-create/v5",
       video_coverage_percent: coverage,
       ai_video_opening_enabled: false,
       ai_video_opening_seconds: 0,
@@ -8578,7 +8578,7 @@ it.each([30, 180])(
     );
     renderHosted(<HostedProjectScreen projectId="required-opening" />);
     expect(await screen.findByLabelText("Scene footage coverage")).toHaveTextContent(
-      `First ${openingSeconds / 60} minutes: AI video only · Afterward 0%`,
+      `First ${openingSeconds / 60} minutes: videos replace photos · Afterward 0%`,
     );
     expect(
       screen.getByText(new RegExp(`after ${openingSeconds === 30 ? "30s" : "3m 00s"}`)),
@@ -8644,7 +8644,7 @@ it("queues script and voice in one Create action, preserving identity after a lo
   expect(JSON.parse(submissions[0]!.body)).toMatchObject({
     voice_id: "alice",
     script: expect.stringContaining("Every river"),
-    schema_version: "videoforge-hosted-script-project/v2",
+    schema_version: "videoforge-hosted-script-project/v3",
     video_coverage_percent: 23,
     ai_video_opening_enabled: true,
     ai_video_opening_seconds: 30,
@@ -8779,4 +8779,35 @@ it("keeps the voiceover and script available after video stages begin", async ()
     "/api/v2/voiceovers/jobs/saved/audio",
   );
   expect(screen.getByText("The dunes begin to hum.")).toBeInTheDocument();
+});
+
+it("turns avatars off without a preset and keeps opening and coverage independent", async () => {
+  const requests: Record<string, unknown>[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith("/project-catalog"))
+        return Response.json({ ...configurableOpeningCatalog(), avatars: [] });
+      requests.push(JSON.parse(String(init?.body)));
+      if (String(input).endsWith("/preflight")) return Response.json({ ok: true, ready: true });
+      throw new TypeError("Confirmation interrupted");
+    }),
+  );
+  renderHosted(<HostedCreateProjectScreen />);
+  await fillCoverageCreateForm(600);
+  expect(screen.getByRole("checkbox", { name: "Include avatar" })).toBeChecked();
+  fireEvent.click(screen.getByLabelText("Include avatar"));
+  expect(document.getElementById("hosted-avatar-select")).not.toBeInTheDocument();
+  expect(screen.getByLabelText("Opening minutes")).toHaveValue(3);
+  fireEvent.change(screen.getByLabelText("Coverage percent"), { target: { value: "23" } });
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
+  await screen.findByText("Confirmation interrupted");
+  expect(requests).toHaveLength(2);
+  for (const request of requests)
+    expect(request).toMatchObject({
+      avatar_enabled: false,
+      avatar_profile_version_id: null,
+      ai_video_opening_seconds: 180,
+      video_coverage_percent: 23,
+    });
 });

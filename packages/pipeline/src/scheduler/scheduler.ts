@@ -23,6 +23,7 @@ import {
   NARRATION_SHOT_SHORT_SCHEDULER_VERSION,
   schedulerTimingVersion,
   schedulerHasAiVideoOpening,
+  schedulerHasCompositionControls,
   schedulerHasConfigurableAiVideoOpening,
   schedulerAiVideoOpeningSeconds,
   WORD_BOUNDARY_SCHEDULER_VERSION,
@@ -137,7 +138,8 @@ function validateSchedulerInput(
     revision.scheduler_version !== WORD_BOUNDARY_SCHEDULER_VERSION &&
     revision.scheduler_version !== NARRATION_SHOT_SCHEDULER_VERSION &&
     revision.scheduler_version !== NARRATION_SHOT_SHORT_SCHEDULER_VERSION &&
-    !schedulerHasAiVideoOpening(revision.scheduler_version)
+    !schedulerHasAiVideoOpening(revision.scheduler_version) &&
+    !schedulerHasCompositionControls(revision.scheduler_version)
   ) {
     return fail(
       "TIMELINE_INVALID",
@@ -642,6 +644,15 @@ export function validateTimelineSemantics(
   transcript: TranscriptTimingDocument,
 ): PipelineFailure | null {
   const hasAiVideoOpening = schedulerHasAiVideoOpening(plan.scheduler_version);
+  const compositionControls = schedulerHasCompositionControls(plan.scheduler_version);
+  const avatarDisabled = compositionControls && plan.avatar_enabled === false;
+  if (
+    (compositionControls && typeof plan.avatar_enabled !== "boolean") ||
+    (!compositionControls && plan.avatar_enabled !== undefined)
+  )
+    return fail("TIMELINE_INVALID", "Avatar setting must match the scheduler version.", [
+      "avatar_enabled",
+    ]);
   const openingSeconds = schedulerAiVideoOpeningSeconds(
     plan.scheduler_version,
     plan.ai_video_opening_seconds,
@@ -652,7 +663,11 @@ export function validateTimelineSemantics(
       "The timeline opening duration must match its scheduler version.",
       ["ai_video_opening_seconds"],
     );
-  if (!hasAiVideoOpening && plan.segments[0]?.timeline_composition !== "AVATAR_FULL") {
+  if (
+    !hasAiVideoOpening &&
+    !avatarDisabled &&
+    plan.segments[0]?.timeline_composition !== "AVATAR_FULL"
+  ) {
     return fail(
       "TIMELINE_INVALID",
       "The timeline must begin with a full-screen avatar cold open.",
@@ -672,6 +687,12 @@ export function validateTimelineSemantics(
   for (const [index, segment] of plan.segments.entries()) {
     const isOpeningScene =
       hasAiVideoOpening && segment.source_audio_start_ms < openingSeconds * 1_000;
+    if (avatarDisabled && segment.timeline_composition !== "IMAGE_FULL")
+      return fail(
+        "TIMELINE_INVALID",
+        "Disabled avatar timelines require full-screen visual scenes.",
+        ["segments", index],
+      );
     if (isOpeningScene && segment.timeline_composition !== "IMAGE_FULL") {
       return fail("TIMELINE_INVALID", "Opening scenes must use full-screen AI-video image slots.", [
         "segments",
@@ -728,7 +749,7 @@ export function validateTimelineSemantics(
     const durationMs = segment.source_audio_end_ms - segment.source_audio_start_ms;
     if (
       segment.timeline_composition === "IMAGE_FULL" &&
-      (durationMs < (isOpeningScene ? AVATAR_MINIMUM_MS : IMAGE_MINIMUM_MS) ||
+      (durationMs < (isOpeningScene || avatarDisabled ? AVATAR_MINIMUM_MS : IMAGE_MINIMUM_MS) ||
         durationMs > IMAGE_MAXIMUM_MS)
     ) {
       return fail(
@@ -783,6 +804,7 @@ export function validateTimelineSemantics(
   );
   if (
     !hasAiVideoOpening &&
+    !avatarDisabled &&
     (avatarRatio < coverageRange.minimum || avatarRatio > coverageRange.maximum)
   ) {
     return fail(
@@ -795,6 +817,7 @@ export function validateTimelineSemantics(
   }
   if (
     !hasAiVideoOpening &&
+    !avatarDisabled &&
     Math.abs(fullAvatarFrames - splitAvatarFrames) > frameForMilliseconds(OPENER_MAXIMUM_MS)
   ) {
     return fail(
@@ -965,6 +988,25 @@ function buildTimelinePlan(
     total_frames: totalFrames,
     segments: createTimelineSegments(request, ranges, variation),
   };
+  if (schedulerHasCompositionControls(revision.scheduler_version)) {
+    const precursorFailure = validateTimelineSemantics(
+      { ...plan, scheduler_version: schedulerTimingVersion(revision.scheduler_version) },
+      transcript,
+    );
+    if (precursorFailure !== null) return precursorFailure;
+    return {
+      ...plan,
+      ai_video_opening_seconds: revision.ai_video_opening_seconds!,
+      avatar_enabled: revision.avatar_enabled!,
+      segments: revision.avatar_enabled
+        ? plan.segments
+        : createTimelineSegments(
+            request,
+            ranges.map((range) => ({ ...range, timelineComposition: "IMAGE_FULL" as const })),
+            variation,
+          ),
+    };
+  }
   if (!schedulerHasAiVideoOpening(revision.scheduler_version)) return plan;
 
   // Validate the unchanged predecessor schedule before removing opening avatar work. Its

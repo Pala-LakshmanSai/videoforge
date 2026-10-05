@@ -6351,237 +6351,244 @@ export const canonicalSchemaDocuments = {
         "pattern": "^sha256:[0-9a-f]{64}$"
       },
       "avatar_binding": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "avatar_profile_id",
-          "avatar_profile_version_id",
-          "avatar_display_name_snapshot",
-          "avatar_profile_hash",
-          "runtime_source_asset_id",
-          "runtime_source_sha256",
-          "source_preparation_version",
-          "source_validation_profile_version",
-          "compatibility_state_at_preflight",
-          "compatibility_evidence"
-        ],
-        "properties": {
-          "avatar_profile_id": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 160
-          },
-          "avatar_profile_version_id": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 160
-          },
-          "avatar_display_name_snapshot": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 120,
-            "pattern": ".*\\S.*"
-          },
-          "avatar_profile_hash": {
-            "type": "string",
-            "pattern": "^sha256:[0-9a-f]{64}$"
-          },
-          "runtime_source_asset_id": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 160
-          },
-          "runtime_source_sha256": {
-            "type": "string",
-            "pattern": "^sha256:[0-9a-f]{64}$"
-          },
-          "source_preparation_version": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 160
-          },
-          "source_validation_profile_version": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 160
-          },
-          "compatibility_state_at_preflight": {
-            "type": "string",
-            "enum": [
-              "UNTESTED",
-              "RUNNING",
-              "PASSED",
-              "FAILED",
-              "STALE",
-              "CANCELLED"
-            ]
-          },
-          "compatibility_evidence": {
-            "oneOf": [
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "avatar_profile_id",
+              "avatar_profile_version_id",
+              "avatar_display_name_snapshot",
+              "avatar_profile_hash",
+              "runtime_source_asset_id",
+              "runtime_source_sha256",
+              "source_preparation_version",
+              "source_validation_profile_version",
+              "compatibility_state_at_preflight",
+              "compatibility_evidence"
+            ],
+            "properties": {
+              "avatar_profile_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "avatar_profile_version_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "avatar_display_name_snapshot": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120,
+                "pattern": ".*\\S.*"
+              },
+              "avatar_profile_hash": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "runtime_source_asset_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "runtime_source_sha256": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "source_preparation_version": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "source_validation_profile_version": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "compatibility_state_at_preflight": {
+                "type": "string",
+                "enum": [
+                  "UNTESTED",
+                  "RUNNING",
+                  "PASSED",
+                  "FAILED",
+                  "STALE",
+                  "CANCELLED"
+                ]
+              },
+              "compatibility_evidence": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "assessment_id",
+                      "assessment_hash",
+                      "status",
+                      "model_profile_id",
+                      "assessed_at"
+                    ],
+                    "properties": {
+                      "assessment_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 160
+                      },
+                      "assessment_hash": {
+                        "type": "string",
+                        "pattern": "^sha256:[0-9a-f]{64}$"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "PASSED",
+                          "FAILED",
+                          "STALE",
+                          "CANCELLED"
+                        ]
+                      },
+                      "model_profile_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 160
+                      },
+                      "assessed_at": {
+                        "type": "string",
+                        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "allOf": [
               {
-                "type": "null"
+                "if": {
+                  "properties": {
+                    "compatibility_state_at_preflight": {
+                      "enum": [
+                        "UNTESTED",
+                        "RUNNING"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "compatibility_state_at_preflight"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "compatibility_evidence": {
+                      "type": "null"
+                    }
+                  }
+                }
               },
               {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "assessment_id",
-                  "assessment_hash",
-                  "status",
-                  "model_profile_id",
-                  "assessed_at"
-                ],
-                "properties": {
-                  "assessment_id": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 160
-                  },
-                  "assessment_hash": {
-                    "type": "string",
-                    "pattern": "^sha256:[0-9a-f]{64}$"
-                  },
-                  "status": {
-                    "type": "string",
-                    "enum": [
-                      "PASSED",
-                      "FAILED",
-                      "STALE",
-                      "CANCELLED"
-                    ]
-                  },
-                  "model_profile_id": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 160
-                  },
-                  "assessed_at": {
-                    "type": "string",
-                    "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?Z$"
+                "if": {
+                  "properties": {
+                    "compatibility_state_at_preflight": {
+                      "const": "PASSED"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "compatibility_evidence": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "const": "PASSED"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "compatibility_state_at_preflight": {
+                      "const": "FAILED"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "compatibility_evidence": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "const": "FAILED"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "compatibility_state_at_preflight": {
+                      "const": "STALE"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "compatibility_evidence": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "const": "STALE"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "compatibility_state_at_preflight": {
+                      "const": "CANCELLED"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "compatibility_evidence": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "const": "CANCELLED"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    }
                   }
                 }
               }
             ]
-          }
-        },
-        "allOf": [
-          {
-            "if": {
-              "properties": {
-                "compatibility_state_at_preflight": {
-                  "enum": [
-                    "UNTESTED",
-                    "RUNNING"
-                  ]
-                }
-              },
-              "required": [
-                "compatibility_state_at_preflight"
-              ]
-            },
-            "then": {
-              "properties": {
-                "compatibility_evidence": {
-                  "type": "null"
-                }
-              }
-            }
           },
           {
-            "if": {
-              "properties": {
-                "compatibility_state_at_preflight": {
-                  "const": "PASSED"
-                }
-              }
-            },
-            "then": {
-              "properties": {
-                "compatibility_evidence": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "const": "PASSED"
-                    }
-                  },
-                  "required": [
-                    "status"
-                  ]
-                }
-              }
-            }
-          },
-          {
-            "if": {
-              "properties": {
-                "compatibility_state_at_preflight": {
-                  "const": "FAILED"
-                }
-              }
-            },
-            "then": {
-              "properties": {
-                "compatibility_evidence": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "const": "FAILED"
-                    }
-                  },
-                  "required": [
-                    "status"
-                  ]
-                }
-              }
-            }
-          },
-          {
-            "if": {
-              "properties": {
-                "compatibility_state_at_preflight": {
-                  "const": "STALE"
-                }
-              }
-            },
-            "then": {
-              "properties": {
-                "compatibility_evidence": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "const": "STALE"
-                    }
-                  },
-                  "required": [
-                    "status"
-                  ]
-                }
-              }
-            }
-          },
-          {
-            "if": {
-              "properties": {
-                "compatibility_state_at_preflight": {
-                  "const": "CANCELLED"
-                }
-              }
-            },
-            "then": {
-              "properties": {
-                "compatibility_evidence": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "const": "CANCELLED"
-                    }
-                  },
-                  "required": [
-                    "status"
-                  ]
-                }
-              }
-            }
+            "type": "null"
           }
         ]
       },
@@ -6676,7 +6683,7 @@ export const canonicalSchemaDocuments = {
       },
       "ai_video_opening_seconds": {
         "type": "integer",
-        "minimum": 6,
+        "minimum": 0,
         "maximum": 3600,
         "multipleOf": 6
       },
@@ -6694,6 +6701,9 @@ export const canonicalSchemaDocuments = {
         "type": "string",
         "minLength": 1,
         "maxLength": 160
+      },
+      "avatar_enabled": {
+        "type": "boolean"
       }
     },
     "allOf": [
@@ -6702,8 +6712,8 @@ export const canonicalSchemaDocuments = {
           "properties": {
             "scheduler_version": {
               "enum": [
-                "scheduler-v10",
-                "scheduler-v11"
+                "scheduler-v12",
+                "scheduler-v13"
               ]
             }
           },
@@ -6712,22 +6722,64 @@ export const canonicalSchemaDocuments = {
           ]
         },
         "then": {
-          "properties": {
-            "ai_video_opening_seconds": {}
-          },
           "required": [
-            "ai_video_opening_seconds"
-          ]
+            "ai_video_opening_seconds",
+            "avatar_enabled"
+          ],
+          "properties": {
+            "ai_video_opening_seconds": {},
+            "avatar_enabled": {}
+          }
         },
         "else": {
-          "not": {
-            "properties": {
-              "ai_video_opening_seconds": {}
+          "allOf": [
+            {
+              "not": {
+                "required": [
+                  "avatar_enabled"
+                ],
+                "properties": {
+                  "avatar_enabled": {}
+                }
+              }
             },
-            "required": [
-              "ai_video_opening_seconds"
-            ]
-          }
+            {
+              "if": {
+                "properties": {
+                  "scheduler_version": {
+                    "enum": [
+                      "scheduler-v10",
+                      "scheduler-v11"
+                    ]
+                  }
+                },
+                "required": [
+                  "scheduler_version"
+                ]
+              },
+              "then": {
+                "required": [
+                  "ai_video_opening_seconds"
+                ],
+                "properties": {
+                  "ai_video_opening_seconds": {
+                    "minimum": 6,
+                    "type": "integer"
+                  }
+                }
+              },
+              "else": {
+                "not": {
+                  "required": [
+                    "ai_video_opening_seconds"
+                  ],
+                  "properties": {
+                    "ai_video_opening_seconds": {}
+                  }
+                }
+              }
+            }
+          ]
         }
       },
       {
@@ -6748,6 +6800,32 @@ export const canonicalSchemaDocuments = {
               "minLength": 1,
               "maxLength": 500,
               "pattern": ".*\\S.*"
+            }
+          }
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "avatar_enabled": {
+              "const": false
+            }
+          },
+          "required": [
+            "avatar_enabled"
+          ]
+        },
+        "then": {
+          "properties": {
+            "avatar_binding": {
+              "type": "null"
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "avatar_binding": {
+              "type": "object"
             }
           }
         }
@@ -6791,7 +6869,7 @@ export const canonicalSchemaDocuments = {
       },
       "ai_video_opening_seconds": {
         "type": "integer",
-        "minimum": 6,
+        "minimum": 0,
         "maximum": 3600,
         "multipleOf": 6
       },
@@ -6826,6 +6904,9 @@ export const canonicalSchemaDocuments = {
             }
           ]
         }
+      },
+      "avatar_enabled": {
+        "type": "boolean"
       }
     },
     "allOf": [
@@ -6834,8 +6915,8 @@ export const canonicalSchemaDocuments = {
           "properties": {
             "scheduler_version": {
               "enum": [
-                "scheduler-v10",
-                "scheduler-v11"
+                "scheduler-v12",
+                "scheduler-v13"
               ]
             }
           },
@@ -6844,22 +6925,64 @@ export const canonicalSchemaDocuments = {
           ]
         },
         "then": {
-          "properties": {
-            "ai_video_opening_seconds": {}
-          },
           "required": [
-            "ai_video_opening_seconds"
-          ]
+            "ai_video_opening_seconds",
+            "avatar_enabled"
+          ],
+          "properties": {
+            "ai_video_opening_seconds": {},
+            "avatar_enabled": {}
+          }
         },
         "else": {
-          "not": {
-            "properties": {
-              "ai_video_opening_seconds": {}
+          "allOf": [
+            {
+              "not": {
+                "required": [
+                  "avatar_enabled"
+                ],
+                "properties": {
+                  "avatar_enabled": {}
+                }
+              }
             },
-            "required": [
-              "ai_video_opening_seconds"
-            ]
-          }
+            {
+              "if": {
+                "properties": {
+                  "scheduler_version": {
+                    "enum": [
+                      "scheduler-v10",
+                      "scheduler-v11"
+                    ]
+                  }
+                },
+                "required": [
+                  "scheduler_version"
+                ]
+              },
+              "then": {
+                "required": [
+                  "ai_video_opening_seconds"
+                ],
+                "properties": {
+                  "ai_video_opening_seconds": {
+                    "minimum": 6,
+                    "type": "integer"
+                  }
+                }
+              },
+              "else": {
+                "not": {
+                  "required": [
+                    "ai_video_opening_seconds"
+                  ],
+                  "properties": {
+                    "ai_video_opening_seconds": {}
+                  }
+                }
+              }
+            }
+          ]
         }
       }
     ],
@@ -7457,7 +7580,9 @@ export const canonicalSchemaDocuments = {
               "scheduler-v8",
               "scheduler-v9",
               "scheduler-v10",
-              "scheduler-v11"
+              "scheduler-v11",
+              "scheduler-v12",
+              "scheduler-v13"
             ]
           }
         }
@@ -7765,7 +7890,8 @@ export const canonicalSchemaDocuments = {
         "enum": [
           "resolved-render-manifest/v1",
           "resolved-render-manifest/v2",
-          "resolved-render-manifest/v3"
+          "resolved-render-manifest/v3",
+          "resolved-render-manifest/v4"
         ]
       },
       "project_revision_id": {
@@ -7983,7 +8109,10 @@ export const canonicalSchemaDocuments = {
           "type": "object",
           "properties": {
             "schema_version": {
-              "const": "resolved-render-manifest/v3"
+              "enum": [
+                "resolved-render-manifest/v3",
+                "resolved-render-manifest/v4"
+              ]
             }
           }
         },
@@ -8024,6 +8153,75 @@ export const canonicalSchemaDocuments = {
           },
           "properties": {
             "video_policy": {}
+          }
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "schema_version": {
+              "enum": [
+                "resolved-render-manifest/v1",
+                "resolved-render-manifest/v2",
+                "resolved-render-manifest/v3"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "then": {
+          "properties": {
+            "segments": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "if": {
+                  "properties": {
+                    "timeline_composition": {
+                      "const": "AVATAR_SPLIT_IMAGE"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "accepted_assets": {
+                      "type": "object",
+                      "not": {
+                        "required": [
+                          "video"
+                        ],
+                        "properties": {
+                          "video": {}
+                        }
+                      }
+                    },
+                    "render": {
+                      "type": "object",
+                      "not": {
+                        "anyOf": [
+                          {
+                            "required": [
+                              "video_source_profile"
+                            ],
+                            "properties": {
+                              "video_source_profile": {}
+                            }
+                          },
+                          {
+                            "required": [
+                              "video_frame_count"
+                            ],
+                            "properties": {
+                              "video_frame_count": {}
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -8669,6 +8867,9 @@ export const canonicalSchemaDocuments = {
               },
               "source_background": {
                 "$ref": "#/$defs/asset"
+              },
+              "video": {
+                "$ref": "#/$defs/asset"
               }
             }
           },
@@ -8736,6 +8937,14 @@ export const canonicalSchemaDocuments = {
                   "split-right-zoom-v2",
                   "split-right-zoom-v3"
                 ]
+              },
+              "video_source_profile": {
+                "const": "seedance-pro-fast-1248x704-v1"
+              },
+              "video_frame_count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 360
               }
             },
             "allOf": [
@@ -8915,6 +9124,81 @@ export const canonicalSchemaDocuments = {
                     "source_background": {
                       "$ref": "#/$defs/asset"
                     }
+                  }
+                }
+              },
+              "type": "object"
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "accepted_assets": {
+                  "required": [
+                    "video"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "video": {}
+                  }
+                }
+              },
+              "type": "object"
+            },
+            "then": {
+              "properties": {
+                "render": {
+                  "required": [
+                    "video_source_profile",
+                    "video_frame_count"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "video_source_profile": {},
+                    "video_frame_count": {}
+                  }
+                }
+              },
+              "type": "object"
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "render": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "video_source_profile"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "video_source_profile": {}
+                      }
+                    },
+                    {
+                      "required": [
+                        "video_frame_count"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "video_frame_count": {}
+                      }
+                    }
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "then": {
+              "properties": {
+                "accepted_assets": {
+                  "required": [
+                    "video"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "video": {}
                   }
                 }
               },
@@ -10529,7 +10813,8 @@ export const canonicalSchemaDocuments = {
         "enum": [
           "render-job-input/v1",
           "render-job-input/v2",
-          "render-job-input/v3"
+          "render-job-input/v3",
+          "render-job-input/v4"
         ]
       },
       "project_revision_id": {
@@ -10739,7 +11024,10 @@ export const canonicalSchemaDocuments = {
           "type": "object",
           "properties": {
             "schema_version": {
-              "const": "render-job-input/v3"
+              "enum": [
+                "render-job-input/v3",
+                "render-job-input/v4"
+              ]
             }
           }
         },

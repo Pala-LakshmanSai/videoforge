@@ -494,6 +494,7 @@ begin
     ["project-revision", revision_schema.dig("properties", "avatar_binding")],
     ["production-manifest", production_schema.dig("properties", "avatar_binding")]
   ].each do |label, binding|
+    binding = binding["oneOf"].find { |variant| variant["type"] == "object" } if binding && binding["oneOf"]
     required = Array(binding && binding["required"])
     errors << "#{label} Avatar binding must pin compatibility_state_at_preflight" unless required.include?("compatibility_state_at_preflight")
     errors << "#{label} Avatar binding must pin compatibility_evidence" unless required.include?("compatibility_evidence")
