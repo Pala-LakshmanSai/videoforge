@@ -23,3 +23,15 @@ Workflow registrations and read-only configuration/media qualification. New infe
 retained-resource capUSD0; no generation/replay/rental/Workflow instance/driver restart. Preserve
 all bindings/secrets/routes/crons/Workflow IDs. Existing hosting/read usage remains ordinary.
 Inherited broad CI/Local/long-form/provider/editorial/invoice gates remain separate.
+
+Production verified2026-10-05: executable6c1f010a / Worker784e63b4 at100%, native277.
+All30 Centralized Library cards and14 current-owner private cards display all three settings;
+7 active native/HTTP sessions preserve private scope and deny other Centralized Library access.
+Avatar/style pins resolve for all30;3 script voice names match source audio,25 show original uploaded
+filenames and2 historical records truthfully show Not recorded. 12 focused tests,18 configuration
+checks including one-byte quarantine rejection,15 distinct installed-Chrome journeys, types/lint,
+both builds/quarantines and context/secrets pass. Full20.333008s1080p playback ends without error,
+10,953,398-byte authenticated MP4 matches SHA256, range206 and denied foreign reads pass. All36
+public asset hashes/lengths,55bindings27secrets,3Workflow identities,crons/domain preserved. No real
+output deleted, Workflow instance/driver restart or new provider/compute/retained-resource spend.
+See evidence/acceptance/VF-10-09/2026-10-05-library-video-details.md for proof and separate gates.

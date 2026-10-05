@@ -1,3 +1,5 @@
+Completed-video Avatar/Voiceover/Image style details are published in both libraries under DEC_LIBRARY_002. Read library_video_details_2026_10_05 in CURRENT_STATE.yaml and LIBRARY_VIDEO_DETAILS_PLAN.md. Ordinary privacy and designated-owner Centralized Library access remain.
+
 Voice catalog filter work: read `voice_filters_2026_10_05` in CURRENT_STATE.yaml and VOICE_FILTERS_PLAN.md for implementation, release and acceptance.
 
 Centralized Library is live under `DEC_LIBRARY_001`, with creator names/emails on every card and native275. Concurrent voice dropdowns preserve it; read `centralized_library_2026_10_05` in CURRENT_STATE.yaml.
