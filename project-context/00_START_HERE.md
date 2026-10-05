@@ -1,3 +1,5 @@
+Centralized Library local implementation is in `codex/centralized-library` under `DEC_LIBRARY_001`. Production publication and native qualification remain pending; read `centralized_library_2026_10_05` in CURRENT_STATE.yaml.
+
 Automatic delivery: AUTOMATIC_LIBRARY_DELIVERY_PLAN.md. No final approval.
 
 Production reliability audit: read PRODUCTION_RELIABILITY_AUDIT.md and CURRENT_STATE.yaml.

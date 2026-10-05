@@ -1,0 +1,54 @@
+# Centralized Library
+
+Checkpoint V2-09 / VF-10-09. Base source `610b7bed`; branch `codex/centralized-library`.
+Selected read profile `v2_09_centralized_library`. Decision `DEC_LIBRARY_001`, user request 2026-10-05.
+
+## Outcome and ownership
+
+Only the exact admitted, verified, non-revoked designated owner can discover, watch and download all
+users' retained completed renders. Preserve every ordinary tenant API and private preset/input/cost
+boundary. Include retained render history without requiring final human approval. Explicitly deleted
+outputs and archived projects stay excluded. No edit/delete actions or generation changes.
+
+Owned: hosted centralized-library route/migration, shared authorized-MP4 serving extraction, tenant
+capability, identity context, dock button, page/route/CSS, focused tests and context. The main checkout
+and other worktrees contain unrelated work and remain untouched.
+
+Acceptance: actual PostgreSQL function/session fences under runtime-role/RLS, exact-owner and foreign
+negatives, complete history/search/filter/pagination, checksum/range/download regression, owner-only
+dock, responsive accessible player, native Chrome playback and checksum-matching synthetic download,
+types/lint/build/quarantine/context/secrets. Production/native-schema acceptance is separate.
+
+## Production proposal — approval pending
+
+Implementation source `e81dacc`; current production read-only status matches source `4660b1b9` /
+Worker `9872d035-f9b0-47fb-81fb-b15d16155c03`, native ledger274.
+
+Apply only additive migration `0275_hosted_centralized_library.sql` and its registered hash, with the
+fixed-function EXECUTE grant for the existing runtime role. Preserve all existing migration rows and
+RLS policies. First recheck the live migration chain, function owner BYPASSRLS capability, exact session
+qualification and deployed source/configuration. Stop on concurrent source/schema drift or wrong owner.
+
+Publish the reviewed source's rebuilt web assets and Worker to the existing VideoForge production
+service. Preserve all bindings/secrets, three Workflow identities, routes/domain/crons, redaction,
+qualified media runtime pins and generation state. Publish matching registrations without starting
+or restarting paid generation or the healthy continuation driver. Do not merge unrelated work.
+Verify exact source/asset hashes, anonymous denial, other-account denial, owner collection/history,
+retained-film watch/seek and checksum-matching MP4 download in real Chrome. Record native function
+privileges and unchanged tenant isolation. Roll back traffic immediately if auth, playback, artifact,
+configuration or preservation checks fail; revoke the new function grant if needed. Existing accepted
+source/Worker remains the rollback. No output/user data deletion or generation replay.
+
+Finite-action spend cap: USD 0 for new provider inference, GPU/CPU rentals and retained resources.
+No GPU offering, model download or retained volume is needed. Existing hosting and authenticated
+R2 read/egress billing remains ordinary account usage; no new subscription or resource allocation.
+No paid generation test is requested. Unrelated provider inventory is not refreshed during local work.
+
+The implementation playbook requires an exact combined deployment proposal after safe local work.
+No current-task external mutation or production publication has been approved yet.
+
+## Validation and evidence
+
+See [local acceptance](evidence/acceptance/VF-10-09/2026-10-05-centralized-library.md) and
+`centralized_library_2026_10_05` in CURRENT_STATE.yaml. Local synthetic previews do not prove live
+all-user access, native schema publication, provider quality or long-form production.

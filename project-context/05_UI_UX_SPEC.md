@@ -247,6 +247,16 @@ optional viewer, download and provenance remain. Preset approvals remain indepen
   separately from the video's variable cost. Do not attribute another account's exact spend.
 - Projected, conservative bound, observed, and settled cost are distinct labels.
 
+### Centralized Library
+
+`DEC_LIBRARY_001` adds a dock button after Library only when the hosted tenant response grants the
+owner capability. The page uses the existing dark surfaces with a collection header, video/creator/
+size totals, search, creator filter, newest-first cards, and 48-item pagination. Each card shows a
+video preview, creator, saved title, date, duration and size, with Watch and Download. Watch opens a
+keyboard-accessible player with native video controls and immediate MP4 download. Loading, empty,
+filtered-empty, unavailable-file and expired/denied-session states are explicit; denied reads remove
+cached videos and close the player. The page and dock fit desktop and mobile. No edit/delete controls.
+
 ### 9. Settings
 
 - Account identity/default workspace, credential connection health without values, invite/admission
