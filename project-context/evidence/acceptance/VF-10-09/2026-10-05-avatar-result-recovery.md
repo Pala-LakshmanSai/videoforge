@@ -40,6 +40,20 @@ External outages and provider queue delays remain possible; no zero-delay guaran
 
 ## Publication
 
-Pending exact-source publication, public asset/status readback and Chrome verification.
+Published source `417e7225287d42aa7132733fe27be964bb559d36`, Worker
+`c38d4bd0-cc92-403b-9aef-1b22f70a6e3b` at100%. Exact source/status and30 public asset
+hashes verified, anonymous private catalog401. All55bindings,27secret names and3Workflow
+identities retained; qualified Cloud pins and disabled CPU fallback preserved. Uploaded
+bundle contains the exact two-minute/30-retry/two-second constant policy.
+
+Real Chrome: original33.033008-second final video played through to ended=true/error=null;
+fresh post-deployment Review loaded API healthy, same artifact readyState4, opening12/12s.
+The owner's editorial approval remains pending. Retained user's original Library tab.
+
+No new paid canary or injected platform stall: existing project recovered before this
+publication; the new policy is proven by regression, build and published-source checks.
+Adjacent preexisting display issue: Progress stage7 still says First3minutes for custom
+openings, while top-level Progress and Review correctly show0.2minutes. It does not alter
+saved12-second opening or render and is outside this coordinator-latency repair.
 Private incident evidence: `.videoforge/avatar-delay-20261005/` (primary checkout).
 Rollback target: Worker `dad79410-a3c0-48c9-aac7-e4c94ef7e8a9`.
