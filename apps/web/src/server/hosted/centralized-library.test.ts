@@ -220,6 +220,24 @@ describe("centralized Library owner boundary", () => {
     expect(text).not.toContain("private/output");
     expect(text).not.toContain("Harbor.mp3");
     expect(text).toContain('"available":true');
+    const databaseUuid = "00000000-0000-f000-2000-000000000001";
+    expect(
+      (
+        await handleCentralizedLibrary(
+          new Request(`https://site/api/v2/centralized-library?creator=${databaseUuid}`),
+          deps,
+        )
+      ).status,
+    ).toBe(200);
+    expect(read.mock.calls.at(-1)).toEqual(["token", null, "", databaseUuid, 0]);
+    expect(
+      (
+        await handleCentralizedLibrary(
+          new Request(`https://site/api/v2/centralized-library/${databaseUuid}/watch`),
+          deps,
+        )
+      ).status,
+    ).toBe(200);
     const range = await handleCentralizedLibrary(
       new Request(`https://site/api/v2/centralized-library/${uuid(40)}/watch`, {
         headers: { range: "bytes=0-9" },

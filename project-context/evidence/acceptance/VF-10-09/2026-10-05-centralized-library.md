@@ -115,4 +115,22 @@ confirmation/cancel/one-video deletion and other-manager denial. Types/lint, con
 production/staging quarantines and18 config tests pass. Migration manifest adds exactly116 bytes to
 each measured static closure; one-byte overflow rejection remains intact. Native transaction checks
 prove all30 prefixes, foreign denial, one idempotent audit event and list hiding; rollback preserves
-all30 original outputs with zero R2 deletion. Actual-runtime and live publication checks follow.
+all30 original outputs with zero R2 deletion. Native276 committed atomically; SECURITY DEFINER/runtime EXECUTE true, PUBLIC EXECUTE false.
+Actual restricted runtime plan/finalize/retry passes with rollback restoring all30 originals. Planning
+uses row locks and requires an ordinary read/write transaction even when no rows are mutated.
+
+Executable `17c3608b1389f3304ebb0046b8627c9bb597d3ef` is published at100% as Worker
+`befa8996-f301-4d9c-83a1-b261b6959278`. All35 public asset hashes/lengths match;55 bindings,
+27 secrets and3 Workflow identities/configuration are preserved. Signed-in production shows30 Delete
+controls, exact creator/title confirmation, Cancel/focus restoration, one focus highlight and no977px
+overflow; hero totals stack. Retained20.333008-second1080p playback still ends without error, MP4
+HTTP checksum matches, and voice themed listboxes remain functional. Foreign DELETE403, missing
+origin403 and nonexistent output404 pass. Six Chrome fixture journeys verify actual confirmation
+and deletion behavior; no real production user video was deleted for acceptance. Native saved-download
+policy limitation and inherited broad-CI/provider/Local/editorial/invoice gates remain unchanged.
+New paid work/resources/Workflow instances/driver restarts zero; unrelated inventory unrefreshed.
+
+Final compatibility correction: four of five creator IDs are database-generated UUIDs with legacy
+version/variant bits. The API now validates PostgreSQL UUID shape rather than imposing v1–v5 bits;
+all creator filters remain usable while malformed values stay rejected. A regression covers such
+creator and attempt IDs. No new schema or permission expansion accompanies this correction.

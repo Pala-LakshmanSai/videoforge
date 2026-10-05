@@ -64,3 +64,6 @@ The user explicitly authorizes the UI fix, confirmed per-video deletion and prod
 Apply additive276 only after native auth/privilege qualification; reuse exact attempt-prefix cleanup
 and audit retention deletion only after R2 absence verification. No paid provider/compute work.
 Preserve concurrent voice dropdowns and reject further production drift before deployment.
+
+Published follow-up executable17c3608b/Workerbefa8996 at100%, native276. Layout, owner confirmation,
+foreign/origin denial, retained playback/download and synthetic deletion pass; all30 originals kept.
