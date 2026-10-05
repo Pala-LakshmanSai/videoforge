@@ -141,3 +141,13 @@ runner cause is not proven. Full-repository green is not claimed. Installed Loca
 end-to-end, representative long-form/concurrent latency, invoices and generalized
 image-quality acceptance remain separate gates; no zero-delay
 provider SLA is established. Private detailed evidence stays under `.videoforge/avatar-composition-20261005/`.
+
+
+## Durable handoff
+
+Acceptance/migration272 commit `fd032b2a6255c96912e15b6bd93dff7873bcbfef` pushed.
+Project Memory guarded writes and exact fresh hash readbacks passed: project51,root44,
+index71,coverage66. Other project rows and historical avatar recovery evidence are exact;
+the current description now preserves avatars and marks the old v10/v11 policy historical.
+No local memory or Obsidian update. Production remains b5ed9f70/Worker7c5820ff at100%
+with native272; no further provider dispatch or retained paid compute is required.

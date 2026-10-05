@@ -77,6 +77,7 @@ media/timelines exactly. Both native final exports, full decode, narration and m
 footage checks pass; all eight rentals are CLEAN and conservative test allowance is
 USD6.382364 under USD8. Both passed Chrome playback to ended=true/error=null and
 approval/Library checks. On playback included seeking; native full-file decode is separate.
-All eight implementation/production steps are complete. Guarded Project Memory update
-follows this immutable acceptance commit; inherited broad-CI, installed-Local, long-form,
-provider-latency and invoice limits remain explicitly separate.
+All eight implementation/production steps are complete. Guarded Project Memory
+updates and exact readbacks passed: Project51,Root44,Index71,Coverage66; unrelated
+index rows and historical evidence preserved. Acceptance commitfd032b2a6255c96912e15b6bd93dff7873bcbfef.
+Inherited broad-CI, installed-Local, long-form, provider-latency and invoice limits remain separate.
