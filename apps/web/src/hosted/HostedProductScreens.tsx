@@ -1,4 +1,10 @@
 import { ScriptProjectFields } from "./VoiceoverHub";
+import { HostedCloudCompute } from "./HostedCloudCompute";
+import {
+  cloudComputeNeedsPolling,
+  type CloudComputeSnapshot,
+  type ProjectApiCost,
+} from "../lib/cloud-compute";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
@@ -798,6 +804,8 @@ interface HostedTimeEstimate {
 }
 
 interface HostedCost {
+  readonly api_cost_so_far?: ProjectApiCost | null;
+  readonly cloud_compute?: CloudComputeSnapshot | null;
   readonly projected_usd?: number | null;
   readonly settled_usd?: number | null;
   readonly cap_usd?: number | null;
@@ -1941,6 +1949,7 @@ function isHostedV209PreSendIntegrityError(error: unknown): boolean {
 }
 
 export function hostedProjectPollInterval(data: ProjectDetailResponse | undefined) {
+  if (cloudComputeNeedsPolling(data?.cost?.cloud_compute)) return 2_000;
   if (data?.queue?.blocked_reason === "HOSTED_CLOUD_CLEANUP_PENDING") return 2_000;
   if (!data) return 2_000;
   if (data.voiceover_generation && data.voiceover_generation.state !== "COMPLETE")
@@ -6833,7 +6842,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               detail={
                 query.data.generation_provider === "KIE_FAL"
                   ? cost?.api_estimate
-                    ? `${cost.api_estimate.kie_images} Kie images + ${cost.api_estimate.fal_avatar_seconds.toFixed(1)}s Fal avatar${cost.api_estimate.seedance_seconds === undefined ? "" : ` + ${cost.api_estimate.seedance_seconds.toFixed(1)}s scene footage${cost.api_estimate.seedance_coverage_percent === undefined ? "" : ` (up to ${cost.api_estimate.seedance_coverage_percent}%${cost.api_estimate.seedance_required_opening_seconds ? ` after ${formatMilliseconds(cost.api_estimate.seedance_required_opening_seconds * 1000)}` : ""})`}`} · published-rate estimate`
+                    ? `${cost.api_estimate.kie_images} Kie images + ${cost.api_estimate.fal_avatar_seconds.toFixed(1)}s Fal avatar${cost.api_estimate.seedance_seconds === undefined ? "" : ` + ${cost.api_estimate.seedance_seconds.toFixed(1)}s scene footage${cost.api_estimate.seedance_coverage_percent === undefined ? "" : ` (up to ${cost.api_estimate.seedance_coverage_percent}%${cost.api_estimate.seedance_required_opening_seconds ? ` after ${formatMilliseconds(cost.api_estimate.seedance_required_opening_seconds * 1000)}` : ""})`}`} · published-rate estimate · excludes Cloud compute`
                     : "Calculated when planning finishes"
                   : cost?.cap_usd == null
                     ? undefined
@@ -6856,6 +6865,19 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               detail="includes waits · parallel work counted once"
             />
           </div>
+          {cost?.cloud_compute &&
+            (cost.api_cost_so_far ||
+              query.data.project.media_execution_backend === "RUNPOD_POD" ||
+              cost.cloud_compute.rentals.length > 0) && (
+              <HostedCloudCompute
+                snapshot={cost.cloud_compute}
+                apiCost={cost.api_cost_so_far}
+                showCompute={
+                  query.data.project.media_execution_backend === "RUNPOD_POD" ||
+                  cost.cloud_compute.rentals.length > 0
+                }
+              />
+            )}
           <p className="muted" aria-label="Rendering machine">
             <strong>Machine: </strong>
             {hostedMachineLabel(

@@ -345,6 +345,68 @@ test("Progress dashboard keeps desktop columns, mobile controls and full saved p
   await expect(scene.getByText(/text, captions, logos, motion graphics/u)).toBeVisible();
 });
 
+test("GPU uptime, all API total and stopped charges stay correct on desktop and mobile", async ({
+  page,
+}) => {
+  const started = Date.now() - 15 * 60_000;
+  let stopped = false;
+  await page.route(`**/api/v2/hosted/projects/${promptProjectId}`, (route) => {
+    const detail = promptProjectDetail(3);
+    return route.fulfill({
+      json: {
+        ...detail,
+        project: { ...detail.project, media_execution_backend: "RUNPOD_POD" },
+        cost: {
+          api_cost_so_far: {
+            usd: 1.16,
+            unconfirmed: false,
+            estimated: true,
+            breakdown: [
+              { label: "Generated images", usd: 0.36, estimated: true },
+              { label: "Avatar footage", usd: 0.8, estimated: true },
+            ],
+          },
+          cloud_compute: {
+            observed_at: new Date().toISOString(),
+            rentals: [
+              {
+                id: "rental-one",
+                machine: "NVIDIA RTX PRO 4500 Blackwell Server Edition",
+                hourly_usd: 2,
+                started_at: new Date(started).toISOString(),
+                stopped_at: stopped ? new Date(started + 15 * 60_000).toISOString() : null,
+                status: stopped ? "STOPPED" : "RUNNING",
+              },
+            ],
+          },
+        },
+      },
+    });
+  });
+  await page.goto(`/projects/${promptProjectId}`);
+  const panel = page.getByRole("region", { name: "Cloud compute charges" });
+  await expect(panel.getByText("GPU uptime", { exact: true })).toBeVisible();
+  await expect(panel.getByText("Total cost so far", { exact: true })).toBeVisible();
+  const cost = panel.locator(".cloud-compute-metrics .metric").nth(1).locator("strong");
+  const firstCost = await cost.innerText();
+  await expect.poll(() => cost.innerText()).not.toBe(firstCost);
+  await panel.locator("summary").press("Enter");
+  await expect(panel.getByText(/NVIDIA RTX PRO 4500/)).toBeVisible();
+  await expect(panel.getByText(/Running · \$2.0000\/hr/)).toBeVisible();
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 1000 });
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth),
+    ).toBe(false);
+  }
+  stopped = true;
+  await expect(cost).toHaveText("$0.5000");
+  await expect(panel.locator(".cloud-compute-total strong")).toHaveText("$1.6600");
+  await page.waitForTimeout(2100);
+  await expect(cost).toHaveText("$0.5000");
+  await expect(panel.locator(".cloud-compute-total strong")).toHaveText("$1.6600");
+});
+
 const regenerationSceneId = "12121212-1212-4212-8212-121212121212";
 const otherSceneId = "13131313-1313-4313-8313-131313131313";
 const regenerationRequestId = "14141414-1414-4414-8414-141414141414";

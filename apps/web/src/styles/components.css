@@ -227,6 +227,54 @@
   color: #88a5ff;
 }
 
+.cloud-compute {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.cloud-compute-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cloud-compute-breakdown {
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.cloud-compute-total {
+  margin-top: 12px;
+}
+
+.cloud-compute-breakdown summary {
+  cursor: pointer;
+}
+
+.cloud-compute-breakdown ul {
+  list-style: none;
+  padding: 0;
+}
+
+.cloud-compute-breakdown li {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+
+.cloud-compute-breakdown strong {
+  color: var(--text);
+}
+
+@media (max-width: 640px) {
+  .cloud-compute-metrics {
+    grid-template-columns: 1fr;
+  }
+}
+
 .progress-root {
   position: relative;
   width: 100%;

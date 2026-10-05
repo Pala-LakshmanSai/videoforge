@@ -2322,7 +2322,9 @@ it.each(["KIE_FAL", "RUNPOD"] as const)(
     if (generationProvider === "KIE_FAL") {
       expect(screen.getByText("$0.02")).toBeInTheDocument();
       expect(
-        screen.getByText("2 Kie images + 3.0s Fal avatar · published-rate estimate"),
+        screen.getByText(
+          "2 Kie images + 3.0s Fal avatar · published-rate estimate · excludes Cloud compute",
+        ),
       ).toBeInTheDocument();
       expect(screen.getByLabelText("Generate avatar video elapsed time")).toHaveTextContent(
         "1m 30s",

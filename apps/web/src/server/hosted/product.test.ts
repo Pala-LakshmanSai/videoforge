@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH } from "@videoforge/pipeline";
+import type { CloudComputeSnapshot, ProjectApiCost } from "../../lib/cloud-compute";
 
 const testState = vi.hoisted(() => {
   const scopeRows: Record<string, unknown>[] = [
@@ -1256,6 +1257,81 @@ describe("hosted product route contract", () => {
       expect(failedTasks).toBeUndefined();
     } finally {
       testState.projectRows.push(...previous);
+    }
+  });
+
+  it("exposes scoped rental facts and all-API costs without exposing provider rental identities", async () => {
+    const original = testState.query.getMockImplementation()!;
+    testState.query.mockClear();
+    testState.query.mockImplementation(async (sql, params) => {
+      if (sql.includes("FROM cloud_media_reservations r") && sql.includes("r.actual_hourly_usd"))
+        return {
+          rows: [
+            {
+              id: "33333333-3333-4333-8333-333333333333",
+              leased_attempt_id: "44444444-4444-4444-8444-444444444444",
+              fence_id: "fence",
+              gpu: "RTX 4090",
+              actual_hourly_usd: "0.8",
+              launch_outcome: "CONFIRMED",
+              state: "CLEAN",
+              verified_at: "2026-10-05T09:00:00Z",
+              cleanup_verified_at: "2026-10-05T09:15:00Z",
+              observed_at: "2026-10-05T10:00:00Z",
+              pod_id: "private-provider-id",
+              pod_name: "private-provider-name",
+            },
+          ],
+          affectedRows: 1,
+        };
+      if (sql.includes("WITH project_prompt_cost AS"))
+        return {
+          rows: [{ label: "Generated images", usd: "1.16", unconfirmed: false, estimated: true }],
+          affectedRows: 1,
+        };
+      return original(sql, params);
+    });
+    try {
+      const result = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+        environment,
+        stagingConfig,
+        executionContext,
+      );
+      expect(result?.status).toBe(200);
+      const body = (await result!.json()) as {
+        cost: { api_cost_so_far: ProjectApiCost; cloud_compute: CloudComputeSnapshot };
+      };
+      expect(body.cost.api_cost_so_far).toMatchObject({
+        usd: 1.16,
+        unconfirmed: false,
+        estimated: true,
+      });
+      expect(body.cost.cloud_compute.rentals).toEqual([
+        {
+          id: "33333333-3333-4333-8333-333333333333",
+          machine: "RTX 4090",
+          hourly_usd: 0.8,
+          started_at: "2026-10-05T09:00:00.000Z",
+          stopped_at: "2026-10-05T09:15:00.000Z",
+          status: "STOPPED",
+        },
+      ]);
+      expect(JSON.stringify(body.cost)).not.toContain("private-provider");
+      for (const [sql, params] of testState.query.mock.calls.filter(
+        ([sql]) =>
+          sql.includes("r.actual_hourly_usd") || sql.includes("WITH project_prompt_cost AS"),
+      )) {
+        expect(sql).toContain("account_id=$1");
+        expect(sql).toContain("workspace_id=$2");
+        expect(params).toEqual([
+          testState.scopeRows[0]!.account_id,
+          testState.scopeRows[0]!.workspace_id,
+          PROJECT_ID,
+        ]);
+      }
+    } finally {
+      testState.query.mockImplementation(original);
     }
   });
 
@@ -3027,7 +3103,10 @@ describe("hosted product route contract", () => {
             ],
             affectedRows: 1,
           };
-        if (sql.includes("FROM hosted_video_jobs job")) {
+        if (
+          sql.includes("FROM hosted_video_jobs job") &&
+          !sql.includes("WITH project_prompt_cost AS")
+        ) {
           expect(sql).toContain("videoforge_hosted_video_static_fallback");
           expect(sql).toContain("source.id=job.source_api_job_id");
           expect(sql).toContain(

@@ -1,4 +1,6 @@
 import { hostedDownloadDisposition, voiceoverVideoDownloadFilename } from "./download-filename";
+import { readCloudCompute } from "./cloud-compute";
+import { readProjectApiCost } from "./project-api-cost";
 import {
   hostedAccountCleanupPending,
   HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE,
@@ -8418,6 +8420,18 @@ async function projectDetail(
         spanAudio: spanAudio.rows,
         spanAudioJobs: spanAudioJobs.rows,
         spanAudioFailure: spanAudioFailure.rows,
+        apiCostSoFar: await readProjectApiCost(
+          transaction,
+          scope.account_id,
+          scope.workspace_id,
+          projectId,
+        ),
+        cloudCompute: await readCloudCompute(
+          transaction,
+          scope.account_id,
+          scope.workspace_id,
+          projectId,
+        ),
         cost: cost.rows[0] ?? null,
         zeroWorkers: zeroWorkers.rows[0] ?? null,
         failedTasks: failedTasks.rows,
@@ -9455,6 +9469,8 @@ async function projectDetail(
       time_estimate: timeEstimate,
       timing,
       cost: {
+        api_cost_so_far: detail.apiCostSoFar,
+        cloud_compute: detail.cloudCompute,
         projected_usd: projectApiGeneration
           ? apiEstimate === null
             ? null
