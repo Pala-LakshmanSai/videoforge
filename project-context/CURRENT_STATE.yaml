@@ -1,3 +1,17 @@
+prompt_content_correction_2026_10_06:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  status: PROVIDER_FREE_AND_NATIVE_ROLLBACK_PASS_PUBLICATION_PENDING
+  branch: codex/sujal-prompt-fix
+  base_source: eb10804bee63fa4856a406a3c7e5c0ddad48fcf7
+  cause: Original_and_replacement_required_scene_facts_request_forbidden_paper_sea_chart;replacement_repeats_uncorrected_instructions;46_of256_saved.
+  repair: Immutable_v28_no_graphics_policy_for_new_plans;exact_trusted_suffix_for_bounded_legacy_replacements;0278_preserves_all_other_request_tenant_spend_and_no_replay_guards.
+  validation: Pipeline285_Web88_database10_PASS;types_two_builds_native_Postgres_rollback_and_historical_bytes_PASS.
+  provider_spend: USD0_new_calls_so_far;prior_cancelled_project_known_prompt_cost_USD0_404473_settled.
+  paid_compute_shutdown: No_new_compute_or_resource_mutation;other_agent_owns_ASR_runtime_promotion;original_cancelled_generation_preserved.
+  remaining_gates: Production_publication_live_Chrome_and_current_observer_verification;original_resume_preference_pending;external_provider_failures_cannot_be_guaranteed_absent.
+  evidence: evidence/acceptance/VF-10-09/2026-10-06-prompt-content-correction.md
+
 demo9_asr_repair_2026_10_06:
   checkpoint: V2-09
   selected_task: VF-10-09
@@ -7431,8 +7445,8 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/demo9-asr-fix
-  branch_upstream: origin/codex/demo9-asr-fix
+  branch: codex/sujal-prompt-fix
+  branch_upstream: origin/codex/sujal-prompt-fix
   branch_published: true
   current_source_head: "6c1f010aae7864a10aa5c214d674ac1f3d83f54c"
   current_source_head_semantics: executable_release_identity_recorded_after_publication_evidence_commits_follow

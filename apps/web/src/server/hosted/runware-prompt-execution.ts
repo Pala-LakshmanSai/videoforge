@@ -7,6 +7,7 @@ import type {
 } from "@videoforge/control-plane/prompts";
 import {
   RunwarePromptWriter,
+  PROMPT_CONTENT_REPAIR_INSTRUCTION,
   buildRunwarePromptRequest,
   planPromptBatches,
   runwarePromptValidationDiagnostic,
@@ -85,7 +86,9 @@ export class HostedPromptArchivedOutputInvalidError extends Error {
 /** Capacity rejection is never output-quality evidence or paid replacement authority. */
 export class HostedPromptCapacityPausedError extends Error {
   public override readonly name = "HostedPromptCapacityPausedError";
-  constructor(readonly refusal: RunwareCapacityRefusal) { super("HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT"); }
+  constructor(readonly refusal: RunwareCapacityRefusal) {
+    super("HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT");
+  }
 }
 
 /** Validate one original claim through getTaskDetails; this transport never submits inference. */
@@ -117,6 +120,7 @@ export async function recoverClaimedHostedPromptBatch(input: {
     input.retryOfRequestHash ?? null,
     1,
     input.plan.requestPolicy ?? "legacy",
+    usesContentRepair(input.requestBytes, input.retryOfRequestHash),
   );
   if (
     expected.request.taskUUID !== input.taskUUID ||
@@ -138,8 +142,11 @@ export async function recoverClaimedHostedPromptBatch(input: {
       }));
   } catch (error) {
     if (error instanceof RunwareArchivedTaskRejectedError)
-      throw new HostedPromptCapacityPausedError({ taskUUID: input.taskUUID,
-        responseHash: error.responseHash, retryAfterMs: 30_000 });
+      throw new HostedPromptCapacityPausedError({
+        taskUUID: input.taskUUID,
+        responseHash: error.responseHash,
+        retryAfterMs: 30_000,
+      });
     throw error;
   }
   const recoveredText = recovered.outputText.trim();
@@ -162,6 +169,7 @@ export async function recoverClaimedHostedPromptBatch(input: {
   });
   let evidence: RunwarePromptAttemptEvidence | null = null;
   const writer = new RunwarePromptWriter({
+    contentRepair: usesContentRepair(input.requestBytes, input.retryOfRequestHash),
     requestPolicy: input.plan.requestPolicy ?? "legacy",
     transport: {
       async dispatch(request) {
@@ -241,6 +249,7 @@ export async function recoverClaimedHostedPromptBatch(input: {
 
 /** Claim then submit exactly one new ordinal. A duplicate claim never reaches inference. */
 export async function dispatchOneHostedPromptBatch(input: {
+  readonly contentRepair?: boolean;
   readonly apiKey: string;
   readonly plan: PromptBatchPlan;
   readonly persistedBinding: HostedPromptBatchPlanBinding;
@@ -280,6 +289,7 @@ export async function dispatchOneHostedPromptBatch(input: {
     input.retryOfRequestHash ?? null,
     1,
     input.plan.requestPolicy ?? "legacy",
+    input.contentRepair ?? false,
   );
   const claimed = await input.claim({
     batchOrdinal: input.batchOrdinal,
@@ -303,6 +313,7 @@ export async function dispatchOneHostedPromptBatch(input: {
   let result: RunwarePromptTransportResult | null = null;
   let evidence: RunwarePromptAttemptEvidence | null = null;
   const writer = new RunwarePromptWriter({
+    contentRepair: input.contentRepair ?? false,
     requestPolicy: input.plan.requestPolicy ?? "legacy",
     transport: {
       async dispatch(request) {
@@ -333,8 +344,10 @@ export async function dispatchOneHostedPromptBatch(input: {
   });
   let output: ReturnType<typeof validatePromptWriterOutput>;
   try {
-    output = validatePromptWriterOutput(entry.batch,
-      await writer.write(entry.batch, input.retryOfRequestHash ?? null));
+    output = validatePromptWriterOutput(
+      entry.batch,
+      await writer.write(entry.batch, input.retryOfRequestHash ?? null),
+    );
   } catch (error) {
     if (capacityRefusal) throw new HostedPromptCapacityPausedError(capacityRefusal);
     throw error;
@@ -523,6 +536,23 @@ function invalidPlanBinding(): HostedPromptExecutionError {
   return new HostedPromptExecutionError("HOSTED_PROMPT_INPUT_INVALID", "FAILED", false, null);
 }
 
+// Detection selects a candidate only; exact canonical bytes/hash/UUID validation follows.
+function usesContentRepair(
+  requestBytes: string,
+  retryOfRequestHash?: Sha256Digest | null,
+): boolean {
+  if (!retryOfRequestHash) return false;
+  try {
+    const systemPrompt: unknown = JSON.parse(requestBytes)?.[0]?.settings?.systemPrompt;
+    return (
+      typeof systemPrompt === "string" &&
+      systemPrompt.endsWith(`\n${PROMPT_CONTENT_REPAIR_INSTRUCTION}`)
+    );
+  } catch {
+    return false;
+  }
+}
+
 function validPositiveInteger(value: number): boolean {
   return Number.isSafeInteger(value) && value > 0;
 }
@@ -676,6 +706,7 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
           saved.retryOfRequestHash ?? null,
           1,
           this.plan.requestPolicy ?? "legacy",
+          usesContentRepair(saved.requestBytes, saved.retryOfRequestHash),
         );
         if (
           saved.requestHash !== request.requestSha256 ||

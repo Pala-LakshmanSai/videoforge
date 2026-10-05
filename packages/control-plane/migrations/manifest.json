@@ -1440,6 +1440,12 @@
       "name": "hosted_library_video_details",
       "filename": "0277_hosted_library_video_details.sql",
       "sha256": "sha256:b3bc53d4cd9bd67c140533c2b45a59f595ba1bd3332ca9e998a49177fc504fb3"
+    },
+    {
+      "version": 278,
+      "name": "hosted_prompt_content_correction",
+      "filename": "0278_hosted_prompt_content_correction.sql",
+      "sha256": "sha256:f6cba6628c011246ae655eb348674f23f887e1d359131763a5b79e844276c474"
     }
   ]
 }

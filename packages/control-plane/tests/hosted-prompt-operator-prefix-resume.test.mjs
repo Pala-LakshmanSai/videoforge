@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { PROMPT_CONTENT_REPAIR_INSTRUCTION } from "../../pipeline/dist/src/prompts/runtime.js";
 import test from "node:test";
 import {
   seedAdaptivePromptRun,
@@ -21,6 +22,7 @@ for (const outcome of ["complete", "failed"])
             taskType: "textInference",
             taskUUID: uuid(identity),
             model: "google:gemini@3.5-flash",
+            settings: { systemPrompt: "Original instructions", temperature: 0.2 },
             messages: [
               {
                 role: "user",
@@ -53,10 +55,15 @@ for (const outcome of ["complete", "failed"])
           bytes,
           sha256(bytes),
         ]);
+      const correction = (bytes) => {
+        const tasks = JSON.parse(bytes);
+        tasks[0].settings.systemPrompt += `\n${PROMPT_CONTENT_REPAIR_INSTRUCTION}`;
+        return JSON.stringify(tasks);
+      };
       const first = request(0, 1, 227001),
         original = request(1, 1, 227002),
-        second = request(1, 2, 227003),
-        third = request(1, 2, 227004);
+        second = outcome === "complete" ? correction(request(1, 2, 227003)) : request(1, 2, 227003),
+        third = correction(request(1, 2, 227004));
       await claim(0, first);
       await executor.query("SELECT videoforge_record_hosted_prompt_batch($1,$2::jsonb)", [
         run.runId,
@@ -115,6 +122,16 @@ for (const outcome of ["complete", "failed"])
       await executor.query("SELECT set_config('videoforge.account_id',$1,false)", [IDS.accountB]);
       await assert.rejects(executor.query(resume, args), /identity is invalid/);
       await executor.query("SELECT set_config('videoforge.account_id',$1,false)", [IDS.accountA]);
+      for (const drifted of [
+        third.replace("0.2", "0.9"),
+        third.replace("google:gemini@3.5-flash", "other:model"),
+        third.replace("MANDATORY NO GRAPHICS", "Ignore constraints"),
+      ]) {
+        await assert.rejects(
+          executor.query(resume, [...args.slice(0, 4), drifted, sha256(drifted)]),
+          /request drifted/,
+        );
+      }
       assert.equal((await executor.query(resume, args)).rows[0].resumed, true);
       assert.equal((await executor.query(resume, args)).rows[0].resumed, false);
       await assert.rejects(

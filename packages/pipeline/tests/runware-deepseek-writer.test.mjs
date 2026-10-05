@@ -6,6 +6,7 @@ import {
   IN_IMAGE_SHOT_ROLES,
   NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH,
   PHYSICAL_PLACEMENT_WRITER_INSTRUCTION,
+  PROMPT_CONTENT_REPAIR_INSTRUCTION,
   PHYSICAL_PLACEMENT_V2_WRITER_INSTRUCTION,
   PipelineDomainError,
   RUNWARE_PROMPT_MAX_OUTPUT_TOKENS,
@@ -2156,5 +2157,75 @@ test("constructor rejects missing finite cost authority", () => {
         }),
       TypeError,
     );
+  }
+});
+
+test("no-graphics requests and bounded repairs preserve legacy inputs and reject chart facts", async () => {
+  const batch = makeBatch(1);
+  const original = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "physical-placement-v2",
+  );
+  const legacyRetry = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    2,
+    original.requestSha256,
+    1,
+    "physical-placement-v2",
+  );
+  const repaired = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    2,
+    original.requestSha256,
+    1,
+    "physical-placement-v2",
+    true,
+  );
+  const current = buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "no-graphics-v1");
+  assert.equal(
+    repaired.request.settings.systemPrompt,
+    legacyRetry.request.settings.systemPrompt + "\n" + PROMPT_CONTENT_REPAIR_INSTRUCTION,
+  );
+  assert.deepEqual(repaired.request.messages, legacyRetry.request.messages);
+  assert.notEqual(repaired.request.taskUUID, legacyRetry.request.taskUUID);
+  assert.notEqual(repaired.requestSha256, legacyRetry.requestSha256);
+  assert.equal(current.requestVersion, "runware-gemini-3.5-flash-prompt-request-v28");
+  assert.ok(
+    current.request.settings.systemPrompt.includes(PHYSICAL_PLACEMENT_V2_WRITER_INSTRUCTION),
+  );
+  assert.ok(current.request.settings.systemPrompt.endsWith(PROMPT_CONTENT_REPAIR_INSTRUCTION));
+  for (const facts of [
+    {
+      literal_subject: "A hand drawn paper sea chart with a compass rose",
+      action: "Lying flat on a wooden table",
+      environment: "Dimly lit ship cabin",
+    },
+    {
+      literal_subject: "A hand holding a brass divider compass",
+      action: "marking a point on a paper sea chart",
+      environment: "A wooden table inside a ship cabin",
+    },
+  ]) {
+    let calls = 0;
+    const writer = new RunwarePromptWriter({
+      requestPolicy: "no-graphics-v1",
+      semanticQualityMode: "advisory",
+      maximumBatchCostUsd: 1,
+      transport: {
+        dispatch: async (request) => {
+          calls++;
+          return success(request, { change: (rows) => rows.map((row) => ({ ...row, ...facts })) });
+        },
+      },
+      evidenceSink: { record() {} },
+    });
+    await assert.rejects(writer.write(batch));
+    assert.equal(calls, 1);
   }
 });
