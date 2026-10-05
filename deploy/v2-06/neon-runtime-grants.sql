@@ -423,3 +423,5 @@ GRANT EXECUTE ON FUNCTION public.videoforge_claim_next_hosted_prompt_batch(uuid,
   TO :"runtime_role";
 
 GRANT EXECUTE ON FUNCTION public.videoforge_manage_team_access(text,text,text,text) TO :"runtime_role";
+
+GRANT EXECUTE ON FUNCTION public.videoforge_read_centralized_library(text,uuid,text,uuid,integer) TO :"runtime_role";

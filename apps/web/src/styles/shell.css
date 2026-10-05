@@ -706,3 +706,11 @@
     monospace;
   letter-spacing: 0.16em;
 }
+
+.bottom-nav-item[href="/centralized-library"] .bottom-nav-label-full {
+  max-width: 76px;
+  white-space: normal;
+  font-size: 11px;
+  text-align: center;
+  line-height: 1.15;
+}

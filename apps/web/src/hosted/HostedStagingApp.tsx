@@ -8,6 +8,7 @@ interface Tenant {
   readonly workspace_id: string;
   readonly workspace_name: string;
   readonly can_manage_team?: boolean;
+  readonly can_view_centralized_library?: boolean;
   readonly user: { readonly id: string; readonly email: string; readonly name: string };
 }
 
@@ -56,6 +57,7 @@ function parseTenant(value: unknown): Tenant {
     workspace_id: value.workspace_id,
     workspace_name: value.workspace_name,
     can_manage_team: value.can_manage_team === true,
+    can_view_centralized_library: value.can_view_centralized_library === true,
     user: { id: user.id, email: user.email, name: user.name },
   };
 }
@@ -263,6 +265,7 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
         value={{
           email: access.tenant.user.email,
           canManageTeam: access.tenant.can_manage_team === true,
+          canViewCentralizedLibrary: access.tenant.can_view_centralized_library === true,
           signOut,
         }}
       >

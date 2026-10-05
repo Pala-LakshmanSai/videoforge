@@ -1422,6 +1422,12 @@
       "name": "hosted_continuation_readiness_grant",
       "filename": "0274_hosted_continuation_readiness_grant.sql",
       "sha256": "sha256:e13cd8ebb01f6a43e6c3d846a49272fbaa5a7959d9672d0ae67a739b6e37e35e"
+    },
+    {
+      "version": 275,
+      "name": "hosted_centralized_library",
+      "filename": "0275_hosted_centralized_library.sql",
+      "sha256": "sha256:14de61538cff8dfc7b7d443c001caec448a2abb45c77e6494ff0109892c97c51"
     }
   ]
 }

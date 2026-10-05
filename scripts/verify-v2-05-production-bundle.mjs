@@ -91,9 +91,11 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // measured closure. No imports/dependencies or quarantine checks change.
 // Automatic Library delivery adds 97 measured production bytes for the lazy shared artifact guard
 // and exact result-document binding. All dynamic-provider, validator and CPU quarantine checks remain.
+// Centralized Library adds exactly 293 production and 390 staging bytes for lazy route dispatch.
+// The owner-only query and video serving remain dynamically loaded; all quarantine checks stay.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_830_479,
-  "wrangler.staging.jsonc": 2_832_301,
+  "wrangler.production.jsonc": 2_830_772,
+  "wrangler.staging.jsonc": 2_832_691,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",
