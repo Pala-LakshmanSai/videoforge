@@ -831,6 +831,126 @@
   padding: 0;
 }
 
+.opening-footage-control {
+  min-width: 0;
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.opening-footage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.opening-footage-copy {
+  min-width: 0;
+}
+
+.opening-footage-copy label {
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.opening-footage-copy .helper {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+.opening-footage-switch {
+  position: relative;
+  display: block;
+  width: 48px;
+  height: 28px;
+  flex: 0 0 48px;
+}
+
+.opening-footage-switch input {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.opening-footage-switch-track {
+  display: block;
+  height: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--panel-strong);
+}
+
+.opening-footage-switch-track::after {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--muted);
+  content: "";
+}
+
+.opening-footage-switch input:checked + .opening-footage-switch-track {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.opening-footage-switch input:checked + .opening-footage-switch-track::after {
+  transform: translateX(20px);
+  background: #fff;
+}
+
+.opening-footage-switch input:focus-visible + .opening-footage-switch-track {
+  outline: 2px solid var(--accent-light);
+  outline-offset: 3px;
+}
+
+.opening-footage-switch input:disabled {
+  cursor: not-allowed;
+}
+
+.opening-footage-switch input:disabled + .opening-footage-switch-track {
+  opacity: 0.5;
+}
+
+.opening-footage-duration {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.opening-footage-duration label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.opening-footage-duration .input {
+  width: 90px;
+  min-width: 0;
+}
+
+.opening-footage-duration small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.video-coverage-scope {
+  margin: 0 0 12px;
+}
+
 .video-coverage-control {
   border: 0;
   margin: 16px 0;

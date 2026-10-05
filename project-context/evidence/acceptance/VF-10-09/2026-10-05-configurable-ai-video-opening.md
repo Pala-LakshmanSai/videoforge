@@ -32,8 +32,29 @@ pin the same controls; saved older requests retain their original identity.
   desktop frozen-render import-order failure. These unrelated files were preserved.
   Its owned-dev port conflict was resolved; separate Workerd parity passed.
 
-Production publication and fresh provider artifact acceptance are pending in this
-initial record. Private execution evidence is retained under
+Core production source470483ce / Worker5f91ff42 at100%, migration268 applied.
+All55bindings27secrets3Workflow registrations and qualified Cloud pins were exact;
+30public assets and anonymous private-catalog401 passed. The fresh180-second On
+run accepted38images38clips, rendered5400frames at1920x1080/30fps, passed native
+checksum/full decode and narration correlation0.99903 with zero offset. Real Chrome
+played all180seconds to ended=true/error=null; approval and Library retention passed.
+Both rentals are CLEAN. This closes this exact full-opening artifact gate.
+
+The second Off20.333s/25% trial failed before rental or generation admission.
+Its original Workflow lookup returned404; native preparation event, immutable job
+hash and terminal failed attempt are preserved. Existing retry required a failed
+generation request that did not exist yet. Additive269 admits only this exact
+preparation-failure event with no rental/job/lease/provider identity/output/replay,
+retaining every earlier ownership/latest-revision/cleanup/receipt guard. Three native
+guard suites and an actual-failed-attempt rollback rehearsal passed with exact
+function/row/ledger preimages; native apply changed only that helper, preserving ACLs.
+Supported Chrome retry now advances the same saved project on scheduler-v7,
+WHOLE_SCENE_V2/25%/0opening, without reupload or paid-task replay. Export remains running.
+
+UI refinement255tests and all six Chrome tests pass, including418px screenshots,
+hidden Off duration, retained custom value, zero-second submission and keyboard focus.
+Both bundles/types/owned formatting pass. Refined UI publication remains pending.
+Private execution evidence is retained under
 `.videoforge/configurable-opening-20261005`; credentials are excluded.
 The production rollback target remains Worker38d3ea38. Returning to that older
 worker requires no new V4 jobs or draining those jobs first; additive SQL268 can

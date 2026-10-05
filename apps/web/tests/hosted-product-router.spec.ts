@@ -566,12 +566,16 @@ test("Create keeps the configurable AI opening separate from whole-video coverag
     ),
   ).toBeVisible();
   await expect(page.getByLabel("Preliminary scene footage estimate")).toHaveText(/20\.00s/);
+  await page.setViewportSize({ width: 418, height: 900 });
+  await expect(page.getByRole("group", { name: "Opening footage" })).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("opening-on.png"), fullPage: true });
   await opening.uncheck();
-  await expect(minutes).toBeDisabled();
-  await expect(minutes).toHaveValue("2.5");
+  await expect(minutes).toHaveCount(0);
   await expect(coverage).toHaveValue("23");
   await expect(page.getByText("Up to 23% of your video. Full scenes only.")).toBeVisible();
   await expect(page.getByLabel("Preliminary scene footage estimate")).toHaveText(/4\.60s/);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath("opening-off.png"), fullPage: true });
   await opening.check();
   await expect(minutes).toBeEnabled();
   await expect(minutes).toHaveValue("2.5");

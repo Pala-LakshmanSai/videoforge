@@ -7560,6 +7560,8 @@ it.each(["0", "0.05", "0.11", "60.1", ""])(
     expect(screen.getByRole("button", { name: "Create video" })).toBeDisabled();
     expect(screen.getByLabelText("Opening minutes")).toHaveAttribute("aria-invalid", "true");
     fireEvent.click(screen.getByLabelText("Full video opening"));
+    expect(screen.queryByRole("spinbutton", { name: "Opening minutes" })).not.toBeInTheDocument();
+    expect(screen.queryByText("0.1–60 minutes")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create video" })).toBeEnabled();
     await waitFor(() =>
       expect(screen.getByLabelText("Preliminary scene footage estimate")).toHaveTextContent(
@@ -7573,6 +7575,47 @@ it.each(["0", "0.05", "0.11", "60.1", ""])(
     );
   },
 );
+
+it("hides opening duration when Off, restores it when On, and submits zero seconds when Off", async () => {
+  const requests: Record<string, unknown>[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith("/project-catalog"))
+        return Response.json(configurableOpeningCatalog());
+      requests.push(JSON.parse(String(init?.body)));
+      if (String(input).endsWith("/preflight")) return Response.json({ ok: true, ready: true });
+      throw new TypeError("Confirmation interrupted");
+    }),
+  );
+  renderHosted(<HostedCreateProjectScreen />);
+  await fillCoverageCreateForm(600);
+  expect(screen.getByRole("group", { name: "Remaining footage" })).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Opening minutes"), { target: { value: "2.5" } });
+  fireEvent.change(screen.getByLabelText("Coverage percent"), { target: { value: "23" } });
+  fireEvent.click(screen.getByLabelText("Full video opening"));
+  expect(screen.queryByRole("spinbutton", { name: "Opening minutes" })).not.toBeInTheDocument();
+  expect(screen.queryByText("Opening minutes")).not.toBeInTheDocument();
+  expect(screen.getByRole("group", { name: "Video footage coverage" })).toBeInTheDocument();
+  await waitFor(() =>
+    expect(screen.getByLabelText("Preliminary scene footage estimate")).toHaveTextContent(
+      "138.00s",
+    ),
+  );
+  fireEvent.click(screen.getByLabelText("Full video opening"));
+  expect(screen.getByLabelText("Opening minutes")).toHaveValue(2.5);
+  expect(screen.getByLabelText("Coverage percent")).toHaveValue(23);
+  fireEvent.click(screen.getByLabelText("Full video opening"));
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
+  await screen.findByText("Confirmation interrupted");
+  expect(requests).toHaveLength(2);
+  for (const request of requests)
+    expect(request).toMatchObject({
+      video_coverage_percent: 23,
+      ai_video_opening_enabled: false,
+      ai_video_opening_seconds: 0,
+    });
+});
 
 it("allows unavailable video providers only when both opening and coverage are Off", async () => {
   const requests: Record<string, unknown>[] = [];
@@ -7591,6 +7634,7 @@ it("allows unavailable video providers only when both opening and coverage are O
   fireEvent.click(screen.getByRole("button", { name: "Off" }));
   expect(screen.getByRole("button", { name: "Create video" })).toBeDisabled();
   fireEvent.click(screen.getByLabelText("Full video opening"));
+  expect(screen.queryByRole("spinbutton", { name: "Opening minutes" })).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Create video" })).toBeEnabled();
   fireEvent.click(screen.getByRole("button", { name: "Create video" }));
   await screen.findByText("Confirmation interrupted");

@@ -3671,38 +3671,46 @@ export function HostedCreateProjectScreen() {
             </p>
           ) : null}
           {openingConfigurable ? (
-            <fieldset className="video-coverage-control" disabled={creationLocked}>
-              <legend>Opening footage</legend>
-              <label className="toggle-row">
-                <span>
-                  <strong>Full video opening</strong>
-                </span>
-                <input
-                  type="checkbox"
-                  checked={openingEnabled}
-                  onChange={(event) => changeOpeningEnabled(event.target.checked)}
-                />
-              </label>
-              <div className="field">
-                <label htmlFor="opening-minutes">Opening minutes</label>
-                <input
-                  id="opening-minutes"
-                  className="input"
-                  type="number"
-                  min={0.1}
-                  max={60}
-                  step={0.1}
-                  value={openingMinutesInput}
-                  disabled={!openingEnabled}
-                  aria-invalid={!openingValid}
-                  onChange={(event) => changeOpeningMinutes(event.target.value)}
-                />
+            <fieldset className="opening-footage-control" disabled={creationLocked}>
+              <legend className="sr-only">Opening footage</legend>
+              <div className="opening-footage-header">
+                <div className="opening-footage-copy">
+                  <label htmlFor="full-video-opening">Full video opening</label>
+                  <p id="opening-footage-help" className="helper">
+                    {openingEnabled
+                      ? "AI video throughout the opening. Coverage percent applies afterward."
+                      : "Coverage percent applies to the entire video."}
+                  </p>
+                </div>
+                <label className="opening-footage-switch">
+                  <input
+                    id="full-video-opening"
+                    type="checkbox"
+                    aria-label="Full video opening"
+                    aria-describedby="opening-footage-help"
+                    checked={openingEnabled}
+                    onChange={(event) => changeOpeningEnabled(event.target.checked)}
+                  />
+                  <span className="opening-footage-switch-track" aria-hidden="true" />
+                </label>
               </div>
-              <p className="helper">
-                {openingEnabled
-                  ? "AI video throughout the opening. Coverage percent applies afterward."
-                  : "Coverage percent applies to the entire video."}
-              </p>
+              {openingEnabled ? (
+                <div className="opening-footage-duration">
+                  <label htmlFor="opening-minutes">Opening minutes</label>
+                  <input
+                    id="opening-minutes"
+                    className="input"
+                    type="number"
+                    min={0.1}
+                    max={60}
+                    step={0.1}
+                    value={openingMinutesInput}
+                    aria-invalid={!openingValid}
+                    onChange={(event) => changeOpeningMinutes(event.target.value)}
+                  />
+                  <small>0.1–60 minutes</small>
+                </div>
+              ) : null}
               {!openingValid ? (
                 <p className="validation validation-danger">
                   Use opening minutes from 0.1 through 60 in steps of 0.1.
@@ -3716,7 +3724,14 @@ export function HostedCreateProjectScreen() {
               disabled={submit.isPending || creationLocked}
               aria-describedby="video-coverage-help"
             >
-              <legend>Video footage coverage</legend>
+              <legend>{openingEnabled ? "Remaining footage" : "Video footage coverage"}</legend>
+              {openingConfigurable ? (
+                <p className="helper video-coverage-scope">
+                  {openingEnabled
+                    ? "Choose AI video coverage after the opening. Off keeps the opening in AI video."
+                    : "Choose AI video coverage across the whole video. Off uses no AI video footage."}
+                </p>
+              ) : null}
               <div className="video-coverage-presets" aria-label="Coverage presets">
                 {VIDEO_COVERAGE_PRESETS.map((value) => (
                   <button

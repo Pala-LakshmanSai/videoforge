@@ -1386,6 +1386,12 @@
       "name": "hosted_video_configurable_opening",
       "filename": "0268_hosted_video_configurable_opening.sql",
       "sha256": "sha256:1848d46c420d49991b0b5a21798b18b9afe6e975ecd12ae655e9733d2554c6a6"
+    },
+    {
+      "version": 269,
+      "name": "cloud_asr_preparation_failure_recovery",
+      "filename": "0269_cloud_asr_preparation_failure_recovery.sql",
+      "sha256": "sha256:f4a481bf83c963fba018001657f50d3c30de51cfd1e49a6f61f8a4fe7416e253"
     }
   ]
 }
