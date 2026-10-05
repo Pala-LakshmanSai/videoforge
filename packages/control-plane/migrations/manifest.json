@@ -1398,6 +1398,12 @@
       "name": "hosted_avatar_composition",
       "filename": "0270_hosted_avatar_composition.sql",
       "sha256": "sha256:4b2d02ba23185178304a54508486905c7fd0ccc0c88d25bd3d20caf93384f1de"
+    },
+    {
+      "version": 271,
+      "name": "render_asset_missing_recovery",
+      "filename": "0271_render_asset_missing_recovery.sql",
+      "sha256": "sha256:8fb10869ad1c69f2d346aa473ea9ed2000a4cbf35d38ef7262c755ca98ca0979"
     }
   ]
 }

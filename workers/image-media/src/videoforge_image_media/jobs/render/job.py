@@ -222,8 +222,6 @@ def _expected_assets(manifest: Mapping[str, Any]) -> dict[str, ExpectedAsset]:
                 bindings = (*bindings, (accepted["source_background"], "IMAGE"))
         elif composition == "IMAGE_FULL":
             bindings = ((accepted["image"], "IMAGE"),)
-            if "video" in accepted:
-                bindings = (*bindings, (accepted["video"], "VIDEO"))
         else:
             bindings = (
                 (accepted["avatar"], "AVATAR_CLIP"),
@@ -231,6 +229,8 @@ def _expected_assets(manifest: Mapping[str, Any]) -> dict[str, ExpectedAsset]:
             )
             if render["avatar_source_profile"] == "fal-flashhead-512x512p25-wide-v2":
                 bindings = (*bindings, (accepted["source_background"], "IMAGE"))
+        if "video" in accepted:
+            bindings = (*bindings, (accepted["video"], "VIDEO"))
         for binding, kind in bindings:
             candidate = ExpectedAsset(
                 asset_id=binding["asset_id"],

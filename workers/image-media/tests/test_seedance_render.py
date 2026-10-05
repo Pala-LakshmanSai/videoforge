@@ -42,6 +42,14 @@ class SeedanceRenderTests(unittest.TestCase):
         for change in ("valid", "v3", "input_v3", "partial", "short", "budget"):
             with self.subTest(change=change):
                 fixture = motion_fixture(150)
+                split_video = fixture._store_object(
+                    "asset_seedance_split_001", "VIDEO", "mp4", b"distinct split clip"
+                )
+                fixture.document["assets"].append(split_video)
+                split_path = fixture.resolver.objects[split_video["artifact_uri"]]
+                fixture.process.visual_probes[split_path] = ("h264", 1248, 704, "24/1")
+                fixture.process.visual_durations[split_path] = "5.0"
+                fixture.process.avatar_audio_paths.add(split_path)
                 policy = {
                     "coverage_percent": 75,
                     "replacement_policy": "WHOLE_SCENE_V2",
@@ -53,8 +61,10 @@ class SeedanceRenderTests(unittest.TestCase):
                     manifest.update(
                         schema_version="resolved-render-manifest/v4", video_policy=policy
                     )
-                    full, split = manifest["segments"][1:]
-                    split["accepted_assets"]["video"] = full["accepted_assets"]["video"]
+                    split = manifest["segments"][2]
+                    split["accepted_assets"]["video"] = {
+                        k: split_video[k] for k in ("asset_id", "sha256")
+                    }
                     split["render"].update(
                         video_source_profile="seedance-pro-fast-1248x704-v1",
                         video_frame_count=119 if change == "partial" else 120,
@@ -69,9 +79,7 @@ class SeedanceRenderTests(unittest.TestCase):
                 if change == "input_v3":
                     fixture.document["schema_version"] = "render-job-input/v3"
                 if change == "short":
-                    fixture.process.visual_durations[
-                        next(iter(fixture.process.visual_durations))
-                    ] = "3.99"
+                    fixture.process.visual_durations[split_path] = "3.99"
                 result = fixture.job().run(
                     fixture.document, claimed_attempt_id=fixture.document["attempt_id"]
                 )

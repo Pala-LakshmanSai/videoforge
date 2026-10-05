@@ -65,3 +65,12 @@ interpreter ran the same contract/media suites against this worktree's PYTHONPAT
 
 Runtime0.1.50 publication and Cloud source qualification, native270 activation, Worker rollout,
 real provider projects/final exports and cleanup remain pending. No paid work started here.
+
+
+### Live acceptance repair
+
+Avatar Off completed its export with zero avatar work. Avatar On accepted all
+media, then exposed a distinct split-video input omitted by the renderer asset
+collector. Fix the shared collector and regression, qualify runtime 0.1.51,
+apply guarded migration 0271, and recover assembly only from saved media. Complete
+binary, native, Chrome playback, cost and cleanup proof before closing this task.

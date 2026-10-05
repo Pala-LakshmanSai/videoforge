@@ -5,13 +5,20 @@ avatar_composition_controls_2026_10_05:
   plan: AVATAR_COMPOSITION_PLAN.md
   branch: codex/avatar-composition-controls
   base_source: deb10c8e
-  status: PROVIDER_FREE_VALIDATED_RUNTIME_PUBLICATION_PENDING
+  status: PRODUCTION_SPLIT_RENDER_REPAIR_IN_PROGRESS
   decision: Opening_replaces_photos_including_avatar_splits_preserves_normal_avatar_timing;separate_Avatar_On_default_Off_fullscreen_no_avatar_work
   production_baseline: 417e7225287d42aa7132733fe27be964bb559d36
   production_baseline_version: c38d4bd0-cc92-403b-9aef-1b22f70a6e3b
-  provider_spend: No_new_provider_requests_or_compute
-  paid_compute_shutdown: No_new_resources_started
-  remaining_gates: Contract_SQL_renderer_UI_tests_native_and_Chrome_acceptance_publication
+  production_source: f0d9c67fd67a13cac8a76cfaaf6419902caa7080
+  production_version: 57ab1e7a-c32a-4707-b548-808979a03f3d
+  production_traffic_percent: 100
+  native_migration: 270
+  desktop_release: 0.1.50
+  cloud_qualified_image_digest: sha256:673f0d0ece7e67dce4612fc0496e18361e2011739a408d472a13c275eff727a4
+  provider_spend: Two_new_Cloud_acceptance_projects_USD8_finite_cap_eight900second_rentals_no_paid_replay
+  paid_compute_shutdown: Acceptance_running_cleanup_pending
+  remaining_gates: Qualify_runtime0_1_51_split_asset_fix_apply271_recover_only_saved_On_render_verify_both_exports_Chrome_cleanup
+  evidence: evidence/acceptance/VF-10-09/2026-10-05-avatar-composition.md
 
 avatar_result_recovery_2026_10_05:
   checkpoint: V2-09
