@@ -19,16 +19,32 @@ demo9_asr_repair_2026_10_06:
   checkpoint: V2-09
   selected_task: VF-10-09
   read_profile: v2_09_demo9_asr_repair
-  status: LOCAL_EXACT_SOURCE_REPRODUCED_AND_FIXED_RELEASE_PENDING
+  status: PRODUCTION_GLOBAL_ASR_REPAIR_VERIFIED_ORIGINAL_ARCHIVE_PRESERVED
   branch: codex/demo9-asr-fix
+  parser_build_source: eb10804bee63fa4856a406a3c7e5c0ddad48fcf7
   production_base: 34cdd788e802cb26b30dfecb4b2271ef86493c08
-  cause: Two_zero_duration_words_consume_following_10ms_word_interval_parser_rejects_own_repair
-  repair: Shared_bounded_100ms_zero_duration_repair_carries_until_original_timestamps_catch_up
-  validation: Red_regression_then41transcription_PASS_119mediaPASS_1platformSKIP_exact1167020ms_source3007words_PASS
-  desktop_candidate: 0.1.52
-  provider_spend: No_new_inference_or_paid_compute_for_local_offline_checks
-  paid_compute_shutdown: Both_original_demo9_rentals_CLEAN
-  remaining_gates: Linux_private_image_desktop_release_production_publication_supported_recovery_Chrome_readback
+  production_source: 178a809c59a7c0e555605847e7d889f2482aa9be
+  production_worker: 9ddb099e-f984-4a1e-96fd-250d4b6aaf3a
+  traffic_percent: 100
+  native_schema: 278
+  cause: Consecutive_zero_duration_words_consume_following_short_interval_parser_rejects_own_repair
+  repair: Shared_bounded100ms_repair_carries_until_raw_timing_catches_up;original_timestamp_monotonicity_and_real_overlap_guards_preserved
+  validation: Red_regression_then41ASR_PASS_119mediaPASS_1platformSKIP_exact1167020ms_source3007words_PASS_Linux_ASR_span_render_qualification_PASS
+  desktop_release: 0.1.52
+  desktop_build_source: eb10804bee63fa4856a406a3c7e5c0ddad48fcf7
+  desktop_bundle: sha256:4ca172897479d1c2be73d4371ed920799e49f1abcb65f9cd0620553c4afaf0f1
+  desktop_publication: Both_native_CI_builds_PASS;publisher_runner_acquisition_failed_zero_steps;unchanged_manual_publisher_PASS;full_published_installer_bytes_hashes_PASS;existing_beta_trust_preserved
+  local_prevention: Older_execution_bundles_rejected_before_freshlease;Settings_Connect_upgrade_required;existing_leases_preserved
+  cloud_image: ghcr.io/pala-lakshmansai/videoforge-cloud-media-runtime-private@sha256:fa7485d9e3363ee9bf8f3843107466620606c6298e20fe59f52fde845a8e5bff
+  cloud_source: sha256:1cb323d96d4d993b0759a9b527e7eeef324ed1f2d348cc61dfda53f8556f1207
+  cloud_runtime: sha256:091b442ec55c06185c6b422d05279f91ee3788977d88897ebd66b7467c82df5c
+  configuration: All55bindings27secrets6resources3WorkflowIDs_preserved;Desktop_only_final_binding_change;combined_prompt_source_and_native278_retained
+  observer: Idle_only_refresh_original_params;registration_eb3418e9_ec3d_4c63_810e_f849cc8bdf74_RUNNING_successful_error_null_tick
+  chrome: Incident_account_Create_CloudReady_PASS;no_submission
+  archive: Original_project_ARCHIVED_at2026_10_05T19_22_41_735633Z_before_deployment;automatic_archive_excluded;restore_preference_pending;no_retry_started
+  provider_spend: No_new_ASR_task_provider_inference_rental_or_retained_resource;ordinary_ongoing_policy_preserved
+  paid_compute_shutdown: Both_original_rentals_CLEAN;active_generations_leases_waiters_CPU_attempts0_at_final_readback;one_unrelated_historical_UNKNOWN_noPod_liability_preserved
+  remaining_gates: Original_restore_then_production_recovery_fullfilm;fresh_Local_install;inherited_broadCI_editorial_provider_invoice_throughput;no_universal_outage_guarantee
   evidence: evidence/acceptance/VF-10-09/2026-10-06-demo9-asr-repair.md
 
 video_generation_progress_2026_10_05:
@@ -2883,20 +2899,20 @@ image_review_regeneration_request_2026_09_14:
   latest_demo_ui_to_accepted_ms: 34940
   latest_demo_evidence: evidence/acceptance/VF-10-09/2026-09-14-image-regeneration-source/live-demo.json
   final_runpod_balance_usd: 16.7686399735
-updated_at: "2026-09-19T04:41:41Z"
+updated_at: "2026-10-05T20:20:00Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: Video_generation_progress
+current_milestone: Shared_ASR_timestamp_repair
 current_task: VF-10-09
-current_wave: v2_09_short_live_e2e
+current_wave: v2_09_demo9_asr_repair
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: bounded_mutation
+task_stage: await_restore_preference
 application_code_changes_authorized: true
-provider_calls_authorized: true
-read_only_provider_calls_authorized: true
-remote_or_cloud_mutations_authorized: true
-credential_access_authorized: true
+provider_calls_authorized: false
+read_only_provider_calls_authorized: false
+remote_or_cloud_mutations_authorized: false
+credential_access_authorized: false
 gpu_use_authorized: false
 maximum_external_spend_usd: 0
 
@@ -7448,13 +7464,13 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/sujal-prompt-fix
-  branch_upstream: origin/codex/sujal-prompt-fix
+  branch: codex/demo9-asr-fix
+  branch_upstream: origin/codex/demo9-asr-fix
   branch_published: true
-  current_source_head: "6c1f010aae7864a10aa5c214d674ac1f3d83f54c"
+  current_source_head: "178a809c59a7c0e555605847e7d889f2482aa9be"
   current_source_head_semantics: executable_release_identity_recorded_after_publication_evidence_commits_follow
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Resolve Git HEAD; executable6c1f010a / Worker784e63b4 publishes completed-video settings in both libraries, native277. Shared UI cleanup, library deletion/creator filters and themed voice dropdowns remain. Evidence commits follow; unrelated work preserved."
+  current_source_head_note: "Resolve Git HEAD; combined executable178a809 / Worker9ddb099e at100% retains shared ASR repair and prompt correction, native278. Qualified Cloud source and Desktop0.1.52 build use eb10804. Evidence commits follow; dirty primary checkout and concurrent changes preserved."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
@@ -7471,9 +7487,9 @@ live_development:
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
   provider_mode: fixture
-  provider_calls_authorized: true
+  provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: Production_reliability_audit_read_only_provider_inventory_and_verified_Worker_SQL_publication_no_paid_generation
+  provider_authority_scope: Completed_ASR_publication_no_further_external_actions_until_original_restore_preference
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -9789,35 +9805,35 @@ v2_09_historical_consumed_native_authority:
   note: "Continuing user authorization permits source repairs and fresh exact successor records; it does not replay this consumed click. Retained qualified deployment remains present and idle."
 
 provider_authority: &v2_09_provider_authority_current
-  mode: deployment
-  provider: Cloudflare_Neon
+  mode: none
+  provider: null
   cap_usd: 0
   paid_generation_authorized: false
   non_transferable: true
   authorized_by_user_at: "2026-10-05"
-  resources: ["neon:production", "cloudflare:videoforge-production-runtime"]
-  authorized_operations: [metadata_migration, application_deploy, configuration_readback, artifact_verification, resource_identity_lookup]
-  allowed_operations: [metadata_migration, application_deploy, configuration_readback, artifact_verification, resource_identity_lookup]
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
 
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: Video_generation_progress
-  status: LOCAL_GREEN_VIDEO_GENERATION_PROGRESS
-  dependency_status: focused265_config18_Chrome15_types_lint_builds_quarantines_context_secrets_PASS
-  authorization_status: User_matching_scene_video_progress_graphic_and_production_preserving_other_changes
-  task_stage: bounded_mutation
+  milestone: Shared_ASR_timestamp_repair
+  status: PRODUCTION_VERIFIED_ORIGINAL_ARCHIVE_RESTORE_PREFERENCE_PENDING
+  dependency_status: Exact_source_ASR_Linux_qualification_both_native_packages_full_published_bytes_production_bindings_and_observer_PASS
+  authorization_status: User_global_ASR_repair_and_production;original_archive_restore_preference_pending
+  task_stage: await_restore_preference
   provider_authority: *v2_09_provider_authority_current
   read_profile: v2_09_demo9_asr_repair
   task_brief: evidence/acceptance/VF-10-09/2026-10-06-demo9-asr-repair.md
-  goal: Matching_scene_video_progress_graphic_with_real_status_counts_timing
+  goal: Preserve_archive_until_user_confirms_restore_then_recover_existing_narration_under_original_ordinary_Cloud_authority
   provider_mode: fixture
-  provider_calls_authorized: true
-  read_only_provider_calls_authorized: true
+  provider_calls_authorized: false
+  read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
-  credential_value_read_authorized: true
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
+  credential_value_read_authorized: false
   model_downloads_authorized: false
   sample_output_publication_authorized: false
   worker_image_publication_authorized: false
@@ -9826,7 +9842,7 @@ recommended_next_task:
   application_code_changes_authorized: true
   spend_usd: 0
   resources: []
-  authorized_operations: [metadata_migration, application_deploy, configuration_readback, artifact_verification, resource_identity_lookup]
+  authorized_operations: []
 
 
 verification:
