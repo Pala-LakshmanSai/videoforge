@@ -48,3 +48,9 @@ Native276 unchanged. Actual production Usage bookmark returns Queue, API badge/U
 disconnect notice absent. Saved1 survives; the1,117-voice catalog and themed filters remain available.
 Anonymous Centralized Library returns401. Private proof under
 `.videoforge/product-ui-cleanup-20261005/release/` excludes all credentials from tracked evidence.
+
+Live voice filtering selects Female362, resets and returns Saved1 without preference mutations.
+All30 Centralized Library cards/Delete controls survive. The retained20.333008-second1920x1080
+film plays fully in signed-in Chrome, ended=true/error=null; player closes and collection remains
+without overflow. Browser media inspection is scoped to the dialog video, since card thumbnails are
+separate paused videos. No real output deleted and no fresh synthesis or provider generation started.
