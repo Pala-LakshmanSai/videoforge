@@ -155,6 +155,7 @@ def _canonical_words(
             if (
                 zero_duration_origin is not None
                 and zero_duration_origin <= start_ms
+                and candidate.start_ms >= candidates[index - 1].end_ms
                 and previous_end - zero_duration_origin < MAX_ZERO_DURATION_REPAIR_MS
             ):
                 start_ms = previous_end
