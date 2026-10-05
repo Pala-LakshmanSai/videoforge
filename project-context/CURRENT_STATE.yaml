@@ -31,17 +31,23 @@ centralized_library_2026_10_05:
   branch: codex/centralized-library
   base_source: 610b7bed
   implementation_commit: e81dacc1e2a9db2d3798a13645ba8bc8c481519e
-  status: CREATOR_DETAILS_AND_PRODUCTION_PUBLICATION_AUTHORIZED
+  creator_details_commit: abd49b6e0da3f3290bf26a72c764a7993223d981
+  status: PRODUCTION_PUBLISHED_VERIFIED_CREATOR_ATTRIBUTION
   authority: User_2026_10_05_visible_creator_details_push_production_preserve_concurrent_voice_filters
   decision: DEC_LIBRARY_001
-  project_memory: Project58_Index78_Coverage73_guarded_writes_and_readbacks_PASS_prior_production_facts_and_other_projects_preserved
-  migration: 275_local_only_native_ledger274_function_absent
-  validation: Focused223_Chrome4_migration18_config19_types_ownedLint_bothBuilds_quarantine_oneByte_context_secrets_PASS
-  native_preflight: Owner_BYPASSRLS_true_runtime_false_publicSchemaCREATE_false_USAGE_true_READ_ONLY
+  migration: 275_native_applied_atomic_function_and_ledger
+  native_auth: Exact_owner30outputs5creators;all_tested_foreign_missing_sessions_denied_actual_runtime;definer_true_runtimeEXECUTE_true_publicEXECUTE_false
+  validation: Combined246PASS_Chrome4_migration18_config19_types_ownedLint_bothBuilds_quarantine_oneByte_context_secrets_PASS
+  production_source: 3fe3eadd4b95ee87b5bed4d032a291fae33f985b
+  production_version: 7a495e15-b324-4d15-992f-73833a4b57a6
+  initial_publication: abd49b6e_Worker89477b1c_at100percent_36publicAssetHashes_55bindings27secrets3WorkflowIdentities_preserved
+  concurrent_release: Voice_dropdown_followup_merged_abd49b6e_and_published3fe3eadd;latest_acceptance_d33b0a0e_fastforwarded;no_overwrite_or_second_deploy
+  production_chrome: Owner_dock30cards5creators_name_email_every_card_search_filter_no_overflow;20_333008second1080p_fullplay_endedTrue_errorNull;voice_Female362_reset_PASS
+  download: HTTP200_MP4_attachment10953398bytes_exactChecksum_range206_exactBytes;live_foreign_list_watch_download403;native_Chrome_save_blocked_organization_policy
   canonical_verify: FAIL_inherited132format_missing_uv0_8_13_existing4173_Workerd_port_preserved
   provider_spend: USD0_no_new_inference_rentals_retained_resources
   paid_compute_shutdown: No_task_compute_started_or_restarted_unrelated_inventory_not_refreshed
-  remaining_gates: Native275_runtime_auth_allUser_liveChrome_fullfilm_downloadChecksum_configParity
+  remaining_gates: Native_Chrome_saved_file_policy_blocked;inherited_broadCI_Local_longform_provider_editorial_invoice_gates_separate
   evidence: evidence/acceptance/VF-10-09/2026-10-05-centralized-library.md
 
 automatic_library_delivery_2026_10_05:
@@ -7332,8 +7338,8 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/voice-filters
-  branch_upstream: origin/codex/voice-filters
+  branch: codex/centralized-library
+  branch_upstream: origin/codex/centralized-library
   branch_published: true
   current_source_head: "3fe3eadd4b95ee87b5bed4d032a291fae33f985b"
   current_source_head_semantics: executable_release_identity_recorded_after_publication_evidence_commits_follow
@@ -7342,7 +7348,7 @@ repository:
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
-  working_tree_expected: clean_tracked_after_centralized_library_local_handoff_commit
+  working_tree_expected: clean_tracked_after_centralized_library_production_handoff_commit
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
 live_development:

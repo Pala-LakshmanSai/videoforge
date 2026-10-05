@@ -19,10 +19,12 @@ negatives, complete history/search/filter/pagination, checksum/range/download re
 dock, responsive accessible player, native Chrome playback and checksum-matching synthetic download,
 types/lint/build/quarantine/context/secrets. Production/native-schema acceptance is separate.
 
-## Approved production proposal
+## Approved and executed production proposal
 
-Implementation source `e81dacc`; current production read-only status matches source `4660b1b9` /
-Worker `9872d035-f9b0-47fb-81fb-b15d16155c03`, native ledger274.
+Creator attribution source `abd49b6e` incorporated published voice filters `77781a02` /
+Worker `7be46efd`, then atomically applied native275 and published Worker `89477b1c`.
+The concurrent voice dropdown follow-up merged that exact source and published `3fe3eadd` /
+Worker `7a495e15`; acceptance `d33b0a0e` is synchronized without another deployment.
 
 Apply only additive migration `0275_hosted_centralized_library.sql` and its registered hash, with the
 fixed-function EXECUTE grant for the existing runtime role. Preserve all existing migration rows and
@@ -52,6 +54,6 @@ acceptance2dfc1bf9; stop and reconcile any further concurrent release before dep
 
 ## Validation and evidence
 
-See [local acceptance](evidence/acceptance/VF-10-09/2026-10-05-centralized-library.md) and
+See [production acceptance](evidence/acceptance/VF-10-09/2026-10-05-centralized-library.md) and
 `centralized_library_2026_10_05` in CURRENT_STATE.yaml. Local synthetic previews do not prove live
 all-user access, native schema publication, provider quality or long-form production.

@@ -1,67 +1,91 @@
-# Centralized Library — local acceptance, 2026-10-05
+# Centralized Library — production acceptance, 2026-10-05
 
-Checkpoint V2-09 / VF-10-09. Implementation `e81dacc1e2a9db2d3798a13645ba8bc8c481519e` on `codex/centralized-library`,
-base `610b7bed`. Profile `v2_09_centralized_library`; decision `DEC_LIBRARY_001`.
+Checkpoint V2-09 / VF-10-09, profile `v2_09_centralized_library`, decision `DEC_LIBRARY_001`.
+Implementation `e81dacc1e2a9db2d3798a13645ba8bc8c481519e`; visible creator attribution and
+release authorization `abd49b6e0da3f3290bf26a72c764a7993223d981`, branch `codex/centralized-library`.
 
-## Result
+## Result and boundaries
 
-The dock gains Centralized Library only for the exact verified designated owner. Its collection
-includes every retained successful USER/ACTIVE project render across creators and revisions, subject
-to the same exact output/result/checksum and render-only receipt fences as private Library. Archived
-projects and explicitly deleted outputs remain excluded. No final human approval is required.
-The responsive page has live video thumbnails, creator attribution, global search/creator filters,
-48-row pagination, totals, unavailable states, native playback, watch/seek and MP4 downloads.
-Keyboard dismissal returns focus to the triggering control. Thumbnails begin loading only when
-visible; existing hosted rate protection remains intact. No editing/deletion or generation changes.
+Centralized Library appears immediately after Library in the exact designated owner's dock. Every
+card visibly shows its creator's name and email, with search, creator filtering, totals, newest-first
+48-row pagination, unavailable states, responsive thumbnails and accessible native-video dialog.
+It includes retained successful USER/ACTIVE project renders across creators and revisions, under
+existing output/result/checksum/receipt fences. Archived projects and deleted outputs remain excluded;
+final human approval is unnecessary. Existing private Library, presets, inputs and costs remain private.
+No cross-user edit/delete or generation controls were added.
 
-## Access and artifact boundaries
+Migration275 installs a fixed SECURITY DEFINER read function with actual verified/admitted/non-revoked
+session and exact-email checks, frozen search path and unchanged RLS policies. PUBLIC EXECUTE is
+revoked; the existing restricted runtime role alone receives EXECUTE. The API repeats qualification,
+uses existing rate protection, hides storage keys and rechecks access on every watch/download. Shared
+MP4 serving preserves SHA256/size/type, byte ranges, saved filename and attachment behavior.
 
-Migration 275 is additive: fixed SECURITY DEFINER read function, exact admitted/verified/non-revoked
-session and email gate, frozen search path, no direct tenant-policy expansion. PUBLIC EXECUTE is
-revoked; only the current restricted runtime role receives EXECUTE. Existing private Library and
-project authorization queries stay unchanged. API repeats the owner guard, rate limit and native
-session check. Lists hide R2 object keys; same-origin authenticated watch/download endpoints recheck
-access every time and reuse the existing SHA256/size/type/range/Content-Disposition serving logic.
-No bearer output links, input/preset/cost access or provider calls are introduced.
+## Source reconciliation and publication
+
+Before publication, the entire concurrent voice-filter release through `2dfc1bf9` was merged, including
+its executable `77781a02`. Only startup/current-state conflicts occurred and both task records were
+preserved. Fresh production/schema/configuration readback preceded mutation; publication compared
+traffic again before deployment to prevent overwriting a concurrent release.
+
+Native migration275 and ledger registration committed atomically. Migration SHA256 is
+`14de61538cff8dfc7b7d443c001caec448a2abb45c77e6494ff0109892c97c51`.
+Definer owner has BYPASSRLS; runtime does not have BYPASSRLS/public-schema CREATE.
+Readback proves SECURITY DEFINER true, runtime EXECUTE true and PUBLIC EXECUTE false.
+
+Initial executable `abd49b6e` was published at 100% as Worker
+`89477b1c-dce3-49ab-9867-1316afc16fac`. All 36 public asset lengths/hashes matched. Build metadata was
+excluded from public-asset enumeration. All55 bindings,27 secret names,3 Workflow identities,
+routes/domain/crons/redaction/runtime pins were preserved. Matching three registrations were
+published without creating instances or restarting the healthy continuation driver.
+
+During acceptance the voice-dropdown chat merged `abd49b6e`, then published combined executable
+`3fe3eadd4b95ee87b5bed4d032a291fae33f985b` / Worker
+`7a495e15-b324-4d15-992f-73833a4b57a6`. Its acceptance `d33b0a0e` was fast-forwarded here.
+Live status readback confirms that source/version. Its release record verifies37 public assets and
+unchanged server code after build-path normalization. Centralized Library was rechecked on the newer
+release; no second deployment overwrote those dropdown changes.
 
 ## Verification
 
-- 223 focused Vitest checks passed: centralized SQL/API/UI, completed-render guard, original product,
-  team access, private Library and hosted dock. Real PGlite session function and FORCE RLS/runtime
-  role prove 51 renders across two creators, 48+3 nonduplicating pagination, full retained history,
-  search/filter, exact attempt, output/result/hash/retention/receipt guards, and denied manager/member,
-  alias, missing, unverified, expired and revoked sessions. Range206 and attachment naming pass.
-- Four installed Chrome journeys passed at desktop1440 and mobile320: owner-only dock, no overflow,
-  search/creator/empty states, keyboard playback to ended=true/error=null, Escape/focus restoration,
-  native filename and SHA256-identical synthetic MP4 downloads; another manager cannot see or fetch
-  the collection. Synthetic data/media only. Playwright-routed download initially canceled; a real
-  loopback fixture HTTP transport fixed the test. No product/security-control workaround was added.
-- 18 migration smoke/hardening checks and 19 production-config/bundle checks passed. One-byte growth
-  rejection remains tested; precisely measured lazy-route static closure ceilings were updated by
-  +293 production/+390 staging bytes. Dynamic server/client and GPU quarantine remain intact.
-- Web/Worker typechecks, owned ESLint, production/staging builds and bundle quarantine pass.
-  Context validation, migration manifest hash, contracts, tracked-secret scan and diff checks pass.
-- Native read-only preflight: migration ledger remains274; new function absent; neondb_owner has
-  BYPASSRLS, runtime has no BYPASSRLS/no public-schema CREATE and retains schema USAGE. Existing
-  session function owner matches. No native DDL or migration was applied.
-- Canonical `pnpm verify` was attempted and remains red: inherited formatting across132 files,
-  repository-local uv0.8.13 missing, and existing unrelated4173 server blocks canonical Workerd
-  startup. Existing server was preserved. Focused acceptance does not establish full-CI green.
+- Combined246 focused Vitest checks passed: centralized SQL/API/UI, completed-render, original
+  product/team/private Library/dock plus voice catalog filters. Four installed-Chrome journeys at
+  desktop1440/mobile320 verify owner-only dock, every-card name/email, no overflow, search/filter,
+  empty states, full playback, Escape/focus restoration and exact synthetic MP4 filename/checksum.
+- 18 migration checks,19 config/bundle checks including one-byte rejection, Web/Worker types,
+  owned ESLint, production/staging builds and quarantine, context/contracts/secrets/diff pass.
+  Precisely measured static ceilings increased293 production/390 staging bytes; quarantine remains.
+- Actual native restricted-runtime calls return30 retained outputs across5 creators for qualified
+  owner sessions and deny every tested foreign/missing session; exact-attempt filtering returns1.
+  The live authenticated owner API returns200; foreign list/watch/download each return403.
+  Four anonymous centralized/private endpoints return401.
+- Signed-in production Chrome shows30 cards from5 creators, all with visible name/email and no
+  horizontal overflow. Search isolates1 retained output; another creator filter isolates1 video and
+  all-creator reset restores30. A20.333008-second1920x1080 video plays fully, ended=true/error=null.
+  Published voice filter controls remain present: Female yields362 voices and reset succeeds.
+- Authenticated live download returns200, video/mp4, attachment,10,953,398 bytes. SHA256 matches
+  the authoritative output receipt:
+  `4313454e0527f05e8637ddb39bbab7e541ee6c9e42bce6c06827637eef0cd7b8`.
+  Watch range100–199 returns206 and exactly matches that100-byte slice.
+- Native Chrome's saved download is blocked by organization policy. Browser protections were not
+  changed. A saved production-file checksum is unclaimed; HTTP checksum and native synthetic-download
+  proof remain distinct. This browser-policy limitation does not justify changing the application.
+- Canonical `pnpm verify` remains red for inherited132-file formatting, missing repository-local
+  uv0.8.13 and occupied unrelated4173 Workerd startup. Existing server was preserved; focused
+  acceptance does not claim full-CI green.
 
-GPT Space project/index/coverage updates58/78/73 preserve prior production evidence and other projects;
-guarded readbacks confirm the new exact-owner decision and local-only publication gate.
+Private release proofs are under the primary checkout's
+`.videoforge/centralized-library-20261005/release/`, including native migration/auth, asset/anonymous,
+registration and download-HTTP receipts. Synthetic logs are under this worktree's
+`.videoforge/centralized-library-preview/`. Neither private sessions nor real creator identities,
+credentials, signed URLs or storage keys are committed to acceptance or Project Memory.
 
-Private local logs/screenshots are under `.videoforge/centralized-library-preview/`; Chrome fixture
-screenshots are copied there. They are review aids, not evidence of actual cross-user production data.
+## Authority, spend and remaining gates
 
-## Remaining gates and authority
+The user's2026-10-05 instruction authorizes creator attribution and production publication while
+preserving concurrent voice filters. New provider inference/rentals/retained resources USD0.
+No paid compute, generation or Workflow instance was started/replayed; no healthy driver restart.
+Unrelated provider inventory/shutdown was not refreshed and is not claimed.
 
-Production migration275, actual restricted-runtime function qualification, live all-user collection,
-retained full-film watch/seek and exact downloaded-file identity remain pending approval/publication.
-See [bounded proposal](../../../CENTRALIZED_LIBRARY_PLAN.md). Stop on source/schema/config drift or
-any authorization/artifact failure. Production baseline source4660b1b9/Worker9872d035 is historical
-last-verified evidence and must be refreshed before publication, never overwritten blindly.
-
-New provider inference/rentals/retained-resource allocation: zero. No generation, continuation driver,
-provider task or paid compute was started/restarted. Unrelated live provider inventory/shutdown was
-not refreshed and is not claimed. No current-task external mutation or release approval exists.
+The scoped application release is complete. Native saved-file verification remains browser-policy
+blocked. Inherited broad-CI, Local, long-form concurrency/provider, editorial and invoice gates remain
+separate. Rollback preserves the additive migration; revoke its runtime grant if authorization fails.

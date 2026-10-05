@@ -1,6 +1,6 @@
 Voice catalog filter work: read `voice_filters_2026_10_05` in CURRENT_STATE.yaml and VOICE_FILTERS_PLAN.md for implementation, release and acceptance.
 
-Centralized Library local implementation is in `codex/centralized-library` under `DEC_LIBRARY_001`. Production publication is approved; native/live qualification follows, preserving published voice filters; read `centralized_library_2026_10_05` in CURRENT_STATE.yaml.
+Centralized Library is live under `DEC_LIBRARY_001`, with creator names/emails on every card and native275. Concurrent voice dropdowns preserve it; read `centralized_library_2026_10_05` in CURRENT_STATE.yaml.
 
 Automatic delivery: AUTOMATIC_LIBRARY_DELIVERY_PLAN.md. No final approval.
 
