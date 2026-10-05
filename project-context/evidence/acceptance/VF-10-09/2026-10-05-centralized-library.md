@@ -48,6 +48,9 @@ No bearer output links, input/preset/cost access or provider calls are introduce
   repository-local uv0.8.13 missing, and existing unrelated4173 server blocks canonical Workerd
   startup. Existing server was preserved. Focused acceptance does not establish full-CI green.
 
+GPT Space project/index/coverage updates58/78/73 preserve prior production evidence and other projects;
+guarded readbacks confirm the new exact-owner decision and local-only publication gate.
+
 Private local logs/screenshots are under `.videoforge/centralized-library-preview/`; Chrome fixture
 screenshots are copied there. They are review aids, not evidence of actual cross-user production data.
 
