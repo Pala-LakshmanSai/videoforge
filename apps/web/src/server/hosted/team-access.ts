@@ -1,3 +1,4 @@
+import { canViewCentralizedLibrary } from "./centralized-library";
 import { createHostedAuth, type HostedExecutionContext } from "./auth";
 import { createNeonExecutor, createNeonPool } from "./neon";
 import { hostedRuntimeConfiguration, type HostedRuntimeConfiguration } from "./configuration";
@@ -158,6 +159,8 @@ export async function handleTenantApi(
       workspace_name: workspaceName ?? "My workspace",
       user: { id: session.user.id, email: session.user.email, name: session.user.name },
       rights: "EQUAL",
+      can_view_centralized_library:
+        session.user.emailVerified === true && canViewCentralizedLibrary(session.user.email),
       can_manage_team: session.user.emailVerified === true && canManageTeam(session.user.email),
     });
   } finally {

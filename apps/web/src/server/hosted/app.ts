@@ -1586,6 +1586,17 @@ export async function handleHostedRequest(
   if (request.method === "GET" && url.pathname === "/api/v2/tenant") {
     return (await import("./team-access")).handleTenantApi(request, config, executionContext);
   }
+  if (
+    url.pathname === "/api/v2/centralized-library" ||
+    url.pathname.startsWith("/api/v2/centralized-library/")
+  ) {
+    return (await import("./centralized-library")).handleHostedCentralizedLibrary(
+      request,
+      environment,
+      config,
+      executionContext,
+    );
+  }
   if (request.method === "GET" && url.pathname === "/api/v2/library") {
     return handleHostedLibrary(request, environment, config, executionContext);
   }

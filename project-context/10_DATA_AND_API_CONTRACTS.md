@@ -110,7 +110,7 @@ composite references such as `(account_id, workspace_id, project_id)` so an appl
 join a revision, asset, preset, queue entry, task, cost, or result across tenants. Repository methods
 require a tenant scope and return indistinguishable not-found/unauthorized behavior.
 
-System presets are the only cross-tenant catalog data. They use explicit `scope_kind=SYSTEM`, contain
+Ordinary cross-tenant catalogs contain system presets; DEC_LIBRARY_001 permits owner videos. Presets use explicit `scope_kind=SYSTEM`, contain
 no user media, and are read-only to ordinary accounts. User-created Avatar Profiles and Image Styles
 use `scope_kind=WORKSPACE` and cannot be discovered, selected, mutated, or referenced by another
 account.

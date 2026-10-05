@@ -1,3 +1,4 @@
+import { useHostedIdentity } from "../hosted/HostedIdentity";
 import { AccountMenu } from "../hosted/AccountMenu";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
@@ -8,6 +9,7 @@ import {
   BookOpen,
   CircleGauge,
   Clapperboard,
+  GalleryHorizontalEnd,
   Images,
   Library,
   Mic,
@@ -87,7 +89,7 @@ function projectProgress(project: ProjectSummary): number {
   return Math.round((project.completed / project.total) * 100);
 }
 
-function isNavItemActive(path: string, destination: (typeof nav)[number]["to"]): boolean {
+function isNavItemActive(path: string, destination: string): boolean {
   if (destination === "/") {
     return path === "/";
   }
@@ -147,6 +149,7 @@ function ProjectCommandTrack({
 }
 
 export function AppShell({ children }: PropsWithChildren) {
+  const identity = useHostedIdentity();
   const dockRef = useRef<HTMLElement>(null);
   const scenario = currentScenario();
   const providerMode = import.meta.env.VITE_VIDEOFORGE_PROVIDER_MODE;
@@ -364,7 +367,12 @@ export function AppShell({ children }: PropsWithChildren) {
     : activeProject?.id;
   const healthDegraded = hostedBrowser ? hostedHealth.isError : health.isError;
   const routeSearch = (hostedBrowser ? {} : { fixture: scenario }) as never;
-  const renderNavItem = (item: (typeof nav)[number]) => {
+  const renderNavItem = (item: {
+    to: (typeof nav)[number]["to"] | "/centralized-library";
+    label: string;
+    mobileLabel: string;
+    icon: typeof Library;
+  }) => {
     const Icon = item.icon;
     const active = isNavItemActive(path, item.to);
     return (
@@ -556,7 +564,16 @@ export function AppShell({ children }: PropsWithChildren) {
             ) : null}
           </Link>
         ) : null}
-        {nav.slice(2).map(renderNavItem)}
+        {nav.slice(2, 6).map(renderNavItem)}
+        {hostedBrowser && identity?.canViewCentralizedLibrary === true
+          ? renderNavItem({
+              to: "/centralized-library",
+              label: "Centralized Library",
+              mobileLabel: "Centralized",
+              icon: GalleryHorizontalEnd,
+            })
+          : null}
+        {nav.slice(6).map(renderNavItem)}
       </nav>
     </div>
   );
