@@ -16,6 +16,7 @@ voice_filters_2026_10_05:
   remaining_gates: No_voice_filter_release_gate;inherited_full_CI_Local_longform_provider_editorial_invoice_gates_separate.
   plan: VOICE_FILTERS_PLAN.md
   evidence: evidence/acceptance/VF-10-09/2026-10-05-voice-filters.md
+  durable_memory: GPT_Space_project_context_Project_Index_and_Coverage_updated_and_readback_verified.
 
 automatic_library_delivery_2026_10_05:
   checkpoint: V2-09
