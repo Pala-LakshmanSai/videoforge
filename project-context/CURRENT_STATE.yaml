@@ -5,7 +5,7 @@ natural_footage_experiment_2026_10_05:
   plan: NATURAL_FOOTAGE_EXPERIMENT_PLAN.md
   branch: codex/natural-footage-tests
   base_source: 4298834b361fa74c7a76218d7daa0f7a3aa80ca0
-  status: FIRST_ROUND_COMPLETE_AWAITING_USER_SELECTION_PRODUCTION_UNCHANGED
+  status: SLOW_PAN_DEPTH_COMPLETE_AWAITING_OWNER_PREFERENCE_PRODUCTION_UNCHANGED
   authority: User_cumulativeUSD4_API_only_prompt_tests_initial_variations_then_preferred_strategy_confirmation_then_explicit_production_approval
   requirements: Mostly_subtle_casual_handheld_pan_drift_parallax_restrained_scene_activity_available_light_raw_slightly_soft_unpolished;approximately15percent_livelier_scene_supported_action_candidate
   diagnosis: Shared_Runware_adapter_and_saved_SQL_manifests_pin_cameraFixed_true_preventing_pan_tilt_zoom;generic_motion_prompt_appends_entire_still_prompt
@@ -14,12 +14,17 @@ natural_footage_experiment_2026_10_05:
   production_source: b5ed9f70d195b7bdb75fd9d17f3e6af3574f1e04
   production_version: 7c5820ff-20a2-4fb2-b206-2736e49b119c
   validation: All18_native_hash_geometry_duration_silent_full_decode_PASS_all_Chrome_metadata_errorNull_subset_full_playback;C_garden_visually_rejected_equipment_observer
-  reported_video_usd: 1.21280184
+  user_preference: Slow_pan_B_good_requested_subtle_simultaneous_inward_and_outward_depth_variations
+  depth_probe_reserve_usd: 0.18
+  depth_probe_validation: Two_original_UUIDs_reconciled_native_hash_geometry_duration_silent_full_decode_and_Chrome_full_playback_endedTrue_errorNull_PASS;owner_preference_pending
+  depth_probe_spend_usd: 0.13475576
+  depth_probe_evidence: evidence/acceptance/VF-10-09/2026-10-05-pan-depth-tests.json
+  reported_video_usd: 1.3475576
   estimated_source_image_usd: 0.008
-  reported_plus_estimated_usd: 1.22080184
-  remaining_cap_usd: 2.77919816
+  reported_plus_estimated_usd: 1.3555576
+  remaining_cap_usd: 2.6444424
   evidence: evidence/acceptance/VF-10-09/2026-10-05-natural-footage-tests.md
-  remaining_gates: User_selection_then_heldout_confirmation_and_explicit_approval_before_fresh_policy_implementation_and_deployment
+  remaining_gates: Owner_depth_preference_then_heldout_consistency_and_approval_before_implementation_deployment
 
 avatar_composition_controls_2026_10_05:
   checkpoint: V2-09
@@ -9570,7 +9575,7 @@ recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
   milestone: Natural_footage_prompt_qualification
-  status: FIRST_ROUND_COMPLETE_AWAITING_USER_SELECTION
+  status: SLOW_PAN_DEPTH_COMPLETE_AWAITING_OWNER_PREFERENCE
   dependency_status: production_b5ed9f70_Worker7c5820ff_native272_verified
   authorization_status: User_USD4_isolated_API_tests_two_rounds_of_selection_before_production_approval
   task_stage: bounded_mutation
@@ -9591,7 +9596,7 @@ recommended_next_task:
   gpu_use_authorized: false
   retained_volume_mutation_authorized: false
   application_code_changes_authorized: true
-  spend_usd: 1.22080184
+  spend_usd: 1.3555576
   resources: []
   authorized_operations: [isolated_source_image_tests, isolated_scene_video_tests, exact_uuid_observation, local_output_verification]
 

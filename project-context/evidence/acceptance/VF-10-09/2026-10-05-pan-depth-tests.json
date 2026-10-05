@@ -1,0 +1,95 @@
+{
+  "checkpoint": "V2-09",
+  "task": "VF-10-09",
+  "date": "2026-10-05",
+  "phase": "PAN_DEPTH_VARIATIONS_COMPLETE_WAITING_OWNER_PREFERENCE",
+  "userPreference": "Slow pan B preferred; asks for subtle simultaneous inward/outward depth variations",
+  "priorTestCommit": "59dc21b74ea9afb7ec63eec97ca711d9f39eb8f3",
+  "productionChanged": false,
+  "newSpendUsd": 0.13475576,
+  "cumulativeReportedVideoUsd": 1.3475576,
+  "estimatedSourceImageUsd": 0.008,
+  "cumulativeReportedPlusEstimatedUsd": 1.3555576,
+  "remainingCapUsd": 2.6444424,
+  "capUsd": 4,
+  "newRentals": 0,
+  "paidReplay": false,
+  "clips": [
+    {
+      "id": "kitchen-pan-in",
+      "taskUUID": "603697e9-9806-4ce3-afd8-07023ef41ae5",
+      "scene": "raw-kitchen",
+      "sourceImageSha256": "sha256:2b8a994fe810c2f7175a922bcf5e0608828739e19c351daffc4be956ba4eca96",
+      "label": "Slow pan plus subtle move in",
+      "cameraFixed": false,
+      "seed": 105202602,
+      "duration": 5,
+      "width": 1248,
+      "height": 704,
+      "model": "bytedance:2@2",
+      "prompt": "SCENE: Hands and a kitchen knife are slicing a ripe tomato on a wooden board at a kitchen counter.\nACTION: The knife completes just one slow controlled slice, with the supporting hand holding the tomato naturally. The slice rests on the board; no rapid chopping or extra tasks.\nCAMERA: Everyday handheld viewpoint. Slowly pan only a few degrees to the right while you move the viewpoint a few centimeters closer, producing a subtle gradual zoom-in feel. Both movements happen together throughout the five seconds, at a very slow nearly steady pace. The foreground and background shift slightly relative to each other, giving real depth and gentle parallax. Keep the same tomato and hands in view. A tiny irregular hand sway and one modest framing correction, mostly steady. Very small change of subject size, roughly five percent, with no sudden zoom, orbit, sweeping reveal, fast shake, cinematic glide or dramatic move.\nLIGHT AND TEXTURE: Use the available light already in this place: ordinary daylight outdoors or window and room light indoors, natural uneven exposure and believable shadow detail. Neutral everyday colors, gentle contrast, slightly soft consumer-camera detail with natural texture. Unretouched and ungraded; no artificial sharpening, HDR, beauty filter, dramatic lighting or glossy advertising finish.\nCONTINUITY: Keep the same people, objects, materials and location. One continuous real-time shot. No new subjects, duplicate limbs, extra tools, cuts, text, logos, graphics, captions or transitions. Keep the important action visible. Viewpoint motion only: no camera, filming equipment, photographer, observer or additional people visible.",
+      "reservedUsd": 0.09,
+      "state": "SUCCEEDED",
+      "requestHash": "sha256:c0f7a086839df355190cb1280e9f2c2c87174f6cba222bac51339e3317066111",
+      "submittedAt": "2026-10-05T06:58:17.238Z",
+      "costUsd": 0.06737788,
+      "providerVideoUUID": "f419f9a2-4a88-45de-97f7-95285be3e03b",
+      "providerSeed": 105202602,
+      "outputSha256": "sha256:c76778a8d881ece91ddeaded21e6bfa3069e43cca2bbd699a47e3d38b3b8764b",
+      "outputBytes": 2877983,
+      "outputDurationSeconds": 5.041667,
+      "fullDecode": true,
+      "acceptedAt": "2026-10-05T06:58:55.241Z",
+      "silent": true,
+      "visualApproval": "PENDING_OWNER_DEPTH_PREFERENCE_AND_HELD_OUT_CONFIRMATION",
+      "chromeFullPlayback": {
+        "ended": true,
+        "error": null,
+        "played": [
+          [
+            0,
+            5.041667
+          ]
+        ]
+      }
+    },
+    {
+      "id": "kitchen-pan-out",
+      "taskUUID": "cdb3a393-3fa8-4b58-9878-9d73a374bfde",
+      "scene": "raw-kitchen",
+      "sourceImageSha256": "sha256:2b8a994fe810c2f7175a922bcf5e0608828739e19c351daffc4be956ba4eca96",
+      "label": "Slow pan plus subtle move out",
+      "cameraFixed": false,
+      "seed": 105202602,
+      "duration": 5,
+      "width": 1248,
+      "height": 704,
+      "model": "bytedance:2@2",
+      "prompt": "SCENE: Hands and a kitchen knife are slicing a ripe tomato on a wooden board at a kitchen counter.\nACTION: The knife completes just one slow controlled slice, with the supporting hand holding the tomato naturally. The slice rests on the board; no rapid chopping or extra tasks.\nCAMERA: Everyday handheld viewpoint. Slowly pan only a few degrees to the right while you ease the viewpoint a few centimeters farther back, producing a subtle gradual zoom-out feel. Both movements happen together throughout the five seconds, at a very slow nearly steady pace. The foreground and background shift slightly relative to each other, giving real depth and gentle parallax. Keep the same tomato and hands in view. A tiny irregular hand sway and one modest framing correction, mostly steady. Very small change of subject size, roughly five percent, with no sudden zoom, orbit, sweeping reveal, fast shake, cinematic glide or dramatic move.\nLIGHT AND TEXTURE: Use the available light already in this place: ordinary daylight outdoors or window and room light indoors, natural uneven exposure and believable shadow detail. Neutral everyday colors, gentle contrast, slightly soft consumer-camera detail with natural texture. Unretouched and ungraded; no artificial sharpening, HDR, beauty filter, dramatic lighting or glossy advertising finish.\nCONTINUITY: Keep the same people, objects, materials and location. One continuous real-time shot. No new subjects, duplicate limbs, extra tools, cuts, text, logos, graphics, captions or transitions. Keep the important action visible. Viewpoint motion only: no camera, filming equipment, photographer, observer or additional people visible.",
+      "reservedUsd": 0.09,
+      "state": "SUCCEEDED",
+      "requestHash": "sha256:e455513d7672391f58b8b2dfc41cf3dc524dce1ed016e058bac67b69fbd60562",
+      "submittedAt": "2026-10-05T06:58:18.879Z",
+      "costUsd": 0.06737788,
+      "providerVideoUUID": "835cad7f-2b2b-4d0e-b38c-1bcda09eb264",
+      "providerSeed": 105202602,
+      "outputSha256": "sha256:d94d7fa495838b409d79e6dc47f07f3049940a9f910fedc5a090354bc0fb229e",
+      "outputBytes": 2688825,
+      "outputDurationSeconds": 5.041667,
+      "fullDecode": true,
+      "acceptedAt": "2026-10-05T06:59:24.599Z",
+      "silent": true,
+      "visualApproval": "PENDING_OWNER_DEPTH_PREFERENCE_AND_HELD_OUT_CONFIRMATION",
+      "chromeFullPlayback": {
+        "ended": true,
+        "error": null,
+        "played": [
+          [
+            0,
+            5.041667
+          ]
+        ]
+      }
+    }
+  ]
+}
