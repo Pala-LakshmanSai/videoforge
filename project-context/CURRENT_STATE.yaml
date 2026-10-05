@@ -4,14 +4,19 @@ product_ui_cleanup_2026_10_05:
   read_profile: v2_09_product_ui_cleanup
   plan: PRODUCT_UI_CLEANUP_PLAN.md
   branch: codex/product-ui-cleanup
-  status: LOCAL_VALIDATED_READY_FOR_AUTHORIZED_PRODUCTION
+  status: PRODUCTION_PUBLISHED_VERIFIED_ALL_ACCOUNT_UI_CLEANUP
   authority: User_remove_queue_notice_API_badge_Estimated_Refresh_duplicate_Starred_Usage_redesign_Progress_all_users_publish
   production_baseline: 3899d418fd212761b7c962090a88d777073968d2
   production_baseline_version: 2f122c78-bb01-434b-892a-604541e8045c
   provider_spend: USD0_new_inference_compute_retained_resources
   paid_compute_shutdown: No_task_compute_or_driver_start_restart_unrelated_inventory_not_refreshed
   validation: Focused307_plusShell1_PASS_Chrome12_owner_ordinary_at1440_977_320_PASS_types_lint_bothQuarantines_context_secrets
-  remaining_gates: Production_publication_live_acceptance
+  production_source: d6d23797c1c1dc2f863cfb2083e329c4a934bc40
+  production_version: 434f9b9e-4dca-4d98-ba9d-67f25cd9b200
+  publication: Source100percent_34publicAssets_exactBytesHashes_55bindings27secrets3WorkflowIdentities_matchingRegistrations_preserved_noInstances_orDriverRestart
+  backend: Byte_identical_8045531bytes_SHA256a25ff3ba085819739357c0d523bddfc73b8bb435832c8544cd9066c58025e6c2_native276_unchanged
+  live: Usage_redirectQueue_no_usageNav_APIbadge_disconnectNotice_Saved1_singleTab_1117catalog_verified
+  remaining_gates: No_scoped_release_gate_inherited_broadCI_Local_provider_longform_editorial_invoice_and_native_saved_download_policy_separate
 
 voice_filters_2026_10_05:
   checkpoint: V2-09
@@ -7368,10 +7373,10 @@ repository:
   branch: codex/product-ui-cleanup
   branch_upstream: origin/codex/product-ui-cleanup
   branch_published: true
-  current_source_head: "3899d418fd212761b7c962090a88d777073968d2"
+  current_source_head: "d6d23797c1c1dc2f863cfb2083e329c4a934bc40"
   current_source_head_semantics: executable_release_identity_recorded_after_publication_evidence_commits_follow
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Resolve Git HEAD; executable3899d418 / Worker2f122c78 publishes the library layout fix, confirmed video deletion and all five database-UUID creator filters, preserving themed voice dropdowns. Evidence handoff commits follow; unrelated work remains preserved."
+  current_source_head_note: "Resolve Git HEAD; executabled6d23797 / Worker434f9b9e publishes shared UI cleanup and compact Progress, retaining library deletion/creator filters and themed voice dropdowns. Evidence handoff commits follow; unrelated work remains preserved."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
@@ -9720,8 +9725,8 @@ recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
   milestone: Product_UI_cleanup
-  status: ALL_ACCOUNT_UI_AND_PRODUCTION_AUTHORIZED
-  dependency_status: local223_Chrome4_native_READ_ONLY_preflight_bothBuilds_PASS
+  status: PRODUCTION_GREEN_SHARED_UI_CLEANUP
+  dependency_status: focused308_Chrome12_bothBuilds_byteIdenticalBackend_live_PASS
   authorization_status: User_all_account_UI_cleanup_and_production_preserving_other_changes
   task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current
@@ -9729,7 +9734,7 @@ recommended_next_task:
   task_brief: PRODUCT_UI_CLEANUP_PLAN.md
   goal: Cleaner_shared_UI_preserving_automatic_updates_privacy_media_and_recovery
   provider_mode: fixture
-  provider_calls_authorized: true
+  provider_calls_authorized: false
   read_only_provider_calls_authorized: true
   maximum_external_spend_usd: 0
   remote_or_cloud_mutations_authorized: true

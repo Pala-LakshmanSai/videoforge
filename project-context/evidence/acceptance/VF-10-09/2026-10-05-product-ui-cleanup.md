@@ -37,3 +37,14 @@ New provider inference/compute/retained resourcesUSD0; no generation, rental, Wo
 healthy driver restart. Unrelated provider inventory unrefreshed. Inherited broad-CI/Local/long-form,
 provider/editorial/invoice and native production download-policy gates remain separate. Synthetic
 Chrome and live retained playback/read checks are separate evidence; no real video deleted for tests.
+
+Published executable `d6d23797c1c1dc2f863cfb2083e329c4a934bc40` / Worker
+`434f9b9e-4dca-4d98-ba9d-67f25cd9b200` at100%. All34 public asset byte lengths/SHA256
+match rebuilt files. All55 bindings/27 secrets, routes/domain/crons, generation/runtime pins and
+three Workflow identities preserved; matching registrations refreshed with no instance or driver
+restart. Backend bundle is byte-identical to3899:8,045,531 bytes,
+SHA256`a25ff3ba085819739357c0d523bddfc73b8bb435832c8544cd9066c58025e6c2`.
+Native276 unchanged. Actual production Usage bookmark returns Queue, API badge/Usage navigation/
+disconnect notice absent. Saved1 survives; the1,117-voice catalog and themed filters remain available.
+Anonymous Centralized Library returns401. Private proof under
+`.videoforge/product-ui-cleanup-20261005/release/` excludes all credentials from tracked evidence.

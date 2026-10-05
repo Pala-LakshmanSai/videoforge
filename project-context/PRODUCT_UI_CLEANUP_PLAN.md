@@ -23,3 +23,8 @@ Publish only the verified source/assets to the existing service with all binding
 and three Workflow identities preserved. Verify exact traffic/source/asset bytes and live controls;
 rollback if auth/media/configuration breaks. Matching Workflow registrations require no instance/start.
 Broad inherited CI/Local/provider/long-form/editorial/invoice gates remain separate.
+
+Published executabled6d23797/Worker434f9b9e at100%, native276 unchanged;34 public assets exact,
+backend byte-identical,55 bindings27 secrets3 matching Workflow registrations preserved.
+308 focused tests/12 Chrome journeys and live shared-navigation/Saved acceptance pass; USD0 new
+provider/compute/resources, no Workflow instance or driver restart. See acceptance evidence.
