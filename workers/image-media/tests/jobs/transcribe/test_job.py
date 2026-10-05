@@ -553,6 +553,55 @@ class TranscriptionJobTest(unittest.TestCase):
             [(0, 100), (100, 110), (110, 120), (120, 250)],
         )
 
+    def test_zero_duration_repair_preserves_following_short_words(self) -> None:
+        raw_document = _whisper_output()
+        raw_document["transcription"] = [
+            {"offsets": {"from": 0, "to": 100}, "text": " first"},
+            {"offsets": {"from": 100, "to": 100}, "text": " When"},
+            {"offsets": {"from": 100, "to": 100}, "text": " you"},
+            {"offsets": {"from": 100, "to": 110}, "text": " put"},
+            {"offsets": {"from": 110, "to": 230}, "text": " a"},
+            {"offsets": {"from": 230, "to": 300}, "text": " piece"},
+            {"offsets": {"from": 350, "to": 350}, "text": " next"},
+            {"offsets": {"from": 350, "to": 400}, "text": " group"},
+        ]
+        result, _, _, _ = self._run(process=FakeProcessRunner(raw_document=raw_document))
+        self.assertEqual(result["status"], "SUCCEEDED")
+        words = result["transcript"]["words"]
+        self.assertEqual(
+            [word["text"] for word in words],
+            ["first", "When", "you", "put", "a", "piece", "next", "group"],
+        )
+        self.assertEqual(
+            [(word["start_ms"], word["end_ms"]) for word in words],
+            [
+                (0, 100),
+                (100, 110),
+                (110, 120),
+                (120, 130),
+                (130, 230),
+                (230, 300),
+                (350, 360),
+                (360, 400),
+            ],
+        )
+
+    def test_zero_duration_repair_cannot_hide_unrelated_or_unbounded_overlap(self) -> None:
+        for spans in (
+            [(0, 100), (100, 100), (90, 230)],
+            [(0, 100), (100, 100), (100, 230), (220, 300)],
+            [(0, 100)] + [(100, 100)] * 11,
+        ):
+            with self.subTest(spans=spans):
+                raw_document = _whisper_output()
+                raw_document["transcription"] = [
+                    {"offsets": {"from": start, "to": end}, "text": " word"} for start, end in spans
+                ]
+                raw_path = self.root / "invalid-zero-repair.json"
+                raw_path.write_text(json.dumps(raw_document), encoding="utf-8")
+                with self.assertRaises(WhisperOutputError):
+                    parse_whisper_words(raw_path, source_duration_ms=12000)
+
     def test_timestamp_beyond_duration_tolerance_is_rejected(self) -> None:
         raw_document = _whisper_output()
         last = raw_document["transcription"][-1]

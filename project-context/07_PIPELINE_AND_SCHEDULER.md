@@ -95,8 +95,8 @@ provider credential. Windows and macOS run the same execution contract.
 - Greedy decoding, English, `--max-len 1 --split-on-word`, best-of 1, beam size 1.
 - Persist exact executable/model/config hashes, original/normalized audio hashes, millisecond word
   starts/ends, FFprobe duration, and chunk receipt lineage.
-- For long audio, preserve deterministic overlap/reconciliation and recovery rules. Monotonic,
-  complete word coverage is mandatory.
+- Preserve bounded zero-duration repair, deterministic chunk reconciliation, monotonic complete
+  word coverage and source bounds.
 - A word longer than the seven-second maximum scene cannot be scheduled. Before publishing a new
   chunk receipt, re-decode only the affected chunk once with balanced overlapping windows capped at
   90 seconds (15 seconds for an original chunk at most 90 seconds), the same pinned model and options,

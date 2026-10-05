@@ -4,8 +4,8 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-10-05"
 source_of_truth: project-context
 
-current_selected_profile: v2_09_video_generation_progress
-current_selected_brief: VIDEO_GENERATION_PROGRESS_PLAN.md
+current_selected_profile: v2_09_demo9_asr_repair
+current_selected_brief: evidence/acceptance/VF-10-09/2026-10-06-demo9-asr-repair.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -25,6 +25,12 @@ conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
 target_profile_word_budget: 15000
 
 read_profiles:
+  v2_09_demo9_asr_repair:
+    - evidence/acceptance/VF-10-09/2026-10-06-demo9-asr-repair.md
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - 09_RUNPOD_AND_QUEUE_OPERATIONS.md
+    - 14_TESTING_AND_ACCEPTANCE.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
   v2_09_video_generation_progress:
     - VIDEO_GENERATION_PROGRESS_PLAN.md
     - 05_UI_UX_SPEC.md

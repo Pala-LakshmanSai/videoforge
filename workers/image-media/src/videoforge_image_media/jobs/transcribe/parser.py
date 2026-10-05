@@ -149,12 +149,19 @@ def _canonical_words(
         repaired_zero_duration = end_ms == start_ms
         if start_ms < 0 or end_ms < start_ms:
             raise WhisperOutputError(f"word {index} has invalid timestamps")
+        if start_ms >= previous_end:
+            zero_duration_origin = None
         if index > 0 and start_ms < previous_end:
             if (
-                zero_duration_origin == start_ms
-                and previous_end - start_ms <= MAX_ZERO_DURATION_REPAIR_MS
+                zero_duration_origin is not None
+                and zero_duration_origin <= start_ms
+                and previous_end - zero_duration_origin < MAX_ZERO_DURATION_REPAIR_MS
             ):
                 start_ms = previous_end
+                # Zero-length words can consume the next short word's whole interval.
+                # Carry only this bounded repair until the original timestamps catch up.
+                if end_ms <= start_ms:
+                    end_ms = min(source_duration_ms, start_ms + 10)
             else:
                 raise WhisperOutputError(f"word {index} overlaps or moves backward")
         if start_ms >= source_duration_ms and allow_trailing_overhang:
@@ -189,7 +196,12 @@ def _canonical_words(
             }
         )
         previous_end = end_ms
-        zero_duration_origin = candidate.start_ms if repaired_zero_duration else None
+        if end_ms > candidate.end_ms:
+            zero_duration_origin = (
+                candidate.start_ms if zero_duration_origin is None else zero_duration_origin
+            )
+        else:
+            zero_duration_origin = None
     return words
 
 

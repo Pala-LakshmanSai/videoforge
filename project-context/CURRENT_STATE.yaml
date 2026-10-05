@@ -1,3 +1,19 @@
+demo9_asr_repair_2026_10_06:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  read_profile: v2_09_demo9_asr_repair
+  status: LOCAL_EXACT_SOURCE_REPRODUCED_AND_FIXED_RELEASE_PENDING
+  branch: codex/demo9-asr-fix
+  production_base: 34cdd788e802cb26b30dfecb4b2271ef86493c08
+  cause: Two_zero_duration_words_consume_following_10ms_word_interval_parser_rejects_own_repair
+  repair: Shared_bounded_100ms_zero_duration_repair_carries_until_original_timestamps_catch_up
+  validation: Red_regression_then41transcription_PASS_119mediaPASS_1platformSKIP_exact1167020ms_source3007words_PASS
+  desktop_candidate: 0.1.52
+  provider_spend: No_new_inference_or_paid_compute_for_local_offline_checks
+  paid_compute_shutdown: Both_original_demo9_rentals_CLEAN
+  remaining_gates: Linux_private_image_desktop_release_production_publication_supported_recovery_Chrome_readback
+  evidence: evidence/acceptance/VF-10-09/2026-10-06-demo9-asr-repair.md
+
 video_generation_progress_2026_10_05:
   status: LOCAL_VERIFIED_RELEASE_PENDING
   checkpoint: V2-09
@@ -7415,8 +7431,8 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/video-generation-progress
-  branch_upstream: origin/codex/video-generation-progress
+  branch: codex/demo9-asr-fix
+  branch_upstream: origin/codex/demo9-asr-fix
   branch_published: true
   current_source_head: "6c1f010aae7864a10aa5c214d674ac1f3d83f54c"
   current_source_head_semantics: executable_release_identity_recorded_after_publication_evidence_commits_follow
@@ -9775,8 +9791,8 @@ recommended_next_task:
   authorization_status: User_matching_scene_video_progress_graphic_and_production_preserving_other_changes
   task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current
-  read_profile: v2_09_video_generation_progress
-  task_brief: VIDEO_GENERATION_PROGRESS_PLAN.md
+  read_profile: v2_09_demo9_asr_repair
+  task_brief: evidence/acceptance/VF-10-09/2026-10-06-demo9-asr-repair.md
   goal: Matching_scene_video_progress_graphic_with_real_status_counts_timing
   provider_mode: fixture
   provider_calls_authorized: true
