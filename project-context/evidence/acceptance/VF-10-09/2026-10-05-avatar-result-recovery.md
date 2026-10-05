@@ -57,3 +57,9 @@ openings, while top-level Progress and Review correctly show0.2minutes. It does 
 saved12-second opening or render and is outside this coordinator-latency repair.
 Private incident evidence: `.videoforge/avatar-delay-20261005/` (primary checkout).
 Rollback target: Worker `dad79410-a3c0-48c9-aac7-e4c94ef7e8a9`.
+
+Fresh post-deployment Chrome playback also completed33.033008s, ended=true/error=null.
+GPT Space guarded updates/readbacks: Project50, Index70, Coverage65, Root43; affected
+hashes exact and unrelated project rows preserved. Source417e7225 and acceptance3914f842
+are pushed on `codex/avatar-result-stall`; later documentation commits do not change
+the deployed executable.
