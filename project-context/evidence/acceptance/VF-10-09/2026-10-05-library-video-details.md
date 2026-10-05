@@ -61,3 +61,8 @@ or real-data deletion. Unrelated paid-compute inventory was not refreshed. Prior
 voice filters/menus and central creator/deletion remain. Inherited broad CI formatting/missing uv/
 occupied4173, Local/provider/long-form/editorial/invoice and native saved-download organization-policy
 gates remain separate. Fixture acceptance and authenticated HTTP checks do not remove those gates.
+
+Durable handoff: GPT Space Project64, Root54, Index84 and Coverage79 reread and verified with
+new release summary plus preserved prior cleanup history. Acceptance7fa98dd0 is pushed; subsequent
+handoff commits contain evidence only and do not change executable6c1f010a. Production release lock
+is released only after final source/traffic/configuration readback and exact ownership verification.
