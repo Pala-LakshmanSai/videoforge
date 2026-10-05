@@ -21,6 +21,10 @@ Image prompts must keep all surfaces plain, blank and unmarked, excluding readab
 
 ## Prompt-planning boundary
 
+### Natural scene-video motion — DEC_VIDEO_MOTION_001
+
+Fresh current-policy footage plans use immutable `NATURAL_HANDHELD_V1` image-to-video prompts and `cameraFixed=false`; retained plans/jobs keep their original fixed-camera setting and saved bytes. Keep Seedance1.0ProFast, accepted source images, scene duration, coverage/opening and Avatar On/Off composition unchanged. Within already selected footage scenes, a deterministic ten-slot cycle requests seven gentle pans, two pans with a small approach and one with a small retreat; depth moves are spaced by plain pans, with alternating directions. Roughly15percent of twenty slots permits modest activity only when the reference already suggests it; otherwise keep subjects quiet. Compact reference-based instructions preserve identity/contact and request ordinary available light, soft natural detail and an unpolished recorded feel, excluding invented observers/equipment, dramatic motion, cinematic polish and all output graphics. These are requested trajectories, not calibrated3D motion or guaranteed visual acceptance. Existing source lighting still constrains the result. Text-to-video was explicitly dropped on5October2026. See `NATURAL_FOOTAGE_EXPERIMENT_PLAN.md` for qualification, paid cap and production gates.
+
 ### Post-transcription story context
 
 After transcription and before scene planning, Runware Gemini 3.5 Flash receives the complete

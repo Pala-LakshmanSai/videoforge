@@ -17,6 +17,27 @@ const submission = () => ({ taskUUID, apiKey, imageUrl: "https://private.example
   markSubmissionFailed: vi.fn(async () => undefined), markSubmissionUnknown: vi.fn(async () => undefined) });
 
 describe("Runware Seedance durable job", () => {
+  it("obeys the saved camera flag and preserves the historical default before a single POST", async () => {
+    for (const cameraFixed of [undefined, true, false]) {
+      const input = submission();
+      const fetchPort = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+        expect(JSON.parse(String(init?.body))[0].providerSettings.bytedance.cameraFixed).toBe(
+          cameraFixed ?? true,
+        );
+        return json({ data: [{ taskType: "videoInference", taskUUID }] });
+      });
+      await submitRunwareSeedanceJob({ ...input, cameraFixed, fetchPort });
+      expect(fetchPort).toHaveBeenCalledTimes(1);
+    }
+    const input = submission();
+    const fetchPort = vi.fn();
+    await expect(
+      submitRunwareSeedanceJob({ ...input, cameraFixed: "false" as unknown as boolean, fetchPort }),
+    ).rejects.toMatchObject({ code: "INPUT_INVALID" });
+    expect(input.claimSubmission).not.toHaveBeenCalled();
+    expect(fetchPort).not.toHaveBeenCalled();
+  });
+
   it("claims the UUID before exactly one paid POST and never replays an ambiguous response", async () => {
     const input = submission();
     const order: string[] = [];

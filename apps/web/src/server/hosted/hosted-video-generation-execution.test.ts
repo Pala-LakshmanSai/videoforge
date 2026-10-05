@@ -204,6 +204,29 @@ describe("hosted video execution", () => {
     vi.unstubAllGlobals();
   });
 
+  it("forwards each durably pinned camera choice and rejects malformed flags before provider submission", async () => {
+    for (const cameraFixed of [undefined, true, false, "false"]) {
+      fixture.submit.mockClear();
+      const video = videoJobs("PREPARED")[0]!;
+      if (cameraFixed !== undefined)
+        (video.inputManifest as Record<string, unknown>).cameraFixed = cameraFixed;
+      fixture.videos = [video];
+      const advance = advanceHostedVideoGeneration(environment, database as never, scope, true);
+      await vi.runAllTimersAsync();
+      await advance;
+      if (typeof cameraFixed === "string") {
+        expect(fixture.submit).not.toHaveBeenCalled();
+        expect(video.state).toBe("FAILED");
+      } else {
+        expect(fixture.submit).toHaveBeenCalledTimes(1);
+        expect(fixture.submit.mock.calls[0]?.[0]).toMatchObject({
+          cameraFixed: cameraFixed ?? true,
+          taskUUID: video.id,
+        });
+      }
+    }
+  });
+
   it("completes Off without video bindings, provider requests or claims", async () => {
     fixture.videos = [];
     fixture.plannedJobCount = 0;

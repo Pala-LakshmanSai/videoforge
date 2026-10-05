@@ -101,6 +101,7 @@ export async function submitRunwareSeedanceJob(input: {
   readonly imageUrl: string;
   readonly prompt: string;
   readonly durationSeconds: number;
+  readonly cameraFixed?: boolean;
   readonly claimSubmission: () => Promise<boolean>;
   readonly persistRequestId: (requestId: string) => Promise<void>;
   readonly markSubmissionFailed: () => Promise<void>;
@@ -109,7 +110,8 @@ export async function submitRunwareSeedanceJob(input: {
   readonly fetchPort?: FetchPort;
 }): Promise<{ readonly state: "NOT_CLAIMED" | "SUBMITTED"; readonly requestId?: string }> {
   if (!UUID.test(input.taskUUID) || input.apiKey.trim().length < 20 || !validHttps(input.imageUrl) ||
-      input.prompt.trim().length < 2 || input.prompt.length > 3000 || !validDuration(input.durationSeconds))
+      input.prompt.trim().length < 2 || input.prompt.length > 3000 || !validDuration(input.durationSeconds) ||
+      (input.cameraFixed !== undefined && typeof input.cameraFixed !== "boolean"))
     throw new RunwareSeedanceJobError("INPUT_INVALID");
   if (!(await input.claimSubmission())) return { state: "NOT_CLAIMED" };
   try {
@@ -118,7 +120,7 @@ export async function submitRunwareSeedanceJob(input: {
       deliveryMethod: "async", outputType: "URL", outputFormat: "MP4", numberResults: 1,
       includeCost: true, width: GEOMETRY.width, height: GEOMETRY.height,
       duration: input.durationSeconds, positivePrompt: input.prompt,
-      inputs: { frameImages: [input.imageUrl] }, providerSettings: { bytedance: { cameraFixed: true } },
+      inputs: { frameImages: [input.imageUrl] }, providerSettings: { bytedance: { cameraFixed: input.cameraFixed ?? true } },
     }, input.fetchPort ?? fetch);
     let errors: Row[], data: Row[];
     try { errors = resultRows(body, "errors"); data = resultRows(body, "data"); }

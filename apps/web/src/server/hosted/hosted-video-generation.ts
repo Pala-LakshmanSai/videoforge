@@ -185,7 +185,8 @@ export async function advanceHostedVideoGeneration(
           input.width !== 1248 ||
           input.height !== 704 ||
           Number(input.durationSeconds) !== claimed.durationSeconds ||
-          Number(input.videoFrameCount) !== claimed.videoFrameCount
+          Number(input.videoFrameCount) !== claimed.videoFrameCount ||
+          (input.cameraFixed !== undefined && typeof input.cameraFixed !== "boolean")
         )
           throw new RunwareSeedanceJobError("INPUT_INVALID");
         const signed = await signer.sign({
@@ -202,13 +203,19 @@ export async function advanceHostedVideoGeneration(
           imageUrl: signed.url,
           prompt: string(input.prompt),
           durationSeconds: claimed.durationSeconds,
+          cameraFixed: input.cameraFixed === undefined ? true : (input.cameraFixed as boolean),
           claimSubmission: async () => true,
           persistRequestId: async (id) => {
             await call("videoforge_record_hosted_video_task", [...base, item.id, batchClaim, id]);
           },
           markRateLimited: async (retryAfterMs) => {
             stopped = true;
-            await call("videoforge_defer_hosted_video_job", [...base, item.id, batchClaim, retryAfterMs]);
+            await call("videoforge_defer_hosted_video_job", [
+              ...base,
+              item.id,
+              batchClaim,
+              retryAfterMs,
+            ]);
           },
           markSubmissionFailed: async () => {
             stopped = true;

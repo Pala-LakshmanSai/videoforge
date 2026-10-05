@@ -1410,6 +1410,12 @@
       "name": "render_recovery_cleanup_isolation",
       "filename": "0272_render_recovery_cleanup_isolation.sql",
       "sha256": "sha256:4b194173845a451f04d38700060e7713681b93cb1a9c81a58ce7fb67dbcbe3be"
+    },
+    {
+      "version": 273,
+      "name": "hosted_natural_footage_motion",
+      "filename": "0273_hosted_natural_footage_motion.sql",
+      "sha256": "sha256:c13fc78df9068638ef5bd50ccaa80732ecdd8dd22943d4796e1ec12f8bf40639"
     }
   ]
 }
