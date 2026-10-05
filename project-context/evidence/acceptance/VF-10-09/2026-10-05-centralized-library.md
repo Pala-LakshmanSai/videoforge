@@ -89,3 +89,7 @@ Unrelated provider inventory/shutdown was not refreshed and is not claimed.
 The scoped application release is complete. Native saved-file verification remains browser-policy
 blocked. Inherited broad-CI, Local, long-form concurrency/provider, editorial and invoice gates remain
 separate. Rollback preserves the additive migration; revoke its runtime grant if authorization fails.
+
+GPT Space Project61/Root51/Index81/Coverage76 guarded updates and readbacks preserve the concurrent
+voice-dropdown release, historical evidence and unrelated projects. Acceptance source `12ce6a20`
+is pushed; subsequent commits contain only memory/handoff evidence.
