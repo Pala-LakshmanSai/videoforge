@@ -54,3 +54,6 @@ All30 Centralized Library cards/Delete controls survive. The retained20.333008-s
 film plays fully in signed-in Chrome, ended=true/error=null; player closes and collection remains
 without overflow. Browser media inspection is scoped to the dialog video, since card thumbnails are
 separate paused videos. No real output deleted and no fresh synthesis or provider generation started.
+
+Acceptance `db7d1bde` is pushed. GPT Space Project63/Root53/Index83/Coverage78 guarded
+updates and exact readbacks preserve prior library/voice history and other projects.
