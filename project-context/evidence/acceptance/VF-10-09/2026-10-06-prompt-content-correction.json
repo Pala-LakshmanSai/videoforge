@@ -1,0 +1,67 @@
+{
+  "schema": "videoforge.prompt-content-correction-acceptance/v1",
+  "checkpoint": "V2-09",
+  "source": "178a809c59a7c0e555605847e7d889f2482aa9be",
+  "workerVersion": "f8c58190-13dd-4350-b154-166694fff1f1",
+  "nativeMigration": 278,
+  "liveCanary": {
+    "at": "2026-10-05T19:51:49.469Z",
+    "requestVersion": "runware-gemini-3.5-flash-prompt-request-v28",
+    "requestHash": "sha256:e6d0c42049de289e26fd86d016aee09ea9f47501b26ec5552904c90c7ab631a9",
+    "posts": 1,
+    "sceneCount": 10,
+    "reportedCostUsd": 0.064365,
+    "finiteCapUsd": 0.25,
+    "usage": {
+      "inputTokens": 4588,
+      "outputTokens": 6387,
+      "totalTokens": 10975,
+      "cachedInputTokens": 0
+    },
+    "writerAndCompilerPassed": true,
+    "paidMediaCreates": 0,
+    "paidComputeCreates": 0
+  },
+  "production": {
+    "publicAssetHashesMatched": 36,
+    "anonymousPrivateStatus": 401,
+    "bindingsPreserved": 55,
+    "secretNamesPreserved": 27,
+    "workflowIdentitiesPreserved": 3,
+    "canonicalDriverStatus": "running",
+    "canonicalDriverRegistrationVersion": "2b0c4e72-a19a-4a05-be12-03de7a24378f",
+    "successfulTick": true,
+    "activeWorkloads": {
+      "active_generations": 0,
+      "active_leases": 0,
+      "waiters": 0,
+      "nonterminal_cpu_attempts": 0
+    },
+    "historicalUnsettledCloudPreserved": true
+  },
+  "originalProject": {
+    "savedSceneCount": 46,
+    "generationState": "CANCELLED",
+    "runAndRequestDeepEqualAfterPublication": true,
+    "resumed": false
+  },
+  "chrome": {
+    "createLocalAndCloudReady": true,
+    "queueAndLibraryAndReviewNavigation": true,
+    "retainedPlayback": {
+      "duration": 180,
+      "width": 1920,
+      "height": 1080,
+      "currentTimeObserved": 10.884938,
+      "paused": false,
+      "readyState": 4,
+      "error": null
+    }
+  },
+  "limits": [
+    "Not fresh full-film or visual-image quality acceptance",
+    "External provider failures remain possible",
+    "Full CI has inherited formatting and local uv blockers",
+    "No settled invoice or current full Pod inventory claimed"
+  ]
+}
