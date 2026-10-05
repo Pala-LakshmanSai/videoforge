@@ -14,6 +14,17 @@ const runtimeStoreSource = readFileSync(
 );
 
 describe("hosted pair Workflow module loading", () => {
+  it("bounds API coordinator stalls without the default ten-minute recovery delay", () => {
+    const apiStep = source.slice(
+      source.indexOf("`api-generation-${observation}`"),
+      source.indexOf('if (result.state === "ACTION_REQUIRED")'),
+    );
+    expect(apiStep).toContain('timeout: "2 minutes"');
+    expect(apiStep).toContain('retries: { limit: 30, delay: "2 seconds", backoff: "constant" }');
+    expect(apiStep).toContain("advanceHostedApiGeneration(");
+    expect(apiStep).toContain("closePoolsWithoutBlockingWorkflow(pool, pool)");
+  });
+
   it("uses only statically loaded modules after entering the ordinary pair path", () => {
     const ordinaryPath = source.slice(source.indexOf("const params = pair!;"));
 
@@ -62,10 +73,10 @@ describe("hosted pair Workflow module loading", () => {
   });
 
   it("routes definite rejection cleanup before resume and preserves safe preflight retry", () => {
-    expect(source).toContain("row.attemptState === \"PERMANENT_FAILED\"");
-    expect(source).toContain("row.outboxState === \"DEAD_LETTER\"");
-    expect(source).toContain("row.attemptState === \"OUTBOXED\"");
-    expect(source).toContain("row.outboxState === \"READY_TO_DISPATCH\"");
+    expect(source).toContain('row.attemptState === "PERMANENT_FAILED"');
+    expect(source).toContain('row.outboxState === "DEAD_LETTER"');
+    expect(source).toContain('row.attemptState === "OUTBOXED"');
+    expect(source).toContain('row.outboxState === "READY_TO_DISPATCH"');
     expect(source).toContain('row.pairPhase === "CLEANUP_ONLY"');
     expect(source.indexOf("isHostedV209CleanupOnlyRecovery(inspection)")).toBeLessThan(
       source.indexOf('event: "ORDINARY_RESUME_STARTING"'),
@@ -85,11 +96,11 @@ describe("hosted pair Workflow module loading", () => {
   });
 
   it("takes one final provider observation before failing closed at the stop deadline", () => {
-    expect(source).toContain("const pastStopDeadline = Date.parse(clock) >= Date.parse(params.stopAt);");
-    expect(source).toContain("const observationResult = await live.reconciler.observe(");
     expect(source).toContain(
-      'if (pastStopDeadline && observationResult.state !== "SETTLED")',
+      "const pastStopDeadline = Date.parse(clock) >= Date.parse(params.stopAt);",
     );
+    expect(source).toContain("const observationResult = await live.reconciler.observe(");
+    expect(source).toContain('if (pastStopDeadline && observationResult.state !== "SETTLED")');
   });
 
   it("does not let expired paid approval block reconciliation of an assigned pair", () => {

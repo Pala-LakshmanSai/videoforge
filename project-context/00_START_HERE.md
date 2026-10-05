@@ -1,3 +1,6 @@
+Avatar result delay: read AVATAR_RESULT_RECOVERY_PLAN.md and CURRENT_STATE.yaml for the
+observed ten-minute Cloudflare coordinator failure, bounded recovery and live release evidence.
+
 Configurable AI opening: the 2026-10-05 user decision adds a Full video opening toggle and
 0.1–60-minute opening duration, default On/3 minutes. Off restores original whole-timeline
 percentage coverage and scheduling; On applies the percentage only to the remaining timeline.

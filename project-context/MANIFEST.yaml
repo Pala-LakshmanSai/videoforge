@@ -4,8 +4,8 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-10-04"
 source_of_truth: project-context
 
-current_selected_profile: v2_09_ai_video_opening
-current_selected_brief: AI_VIDEO_OPENING_PLAN.md
+current_selected_profile: v2_09_avatar_result_recovery
+current_selected_brief: AVATAR_RESULT_RECOVERY_PLAN.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -25,6 +25,9 @@ conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
 target_profile_word_budget: 15000
 
 read_profiles:
+  v2_09_avatar_result_recovery:
+    - AVATAR_RESULT_RECOVERY_PLAN.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
   v2_09_ai_video_opening:
     - AI_VIDEO_OPENING_PLAN.md
     - 07_PIPELINE_AND_SCHEDULER.md
@@ -271,7 +274,7 @@ approved_decisions:
   DEC_VIDEO_GENERATION_001: pinned_seedance_720p_mandatory_opening_remaining_whole_scene_coverage_legacy_policies_preserved
   DEC_VIDEO_SCENE_001: published_immutable_whole_scene_replacement_legacy_prefix_preserved
   DEC_VIDEO_COVERAGE_001: integer0to100_remaining_video_coverage_default7_for_new_opening_policy_legacy_finished_video_preserved
-  DEC_VIDEO_OPENING_001: mandatory_first180seconds_full_scene_AI_video_outside_selected_percent_no_opening_still_fallback
+  DEC_VIDEO_OPENING_001: configurable_defaultOn3minutes_Off_original_whole_timeline_percent_On_remaining_percent_historical_fixed180_immutable
   DEC_API_GENERATION_001: fresh_kie_z_image_and_fal_flashhead_audio_to_video
   DEC_IMAGE_REGENERATION_001: new_per_image_fal_z_image_turbo_original_media_immutable
   DEC_BUILD_001: hosted_linux_heavy_builds_no_mac_dependency

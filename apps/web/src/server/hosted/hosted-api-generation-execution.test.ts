@@ -133,6 +133,54 @@ describe("hosted API batch execution", () => {
     vi.unstubAllGlobals();
   });
 
+  it("resumes a stalled avatar result on its pinned request without repeating paid generation", async () => {
+    const avatar = {
+      ...jobs("SUBMITTED")[0]!,
+      lane: "AVATAR",
+      providerTaskId: "saved-fal-request",
+      providerAccount: { id: "fal-legacy", provider: "FAL", credentialVersion: "v1" },
+    };
+    fixture.jobs = [
+      ...jobs("SUCCEEDED"),
+      { ...avatar, id: "avatar-job", generationTaskId: "avatar-task" },
+    ];
+    const acceptedImages = structuredClone(fixture.jobs.slice(0, 3));
+    const post = vi.fn();
+    vi.stubGlobal("fetch", post);
+    fixture.observeAvatar.mockRejectedValueOnce(new Error("WorkflowInternalError"));
+    const first = advanceHostedApiGeneration(environment, database, scope);
+    const failed = expect(first).rejects.toThrow("WorkflowInternalError");
+    await vi.runAllTimersAsync();
+    await failed;
+    expect(fixture.jobs.at(-1)?.state).toBe("SUBMITTED");
+    fixture.observeAvatar.mockResolvedValueOnce({
+      state: "SUCCEEDED",
+      artifact: {
+        sha256: `sha256:${"a".repeat(64)}`,
+        byteSize: 432502,
+        contentType: "video/mp4",
+        width: 512,
+        height: 512,
+        durationSeconds: 3.84,
+      },
+    });
+    const resumed = advanceHostedApiGeneration(environment, database, scope);
+    await vi.runAllTimersAsync();
+    expect(await resumed).toMatchObject({ state: "PROGRESSED" });
+    expect(await advanceHostedApiGeneration(environment, database, scope)).toMatchObject({
+      state: "READY_TO_RENDER",
+    });
+    expect(fixture.observeAvatar.mock.calls.map(([input]) => input.requestId)).toEqual([
+      "saved-fal-request",
+      "saved-fal-request",
+    ]);
+    expect(fixture.jobs.slice(0, 3)).toEqual(acceptedImages);
+    expect(fixture.jobs.at(-1)?.providerTaskId).toBe("saved-fal-request");
+    expect(post).not.toHaveBeenCalled();
+    expect(fixture.observeImage).not.toHaveBeenCalled();
+    expect(fixture.events).not.toContain("videoforge_claim_hosted_api_job_v2");
+  });
+
   it("uses the account returned by the claim, even when the prepared read showed legacy", async () => {
     fixture.jobs = [jobs("PREPARED")[0]!];
     fixture.claimedAccount = { id: "kie-second", provider: "KIE", credentialVersion: "v1" };
@@ -178,16 +226,14 @@ describe("hosted API batch execution", () => {
       await client.get("provider-0");
       return { state: "PENDING" };
     });
-    const read = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            code: 200,
-            data: { state: "waiting", taskId: "provider-0", model: "z-image" },
-          }),
-        ),
-      );
+    const read = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: 200,
+          data: { state: "waiting", taskId: "provider-0", model: "z-image" },
+        }),
+      ),
+    );
     vi.stubGlobal("fetch", read);
     const pending = advanceHostedApiGeneration(environment, database, scope);
     await vi.runAllTimersAsync();

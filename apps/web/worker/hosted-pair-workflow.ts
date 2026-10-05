@@ -127,19 +127,29 @@ export class HostedPairWorkflow extends WorkflowEntrypoint<Environment, Workflow
       );
       // Includes durable submits, output commits, and long provider-pending polls.
       for (let observation = 0; observation < 5_000; observation += 1) {
-        const result = await step.do(`api-generation-${observation}`, async () => {
-          const pool = createNeonPool(this.env.DATABASE_URL!);
-          try {
-            return await advanceHostedApiGeneration(
-              this.env,
-              createNeonExecutor(pool),
-              params,
-              observation,
-            );
-          } finally {
-            await closePoolsWithoutBlockingWorkflow(pool, pool);
-          }
-        });
+        const result = await step.do(
+          `api-generation-${observation}`,
+          {
+            // A stuck platform attempt must not hold an already completed provider result for
+            // the default ten minutes. Durable claims/receipts make each resume idempotent;
+            // shorter attempts retain roughly the default hour of total recovery allowance.
+            timeout: "2 minutes",
+            retries: { limit: 30, delay: "2 seconds", backoff: "constant" },
+          },
+          async () => {
+            const pool = createNeonPool(this.env.DATABASE_URL!);
+            try {
+              return await advanceHostedApiGeneration(
+                this.env,
+                createNeonExecutor(pool),
+                params,
+                observation,
+              );
+            } finally {
+              await closePoolsWithoutBlockingWorkflow(pool, pool);
+            }
+          },
+        );
         if (result.state === "ACTION_REQUIRED") return result;
         if (result.state === "READY_TO_RENDER") {
           return step.do("api-generation-render-handoff", async () => {

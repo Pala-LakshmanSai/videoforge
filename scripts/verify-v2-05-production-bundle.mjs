@@ -87,9 +87,11 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // Configurable v10/v11 opening metadata adds exactly 3,057 bytes to each static closure.
 // Exact measured production 2,817,885 and staging 2,819,804 retain every quarantine check;
 // providers, generated validators and native code remain outside the static entry.
+// Explicit API Workflow attempt timeout and retry policy add exactly 470 bytes to each
+// measured closure. No imports/dependencies or quarantine checks change.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_817_885,
-  "wrangler.staging.jsonc": 2_819_804,
+  "wrangler.production.jsonc": 2_818_355,
+  "wrangler.staging.jsonc": 2_820_274,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",
