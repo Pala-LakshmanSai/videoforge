@@ -62,11 +62,6 @@ const uiSurfaceRoutes: UiSurfaceRoute[] = [
     surfaces: [".library-output"],
   },
   {
-    heading: "Usage",
-    path: "/usage?fixture=happy_generating",
-    surfaces: [".usage-grid .metric"],
-  },
-  {
     heading: "Settings",
     path: "/settings?fixture=happy_generating",
     surfaces: [".settings-grid .panel", ".settings-summary"],
@@ -252,7 +247,8 @@ test.afterEach(async ({ page }) => {
 
 test("queue exposes truthful status and complete primary navigation", async ({ page }) => {
   await expect(page.getByText("Synthetic data · $0 spend")).toBeVisible();
-  await expect(page.locator(".top-health")).toContainText("API healthy");
+  await expect(page.getByText("API healthy", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Usage", exact: true })).toHaveCount(0);
 
   const navigation = page.getByRole("navigation", { name: "Primary navigation" });
   for (const label of [
@@ -261,7 +257,6 @@ test("queue exposes truthful status and complete primary navigation", async ({ p
     "Avatar Hub",
     "Image Styles",
     "Library",
-    "Usage",
     "Settings",
   ]) {
     await expect(navigation.getByRole("link", { name: label })).toBeVisible();
@@ -474,15 +469,6 @@ test("every screen keeps separated sections and legible structural surfaces", as
         `${route.path} ${selector} boundary is too faint`,
       ).toBeGreaterThanOrEqual(0.2);
       expect(boundary.boxShadow, `${route.path} ${selector} has no depth cue`).not.toBe("none");
-    }
-
-    if (route.path.startsWith("/usage")) {
-      const usageGap = await page.locator(".usage-grid").evaluateAll((grids) => {
-        const first = grids[0]?.getBoundingClientRect();
-        const second = grids[1]?.getBoundingClientRect();
-        return first && second ? second.top - first.bottom : 0;
-      });
-      expect(usageGap).toBeGreaterThanOrEqual(pageLayout.expectedGap - 0.5);
     }
 
     if (route.path.startsWith("/library")) {

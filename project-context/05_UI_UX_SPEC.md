@@ -57,7 +57,7 @@ They select creative inputs and **Generate video**. Projects have no maximum-spe
 behavior appears as truthful status/details only.
 
 Every signed-in account has one default workspace. User-created projects, queue, Avatar Hub, Image
-Styles, Library, Usage, and settings are private. Built-in styles are globally available read-only.
+Styles, Library and settings are private. Built-in styles are globally available read-only.
 Do not expose another account's creator, project, queue item, media, preset, cost, provider job, or
 activity through lists, URLs, counts, search, errors, previews, signed URLs, or realtime updates.
 
@@ -77,8 +77,9 @@ activity through lists, URLs, counts, search, errors, previews, signed URLs, or 
 - Inter for product UI; existing display serif only where already established. Do not introduce a
   dashboard-template visual reset.
 - Desktop-first at 1280–1920px, fully usable at 1024px, and compact/mobile without page overflow.
-- Floating navigation dock retains Queue, New Project, Progress, Avatar Hub, Image Styles, Library,
-  Usage, and Settings. At 1024px all destinations remain directly reachable.
+- Floating navigation dock retains Queue, New Project, Progress, Voices, Avatar Hub, Image Styles,
+  Library and Settings; the exact authorized owner also sees Centralized Library. Usage is removed;
+  old /usage bookmarks redirect to Queue. At 1024px all destinations remain directly reachable.
 - Fine-pointer dock magnification above 820px is scale-only: 76x62px item, 38x35px tile, 24px glyph,
   pointer peak 1.75x, smoothly smaller neighbors, fixed bottom edge, no layout movement. Disable for
   touch/coarse pointer, reduced motion, and width <=820px.
@@ -115,6 +116,9 @@ on direct navigation and cannot load the management API. Each assistant retains 
 Team access never grants visibility into another account's projects or media.
 
 ### 2. Private queue/home
+
+- No routine API health badge or repeated disconnect notice. Real connection/error states and computer
+  readiness remain visible when actionable.
 
 - Show only this account's projects with title, private thumbnail, state, stage, progress, ETA, cost,
   created time, and account-local order.
@@ -155,6 +159,11 @@ blocks; negative phrases such as `no logo`, `no text`, and `no AI look` remain v
 the only persistent applied-state indicator.
 
 ### 4. Progress
+
+- DEC_UX_008 removes the Estimated time metric and manual Refresh now button for all accounts.
+  Active/recoverable work polls automatically; retry/cancel/delete and reconnect behavior remain.
+  The compact summary shows status/stage, projected cost and total elapsed, with cost cards spanning
+  the available width. Machine/cost truth and production internals remain unchanged.
 
 - Total elapsed is wall-clock time from project creation (the Prepare project start) to now while
   production is active, or its persisted terminal time after success/failure/cancellation. Count
@@ -235,14 +244,14 @@ the only persistent applied-state indicator.
   explicit style analysis and provider retention follows their terms; distinguish VideoForge
   deletion from provider retention. Clicking Analyze records the disclosure acknowledgement.
 
-### 8. Library and Usage
+### 8. Library
 
 Under `DEC_DELIVERY_003`, verified outputs enter private Library automatically. No final approval step;
 optional viewer, download and provenance remain. Preset approvals remain independent.
 
 - Library shows only account-owned previews/downloads/manifests/retention/archive states.
-- Usage shows per-project/lane/model costs, queue wait, worker-init/model-ready/inference/upload/
-  render timing, GPU/VRAM, attempts/retries, R2/volume allocation, cap events, and reconciliation.
+- Usage is removed under DEC_UX_008; its bookmarks redirect to Queue. Internal billing, retention
+  and reconciliation records remain available to their existing server/operator paths.
 - Fixed recurring retained-volume billing is an operational/shared service cost and is shown
   separately from the video's variable cost. Do not attribute another account's exact spend.
 - Projected, conservative bound, observed, and settled cost are distinct labels.
@@ -362,7 +371,7 @@ Create defaults to Upload voiceover. Upload script reveals script file/paste con
 
 Voice filter and sort menus use integrated dark panels with selected checks, count badges, readable unavailable choices, scrolling and keyboard/typeahead support. Escape/Tab/outside dismissal preserves selection; zero-match choices remain visible and cannot be chosen. Menus fit the viewport on desktop and mobile.
 
-Voiceover Hub is in primary navigation. New libraries open All voices; existing collections open Saved. Counted filters, name search, clear/reset actions, paginated voice cards and distinct empty/error/loading states accompany private Save/Remove and Star/Unstar preferences. One closeable preview supports play/pause/end/error/retry. Optional ElevenLabs-ID import opens a compact dismissible panel; success clears stale search and opens Saved. A provider-key owner's imported library is visible only to that account; other imported voices require a workspace import. No credential is entered or returned in product UI. Mobile navigation fits its nine destinations into two rows.
+Voiceover Hub is in primary navigation. New libraries open All voices; existing collections open Saved. Only All voices and Saved tabs remain; favorite stars still order Saved without a duplicate Starred tab. Counted filters, name search, clear/reset actions, paginated voice cards and distinct empty/error/loading states accompany private Save/Remove and Star/Unstar preferences. One closeable preview supports play/pause/end/error/retry. Optional ElevenLabs-ID import opens a compact dismissible panel; success clears stale search and opens Saved. A provider-key owner's imported library is visible only to that account; other imported voices require a workspace import. No credential is entered or returned in product UI. Mobile navigation fits the available destinations into two rows.
 
 ### Voice catalog filters — 2026-10-05
 

@@ -7,7 +7,8 @@
 
 .page:has(.progress-dashboard) .progress-hero {
   min-height: 0;
-  grid-template-columns: 144px minmax(0, 1fr);
+  grid-template-columns: 120px minmax(0, 1fr);
+  align-items: start;
   gap: 28px;
   padding: 28px 32px;
   border-color: rgba(151, 160, 200, 0.2);
@@ -19,8 +20,8 @@
 }
 
 .page:has(.progress-dashboard) .progress-ring {
-  width: 144px;
-  height: 144px;
+  width: 120px;
+  height: 120px;
   box-shadow: none;
 }
 
@@ -32,7 +33,7 @@
 }
 
 .page:has(.progress-dashboard) .progress-ring-inner strong {
-  font-size: 44px;
+  font-size: 36px;
 }
 
 .page:has(.progress-dashboard) .progress-ring-inner span {
@@ -53,13 +54,14 @@
   gap: 10px;
 }
 
+.page:has(.progress-dashboard) .progress-hero-body > .cloud-compute,
 .page:has(.progress-dashboard) .progress-hero-body > .progress-root,
 .page:has(.progress-dashboard) .progress-hero-body > .muted {
   grid-column: 1 / -1;
 }
 
 .page:has(.progress-dashboard) .progress-metrics {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0;
 }
 
@@ -101,6 +103,52 @@
   margin: 0;
   overflow-wrap: anywhere;
   font-size: 15px;
+}
+
+.page:has(.progress-dashboard) .cloud-compute {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 16px;
+  margin: 4px 0 0;
+  padding-top: 20px;
+}
+
+.page:has(.progress-dashboard)
+  .cloud-compute:not(:has(.cloud-compute-total))
+  .cloud-compute-metrics {
+  grid-column: 1 / -1;
+}
+
+.page:has(.progress-dashboard) .cloud-compute-total {
+  margin: 0;
+}
+
+.page:has(.progress-dashboard) .cloud-compute-metrics {
+  gap: 16px;
+}
+
+.page:has(.progress-dashboard) .cloud-compute .metric {
+  height: 100%;
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1px solid rgba(151, 160, 200, 0.18);
+  border-radius: 14px;
+  background: rgba(8, 12, 25, 0.48);
+  box-shadow: none;
+}
+
+.page:has(.progress-dashboard) .cloud-compute .metric strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.page:has(.progress-dashboard) .cloud-compute-breakdown {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.page:has(.progress-dashboard) .cloud-compute:not(:has(.cloud-compute-metrics)) {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .progress-dashboard {
@@ -364,6 +412,11 @@
 
   .page:has(.progress-dashboard) .progress-ring-inner span {
     font-size: 0.5rem;
+  }
+
+  .page:has(.progress-dashboard) .cloud-compute,
+  .page:has(.progress-dashboard) .cloud-compute-metrics {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .page:has(.progress-dashboard) .progress-hero-heading {

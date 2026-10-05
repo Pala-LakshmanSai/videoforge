@@ -75,7 +75,7 @@ export function VoiceoverHub() {
   const voices = useVoices(),
     client = useQueryClient();
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"saved" | "starred" | "all" | null>(null);
+  const [filter, setFilter] = useState<"saved" | "all" | null>(null);
   const [limit, setLimit] = useState(60);
   const [traitsFilter, setTraitsFilter] = useState<VoiceFilters>(emptyVoiceFilters);
   const [previewOnly, setPreviewOnly] = useState(false);
@@ -90,7 +90,6 @@ export function VoiceoverHub() {
   const searchInput = useRef<HTMLInputElement>(null);
   const all = voices.data?.voices ?? [];
   const savedCount = all.filter((voice) => voice.saved).length;
-  const starredCount = all.filter((voice) => voice.starred).length;
   const selectedFilter = filter ?? (savedCount ? "saved" : "all");
   const selectedSort = sort ?? (selectedFilter === "all" ? "name" : "favorites");
   useEffect(() => {
@@ -167,7 +166,7 @@ export function VoiceoverHub() {
   const catalog = useMemo(() => all.map((voice) => ({ voice, traits: voiceTraits(voice) })), [all]);
   const scoped = catalog.filter(
     ({ voice }) =>
-      (selectedFilter === "all" || (selectedFilter === "saved" ? voice.saved : voice.starred)) &&
+      (selectedFilter === "all" || voice.saved) &&
       matchesVoiceName(voice, search) &&
       (!previewOnly || Boolean(voice.preview_url)),
   );
@@ -382,7 +381,6 @@ export function VoiceoverHub() {
               [
                 { id: "all", label: "All voices", count: all.length },
                 { id: "saved", label: "Saved", count: savedCount },
-                { id: "starred", label: "Starred", count: starredCount },
               ] as const
             ).map((item) => (
               <button
@@ -497,20 +495,14 @@ export function VoiceoverHub() {
             {search.trim() || activeFilterCount ? <Search size={28} /> : <Bookmark size={28} />}
           </span>
           <h3>
-            {search.trim() || activeFilterCount
-              ? "No matching voices"
-              : selectedFilter === "starred"
-                ? "Your favorites belong here"
-                : "Build your voice library"}
+            {search.trim() || activeFilterCount ? "No matching voices" : "Build your voice library"}
           </h3>
           <p>
             {activeFilterCount
               ? "Try a different filter, or clear filters to see more voices."
               : search.trim()
                 ? "Try the beginning of a voice name, or browse the full library."
-                : selectedFilter === "starred"
-                  ? "Star a voice to find it first when you create."
-                  : "Listen to a few voices, then save the ones you love."}
+                : "Listen to a few voices, then save the ones you love."}
           </p>
           <div className="voice-empty-actions">
             {Boolean(activeFilterCount) && (

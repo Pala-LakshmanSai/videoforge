@@ -7,5 +7,4 @@ export { NewAvatarScreen } from "./NewAvatarScreen";
 export { StylesHubScreen } from "./StylesHubScreen";
 export { NewStyleScreen } from "./NewStyleScreen";
 export { LibraryScreen } from "./LibraryScreen";
-export { UsageScreen } from "./UsageScreen";
 export { SettingsScreen } from "./SettingsScreen";

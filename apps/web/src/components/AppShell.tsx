@@ -6,7 +6,6 @@ import {
   Activity,
   AlertTriangle,
   Aperture,
-  BookOpen,
   CircleGauge,
   Clapperboard,
   GalleryHorizontalEnd,
@@ -48,7 +47,6 @@ const nav = [
   { to: "/avatars", label: "Avatar Hub", mobileLabel: "Avatars", icon: UsersRound },
   { to: "/styles", label: "Image Styles", mobileLabel: "Styles", icon: Images },
   { to: "/library", label: "Library", mobileLabel: "Library", icon: Library },
-  { to: "/usage", label: "Usage", mobileLabel: "Usage", icon: BookOpen },
   { to: "/settings", label: "Settings", mobileLabel: "Settings", icon: Settings },
 ] as const;
 
@@ -446,41 +444,12 @@ export function AppShell({ children }: PropsWithChildren) {
           <div
             className={`top-command-tools ${fixtureControlsEnabled ? "" : "top-command-tools-production"} ${healthDegraded ? "top-command-tools-degraded" : ""}`.trim()}
           >
-            <div
-              className={`top-health ${healthDegraded ? "top-health-degraded" : ""}`.trim()}
-              role="status"
-              aria-live="polite"
-            >
-              <Activity size={16} aria-hidden="true" />
-              <Badge
-                tone={
-                  hostedBrowser
-                    ? hostedHealth.isSuccess
-                      ? "success"
-                      : hostedHealth.isError
-                        ? "danger"
-                        : "warning"
-                    : health.data?.status === "ok"
-                      ? "success"
-                      : health.isError
-                        ? "danger"
-                        : "warning"
-                }
-              >
-                API{" "}
-                {hostedBrowser
-                  ? hostedHealth.isSuccess
-                    ? "healthy"
-                    : hostedHealth.isError
-                      ? "offline"
-                      : "checking"
-                  : health.data?.status === "ok"
-                    ? "healthy"
-                    : health.isError
-                      ? "offline"
-                      : "checking"}
-              </Badge>
-            </div>
+            {healthDegraded && (
+              <p className="top-health top-health-degraded" role="status">
+                <AlertTriangle size={16} aria-hidden="true" />
+                Connection unavailable
+              </p>
+            )}
 
             {import.meta.env.PROD && !hostedBrowser ? (
               <div className="top-health top-health-degraded" role="status">

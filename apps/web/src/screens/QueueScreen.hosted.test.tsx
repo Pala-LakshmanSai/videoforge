@@ -55,7 +55,7 @@ describe("hosted queue", () => {
     expect(screen.getByText("Local computer")).toBeInTheDocument();
     expect(screen.getByText("Not connected")).toBeInTheDocument();
     expect(screen.getByText("Transcribing voiceover.")).toBeInTheDocument();
-    expect(screen.getByText("Local work pauses safely if your computer disconnects. Cloud work continues independently.")).toBeInTheDocument();
+    expect(screen.queryByText(/work pauses safely if your computer disconnects/iu)).not.toBeInTheDocument();
   });
 
   it("does not require computer setup for an empty queue with Cloud available",async () => {

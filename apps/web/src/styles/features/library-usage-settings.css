@@ -84,12 +84,6 @@
   gap: 12px;
 }
 
-.usage-grid .metric {
-  min-height: 86px;
-  padding: 16px 18px;
-  border-color: var(--surface-border);
-}
-
 /* Hosted account and computer setup. */
 .settings-hosted-grid {
   grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.5fr);

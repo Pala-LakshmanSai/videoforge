@@ -1,4 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { UsageScreen } from "../screens";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/usage")({ component: UsageScreen });
+export const Route = createFileRoute("/usage")({
+  beforeLoad: () => {
+    throw redirect({ to: "/", replace: true });
+  },
+});

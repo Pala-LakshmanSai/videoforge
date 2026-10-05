@@ -65,7 +65,7 @@ it("keeps a queued narration locked and observes it without creating another req
     ),
   );
 });
-it("shows private saved voices and saves a star through authenticated API", async () => {
+it("shows one Saved tab and saves a star through authenticated API", async () => {
   const fetcher = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
     if (init?.method === "POST") return Response.json({ saved: true, starred: true });
     return Response.json({ voices });
@@ -73,6 +73,7 @@ it("shows private saved voices and saves a star through authenticated API", asyn
   vi.stubGlobal("fetch", fetcher);
   wrap(<VoiceoverHub />);
   await screen.findByRole("heading", { name: "Alice" });
+  expect(screen.queryByRole("button", { name: /^Starred/ })).not.toBeInTheDocument();
   expect(screen.queryByRole("heading", { name: "Bob" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: /^All voices/ }));
   await screen.findByRole("heading", { name: "Bob" });

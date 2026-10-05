@@ -21,7 +21,7 @@ describe("local AppShell provider mode", () => {
     vi.unstubAllEnvs();
   });
 
-  it("uses the local health endpoint and shows the fixture as healthy", async () => {
+  it("uses local health and fixture controls without a routine health badge", async () => {
     vi.stubGlobal(
       "matchMedia",
       vi.fn(() => ({
@@ -81,7 +81,9 @@ describe("local AppShell provider mode", () => {
       </QueryClientProvider>,
     );
 
-    expect(await screen.findByText("API healthy")).toBeVisible();
+    expect(await screen.findByText("Fixture mode")).toBeVisible();
+    expect(screen.queryByText("API healthy")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Usage" })).not.toBeInTheDocument();
     expect(screen.getByText("Fixture mode")).toBeVisible();
     expect(screen.queryByText("Private staging")).not.toBeInTheDocument();
   });

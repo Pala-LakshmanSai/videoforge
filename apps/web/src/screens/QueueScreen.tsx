@@ -338,11 +338,6 @@ function HostedQueueScreen() {
         />
       </div>
       <Panel heading="Your projects">
-        <div className="notice" role="status">
-          {cloudOnly ? "Cloud work continues independently of your computer."
-            : hasCloud ? "Local work pauses safely if your computer disconnects. Cloud work continues independently."
-              : "Work pauses safely if your computer disconnects."}
-        </div>
         {projects.length === 0 ? (
           <EmptyState
             icon={<Video />}

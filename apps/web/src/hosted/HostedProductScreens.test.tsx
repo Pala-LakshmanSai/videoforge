@@ -57,7 +57,6 @@ import {
   HostedProjectScreen,
   HostedReviewScreen,
   HostedStylesHubScreen,
-  HostedUsageScreen,
   HostedElapsed,
   HOSTED_SHA256_CHUNK_BYTES,
   audioDurationMs,
@@ -1039,7 +1038,7 @@ it("does not render the previous project while a new project detail is loading",
 
 function renderHosted(node: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={client}>{node}</QueryClientProvider>);
+  return { ...render(<QueryClientProvider client={client}>{node}</QueryClientProvider>), client };
 }
 
 /**
@@ -1253,7 +1252,7 @@ it("does not announce Library availability for a completed render with missing v
   await screen.findByText("Missing output");
   expect(screen.queryByRole("link", { name: "View video" })).not.toBeInTheDocument();
   expect(screen.queryByText("available in Library")).not.toBeInTheDocument();
-  expect(screen.getByText("output unavailable")).toBeInTheDocument();
+  expect(screen.getByText("Video unavailable")).toBeInTheDocument();
   expect(document.querySelector("video")).toBeNull();
 });
 
@@ -1310,62 +1309,14 @@ it("keeps rendering available after optional scene clips fall back to original s
   expect(screen.queryByRole("button", { name: /create a new video/i })).not.toBeInTheDocument();
 });
 
-it.each([
-  {
-    overrun: false,
-    expectedValue: "~2–5 min",
-    expectedDetail: /based on live progress and recent short runs; times vary/i,
-  },
-  {
-    overrun: true,
-    expectedValue: "Taking longer",
-    expectedDetail: /than recent short runs; API and render times vary/i,
-  },
-])(
-  "shows an honest API project time estimate when overrun=$overrun",
-  async ({ overrun, expectedValue, expectedDetail }) => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        Response.json({
-          project: {
-            id: "estimate",
-            title: "Estimated video",
-            created_at: "2026-09-25T05:00:00Z",
-            revision_id: "revision",
-            revision_state: "LOCKED",
-          },
-          generation_provider: "KIE_FAL",
-          attempts: [],
-          generation: null,
-          gpu_transport: "DISABLED_UNQUALIFIED",
-          gpu_readiness: gpuReadiness,
-          stages: stageList({ prepare: "COMPLETE", transcription: "RUNNING" }),
-          time_estimate: {
-            remaining_min_ms: 120_000,
-            remaining_max_ms: 300_000,
-            basis: "RECENT_API_SHORT_RUN",
-            overrun,
-          },
-        }),
-      ),
-    );
-    renderHosted(<HostedProjectScreen projectId="estimate" />);
-    const hero = await screen.findByRole("region", { name: "Live video progress" });
-    expect(within(hero).getByText(expectedValue)).toBeInTheDocument();
-    expect(within(hero).getByText(expectedDetail)).toBeInTheDocument();
-    expect(within(hero).queryByText("Not reported")).not.toBeInTheDocument();
-  },
-);
-
-it("labels a long-video estimate as measured from a recent full render", async () => {
+it.each([false, true])("omits the removed time estimate for overrun=%s", async (overrun) => {
   vi.stubGlobal(
     "fetch",
     vi.fn(async () =>
       Response.json({
         project: {
-          id: "estimate-full",
-          title: "Measured video",
+          id: "estimate",
+          title: "Estimated video",
           created_at: "2026-09-25T05:00:00Z",
           revision_id: "revision",
           revision_state: "LOCKED",
@@ -1375,25 +1326,25 @@ it("labels a long-video estimate as measured from a recent full render", async (
         generation: null,
         gpu_transport: "DISABLED_UNQUALIFIED",
         gpu_readiness: gpuReadiness,
-        stages: stageList({ prepare: "COMPLETE", render: "RUNNING" }),
+        stages: stageList({ prepare: "COMPLETE", transcription: "RUNNING" }),
         time_estimate: {
-          remaining_min_ms: 348_000,
-          remaining_max_ms: 972_000,
-          basis: "RECENT_FULL_RENDER",
-          overrun: false,
+          remaining_min_ms: 120_000,
+          remaining_max_ms: 300_000,
+          basis: "RECENT_API_SHORT_RUN",
+          overrun,
         },
       }),
     ),
   );
-  renderHosted(<HostedProjectScreen projectId="estimate-full" />);
+  renderHosted(<HostedProjectScreen projectId="estimate" />);
   const hero = await screen.findByRole("region", { name: "Live video progress" });
-  expect(within(hero).getByText("~5–17 min")).toBeInTheDocument();
-  expect(
-    within(hero).getByText("remaining · based on the recent full render; times vary"),
-  ).toBeInTheDocument();
+  expect(within(hero).queryByText("Estimated")).not.toBeInTheDocument();
+  expect(within(hero).getByText("Stage")).toBeInTheDocument();
+  expect(within(hero).getByText("Total elapsed")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Refresh now" })).not.toBeInTheDocument();
 });
 
-it("refreshes a running project's time estimate without reloading", async () => {
+it("updates a running project automatically without a manual refresh button", async () => {
   let reads = 0;
   vi.stubGlobal(
     "fetch",
@@ -1411,7 +1362,12 @@ it("refreshes a running project's time estimate without reloading", async () => 
         generation: null,
         gpu_transport: "DISABLED_UNQUALIFIED",
         gpu_readiness: gpuReadiness,
-        stages: stageList({ prepare: "COMPLETE", transcription: "RUNNING" }),
+        stages: stageList({
+          prepare: "COMPLETE",
+          transcription: reads ? "COMPLETE" : "RUNNING",
+          "voiceover-context": reads ? "COMPLETE" : "PENDING",
+          planning: reads ? "RUNNING" : "PENDING",
+        }),
         time_estimate:
           ++reads === 1
             ? null
@@ -1426,12 +1382,14 @@ it("refreshes a running project's time estimate without reloading", async () => 
   );
   renderHosted(<HostedProjectScreen projectId="estimate-live" />);
   const hero = await screen.findByRole("region", { name: "Live video progress" });
-  const estimateMetric = within(hero).getByText("Estimated").closest<HTMLElement>(".metric");
-  expect(estimateMetric).not.toBeNull();
-  expect(within(estimateMetric!).getByText("After scene plan")).toBeInTheDocument();
-  await waitFor(() => expect(within(estimateMetric!).getByText("~2–5 min")).toBeInTheDocument(), {
-    timeout: 3_500,
-  });
+  expect(within(hero).getByRole("heading", { name: "Transcribe voiceover" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Refresh now" })).not.toBeInTheDocument();
+  await waitFor(
+    () => expect(within(hero).getByRole("heading", { name: "Plan scenes" })).toBeInTheDocument(),
+    {
+      timeout: 3_500,
+    },
+  );
 });
 
 it("shows ready without stale remaining time or generation notice after render succeeds", async () => {
@@ -1514,10 +1472,8 @@ it("shows ready without stale remaining time or generation notice after render s
   );
   renderHosted(<HostedProjectScreen projectId="estimate-ready" />);
   const hero = await screen.findByRole("region", { name: "Live video progress" });
-  const metric = within(hero).getByText("Estimated").closest<HTMLElement>(".metric");
-  expect(metric).not.toBeNull();
-  await waitFor(() => expect(within(metric!).getByText("Ready")).toBeInTheDocument());
-  expect(within(metric!).getByText("available in Library")).toBeInTheDocument();
+  await screen.findByRole("link", { name: "View video" });
+  expect(within(hero).queryByText("Estimated")).not.toBeInTheDocument();
   expect(screen.queryByText(/Generation is running/u)).not.toBeInTheDocument();
 });
 
@@ -4746,12 +4702,14 @@ describe("hosted product journey", () => {
         });
       }),
     );
-    renderHosted(<HostedProjectScreen projectId={projectId} />);
+    const { client } = renderHosted(<HostedProjectScreen projectId={projectId} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Stop transcription" }));
     expect(screen.getByRole("button", { name: "Confirm stop transcription" })).toBeInTheDocument();
     attemptState = "RUNNING";
-    fireEvent.click(screen.getByRole("button", { name: "Refresh now" }));
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ["hosted-project"] });
+    });
 
     await screen.findByRole("button", { name: "Stop transcription" });
     expect(cancellationRequests).toBe(0);
@@ -5841,7 +5799,9 @@ describe("hosted product journey", () => {
         );
       });
       vi.stubGlobal("fetch", fetchMock);
-      renderHosted(<HostedProjectScreen projectId="11111111-1111-4111-8111-111111111111" />);
+      const { client } = renderHosted(
+        <HostedProjectScreen projectId="11111111-1111-4111-8111-111111111111" />,
+      );
 
       expect(
         await screen.findByText(/generation planning could not be verified/u),
@@ -5876,7 +5836,9 @@ describe("hosted product journey", () => {
       ).toBe(false);
       expect(screen.queryByRole("link", { name: "Review video" })).not.toBeInTheDocument();
       planned = true;
-      fireEvent.click(screen.getByRole("button", { name: "Refresh now" }));
+      await act(async () => {
+        await client.refetchQueries({ queryKey: ["hosted-project"] });
+      });
       await waitFor(() =>
         expect(
           screen.queryByText(/generation planning could not be verified/u),
@@ -5944,7 +5906,7 @@ describe("hosted product journey", () => {
       return Response.json(detail());
     });
     vi.stubGlobal("fetch", fetchMock);
-    renderHosted(<HostedProjectScreen projectId={projectId} />);
+    const { client } = renderHosted(<HostedProjectScreen projectId={projectId} />);
 
     expect(
       await screen.findByText(/generation planning could not be verified/u),
@@ -5952,7 +5914,9 @@ describe("hosted product journey", () => {
     expect(renderCalls).toBe(1);
 
     revisionId = successorRevisionId;
-    fireEvent.click(screen.getByRole("button", { name: "Refresh now" }));
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ["hosted-project"] });
+    });
     await waitFor(() => expect(renderCalls).toBe(2));
     await new Promise((resolve) => window.setTimeout(resolve, 25));
     expect(renderCalls).toBe(2);
@@ -7402,30 +7366,6 @@ describe("hosted product journey", () => {
         "0 of 206 accepted · The provider has not reported any completed items yet.",
       ),
     ).toHaveLength(2);
-  });
-
-  it("reports only measured personal-worker and retained-object facts", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        Response.json({
-          current_month_provider_cpu_usd: 0,
-          current_month_gpu_usd: 0,
-          attempts: 4,
-          succeeded: 2,
-          failed: 1,
-          personal_worker_seconds: 125,
-          retained_bytes: 1_073_741_824,
-          storage_policy: "DURABLE_UNTIL_EXPLICIT_DELETE",
-        }),
-      ),
-    );
-    renderHosted(<HostedUsageScreen />);
-
-    expect(await screen.findByText("2m 05s")).toBeInTheDocument();
-    expect(screen.getByText("1.000 GB")).toBeInTheDocument();
-    expect(screen.getByText("Not tracked")).toBeInTheDocument();
-    expect(screen.queryByText(/estimated/u)).not.toBeInTheDocument();
   });
 });
 

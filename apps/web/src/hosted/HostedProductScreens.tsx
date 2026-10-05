@@ -1992,35 +1992,6 @@ export function hostedProjectPollInterval(data: ProjectDetailResponse | undefine
   return terminalStage || terminalAttempt || terminalContext || complete ? false : 2_000;
 }
 
-interface HostedUsageResponse {
-  readonly current_month_provider_cpu_usd: 0;
-  readonly current_month_gpu_usd: 0;
-  readonly attempts: number;
-  readonly succeeded: number;
-  readonly failed: number;
-  readonly personal_worker_seconds: number;
-  readonly retained_bytes: number;
-  readonly storage_policy: string;
-  readonly as_of?: string | null;
-  readonly fixed_recurring_usd?: number | null;
-  readonly projects?: readonly {
-    readonly project_id: string;
-    readonly title: string;
-    readonly attempts?: number;
-    readonly projected_usd?: number | null;
-    readonly settled_usd?: number | null;
-    readonly worker_seconds?: number | null;
-    readonly queue_wait_ms?: number | null;
-    readonly end_to_end_ms?: number | null;
-  }[];
-  readonly lanes?: readonly {
-    readonly lane: string;
-    readonly projected_usd?: number | null;
-    readonly settled_usd?: number | null;
-    readonly billed_seconds?: number | null;
-  }[];
-}
-
 interface HostedPreflightResponse {
   readonly ok?: boolean;
   readonly ready?: boolean;
@@ -2499,13 +2470,6 @@ function formatMilliseconds(value: number | null | undefined): string {
   const minutes = Math.floor(seconds / 60);
   const remainder = seconds % 60;
   return `${minutes}m ${String(remainder).padStart(2, "0")}s`;
-}
-
-function formatApproximateMinutes(minMs: number, maxMs: number): string | null {
-  if (!Number.isFinite(minMs) || !Number.isFinite(maxMs) || minMs < 0 || maxMs < minMs) return null;
-  const low = Math.max(1, Math.floor(minMs / 60_000));
-  const high = Math.max(low, Math.ceil(maxMs / 60_000));
-  return low === high ? `~${high} min` : `~${low}–${high} min`;
 }
 
 function hostedCount(value: HostedCount): number | null {
@@ -5883,7 +5847,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           <div className="progress-hero-body">
             <div className="progress-hero-heading">
               <div>
-                <p className="eyebrow">Happening now</p>
+                <p className="eyebrow">Current stage</p>
                 <h2>{narrationHeading}</h2>
               </div>
               <Badge
@@ -5903,11 +5867,6 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                 label="Stage"
                 value={`01/${String(pendingStages.length).padStart(2, "0")}`}
                 tone="info"
-              />
-              <Metric
-                label="Estimated"
-                value="After scene plan"
-                detail="timing available after planning"
               />
               <Metric
                 label="Projected cost"
@@ -6163,48 +6122,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               : hasRunning
                 ? "Running"
                 : "Waiting";
-  const apiTimeEstimate =
-    query.data.generation_provider === "KIE_FAL" ? query.data.time_estimate : null;
-  const apiEstimateRange = apiTimeEstimate
-    ? formatApproximateMinutes(apiTimeEstimate.remaining_min_ms, apiTimeEstimate.remaining_max_ms)
-    : null;
-  const estimateStopped = hasFailed || hasActionRequired || terminalBlocked || terminalCancelled;
-  const estimatedTimeValue =
-    query.data.generation_provider !== "KIE_FAL"
-      ? formatMilliseconds(
-          stages.find((stage, index) => (stage.id ?? `stage-${index + 1}`) === activeStage?.id)
-            ?.eta_ms ?? queue?.estimated_wait_ms,
-        )
-      : estimateStopped
-        ? "Unavailable"
-        : videoAvailable
-          ? "Ready"
-          : render?.state === "SUCCEEDED"
-            ? "Finished"
-            : apiTimeEstimate?.overrun
-              ? "Taking longer"
-              : (apiEstimateRange ??
-                (query.data.generation ? "No reliable estimate" : "After scene plan"));
-  const estimatedTimeDetail =
-    query.data.generation_provider !== "KIE_FAL"
-      ? "remaining"
-      : estimateStopped
-        ? "project stopped"
-        : videoAvailable
-          ? "available in Library"
-          : render?.state === "SUCCEEDED"
-            ? "output unavailable"
-            : apiTimeEstimate?.overrun
-              ? apiTimeEstimate?.basis === "RECENT_FULL_RENDER"
-                ? "than the recent full render; times vary"
-                : "than recent short runs; API and render times vary"
-              : apiEstimateRange
-                ? apiTimeEstimate?.basis === "RECENT_FULL_RENDER"
-                  ? "remaining · based on the recent full render; times vary"
-                  : "remaining · based on live progress and recent short runs; times vary"
-                : query.data.generation
-                  ? "provider timing varies"
-                  : "timing available after planning";
+  const workStopped = hasFailed || hasActionRequired || terminalBlocked || terminalCancelled;
   const statusToneValue = hasFailed
     ? "danger"
     : hasActionRequired
@@ -6505,7 +6423,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   });
   // Wall time counts concurrent stages once and includes queue/handoff waits.
   const elapsedStopped =
-    estimateStopped ||
+    workStopped ||
     render?.state === "SUCCEEDED" ||
     uiStages.some((stage) => stage.id === "render" && stage.status === "COMPLETE") ||
     allComplete;
@@ -6827,6 +6745,15 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           ) : undefined
         }
       />
+      {render?.state === "SUCCEEDED" && !cloudCleanupPending && !videoAvailable && (
+        <div className="notice" role="status">
+          <strong>Video unavailable</strong>
+          <span>
+            {" "}
+            The retained output could not be verified. Open the Library to check available videos.
+          </span>
+        </div>
+      )}
       <SceneFootageCoverage coverage={sceneFootageCoverageFromCost(cost)} />
       <section className="progress-hero" aria-label="Live video progress">
         {cloudFinalPhasePending ? (
@@ -6844,7 +6771,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         <div className="progress-hero-body">
           <div className="progress-hero-heading">
             <div>
-              <p className="eyebrow">Happening now</p>
+              <p className="eyebrow">{allComplete ? "Video complete" : "Current stage"}</p>
               <h2>
                 {cloudCleanupPending
                   ? cloudMediaPhaseLabel(render.cloud_phase, render.state)
@@ -6859,7 +6786,6 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               value={`${String(activeStageIndex + 1).padStart(2, "0")}/${String(pipelineStages.length).padStart(2, "0")}`}
               tone="info"
             />
-            <Metric label="Estimated" value={estimatedTimeValue} detail={estimatedTimeDetail} />
             <Metric
               label="Projected cost"
               value={
@@ -7466,9 +7392,6 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           ) : null}
         </div>
       ) : null}
-      <Button variant="secondary" onClick={() => void query.refetch()}>
-        <RefreshCw size={15} /> Refresh now
-      </Button>
       <Panel eyebrow="Project" heading="Delete project">
         <p className="helper">Stops new work and removes this project. Billing history stays.</p>
         {canRequestProjectReconciliation ? (
@@ -7638,103 +7561,6 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
         ) : (
           <p className="helper">No provenance manifest is available for this output.</p>
         )}
-      </Panel>
-    </>
-  );
-}
-
-export function HostedUsageScreen() {
-  const query = useQuery({
-    queryKey: ["hosted-usage"],
-    queryFn: () => readJson<HostedUsageResponse>("/api/v2/hosted/usage"),
-  });
-  if (query.isPending)
-    return (
-      <Panel eyebrow="Workspace" heading="Loading usage">
-        <p>Reading workspace totals…</p>
-      </Panel>
-    );
-  if (query.isError || !query.data)
-    return (
-      <EmptyState
-        icon={<AlertTriangle />}
-        title="Usage unavailable"
-        body="Usage could not be loaded. Try again."
-        action={
-          <Button variant="secondary" onClick={() => void query.refetch()}>
-            Retry
-          </Button>
-        }
-      />
-    );
-  return (
-    <>
-      <PageHeader title="Usage" />
-      <div className="grid grid-3 usage-grid">
-        <Metric label="Provider charges" value="Not tracked" detail="not reported" />
-        <Metric
-          label="Computer work"
-          value={formatMilliseconds(query.data.personal_worker_seconds * 1_000)}
-          detail="measured time"
-        />
-        <Metric
-          label="Stored media"
-          value={`${(query.data.retained_bytes / 1024 / 1024 / 1024).toFixed(3)} GB`}
-          detail="until deleted"
-        />
-      </div>
-      <div className="grid grid-3 usage-grid">
-        <Metric label="Runs" value={String(query.data.attempts)} detail="this month" />
-        <Metric label="Completed" value={String(query.data.succeeded)} />
-        <Metric label="Needs attention" value={String(query.data.failed)} />
-      </div>
-      <Panel heading="Usage details">
-        {query.data.as_of ? (
-          <p className="helper">As of {formatTimestamp(query.data.as_of)}.</p>
-        ) : null}
-        {query.data.fixed_recurring_usd !== undefined && query.data.fixed_recurring_usd !== null ? (
-          <div className="notice">
-            Retained volume: {formatUsd(query.data.fixed_recurring_usd)}.
-          </div>
-        ) : null}
-        {query.data.projects?.length ? (
-          <div className="entity-list">
-            {query.data.projects.map((project) => (
-              <article className="entity-row" key={project.project_id}>
-                <div>
-                  <strong>{project.title}</strong>
-                  <small>{project.attempts ?? 0} runs</small>
-                </div>
-                <span>
-                  <small>Projected</small> {formatUsd(project.projected_usd)}
-                </span>
-                <span>
-                  <small>Settled</small> {formatUsd(project.settled_usd)}
-                </span>
-                <span>
-                  <small>Queue / end-to-end</small> {formatMilliseconds(project.queue_wait_ms)} /{" "}
-                  {formatMilliseconds(project.end_to_end_ms)}
-                </span>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <p className="helper">No detailed timing reported.</p>
-        )}
-        {query.data.lanes?.length ? (
-          <Disclosure summary="Lane breakdown">
-            <div className="entity-list">
-              {query.data.lanes.map((lane) => (
-                <article className="entity-row" key={lane.lane}>
-                  <strong>{lane.lane}</strong>
-                  <span>Projected {formatUsd(lane.projected_usd)}</span>
-                  <span>Settled {formatUsd(lane.settled_usd)}</span>
-                  <span>{lane.billed_seconds ?? "Not reported"} billed seconds</span>
-                </article>
-              ))}
-            </div>
-          </Disclosure>
-        ) : null}
       </Panel>
     </>
   );

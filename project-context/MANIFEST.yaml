@@ -4,8 +4,8 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-10-05"
 source_of_truth: project-context
 
-current_selected_profile: v2_09_centralized_library
-current_selected_brief: CENTRALIZED_LIBRARY_PLAN.md
+current_selected_profile: v2_09_product_ui_cleanup
+current_selected_brief: PRODUCT_UI_CLEANUP_PLAN.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -25,6 +25,10 @@ conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
 target_profile_word_budget: 15000
 
 read_profiles:
+  v2_09_product_ui_cleanup:
+    - PRODUCT_UI_CLEANUP_PLAN.md
+    - 05_UI_UX_SPEC.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
   v2_09_centralized_library:
     - CENTRALIZED_LIBRARY_PLAN.md
     - 10_DATA_AND_API_CONTRACTS.md
@@ -347,6 +351,7 @@ approved_decisions:
   DEC_UX_004: visible_layered_surface_spacing
   DEC_UX_005: preserve_ui_remove_manual_compute_controls
   DEC_UX_006: progress_dashboard_presentation_only_pull_request_review
+  DEC_UX_008: all_users_UI_cleanup_no_Usage_duplicate_Starred_estimated_refresh_notice_health_badge
   DEC_UX_007: hide_internal_pipeline_steps_preserve_status_time_and_released_machine_truth
 
 open_gates:
