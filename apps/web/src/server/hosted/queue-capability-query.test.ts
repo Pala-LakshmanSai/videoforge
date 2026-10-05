@@ -119,6 +119,10 @@ describe("hosted queue capability query", () => {
           project_revision_id uuid, leased_attempt_id uuid, fence_id uuid, state text
         );
         CREATE TABLE cloud_media_jobs (account_id uuid, workspace_id uuid, reservation_id uuid, attempt_id uuid);
+        CREATE TABLE hosted_script_projects (
+          project_id uuid PRIMARY KEY, account_id uuid, workspace_id uuid, state text,
+          voiceover_job_id uuid, options jsonb, updated_at timestamptz
+        );
       `);
 
       const result = await database.query<Record<string, unknown>>(await queueQuery(), [

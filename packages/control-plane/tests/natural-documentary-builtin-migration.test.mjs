@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { canonicalizeJson } from "@videoforge/contracts";
-import { applyMigrations, TENANT_PRINCIPAL_SETTING } from "../dist/src/index.js";
+import { TENANT_PRINCIPAL_SETTING } from "../dist/src/index.js";
 import { IDS, seedLockedProjects } from "./support/fixtures.mjs";
 import {
   applyMigrationSliceThrough,
@@ -47,9 +47,15 @@ test("0239 adds a shared immutable published style without changing private pres
       migration.sha256,
       `sha256:${createHash("sha256").update(migration.sql).digest("hex")}`,
     );
-    const applied = await applyMigrations(executor, sources);
-    assert.deepEqual(applied.appliedVersions, [239]);
-    assert.equal(applied.alreadyAppliedVersions.at(-1), 238);
+    // Replay this historical transition only; later migrations have their own checks.
+    await executor.transaction(async (transaction) => {
+      await transaction.execute(migration.sql);
+      await transaction.query(
+        `INSERT INTO public.videoforge_schema_migrations(version,name,filename,sha256)
+         VALUES($1,$2,$3,$4)`,
+        [migration.version, migration.name, migration.filename, migration.sha256],
+      );
+    });
 
     const version = (
       await executor.query(
@@ -164,9 +170,11 @@ test("0239 adds a shared immutable published style without changing private pres
       before,
       "all existing preset bytes and project revision pins stay unchanged",
     );
-    const replay = await applyMigrations(executor, sources);
-    assert.deepEqual(replay.appliedVersions, []);
-    assert.equal(replay.alreadyAppliedVersions.at(-1), 239);
+    assert.equal(
+      (await executor.query(`SELECT max(version) AS version FROM videoforge_schema_migrations`))
+        .rows[0].version,
+      239,
+    );
   } finally {
     await database.close();
   }

@@ -4,8 +4,8 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-10-05"
 source_of_truth: project-context
 
-current_selected_profile: v2_09_natural_footage_experiment
-current_selected_brief: NATURAL_FOOTAGE_EXPERIMENT_PLAN.md
+current_selected_profile: v2_09_production_reliability_audit
+current_selected_brief: PRODUCTION_RELIABILITY_AUDIT.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -25,6 +25,9 @@ conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
 target_profile_word_budget: 15000
 
 read_profiles:
+  v2_09_production_reliability_audit:
+    - PRODUCTION_RELIABILITY_AUDIT.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
   v2_09_natural_footage_experiment:
     - NATURAL_FOOTAGE_EXPERIMENT_PLAN.md
     - 04_VISUAL_IDENTITY_AND_PROMPTS.md

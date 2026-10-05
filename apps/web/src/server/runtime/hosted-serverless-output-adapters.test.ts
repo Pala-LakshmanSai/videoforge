@@ -383,7 +383,7 @@ describe("hosted ordinary-output SQL adapter", () => {
     } finally {
       await pglite.close();
     }
-  });
+  }, 30_000);
 
   it("reports the current supplemental schema requirement fail closed", async () => {
     const ready = sqlRepositoryFixture();

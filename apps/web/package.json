@@ -37,7 +37,7 @@
     "@videoforge/test-fixtures": "workspace:*",
     "aws4fetch": "1.0.20",
     "better-auth": "1.6.29",
-    "hono": "4.13.5",
+    "hono": "4.13.7",
     "lucide-react": "0.542.0",
     "react": "19.1.1",
     "react-dom": "19.1.1",

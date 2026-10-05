@@ -118,15 +118,17 @@ test("V2-05 carries two accounts' videos through factual private runtime stages"
 
     await queuedPage.reload();
     await expect(
-      queuedPage.getByText(/^Idle\. Generate adds a private waiting request/u),
+      queuedPage.getByText("Queue is empty. Start a project to add it.", { exact: true }),
     ).toBeVisible();
     // The approved queue surface still exposes no compute control of any kind.
-    await expect(queuedPage.getByText(/GPU|Pod|RunPod/u)).toHaveCount(0);
+    await expect(queuedPage.getByRole("main").getByText(/GPU|Pod|RunPod/u)).toHaveCount(0);
 
     // Account B sees only its own video, in its own factual state.
     const pageB = await contextB.newPage();
     await pageB.goto(`/?fixture=${FIXTURE}`);
-    await expect(pageB.getByText(/^Idle\. Generate adds a private waiting request/u)).toBeVisible();
+    await expect(
+      pageB.getByText("Queue is empty. Start a project to add it.", { exact: true }),
+    ).toBeVisible();
     await expect(pageB.getByText("Account A runtime")).toHaveCount(0);
 
     // Neither account can address the other's video, and the refusal reveals nothing.

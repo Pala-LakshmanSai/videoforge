@@ -168,6 +168,12 @@ async function seededDatabase(context: {
     CREATE TABLE public.hosted_video_jobs (
       id uuid PRIMARY KEY, project_revision_id uuid NOT NULL, state text NOT NULL
     );
+    CREATE TABLE public.video_runtime_states (
+      project_revision_id uuid NOT NULL, generation_request_id uuid NOT NULL, stage text NOT NULL
+    );
+    CREATE FUNCTION public.videoforge_hosted_videos_ready(a uuid,w uuid,g uuid)
+    RETURNS boolean LANGUAGE sql AS $$ SELECT NOT EXISTS(
+      SELECT 1 FROM hosted_video_jobs WHERE state <> 'SUCCEEDED') $$;
 
     INSERT INTO public.projects VALUES
       ('11111111-1111-4111-8111-111111111111','${accountId}','${workspaceId}','ACTIVE',
@@ -361,7 +367,9 @@ it("recovers unfinished saved footage after all image/avatar jobs finish, withou
       await database.exec(`UPDATE public.hosted_video_jobs SET state='${state}'`);
       expect(await nextSteps(database)).toEqual(["dispatch"]);
     }
-    for (const state of ["SUCCEEDED", "FAILED", "PREPARED"]) {
+    await database.exec("UPDATE public.hosted_video_jobs SET state='PREPARED'");
+    expect(await nextSteps(database)).toEqual(["dispatch"]);
+    for (const state of ["SUCCEEDED", "FAILED"]) {
       await database.exec(`UPDATE public.hosted_video_jobs SET state='${state}'`);
       expect(await nextSteps(database)).toEqual([]);
     }
@@ -386,6 +394,75 @@ it("recovers unfinished saved footage after all image/avatar jobs finish, withou
     await database.close();
   }
 });
+
+it.each([false, true])(
+  "recovers prepared footage and an absent final-render handoff after accepted API media (rendering=%s)",
+  async (rendering) => {
+    const database = await seededDatabase({
+      state: "SUCCEEDED",
+      hash: "accepted",
+      problemCode: null,
+      redispatchCount: 0,
+    });
+    try {
+      await database.exec(`
+      INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}');
+      INSERT INTO public.hosted_prompt_runs VALUES
+        ('55555555-5555-4555-8555-555555555555','${revisionId}','SUCCEEDED','accepted',now(),now(),NULL,0,1);
+      INSERT INTO public.generation_requests VALUES
+        ('66666666-6666-4666-8666-666666666666','${revisionId}','ACTIVE');
+      INSERT INTO public.hosted_api_generation_jobs VALUES
+        ('77777777-7777-4777-8777-777777777777','${revisionId}','SUCCEEDED');
+      INSERT INTO public.hosted_video_jobs VALUES
+        ('99999999-9999-4999-8999-999999999999','${revisionId}','PREPARED');
+    `);
+      if (rendering)
+        await database.exec(`UPDATE public.hosted_video_jobs SET state='SUCCEEDED';
+      INSERT INTO public.video_runtime_states VALUES
+        ('${revisionId}','66666666-6666-4666-8666-666666666666','RENDERING')`);
+      // Both interrupted handoffs must be found by the minute driver.
+      expect(await nextSteps(database)).toEqual(["dispatch"]);
+      await database.exec(
+        `DELETE FROM public.video_runtime_states; UPDATE public.hosted_video_jobs SET state='FAILED'`,
+      );
+      expect(await nextSteps(database)).toEqual([]);
+      await database.exec(`UPDATE public.hosted_video_jobs SET state='SUCCEEDED'`);
+      expect(await nextSteps(database)).toEqual([]);
+      await database.exec(`INSERT INTO public.video_runtime_states VALUES
+      ('${revisionId}','66666666-6666-4666-8666-666666666666','RENDERING')`);
+      // Final output ingestion can finish before the Workflow's render step throws or is terminated.
+      expect(await nextSteps(database)).toEqual(["dispatch"]);
+      await database.exec(`UPDATE public.hosted_video_jobs SET state='FAILED'`);
+      expect(await nextSteps(database)).toEqual([]);
+      await database.exec(`DELETE FROM public.hosted_video_jobs`);
+      expect(await nextSteps(database)).toEqual(["dispatch"]); // Coverage Off has the same handoff.
+      for (const state of ["PLANNED", "RUNNING", "SUCCEEDED", "FAILED", "CANCELLED", "EXPIRED"]) {
+        await database.exec(`INSERT INTO public.hosted_cpu_job_attempts VALUES
+        ('88888888-8888-4888-8888-888888888888','${revisionId}','RENDER','${state}',now())`);
+        expect(await nextSteps(database)).toEqual([]); // Never schedule/replay an existing attempt.
+        await database.exec(`DELETE FROM public.hosted_cpu_job_attempts WHERE kind='RENDER'`);
+      }
+      for (const state of ["WAITING", "CANCELLING", "CANCELLED", "SUCCEEDED", "FAILED"]) {
+        await database.exec(`UPDATE public.generation_requests SET state='${state}'`);
+        expect(await nextSteps(database)).toEqual([]);
+      }
+      await database.exec(`UPDATE public.generation_requests SET state='ACTIVE';
+      INSERT INTO public.hosted_cpu_job_attempts VALUES
+        ('88888888-8888-4888-8888-888888888888','${revisionId}','SPAN_AUDIO','FAILED',now())`);
+      expect(await nextSteps(database)).toEqual([]);
+      await database.exec(
+        `DELETE FROM public.hosted_cpu_job_attempts WHERE kind='SPAN_AUDIO'; UPDATE public.hosted_api_generation_jobs SET state='UNKNOWN_NO_RETRY'`,
+      );
+      expect(await nextSteps(database)).toEqual([]);
+      await database.exec(
+        `UPDATE public.hosted_api_generation_jobs SET state='SUCCEEDED'; UPDATE public.projects SET status='ARCHIVED'`,
+      );
+      expect(await nextSteps(database)).toEqual([]);
+    } finally {
+      await database.close();
+    }
+  },
+);
 
 describe("hosted continuation sweep stage-3 recovery", () => {
   it("keeps the sweep's redispatch classes and budget identical to the route's", () => {

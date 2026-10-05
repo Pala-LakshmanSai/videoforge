@@ -148,6 +148,28 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
                  WHERE cpu.project_revision_id = revision_id AND cpu.kind IN ('ASR','SPAN_AUDIO')
                    AND cpu.state IN ('FAILED','CANCELLED','EXPIRED'))
                THEN 'dispatch'
+             -- The coordinator can stop between accepted media and its next clip/render step.
+             -- Re-enter the saved Workflow only; existing claims and render attempts stay authoritative.
+             WHEN prompt_accepted_set IS NOT NULL AND generation_provider = 'KIE_FAL'
+               AND generation_requests = 1 AND active_generation_requests = 1 AND api_jobs > 0
+               AND NOT EXISTS (SELECT 1 FROM public.hosted_api_generation_jobs job
+                 WHERE job.project_revision_id = revision_id AND job.state <> 'SUCCEEDED')
+               AND NOT EXISTS (SELECT 1 FROM public.hosted_cpu_job_attempts cpu
+                 WHERE cpu.project_revision_id = revision_id AND cpu.kind IN ('ASR','SPAN_AUDIO')
+                   AND cpu.state IN ('FAILED','CANCELLED','EXPIRED'))
+               AND (
+                 (EXISTS (SELECT 1 FROM public.hosted_video_jobs job
+                   WHERE job.project_revision_id = revision_id AND job.state = 'PREPARED')
+                  AND NOT EXISTS (SELECT 1 FROM public.hosted_video_jobs job
+                    WHERE job.project_revision_id = revision_id
+                      AND job.state NOT IN ('PREPARED','SUBMITTED','SUCCEEDED')))
+                 OR (EXISTS (SELECT 1 FROM public.video_runtime_states runtime
+                   WHERE runtime.project_revision_id = revision_id AND runtime.stage = 'RENDERING'
+                     AND public.videoforge_hosted_videos_ready(
+                       state.account_id, state.workspace_id, runtime.generation_request_id))
+                  AND NOT EXISTS (SELECT 1 FROM public.hosted_cpu_job_attempts cpu
+                    WHERE cpu.project_revision_id = revision_id AND cpu.kind = 'RENDER'))
+               ) THEN 'dispatch'
              -- A stopped generation Workflow can outlive every image/avatar result.
              -- Dispatch only ensures the exact saved Workflow; it never reclaims paid clips.
              WHEN prompt_accepted_set IS NOT NULL AND generation_provider = 'KIE_FAL'

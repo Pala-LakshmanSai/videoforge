@@ -22,11 +22,12 @@ describe("hosted project kind visibility", () => {
   it("keeps ordinary product surfaces user-only and provisions future fixtures explicitly", () => {
     const product = source("src/server/hosted/product.ts");
     const app = source("src/server/hosted/app.ts");
+    const queue = source("src/server/hosted/hosted-queue.ts");
     const provisioner = source("../../deploy/v2-06/provision-owned-render-fixture.mjs");
 
     expect(product).toContain("project.project_kind = 'USER'");
     expect(product).toContain("normalized_name, project_kind");
-    expect(app).toContain("project.project_kind='USER'");
+    expect(queue).toContain("project.project_kind='USER'");
     expect(app).toContain("project.project_kind = 'USER'");
     expect(provisioner).toContain("'ACTIVE','ACCEPTANCE_FIXTURE'");
     expect(provisioner).toContain('row.project_kind !== "ACCEPTANCE_FIXTURE"');

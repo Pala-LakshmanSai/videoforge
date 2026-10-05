@@ -1416,6 +1416,12 @@
       "name": "hosted_natural_footage_motion",
       "filename": "0273_hosted_natural_footage_motion.sql",
       "sha256": "sha256:c13fc78df9068638ef5bd50ccaa80732ecdd8dd22943d4796e1ec12f8bf40639"
+    },
+    {
+      "version": 274,
+      "name": "hosted_continuation_readiness_grant",
+      "filename": "0274_hosted_continuation_readiness_grant.sql",
+      "sha256": "sha256:e13cd8ebb01f6a43e6c3d846a49272fbaa5a7959d9672d0ae67a739b6e37e35e"
     }
   ]
 }

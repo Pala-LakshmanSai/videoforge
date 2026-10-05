@@ -298,9 +298,34 @@ test("every project-detail relation is covered by the runtime SELECT allowlist",
   const start = product.indexOf("async function projectDetail(");
   const end = product.indexOf("\nasync function ", start + 1);
   assert.ok(start >= 0 && end > start);
+  const manifest = JSON.parse(
+    await readFile(
+      new URL("../../packages/control-plane/migrations/manifest.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  const migrationSql = (
+    await Promise.all(
+      manifest.migrations.map((entry) =>
+        readFile(
+          new URL(`../../packages/control-plane/migrations/${entry.filename}`, import.meta.url),
+          "utf8",
+        ),
+      ),
+    )
+  ).join("\n");
+  const supplementalSelect = new Set(
+    [
+      ...migrationSql.matchAll(/GRANT SELECT ON ([\s\S]+?) TO videoforge_v209_runtime_dc9612d6;/gu),
+    ].flatMap((grant) =>
+      grant[1].split(",").map((table) => table.trim().replace(/^public\./u, "")),
+    ),
+  );
   const relations = new Set(
     [
-      ...product.slice(start, end).matchAll(/\b(?:FROM|JOIN)\s+(?:public\.)?([a-z][a-z0-9_]*)\b/gu),
+      ...product
+        .slice(start, end)
+        .matchAll(/\b(?:FROM|JOIN)\s+(?:public\.)?([a-z][a-z0-9_]*)\b(?!\s*[.(])/gu),
     ].map((match) => match[1]),
   );
   const commonTableExpressions = new Set(
@@ -314,7 +339,8 @@ test("every project-detail relation is covered by the runtime SELECT allowlist",
   assert.ok(relations.size > 0);
   for (const relation of relations) {
     assert.ok(
-      EXPECTED_TABLE_PRIVILEGES.get(relation)?.includes("SELECT"),
+      EXPECTED_TABLE_PRIVILEGES.get(relation)?.includes("SELECT") ||
+        supplementalSelect.has(relation),
       `projectDetail relation ${relation} is missing runtime SELECT`,
     );
   }
