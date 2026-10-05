@@ -1404,6 +1404,12 @@
       "name": "render_asset_missing_recovery",
       "filename": "0271_render_asset_missing_recovery.sql",
       "sha256": "sha256:8fb10869ad1c69f2d346aa473ea9ed2000a4cbf35d38ef7262c755ca98ca0979"
+    },
+    {
+      "version": 272,
+      "name": "render_recovery_cleanup_isolation",
+      "filename": "0272_render_recovery_cleanup_isolation.sql",
+      "sha256": "sha256:4b194173845a451f04d38700060e7713681b93cb1a9c81a58ce7fb67dbcbe3be"
     }
   ]
 }

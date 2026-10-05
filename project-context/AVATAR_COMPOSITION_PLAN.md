@@ -63,14 +63,20 @@ quarantine pass; explicit new contract/control validation increases static entry
 The repository-local Python launcher lacks uv in this worktree; the existing primary Python
 interpreter ran the same contract/media suites against this worktree's PYTHONPATH.
 
-Runtime0.1.50 publication and Cloud source qualification, native270 activation, Worker rollout,
-real provider projects/final exports and cleanup remain pending. No paid work started here.
+Initial publication used runtime0.1.50 and native270. Live acceptance exposed a split-only
+asset omission; the corrected qualified runtime0.1.51 and guarded271/272 recovery supersede it.
 
 
 ### Live acceptance repair
 
 Avatar Off completed its export with zero avatar work. Avatar On accepted all
 media, then exposed a distinct split-video input omitted by the renderer asset
-collector. Fix the shared collector and regression, qualify runtime 0.1.51,
-apply guarded migration 0271, and recover assembly only from saved media. Complete
-binary, native, Chrome playback, cost and cleanup proof before closing this task.
+collector. The shared fix and distinct-asset regression pass; qualified runtime0.1.51
+is live at b5ed9f70/Worker7c5820ff with native271/272. Assembly recovery reused all saved
+media/timelines exactly. Both native final exports, full decode, narration and moving
+footage checks pass; all eight rentals are CLEAN and conservative test allowance is
+USD6.382364 under USD8. Both passed Chrome playback to ended=true/error=null and
+approval/Library checks. On playback included seeking; native full-file decode is separate.
+All eight implementation/production steps are complete. Guarded Project Memory update
+follows this immutable acceptance commit; inherited broad-CI, installed-Local, long-form,
+provider-latency and invoice limits remain explicitly separate.

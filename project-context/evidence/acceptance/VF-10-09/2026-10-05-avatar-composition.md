@@ -31,7 +31,7 @@ order,16 inherited Chrome failures, and70 broad TypeScript test failures (includ
 fixtures, historical expectations and four5s timeouts). The three suites containing those four
 runtime timeouts passed176/176 independently with one worker. Full-repository green is not claimed.
 
-## Published artifacts
+## Initial publication (superseded by the repair below)
 
 Cloud qualification run37265534347 passed offline ASR/span/render and current renderer tests.
 Private image sha256:673f0d0ece7e67dce4612fc0496e18361e2011739a408d472a13c275eff727a4;
@@ -57,9 +57,9 @@ Opening Off hiding duration, custom3.2-minute opening with Avatar Off, correct r
 and eight-stage Avatar Off progress omitting spanning/avatar stages. Same-account queued project
 keeps existing admission behavior without renting a machine while waiting.
 
-Full exports, playback, finite-scope cost and cleanup results are pending.
+Both native final exports, binary/motion/narration checks and cleanup now pass as recorded below.
 
-## Live split-render repair (in progress)
+## Live split-render repair and recovery
 
 The initial Avatar On 180-second canary accepted all 35 scene videos and 11 avatar
 clips, but final assembly failed definitively with `RENDER_ASSET_MISSING`. The
@@ -67,9 +67,77 @@ shared renderer expected-assets collector omitted videos used only by split
 scenes. The earlier regression reused a full-scene asset, masking this defect.
 A distinct split asset reproduces the failure; moving video collection outside
 the composition branches fixes all callers. The corrected 42-test renderer
-suite passes. Runtime 0.1.51 must qualify and publish before assembly recovery.
+suite passes. Runtime 0.1.51 qualified and published before assembly recovery.
 Migration 0271 extends the existing changed-bundle recovery guard to this
 definite failure; its three focused checks preserve owner, exact input/output,
 cleanup, attempt-limit, and idempotent retry fences. No saved media is regenerated.
-Initial release is not final acceptance; the repaired canary will be reported as
-recovered, not an uninterrupted production run.
+This is recovered acceptance, not an uninterrupted production run.
+
+
+## Corrected production release
+
+Source `b5ed9f70d195b7bdb75fd9d17f3e6af3574f1e04`, Worker
+`7c5820ff-20a2-4fb2-b206-2736e49b119c` at100%; native271/272 applied after
+exact rollback rehearsals and historical plan/timeline preservation checks.
+Cloud run37268791624 and Desktop run37268787652 both succeeded.
+Qualified private image sha256:5aa154074f980361c1f5d769723fc030639b770513471e55c3fc59afeffd5f62;
+source sha256:dfdb8712665dea2f8faff94a2fedd353a5a2d2af29a7221fd8e5504347c050ee;
+runtime sha256:66caa4042e74fc2ecd1a78afe0c1378c7207d8851fda63cd0b4127ae509ba307.
+Desktop0.1.51 execution bundle sha256:4953496f49efeb1cb3c1946d82ccde33b0e7da2413782addcf835884e043e177;
+Windows279627757bytes and macOS414292959bytes whole-download hashes matched the
+immutable manifest. Existing beta signing trust is unchanged. Exact runtime source
+files/tools/model verified; temporary package publication secret removed.
+All30 public assets, private anonymous401,55bindings/27secrets/3Workflow identities,
+account pooling, and disabled CPU fallback verified. Legacy completed avatar project
+still returns200 with avatar/render SUCCEEDED.
+
+Migration272 reuses the existing235/237 tenant-scoped cleanup-only rule for account-wide
+render recovery/status. A historical Sept30 UNKNOWN/no-Pod-ID reservation remains
+STOPPING with its USD0.20 debit and global resource slot. It is not declared CLEAN or
+free. The current failed render still requires its own cleanup. Six focused migration
+checks and independent review pass: changed/unchanged bundle, owner/tenant, exact saved
+inputs, prior outputs, active work, current rental cleanup, retry cap, idempotency and
+rollback. Native271+272 rehearsal produced ELIGIBLE only with the changed runtime and
+preserved historical UNKNOWN/debit and failed output identities.
+
+One supported Cloud render retry accepted original failed attempt
+97c53fd3-8ed5-4b02-84bf-41caea3ae1ca and created retry1491e5f2-bd63-4863-a56c-764395e5f4f8.
+Its single new900s rental used the corrected qualified image and is CLEAN. Whole saved
+API-job/video-job rows, timeline and render-plan hashes match before recovery; original
+failed attempt including null output receipt/checksum remains exact and replay_count0.
+
+## Final binary, composition and cost proof
+
+Avatar On:180seconds,1920x1080,H264,30fps,5400frames,93961665bytes, one audio stream.
+All41segments retain6full-screen avatars,5avatar/video splits and30full-screen videos;
+all35former-photo regions move, with zero remaining photo slots. Native v4 lineage is
+valid and original narration correlation0.9990301095 at zero offset. The first split
+frame was visually inspected: usual presenter at left and moving bee footage at right.
+
+Avatar Off:20.333008seconds,1920x1080,H264,30fps,610frames,10953398bytes. Four full-screen
+segments:2videos covering the6s opening and whole crossing scene,2still scenes afterward;
+zero avatar clips, spanning jobs, avatar costs or avatar pipeline stages. Remaining
+25% calculation retains whole crossing suffix behavior (28.14% actual for this short
+example). Native v4 lineage and every moving region pass; original narration
+correlation0.9992132673 at zero offset. Both complete files match native checksum/size
+and fully decode. Off played to ended=true/error=null, approved and visible in Library.
+On reached ended=true/error=null at180s/1080p in real Chrome, with normal playback and
+seeking observed. Played ranges were0–134.873194,159.946259–161.355129 and170.734965–180s;
+this is not uninterrupted whole-film browser playback. Complete native-file decode is
+separate proof. Both test exports are approved and visible in Library.
+
+At2026-10-05T05:57:33Z, all8new rentals CLEAN, each<=900s, complete RunPod inventory0Pods,
+active account provider leases0, unfinished uploads0, no regeneration/TTS/extra project.
+Conservative full started/reserved test allowanceUSD6.3823638667 versus USD8 cap,
+including full LLM reserves, Fal job-lifetime upper bound, generated video allowances
+and all CPU rentals. This is not invoice/storage/egress proof. Historical UNKNOWN
+liability is separate and preserved. Test dispatch and temporary compute are finished.
+
+Repair broad CI37268748685 retains131 identical formatting failures, the same frozen
+render import-order failure and16 identical Chrome failures (28passed); Workerd passes.
+TS77failures include the same70 plus7additional5s timeouts in unchanged files. Those
+exact7 tests pass locally with one worker, unchanged5s timeout,713–1321ms each; hosted
+runner cause is not proven. Full-repository green is not claimed. Installed Local
+end-to-end, representative long-form/concurrent latency, invoices and generalized
+image-quality acceptance remain separate gates; no zero-delay
+provider SLA is established. Private detailed evidence stays under `.videoforge/avatar-composition-20261005/`.
