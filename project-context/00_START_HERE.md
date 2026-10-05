@@ -1,7 +1,8 @@
-Mandatory AI opening: the 2026-10-04 user decision requires full-screen AI scene video for the
-first 180 seconds independently of selected coverage; the percentage applies only afterward.
-Read AI_VIDEO_OPENING_PLAN.md and the selected opening profile. Existing revisions remain
-immutable. CURRENT_STATE.yaml owns implementation, production, paid acceptance and cleanup truth.
+Configurable AI opening: the 2026-10-05 user decision adds a Full video opening toggle and
+0.1–60-minute opening duration, default On/3 minutes. Off restores original whole-timeline
+percentage coverage and scheduling; On applies the percentage only to the remaining timeline.
+Read AI_VIDEO_OPENING_PLAN.md and the selected opening profile. Saved fixed-opening and older
+revisions remain immutable. CURRENT_STATE.yaml owns source, deployment, acceptance and cleanup.
 
 Throughput planning follow-up: read `api_throughput_plan_2026_10_04` and the follow-up section in API_CAPACITY_PLAN.md. Target40 completed30–40minute Cloud videos/day; optional independent Kie/Fal accounts at unchanged cost; Runware unchanged. This is a plan, not an implemented pooling release.
 
@@ -73,9 +74,7 @@ thumbnail, including later pages. Migration 0213 preserves original images/final
 provider jobs. Publication and paid sample acceptance remain pending. Read
 `fal_image_regeneration_2026_09_27` in CURRENT_STATE.yaml.
 
-
 Mac terminal account fix published: `9c5ad1b8` / Cloudflare `86a0da26`. Actual Mac now Online under the current signed-in account; idle switch 20.65s, same-account repeat 0.84s with no restart. Busy switches are blocked, old tenant history retained. Supersedes earlier cross-account refusal/restored old pairing. Read `mac_terminal_account_fix_2026_09_27` in CURRENT_STATE.yaml.
-
 
 Settings UI published: `e7419e7e` / Cloudflare `39dae23c`. Compact cards retain real commands and functional controls; production Chrome Copy/Refresh/both platforms pass. Read `settings_ui_2026_09_27` in CURRENT_STATE.yaml.
 
@@ -90,7 +89,6 @@ commands in Settings. Worker 0.1.44 passes both platform CI. Actual Mac command 
 automatic pairing, background startup, Chrome Online/removal, and provider-free span smoke
 pass; original Mac pairing restored and Online. Native Windows command installation remains
 an optional platform gate. Read `easy_worker_connect_2026_09_26` in `CURRENT_STATE.yaml`.
-
 
 ## Personal worker speed release — 2026-09-26
 
@@ -243,7 +241,6 @@ User authorized batching and production delivery. Worker0.1.22 claims and execut
 
 Focused claim7, worker/cache and database admission checks pass. Four real FFmpeg spans completed in0.776s locally with one source download and eight verified artifact transfers; network was fixture-backed, so this is not an end-to-end hosted speed claim. Production source `ebb476c8`, Cloudflare `f8e19716`, QUALIFIED_EXACT and installed worker0.1.22 ONLINE are verified. Migrations145/146 are applied;146 preserves lock order for non-admitting updates. No new GPU actions. Full hosted batch timing remains unmeasured; the existing long-video render failure remains separate from the delivered local MP4. See `evidence/acceptance/VF-10-09/2026-09-15-span-batch/acceptance.json`.
 
-
 ## Deployed render, prompt and claim repairs — 2026-09-15
 
 Source `e68013c1` is live on Cloudflare `054e4e1e-9c12-4a16-b1f8-e29d26d21674`, QUALIFIED_EXACT. Worker0.1.21 is published, installed and ONLINE with exact bundle. The 18m11s local final MP4 is delivered. Render thread bounds and one audio-only loudness correction are verified on retained media; unchanged output gates pass. Prompt-only camera/equipment suppression and no readable/invented text apply to initial and regenerated images. Existing accepted images remain unchanged.
@@ -252,13 +249,11 @@ Shared job claiming now uses two transactions instead of four, retaining tenant/
 
 No GPU generation or visual rerender was used for this deployment. At05:06Z balanceUSD14.4230990852, zero active compute. Retained sealed volumes remain. The existing long project's hosted failed render record is preserved; its final video is available locally, and hosted finalization remains a separate gate. Evidence: `evidence/acceptance/VF-10-09/2026-09-15-render-prompts/acceptance.json`.
 
-
 ## Current long-video render and prompt repair — 2026-09-15
 
 Stages 6/7 accepted 212 images and 63 avatar clips for project `7d101190-87f6-4b51-a870-757e858e2abd`. Bounded FFmpeg threads resolve the measured long-render resource failure. The local final MP4 was delivered: 18m11.567s, 1080p30, 233491300 bytes, SHA256 `e22c16de224aca87349ade3984bdffea6e75f22f2df51d7f1c8b7c8705c9d101`. One audio-only correction preserved every video frame and passed unchanged gates at -16.44 LUFS, -5.25 dBTP and 1ms AV drift. Worker0.1.21 automates this fallback. Hosted release/finalization remain pending.
 
 Prompt-only fixes describe optical treatment as viewpoint rather than physical camera equipment and require plain unmarked surfaces without readable or invented lettering. Ordinary generation and per-image regeneration share these guards; immutable styles and existing media stay intact. Focused checks: 25 prompt, 5 regeneration, 16 render, 8 release compatibility tests pass. No new GPU dispatch; balanceUSD14.4328213074 and zero active compute verified at04:46:49Z. User authorized release/deployment after receiving the local file.
-
 
 ## Long-video GPU recovery — 2026-09-15
 
@@ -286,7 +281,6 @@ The original paid attempts remain unreplayed. This verifies the short production
 
 The separate `castle1` attempt failed at the upstream provider: exact archive records `providerUnavailable`, HTTP502, and no accepted result. Strict task-identity checks now classify that nested archive explicitly; the API reports a confirmed failure and the UI removes the misleading repeated recovery control. Source `518cd88c` is deployed as Worker `799e8d79-5a97-49c2-af1c-7be080ab35a8`, `QUALIFIED_EXACT`. Actual Chrome verifies the stopped state and corrected recovery message. 145 API/UI tests, 11 transport tests, both TypeScript targets, production build/firewall and focused lint/format pass. No inference replay or GPU job was started. Latest saved preflight at14:56:34Z shows zero active compute and empty queues. Full18-minute acceptance still needs a fresh bounded attempt; prior one-attempt authority is consumed. Evidence: `evidence/acceptance/VF-10-09/2026-09-14-pipeline-audit/castle1-repair.json`.
 
-
 ## Latest pipeline follow-through — 2026-09-14
 
 Approved deployment and one fresh 18-minute run reproduced Stage 3 failure: `aggregate_budget`, not a transport failure. The validator now retains whole normalized facts within the existing 360-character limit. Source `853851c8` is deployed and activated as Worker `cb062d87-e67f-4088-9e21-ac5f79a244e8`, `QUALIFIED_EXACT`. An additional 31 focused tests, both TypeScript targets, production build/firewall, context validation, and focused lint/format pass.
@@ -306,7 +300,6 @@ The 37-second project `b79fef93-11e0-4333-9af0-8cd4fddcbd01` completed seven ima
 Worker `0.1.18` is published and installed. Migrations119–128 are applied. Runtime is COMPLETE, generation SUCCEEDED, exactly one final-output event exists, and the paid lease is RELEASED. Final fixes are deployed from `d27b055d2478e3d2e2d2e216b607732aae2af1c7` with `QUALIFIED_EXACT`. Chrome shows all ten stages complete and no stale review flags. At22:04Z RunPod balance was USD16.9136 with zero active Pods/workers and zero queued/running jobs. No remaining gates for this Stage6/7 MVP repair.
 
 Preserve USD2/run, USD3 RunPod floor, exact RTX4090 EU-RO-1 lanes at min0/max1, and sealed50GB volumes. Stop the entire flow below the floor. Never redispatch accepted media or terminal/uncertain paid attempts. Evidence: `evidence/acceptance/VF-10-09/2026-09-14-stage6-7-mvp/acceptance.json`.
-
 
 ## Active handoff — read this section first
 
@@ -1694,10 +1687,10 @@ decorative transitions.
 The v2 target uses a scale-to-zero control plane plus two isolated RunPod queue-based Serverless
 endpoints in `EU-RO-1`:
 
-| Lane | Exact model/runtime | Existing retained storage | Serverless bound |
-|---|---|---|---|
-| Images | `Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6`, pinned ComfyUI, INT8 ConvRot, 4 steps, guidance 1.0, 1280x720 | Sealed Mage-only 50 GB volume | `workersMin=0`, `workersMax=2`, `REQUEST_COUNT=1`, handler concurrency 1, one GPU/worker |
-| Avatar | `Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro`, BF16, four distilled steps | Sealed SoulX-only 50 GB volume | `workersMin=0`, `workersMax=2`, `REQUEST_COUNT=1`, handler concurrency 1, one GPU/worker |
+| Lane   | Exact model/runtime                                                                                                           | Existing retained storage      | Serverless bound                                                                         |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------- |
+| Images | `Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6`, pinned ComfyUI, INT8 ConvRot, 4 steps, guidance 1.0, 1280x720 | Sealed Mage-only 50 GB volume  | `workersMin=0`, `workersMax=2`, `REQUEST_COUNT=1`, handler concurrency 1, one GPU/worker |
+| Avatar | `Soul-AILab/SoulX-FlashHead-1_3B@59119b6c681230c3eeee157e224ae1941746711e#Model_Pro`, BF16, four distilled steps              | Sealed SoulX-only 50 GB volume | `workersMin=0`, `workersMax=2`, `REQUEST_COUNT=1`, handler concurrency 1, one GPU/worker |
 
 Each endpoint mounts only its own existing volume at `/runpod-volume`. Model bytes and manifests are
 immutable/read-only by application policy; RunPod does not supply a documented read-only

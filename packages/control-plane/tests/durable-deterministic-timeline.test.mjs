@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
 
-import { canonicalizeJson, validateAndHashContractDocument } from "@videoforge/contracts";
+import {
+  canonicalizeJson,
+  sha256CanonicalJson,
+  validateAndHashContractDocument,
+} from "@videoforge/contracts";
+import { schedulerConfigForVersion } from "@videoforge/pipeline/scheduler-config";
 import {
   buildSelectedSpanAudioJob,
   DurableDeterministicTimelinePersistence,
@@ -611,4 +616,36 @@ test("the durable timeline accepts a pinned scheduler-v3 revision", async () => 
     JSON.parse(new TextDecoder().decode(prepared.canonicalDocumentWrite.bytes)).scheduler_version,
     "scheduler-v3",
   );
+});
+
+test("durable configurable opening identities bind the exact pinned duration", async () => {
+  const transcript = await validateAndHashContractDocument("transcriptTiming", transcriptValue());
+  const prepared = [];
+  for (const openingSeconds of [6, 60]) {
+    const revision = await validateAndHashContractDocument("projectRevisionConfig", {
+      ...revisionValue(),
+      scheduler_version: "scheduler-v10",
+      ai_video_opening_seconds: openingSeconds,
+    });
+    const result = await prepareDurableDeterministicTimeline(
+      SCOPE,
+      persistCommand(revision, transcript),
+    );
+    const plan = JSON.parse(new TextDecoder().decode(result.canonicalDocumentWrite.bytes));
+    assert.equal(plan.ai_video_opening_seconds, openingSeconds);
+    assert.equal(
+      result.schedulerConfigHash,
+      await sha256CanonicalJson(schedulerConfigForVersion("scheduler-v10", openingSeconds)),
+    );
+    assert.equal(
+      result.timelineDocumentHash,
+      (await prepareDurableDeterministicTimeline(SCOPE, persistCommand(revision, transcript)))
+        .timelineDocumentHash,
+    );
+    prepared.push(result);
+  }
+  assert.notEqual(prepared[0].schedulerConfigHash, prepared[1].schedulerConfigHash);
+  assert.notEqual(prepared[0].inputFingerprintHash, prepared[1].inputFingerprintHash);
+  assert.notEqual(prepared[0].timelinePlanId, prepared[1].timelinePlanId);
+  assert.notEqual(prepared[0].timelineDocumentHash, prepared[1].timelineDocumentHash);
 });

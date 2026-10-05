@@ -6,7 +6,6 @@ uncertain POST. Refresh rates and obtain exact finite-action authority before li
 This is a published-rate estimate, not observed account debit. Existing video generation prices
 and historical attempt cost records remain separate.
 
-
 Fresh API generation decision (2026-09-24): Kie z-image lists 0.8 credits, approximately
 $0.004 per image. On 2026-09-25 the public Fal FlashHead model page listed $0.005 per output
 second. The earlier authenticated audio-route quote was $0.00125 per billable compute second;
@@ -62,11 +61,11 @@ Other planning references:
 
 VideoForge already retains two isolated 50 GB `EU-RO-1` model volumes:
 
-| Volume | Size | Recorded monthly rate | Purpose |
-|---|---:|---:|---|
-| Mage-only | 50 GB | `$3.50/month` | Exact Mage INT8 ConvRot sealed runtime |
-| SoulX-only | 50 GB | `$3.50/month` | Exact SoulX-FlashHead Pro sealed runtime |
-| **Total** | **100 GB** | **`$7.00/month`** | Fixed, outside per-video variable cost |
+| Volume     |       Size | Recorded monthly rate | Purpose                                  |
+| ---------- | ---------: | --------------------: | ---------------------------------------- |
+| Mage-only  |      50 GB |         `$3.50/month` | Exact Mage INT8 ConvRot sealed runtime   |
+| SoulX-only |      50 GB |         `$3.50/month` | Exact SoulX-FlashHead Pro sealed runtime |
+| **Total**  | **100 GB** |     **`$7.00/month`** | Fixed, outside per-video variable cost   |
 
 Zero endpoint workers does not stop this `$7.00/month` storage billing. Normal generation may not
 resize, repair, prepare, merge, cross-mount, or delete either volume. Any change is separately
@@ -162,15 +161,15 @@ acceptance measures actual 5-10-user operations, database/storage usage, and ale
 
 ## Per-video budget
 
-| Component | V2 state |
-|---|---|
-| DeepSeek prompts | Planning `$0.005-$0.015`; qualified small runs exist |
-| Mage Serverless | Unmeasured on live queue endpoint |
-| SoulX Serverless | Unmeasured on live queue endpoint |
-| Personal-worker ASR/render | `$0` provider compute; device time/electricity and real 30-minute runtime unmeasured |
-| R2/Cloudflare/Neon variable share | Unmeasured; expected small |
-| Repair/fallback | None active |
-| **Total variable 30-minute generation** | **Target <=`$1.00`; measured economics gate, not a project cap** |
+| Component                               | V2 state                                                                             |
+| --------------------------------------- | ------------------------------------------------------------------------------------ |
+| DeepSeek prompts                        | Planning `$0.005-$0.015`; qualified small runs exist                                 |
+| Mage Serverless                         | Unmeasured on live queue endpoint                                                    |
+| SoulX Serverless                        | Unmeasured on live queue endpoint                                                    |
+| Personal-worker ASR/render              | `$0` provider compute; device time/electricity and real 30-minute runtime unmeasured |
+| R2/Cloudflare/Neon variable share       | Unmeasured; expected small                                                           |
+| Repair/fallback                         | None active                                                                          |
+| **Total variable 30-minute generation** | **Target <=`$1.00`; measured economics gate, not a project cap**                     |
 
 The target excludes the continuing `$7.00/month` volumes. A production profile cannot claim this
 economics target until representative cold/warm, concurrent, failed, and recovered runs settle.
@@ -184,16 +183,16 @@ still requires its own finite source-bound action cap and stop conditions.
 
 Measure queue wait separately from active service time. Initial acceptance objectives:
 
-| Stage | Objective |
-|---|---:|
-| Admission transaction/outbox commit | p95 <=1 second under 10-user test |
-| Dispatch-to-provider assignment | measured and bounded; no silent retry |
-| Cold worker start to `MODEL_READY` | each lane below RunPod's documented 7-minute unhealthy threshold |
-| Warm worker job start | p95 <=15 seconds before item work |
-| Transcript/timeline/prompt preparation | overlap GPU cold start where dependencies permit |
-| Final personal-worker render/probe | measured per supported OS/device class; no GPU retention |
-| Active-service 30-minute video p50 | <=30 minutes after admission |
-| Active-service 30-minute video p90 | <=45 minutes after admission |
+| Stage                                  |                                                        Objective |
+| -------------------------------------- | ---------------------------------------------------------------: |
+| Admission transaction/outbox commit    |                                p95 <=1 second under 10-user test |
+| Dispatch-to-provider assignment        |                            measured and bounded; no silent retry |
+| Cold worker start to `MODEL_READY`     | each lane below RunPod's documented 7-minute unhealthy threshold |
+| Warm worker job start                  |                                p95 <=15 seconds before item work |
+| Transcript/timeline/prompt preparation |                 overlap GPU cold start where dependencies permit |
+| Final personal-worker render/probe     |         measured per supported OS/device class; no GPU retention |
+| Active-service 30-minute video p50     |                                     <=30 minutes after admission |
+| Active-service 30-minute video p90     |                                     <=45 minutes after admission |
 
 Historical SoulX's 672-second Pod start-to-ready misses the seven-minute cold target and is a
 specific Serverless risk. Qualify container startup and `RUNPOD_INIT_TIMEOUT`; do not hide the gap by
@@ -242,7 +241,6 @@ billing remain unmeasured; no reliability/capacity guarantee follows from the li
 
 Seedance1.0ProFast bytedance:2@2,720p16:9: published Runware rate verified2026-10-02 is USD0.01336/generated second. Seven percent of30minutes is126motion seconds, nominalUSD1.68336; API minimum1.2seconds and0.1second rounding can generate a small unused tail. Planning uses generated duration for projected cost; exact task cost is recorded before media acceptance, including charged invalid outputs. Implementation qualification cap isUSD4 provider/compute, with no30minute paid benchmark. Four inference jobs may be outstanding; result acceptance is serial to fit Worker memory. Parallel stage durations are not added to wall-clock elapsed time.
 
-
 ## Historical whole scene coverage control (2026-10-03)
 
 Published coverage changes fresh scene-footage ceilings from fixed 7% to the immutable per-revision user choice; default stays 7% and legacy plans keep their original selections. Projected motion cost uses actual selected padded provider-request durations and configured rate metadata. Pre-timeline estimates are preliminary. Off has no Seedance calls/charges; definite failed clips retain actual charges and reduce accepted coverage. Higher coverage preserves the existing four-job concurrency bound. No new paid test authority is inferred from the earlier USD4 run. This release used USD0 new provider generation/paid compute; fresh paid high-coverage performance and final invoices remain unverified. Details: [combined plan](tasks/SEEDANCE_VIDEO_PLAN.md#whole-scene-replacement-follow-up).
@@ -251,7 +249,18 @@ Published coverage changes fresh scene-footage ceilings from fixed 7% to the imm
 
 J1TTS uses the approved supplied subscription key and provider usage rather than GPU compute. The initial authenticated usage read reports used_today0, limit0, remaining null; the supplied dashboard labels the plan unlimited. These are provider/subscription observations, not an invoice or a unit-price claim. No software token enables additional subscriptions or GPU fallback. Direct uploads incur no J1TTS call. Each generation is explicit and durably claimed; uncertain submissions never retry automatically. Existing image/avatar/Cloud costs and cleanup remain independently accountable.
 
-## Mandatory opening and remaining coverage cost — 2026-10-04
+## Configurable opening and remaining coverage cost — 2026-10-05
+
+For new requests let O be the selected opening seconds when On and zero when Off. Nominal footage
+seconds are min(duration_seconds,O)+max(0,duration_seconds-O)\*coverage_percent/100. Off restores
+whole-film coverage; On/zero coverage still pays for required opening footage. The UI accepts
+0.1–60 minutes in 0.1 increments, default3minutes, and pins seconds before narration. Exact whole
+crossing scenes consume only their suffix from the remainder budget; padded request timing and
+underfill still affect estimates. Historical OPENING_180_V3 remains fixed at180seconds independently
+of optional coverage. No cap, provider identity or unknown-charge reserve is released merely because
+the opening toggle is Off. Current rates and acceptance liability/cleanup live in CURRENT_STATE.
+
+## Historical fixed-opening arithmetic — 2026-10-04
 
 DEC_VIDEO_OPENING_001 adds required footage independently of the selected remaining-duration
 percentage. Before scheduling, nominal footage seconds are

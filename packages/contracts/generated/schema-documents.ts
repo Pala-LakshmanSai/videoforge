@@ -6674,6 +6674,12 @@ export const canonicalSchemaDocuments = {
         "minLength": 1,
         "maxLength": 160
       },
+      "ai_video_opening_seconds": {
+        "type": "integer",
+        "minimum": 6,
+        "maximum": 3600,
+        "multipleOf": 6
+      },
       "scheduler_seed": {
         "type": "integer",
         "minimum": 0,
@@ -6691,6 +6697,39 @@ export const canonicalSchemaDocuments = {
       }
     },
     "allOf": [
+      {
+        "if": {
+          "properties": {
+            "scheduler_version": {
+              "enum": [
+                "scheduler-v10",
+                "scheduler-v11"
+              ]
+            }
+          },
+          "required": [
+            "scheduler_version"
+          ]
+        },
+        "then": {
+          "properties": {
+            "ai_video_opening_seconds": {}
+          },
+          "required": [
+            "ai_video_opening_seconds"
+          ]
+        },
+        "else": {
+          "not": {
+            "properties": {
+              "ai_video_opening_seconds": {}
+            },
+            "required": [
+              "ai_video_opening_seconds"
+            ]
+          }
+        }
+      },
       {
         "if": {
           "properties": {
@@ -6750,6 +6789,12 @@ export const canonicalSchemaDocuments = {
         "minLength": 1,
         "maxLength": 160
       },
+      "ai_video_opening_seconds": {
+        "type": "integer",
+        "minimum": 6,
+        "maximum": 3600,
+        "multipleOf": 6
+      },
       "seed": {
         "type": "integer",
         "minimum": 0,
@@ -6783,6 +6828,41 @@ export const canonicalSchemaDocuments = {
         }
       }
     },
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "scheduler_version": {
+              "enum": [
+                "scheduler-v10",
+                "scheduler-v11"
+              ]
+            }
+          },
+          "required": [
+            "scheduler_version"
+          ]
+        },
+        "then": {
+          "properties": {
+            "ai_video_opening_seconds": {}
+          },
+          "required": [
+            "ai_video_opening_seconds"
+          ]
+        },
+        "else": {
+          "not": {
+            "properties": {
+              "ai_video_opening_seconds": {}
+            },
+            "required": [
+              "ai_video_opening_seconds"
+            ]
+          }
+        }
+      }
+    ],
     "$defs": {
       "baseProperties": {
         "segment_id": {
@@ -7375,7 +7455,9 @@ export const canonicalSchemaDocuments = {
           "scheduler_version": {
             "enum": [
               "scheduler-v8",
-              "scheduler-v9"
+              "scheduler-v9",
+              "scheduler-v10",
+              "scheduler-v11"
             ]
           }
         }

@@ -499,7 +499,10 @@ export async function coordinateHostedGeneration(input: {
   if (preparedTimeline.timelineDocumentHash !== timeline.sha256)
     reject("HOSTED_GENERATION_TIMELINE_DERIVATION_MISMATCH");
   const tasks = await plannedTasks(snapshot.projectRevisionId, timeline.value);
-  const schedulerConfig = schedulerConfigForVersion(revision.value.scheduler_version);
+  const schedulerConfig = schedulerConfigForVersion(
+    revision.value.scheduler_version,
+    revision.value.ai_video_opening_seconds,
+  );
   if (!schedulerConfig) reject("HOSTED_GENERATION_SCHEDULER_VERSION_UNSUPPORTED");
   const schedulerConfigSha256 = await sha256CanonicalJson(schedulerConfig);
   const generationPlan = {

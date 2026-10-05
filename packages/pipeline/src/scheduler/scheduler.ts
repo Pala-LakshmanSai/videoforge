@@ -14,14 +14,17 @@ import {
 } from "../errors.js";
 import type { SchedulerPort, SchedulerRequest } from "./ports.js";
 import {
-  AI_VIDEO_OPENING_SECONDS,
   AI_VIDEO_OPENING_SCHEDULER_VERSION,
   AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION,
+  CONFIGURABLE_AI_VIDEO_OPENING_SCHEDULER_VERSION,
+  CONFIGURABLE_AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION,
   SCHEDULER_SHOT_ROLES,
   NARRATION_SHOT_SCHEDULER_VERSION,
   NARRATION_SHOT_SHORT_SCHEDULER_VERSION,
   schedulerTimingVersion,
   schedulerHasAiVideoOpening,
+  schedulerHasConfigurableAiVideoOpening,
+  schedulerAiVideoOpeningSeconds,
   WORD_BOUNDARY_SCHEDULER_VERSION,
   WORD_BOUNDARY_SCHEDULER_CONFIG,
   SHORT_FORM_SCHEDULER_CONFIG,
@@ -150,10 +153,24 @@ function validateSchedulerInput(
           NARRATION_SHOT_SHORT_SCHEDULER_VERSION,
           AI_VIDEO_OPENING_SCHEDULER_VERSION,
           AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION,
+          CONFIGURABLE_AI_VIDEO_OPENING_SCHEDULER_VERSION,
+          CONFIGURABLE_AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION,
         ],
       },
     );
   }
+
+  if (
+    schedulerAiVideoOpeningSeconds(
+      revision.scheduler_version,
+      revision.ai_video_opening_seconds,
+    ) === null
+  )
+    return fail(
+      "TIMELINE_INVALID",
+      "The opening duration must match the pinned scheduler version.",
+      ["revision", "ai_video_opening_seconds"],
+    );
 
   if (transcript.project_revision_id !== revision.project_revision_id) {
     return fail("TRANSCRIPT_INVALID", "The transcript belongs to a different project revision.", [
@@ -625,6 +642,16 @@ export function validateTimelineSemantics(
   transcript: TranscriptTimingDocument,
 ): PipelineFailure | null {
   const hasAiVideoOpening = schedulerHasAiVideoOpening(plan.scheduler_version);
+  const openingSeconds = schedulerAiVideoOpeningSeconds(
+    plan.scheduler_version,
+    plan.ai_video_opening_seconds,
+  );
+  if (openingSeconds === null)
+    return fail(
+      "TIMELINE_INVALID",
+      "The timeline opening duration must match its scheduler version.",
+      ["ai_video_opening_seconds"],
+    );
   if (!hasAiVideoOpening && plan.segments[0]?.timeline_composition !== "AVATAR_FULL") {
     return fail(
       "TIMELINE_INVALID",
@@ -644,7 +671,7 @@ export function validateTimelineSemantics(
 
   for (const [index, segment] of plan.segments.entries()) {
     const isOpeningScene =
-      hasAiVideoOpening && segment.source_audio_start_ms < AI_VIDEO_OPENING_SECONDS * 1_000;
+      hasAiVideoOpening && segment.source_audio_start_ms < openingSeconds * 1_000;
     if (isOpeningScene && segment.timeline_composition !== "IMAGE_FULL") {
       return fail("TIMELINE_INVALID", "Opening scenes must use full-screen AI-video image slots.", [
         "segments",
@@ -947,12 +974,22 @@ function buildTimelinePlan(
     transcript,
   );
   if (precursorFailure !== null) return precursorFailure;
+  const openingSeconds = schedulerAiVideoOpeningSeconds(
+    revision.scheduler_version,
+    revision.ai_video_opening_seconds,
+  )!;
   const openingRanges = ranges.map((range) =>
-    boundaryMilliseconds(transcript, range.startIndex) < AI_VIDEO_OPENING_SECONDS * 1_000
+    boundaryMilliseconds(transcript, range.startIndex) < openingSeconds * 1_000
       ? { ...range, timelineComposition: "IMAGE_FULL" as const }
       : range,
   );
-  return { ...plan, segments: createTimelineSegments(request, openingRanges, variation) };
+  return {
+    ...plan,
+    ...(schedulerHasConfigurableAiVideoOpening(revision.scheduler_version)
+      ? { ai_video_opening_seconds: openingSeconds }
+      : {}),
+    segments: createTimelineSegments(request, openingRanges, variation),
+  };
 }
 
 /**

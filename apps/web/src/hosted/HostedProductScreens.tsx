@@ -56,7 +56,7 @@ const MAX_STYLE_ANALYSIS_BYTES = 30 * 1024 * 1024;
 const MAX_STYLE_REFERENCES = 8;
 const MIN_STYLE_REFERENCES = 3;
 export const HOSTED_UPLOAD_TIMEOUT_MS = 300_000;
-const HOSTED_CREATE_SCHEMA = "videoforge-hosted-project-create/v3";
+const HOSTED_CREATE_SCHEMA = "videoforge-hosted-project-create/v4";
 const VIDEO_COVERAGE_PRESETS = [0, 7, 15, 25, 50, 75, 100] as const;
 const VOICEOVER_TYPES = new Set(["audio/mpeg", "audio/wav"]);
 const MAX_HOSTED_VOICEOVER_FILENAME = 160;
@@ -108,9 +108,30 @@ export function sceneFootageTargetSeconds(
   );
 }
 
+function openingMinutesSeconds(value: string): number | null {
+  const rawSeconds = Number(value) * 60;
+  const seconds = Math.round(rawSeconds);
+  return value.trim() &&
+    Number.isFinite(rawSeconds) &&
+    Math.abs(rawSeconds - seconds) <= 1e-7 &&
+    seconds >= 6 &&
+    seconds <= 3600 &&
+    seconds % 6 === 0
+    ? seconds
+    : null;
+}
+
+function openingDurationLabel(seconds: number): string {
+  const minutes = Number((seconds / 60).toFixed(1));
+  return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+}
+
 export interface CatalogResponse {
   readonly default_image_style_version_id?: string;
   readonly video_generation?: {
+    readonly enabled?: boolean;
+    readonly configurable_opening?: boolean;
+    readonly default_opening_seconds?: number;
     readonly coverage_percent: number;
     readonly coverage_default_percent?: number;
     readonly coverage_min_percent?: number;
@@ -1148,7 +1169,7 @@ function SceneFootageCoverage({ coverage }: { coverage: HostedSceneFootageCovera
     <div className="scene-footage-coverage" aria-label="Scene footage coverage">
       <p className="helper">
         {coverage.required_opening_seconds
-          ? "First 3 minutes: AI video only · Afterward "
+          ? `First ${openingDurationLabel(coverage.required_opening_seconds)}: AI video only · Afterward `
           : "Scene footage · Requested up to "}
         {percent(coverage.requested_coverage_percent)}
         {coverage.planned_coverage_percent === null
@@ -2846,6 +2867,16 @@ export function HostedCreateProjectScreen() {
   const [userSeed, setUserSeed] = useState("");
   const [videoCoverageInput, setVideoCoverageInput] = useState("7");
   const coverageInitialized = useRef(false);
+  const openingInitialized = useRef(false);
+  const [openingEnabled, setOpeningEnabled] = useState(false);
+  const [openingMinutesInput, setOpeningMinutesInput] = useState("3");
+  const selectedOpeningSeconds = openingMinutesSeconds(openingMinutesInput);
+  const openingValid = !openingEnabled || selectedOpeningSeconds !== null;
+  const effectiveOpeningSeconds = openingEnabled ? (selectedOpeningSeconds ?? 0) : 0;
+  const openingConfigurable = Boolean(
+    catalog.data?.video_generation?.configurable_opening ||
+      catalog.data?.video_generation?.required_opening_seconds,
+  );
   const [voiceoverDurationMs, setVoiceoverDurationMs] = useState<number | null>(null);
   const [creationLocked, setCreationLocked] = useState(false);
   const videoCoveragePercent = Number(videoCoverageInput);
@@ -2865,6 +2896,8 @@ export function HostedCreateProjectScreen() {
     extraPromptKeywords.trim(),
     userSeed.trim(),
     videoCoverageInput,
+    openingEnabled,
+    openingEnabled ? (selectedOpeningSeconds ?? openingMinutesInput) : 0,
   ]);
   const currentInput = useRef({ fingerprint, voiceover });
   currentInput.current = { fingerprint, voiceover };
@@ -2875,6 +2908,18 @@ export function HostedCreateProjectScreen() {
     if (creationLocked) return;
     coverageInitialized.current = true;
     setVideoCoverageInput(value);
+    setPreflightResult(null);
+  };
+  const changeOpeningEnabled = (value: boolean) => {
+    if (creationLocked) return;
+    openingInitialized.current = true;
+    setOpeningEnabled(value);
+    setPreflightResult(null);
+  };
+  const changeOpeningMinutes = (value: string) => {
+    if (creationLocked) return;
+    openingInitialized.current = true;
+    setOpeningMinutesInput(value);
     setPreflightResult(null);
   };
   const [voiceoverMeta, setVoiceoverMeta] = useState<{
@@ -2939,11 +2984,14 @@ export function HostedCreateProjectScreen() {
         ? diskSpaceMessage
         : "Connect your media worker in Settings.";
   const executionFingerprint = (value: CatalogResponse | undefined) =>
-    JSON.stringify(
+    JSON.stringify([
       executionBackend === "RUNPOD_POD"
         ? value?.cloud_media
         : [value?.media_worker_state, value?.local_media_free_bytes],
-    );
+      openingEnabled || videoCoveragePercent > 0
+        ? [value?.video_generation?.enabled, value?.video_generation?.adjustable_coverage_supported]
+        : null,
+    ]);
   const currentExecution = useRef({
     ready: executionReady,
     message: executionUnavailableMessage,
@@ -2968,6 +3016,17 @@ export function HostedCreateProjectScreen() {
   ];
   useEffect(() => {
     if (!catalog.data) return;
+    if (!openingInitialized.current) {
+      const generation = catalog.data.video_generation;
+      setOpeningEnabled(
+        Boolean(generation?.configurable_opening || generation?.required_opening_seconds),
+      );
+      const seconds =
+        generation?.default_opening_seconds ?? generation?.required_opening_seconds ?? 180;
+      if (Number.isInteger(seconds) && seconds >= 6 && seconds <= 3600 && seconds % 6 === 0)
+        setOpeningMinutesInput(String(seconds / 60));
+      openingInitialized.current = true;
+    }
     if (!coverageInitialized.current) {
       const value =
         catalog.data.video_generation?.coverage_default_percent ??
@@ -3005,8 +3064,9 @@ export function HostedCreateProjectScreen() {
     };
   }, [voiceover]);
   const coverageSupported =
-    videoCoveragePercent === 0 ||
-    catalog.data?.video_generation?.adjustable_coverage_supported !== false;
+    (!openingEnabled && videoCoveragePercent === 0) ||
+    (catalog.data?.video_generation?.enabled !== false &&
+      catalog.data?.video_generation?.adjustable_coverage_supported !== false);
   const canPreflight = Boolean(
     title.trim() &&
       avatarVersionId &&
@@ -3014,6 +3074,7 @@ export function HostedCreateProjectScreen() {
       (voiceoverSource === "script" ? scriptReady : voiceover) &&
       keywordsValid &&
       coverageValid &&
+      openingValid &&
       coverageSupported,
   );
   const preflightMutation = useMutation({
@@ -3024,15 +3085,25 @@ export function HostedCreateProjectScreen() {
     mutationFn: async () => {
       const snapshot = { fingerprint, voiceover };
       if (!coverageValid) throw new Error("Use a whole percentage from 0 through 100.");
+      if (!openingValid)
+        throw new Error("Use opening minutes from 0.1 through 60 in steps of 0.1.");
       if (!coverageSupported)
         throw new Error(
-          "Scene video generation is currently unavailable. Choose Off or retry later.",
+          "Scene video generation is currently unavailable. Turn off the opening and choose Off coverage, or retry later.",
         );
       if (!voiceover) throw new Error("Choose a voiceover first.");
       const refreshedCatalog = await bounded(
         catalog.refetch({ throwOnError: true }),
         "Availability check timed out. Try again.",
       );
+      if (
+        (openingEnabled || videoCoveragePercent > 0) &&
+        (refreshedCatalog.data?.video_generation?.enabled === false ||
+          refreshedCatalog.data?.video_generation?.adjustable_coverage_supported === false)
+      )
+        throw new Error(
+          "Scene video generation is currently unavailable. Turn off the opening and choose Off coverage, or retry later.",
+        );
       const checkedExecution = executionFingerprint(refreshedCatalog.data);
       const contentType = contentTypeForVoiceover(voiceover);
       if (!VOICEOVER_TYPES.has(contentType))
@@ -3050,8 +3121,10 @@ export function HostedCreateProjectScreen() {
         readJson<HostedPreflightResponse>("/api/v2/hosted/projects/preflight", {
           method: "POST",
           body: JSON.stringify({
-            schema_version: "videoforge-hosted-project-preflight/v2",
+            schema_version: "videoforge-hosted-project-preflight/v3",
             video_coverage_percent: videoCoveragePercent,
+            ai_video_opening_enabled: openingEnabled,
+            ai_video_opening_seconds: effectiveOpeningSeconds,
             execution_backend: executionBackend,
             title: title.trim(),
             avatar_profile_version_id: avatarVersionId,
@@ -3106,6 +3179,8 @@ export function HostedCreateProjectScreen() {
   const submit = useMutation({
     mutationFn: async () => {
       const snapshot = { fingerprint, voiceover };
+      if (!creationLocked && !openingValid)
+        throw new Error("Use opening minutes from 0.1 through 60 in steps of 0.1.");
       if (!creationLocked && (!coverageValid || !coverageSupported))
         throw new Error("Choose an available whole percentage from 0 through 100.");
       if (voiceoverSource === "script") {
@@ -3113,7 +3188,7 @@ export function HostedCreateProjectScreen() {
         if (!creationLocked && !currentExecution.current.ready)
           throw new Error(currentExecution.current.message);
         const body = JSON.stringify({
-          schema_version: "videoforge-hosted-script-project/v1",
+          schema_version: "videoforge-hosted-script-project/v2",
           title: title.trim(),
           script: scriptInput.script,
           voice_id: scriptInput.voiceId,
@@ -3121,6 +3196,8 @@ export function HostedCreateProjectScreen() {
           avatar_profile_version_id: avatarVersionId,
           image_style_version_id: styleVersionId,
           video_coverage_percent: videoCoveragePercent,
+          ai_video_opening_enabled: openingEnabled,
+          ai_video_opening_seconds: effectiveOpeningSeconds,
           extra_prompt_keywords: applyExtraPromptKeywords ? extraPromptKeywords.trim() : "",
           apply_extra_prompt_keywords: applyExtraPromptKeywords,
           user_seed: userSeed.trim() ? Number(userSeed) : null,
@@ -3163,6 +3240,8 @@ export function HostedCreateProjectScreen() {
       const body = {
         schema_version: HOSTED_CREATE_SCHEMA,
         video_coverage_percent: videoCoveragePercent,
+        ai_video_opening_enabled: openingEnabled,
+        ai_video_opening_seconds: effectiveOpeningSeconds,
         execution_backend: executionBackend,
         title: title.trim(),
         avatar_profile_version_id: avatarVersionId,
@@ -3591,6 +3670,46 @@ export function HostedCreateProjectScreen() {
               Extra prompt keywords must be at most 500 characters.
             </p>
           ) : null}
+          {openingConfigurable ? (
+            <fieldset className="video-coverage-control" disabled={creationLocked}>
+              <legend>Opening footage</legend>
+              <label className="toggle-row">
+                <span>
+                  <strong>Full video opening</strong>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={openingEnabled}
+                  onChange={(event) => changeOpeningEnabled(event.target.checked)}
+                />
+              </label>
+              <div className="field">
+                <label htmlFor="opening-minutes">Opening minutes</label>
+                <input
+                  id="opening-minutes"
+                  className="input"
+                  type="number"
+                  min={0.1}
+                  max={60}
+                  step={0.1}
+                  value={openingMinutesInput}
+                  disabled={!openingEnabled}
+                  aria-invalid={!openingValid}
+                  onChange={(event) => changeOpeningMinutes(event.target.value)}
+                />
+              </div>
+              <p className="helper">
+                {openingEnabled
+                  ? "AI video throughout the opening. Coverage percent applies afterward."
+                  : "Coverage percent applies to the entire video."}
+              </p>
+              {!openingValid ? (
+                <p className="validation validation-danger">
+                  Use opening minutes from 0.1 through 60 in steps of 0.1.
+                </p>
+              ) : null}
+            </fieldset>
+          ) : null}
           {catalog.data.video_generation ? (
             <fieldset
               className="video-coverage-control"
@@ -3638,30 +3757,30 @@ export function HostedCreateProjectScreen() {
               <p id="video-coverage-help" className="helper">
                 {!coverageValid
                   ? "Use a whole percentage from 0 through 100."
-                  : catalog.data.video_generation?.required_opening_seconds
-                    ? `First 3 minutes: AI video only. Afterward: ${videoCoveragePercent === 0 ? "no optional footage" : `up to ${videoCoveragePercent}% coverage`}. Full scenes only.`
+                  : openingEnabled && openingValid
+                    ? `First ${openingDurationLabel(effectiveOpeningSeconds)}: AI video only. Afterward: ${videoCoveragePercent === 0 ? "no optional footage" : `up to ${videoCoveragePercent}% coverage`}. Full scenes only.`
                     : videoCoveragePercent === 0
                       ? "Scene footage off · $0."
                       : `Up to ${videoCoveragePercent}% of your video. Full scenes only.`}
               </p>
               {!coverageSupported ? (
                 <p className="validation validation-danger">
-                  Scene video generation is currently unavailable. Choose Off or retry later.
+                  Scene video generation is currently unavailable. Turn off the opening and choose
+                  Off coverage, or retry later.
                 </p>
               ) : null}
-              {coverageValid && voiceoverDurationMs !== null ? (
+              {coverageValid && openingValid && voiceoverDurationMs !== null ? (
                 <p className="helper" aria-label="Preliminary scene footage estimate">
                   Scene footage: up to{" "}
                   {sceneFootageTargetSeconds(
                     voiceoverDurationMs,
                     videoCoveragePercent,
-                    catalog.data.video_generation.required_opening_seconds,
+                    effectiveOpeningSeconds,
                   ).toFixed(2)}
                   s
-                  {!catalog.data.video_generation.required_opening_seconds &&
-                  videoCoveragePercent === 0
+                  {!effectiveOpeningSeconds && videoCoveragePercent === 0
                     ? " · $0"
-                    : ` · Base estimate ${formatUsd(sceneFootageTargetSeconds(voiceoverDurationMs, videoCoveragePercent, catalog.data.video_generation.required_opening_seconds) * catalog.data.video_generation.usd_per_second)}`}
+                    : ` · Base estimate ${formatUsd(sceneFootageTargetSeconds(voiceoverDurationMs, videoCoveragePercent, effectiveOpeningSeconds) * catalog.data.video_generation.usd_per_second)}`}
                 </p>
               ) : null}
             </fieldset>
@@ -6659,7 +6778,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               detail={
                 query.data.generation_provider === "KIE_FAL"
                   ? cost?.api_estimate
-                    ? `${cost.api_estimate.kie_images} Kie images + ${cost.api_estimate.fal_avatar_seconds.toFixed(1)}s Fal avatar${cost.api_estimate.seedance_seconds === undefined ? "" : ` + ${cost.api_estimate.seedance_seconds.toFixed(1)}s scene footage${cost.api_estimate.seedance_coverage_percent === undefined ? "" : ` (up to ${cost.api_estimate.seedance_coverage_percent}%${cost.api_estimate.seedance_required_opening_seconds ? " after 3:00" : ""})`}`} · published-rate estimate`
+                    ? `${cost.api_estimate.kie_images} Kie images + ${cost.api_estimate.fal_avatar_seconds.toFixed(1)}s Fal avatar${cost.api_estimate.seedance_seconds === undefined ? "" : ` + ${cost.api_estimate.seedance_seconds.toFixed(1)}s scene footage${cost.api_estimate.seedance_coverage_percent === undefined ? "" : ` (up to ${cost.api_estimate.seedance_coverage_percent}%${cost.api_estimate.seedance_required_opening_seconds ? ` after ${formatMilliseconds(cost.api_estimate.seedance_required_opening_seconds * 1000)}` : ""})`}`} · published-rate estimate`
                     : "Calculated when planning finishes"
                   : cost?.cap_usd == null
                     ? undefined

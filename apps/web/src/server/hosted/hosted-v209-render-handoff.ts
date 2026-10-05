@@ -530,20 +530,37 @@ export function createHostedV209RenderHandoff(input: {
       const rawVideos = ready.acceptedVideos ?? [];
       const rawVideoPlan = ready.videoPlan ? record(ready.videoPlan) : null;
       if (
-        ["WHOLE_SCENE_V2", "OPENING_180_V3"].includes(String(rawVideoPlan?.replacement_policy)) &&
+        ["WHOLE_SCENE_V2", "OPENING_180_V3", "OPENING_CONFIG_V4"].includes(
+          String(rawVideoPlan?.replacement_policy),
+        ) &&
         (typeof rawVideoPlan!.coverage_percent !== "number" ||
           !Number.isSafeInteger(rawVideoPlan!.coverage_percent))
       )
         throw new Error("HOSTED_V209_RENDER_INPUT_INVALID");
-      const videoPolicy = ["WHOLE_SCENE_V2", "OPENING_180_V3"].includes(
+      if (
+        rawVideoPlan?.replacement_policy === "OPENING_CONFIG_V4" &&
+        (typeof rawVideoPlan.opening_seconds !== "number" ||
+          !Number.isSafeInteger(rawVideoPlan.opening_seconds) ||
+          rawVideoPlan.opening_seconds < 6 ||
+          rawVideoPlan.opening_seconds > 3600 ||
+          rawVideoPlan.opening_seconds % 6 !== 0)
+      )
+        throw new Error("HOSTED_V209_RENDER_VIDEO_POLICY_INVALID");
+      const videoPolicy = ["WHOLE_SCENE_V2", "OPENING_180_V3", "OPENING_CONFIG_V4"].includes(
         String(rawVideoPlan?.replacement_policy),
       )
         ? {
-            coveragePercent:
-              rawVideoPlan!.replacement_policy === "OPENING_180_V3"
-                ? openingVideoBudget(timeline.value, rawVideoPlan!.coverage_percent as number)
-                    .rendererCoveragePercent
-                : (rawVideoPlan!.coverage_percent as number),
+            coveragePercent: ["OPENING_180_V3", "OPENING_CONFIG_V4"].includes(
+              String(rawVideoPlan!.replacement_policy),
+            )
+              ? openingVideoBudget(
+                  timeline.value,
+                  rawVideoPlan!.coverage_percent as number,
+                  rawVideoPlan!.replacement_policy === "OPENING_CONFIG_V4"
+                    ? (rawVideoPlan!.opening_seconds as number)
+                    : 180,
+                ).rendererCoveragePercent
+              : (rawVideoPlan!.coverage_percent as number),
             replacementPolicy: "WHOLE_SCENE_V2" as const,
             selectionSha256: text(rawVideoPlan!.selection_sha256, SHA256),
           }

@@ -10,7 +10,11 @@ import type { ProjectRevisionDocumentRef, TimelinePlanDocumentRef } from "../doc
 import type { TranscriptDocumentRef } from "../transcript/types.js";
 import { pipelineFailure, pipelineSuccess, type PipelineResult } from "../errors.js";
 import { spanPaddedWindowMs } from "./span-padding.js";
-import { schedulerConfigForVersion, SUPPORTED_SCHEDULER_CONFIG } from "./config.js";
+import {
+  schedulerConfigForVersion,
+  schedulerHasAiVideoOpening,
+  SUPPORTED_SCHEDULER_CONFIG,
+} from "./config.js";
 import { validateTimelineSemantics } from "./scheduler.js";
 
 export interface MaterializedSelectedSpan {
@@ -83,6 +87,8 @@ function validateExactTimeline(request: CompleteWorkPlanRequest): string | null 
     request.transcript.value.project_revision_id !== request.timeline.value.project_revision_id ||
     request.timeline.value.revision_config_hash !== request.revision.sha256 ||
     request.timeline.value.scheduler_version !== request.revision.value.scheduler_version ||
+    request.timeline.value.ai_video_opening_seconds !==
+      request.revision.value.ai_video_opening_seconds ||
     request.timeline.value.seed !== request.revision.value.scheduler_seed ||
     request.transcript.value.source.asset_id !== request.revision.value.voiceover_asset_id ||
     request.transcript.value.source.sha256 !== request.revision.value.voiceover_sha256
@@ -141,7 +147,10 @@ function validateExactTimeline(request: CompleteWorkPlanRequest): string | null 
 export async function compileCompleteWorkPlan(
   request: CompleteWorkPlanRequest,
 ): Promise<PipelineResult<CompleteWorkPlan>> {
-  const schedulerConfig = schedulerConfigForVersion(request.revision.value.scheduler_version);
+  const schedulerConfig = schedulerConfigForVersion(
+    request.revision.value.scheduler_version,
+    request.revision.value.ai_video_opening_seconds,
+  );
   if (
     schedulerConfig === null ||
     request.schedulerConfigHash !== (await sha256CanonicalJson(schedulerConfig))
@@ -158,7 +167,7 @@ export async function compileCompleteWorkPlan(
   if (
     imageSegments.length === 0 ||
     (avatarSegments.length === 0 &&
-      !["scheduler-v8", "scheduler-v9"].includes(request.revision.value.scheduler_version))
+      !schedulerHasAiVideoOpening(request.revision.value.scheduler_version))
   ) {
     return fail("Complete work plan requires image and avatar work.", ["timeline", "segments"]);
   }
@@ -249,12 +258,10 @@ export async function compileCompleteWorkPlan(
 
   try {
     const generationWorkManifest = await validateAndHashContractDocument("generationWorkManifest", {
-      schema_version: ["scheduler-v8", "scheduler-v9"].includes(
-        request.revision.value.scheduler_version,
-      )
+      schema_version: schedulerHasAiVideoOpening(request.revision.value.scheduler_version)
         ? "generation-work-manifest/v2"
         : "generation-work-manifest/v1",
-      ...(["scheduler-v8", "scheduler-v9"].includes(request.revision.value.scheduler_version)
+      ...(schedulerHasAiVideoOpening(request.revision.value.scheduler_version)
         ? { scheduler_version: request.revision.value.scheduler_version }
         : {}),
       project_revision_id: request.timeline.value.project_revision_id,

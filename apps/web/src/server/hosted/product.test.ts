@@ -4072,6 +4072,170 @@ describe("adjustable scene footage router contract", () => {
     },
   );
 
+  it.each([
+    [true, 180, 7],
+    [true, 60, 23],
+    [true, 6, 0],
+    [false, 0, 0],
+    [false, 0, 25],
+  ])(
+    "create/v4 pins opening=%s seconds=%s percent=%s independently",
+    async (enabled, seconds, coverage) => {
+      installReadyPresets();
+      testState.query.mockClear();
+      try {
+        const result = await handleHostedProductRequest(
+          request(
+            "/api/v2/hosted/projects",
+            "POST",
+            {
+              ...baseBody,
+              schema_version: "videoforge-hosted-project-create/v4",
+              video_coverage_percent: coverage,
+              ai_video_opening_enabled: enabled,
+              ai_video_opening_seconds: seconds,
+            },
+            true,
+            { "idempotency-key": "config-opening-000000000000001" },
+          ),
+          createEnvironment,
+          coverageConfig,
+          executionContext,
+        );
+        expect(result?.status).toBe(201);
+        const body = (await result!.json()) as { project_revision_id: string };
+        const pin = testState.query.mock.calls.find(([sql]) =>
+          sql.includes("videoforge_pin_hosted_video_plan"),
+        );
+        expect(pin?.[1]).toEqual([
+          testState.scopeRows[0]!.account_id,
+          testState.scopeRows[0]!.workspace_id,
+          body.project_revision_id,
+          coverage,
+          enabled ? "OPENING_CONFIG_V4" : "WHOLE_SCENE_V2",
+          seconds,
+        ]);
+        const revision = testState.query.mock.calls.find(([sql]) =>
+          sql.includes("INSERT INTO project_revisions"),
+        );
+        const payload = JSON.parse(String(revision?.[1]?.[21]));
+        expect(payload.scheduler_version).toBe(enabled ? "scheduler-v10" : "scheduler-v6");
+        expect(payload.ai_video_opening_seconds).toBe(enabled ? seconds : undefined);
+      } finally {
+        clearReadyPresets();
+      }
+    },
+  );
+
+  it.each([
+    [true, 60, 25, 195],
+    [true, 180, 0, 180],
+    [false, 0, 25, 150],
+  ])(
+    "preflight/v3 separates opening=%s seconds=%s coverage=%s",
+    async (enabled, seconds, coverage, target) => {
+      installReadyPresets();
+      try {
+        const result = await handleHostedProductRequest(
+          request("/api/v2/hosted/projects/preflight", "POST", {
+            ...baseBody,
+            voiceover: { ...baseBody.voiceover, duration_ms: 600000 },
+            schema_version: "videoforge-hosted-project-preflight/v3",
+            video_coverage_percent: coverage,
+            ai_video_opening_enabled: enabled,
+            ai_video_opening_seconds: seconds,
+          }),
+          createEnvironment,
+          coverageConfig,
+          executionContext,
+        );
+        expect(result?.status).toBe(200);
+        expect(await result!.json()).toMatchObject({
+          schema_version: "videoforge-hosted-project-preflight/v3",
+          ready: true,
+          ai_video_opening_enabled: enabled,
+          ai_video_opening_seconds: seconds,
+          estimate: {
+            motion: {
+              target_seconds: target,
+              required_opening_seconds: seconds,
+              preliminary_usd: target * 0.01336,
+            },
+          },
+        });
+      } finally {
+        clearReadyPresets();
+      }
+    },
+  );
+
+  it.each([
+    [true, 0],
+    [true, 5],
+    [true, 7],
+    [true, 3606],
+    [true, "180"],
+    [false, 180],
+    ["true", 180],
+    [undefined, undefined],
+  ])(
+    "rejects invalid immutable opening configuration %j/%j before writes",
+    async (enabled, seconds) => {
+      testState.query.mockClear();
+      const result = await handleHostedProductRequest(
+        request(
+          "/api/v2/hosted/projects",
+          "POST",
+          {
+            ...baseBody,
+            schema_version: "videoforge-hosted-project-create/v4",
+            video_coverage_percent: 7,
+            ai_video_opening_enabled: enabled,
+            ai_video_opening_seconds: seconds,
+          },
+          true,
+          { "idempotency-key": "invalid-opening-000000000000001" },
+        ),
+        createEnvironment,
+        coverageConfig,
+        executionContext,
+      );
+      expect(result?.status).toBe(400);
+      expect(testState.query.mock.calls.some(([sql]) => sql.includes("INSERT INTO"))).toBe(false);
+    },
+  );
+
+  it("allows explicit Off/zero coverage with unavailable scene providers before any provider spend", async () => {
+    installReadyPresets();
+    try {
+      const result = await handleHostedProductRequest(
+        request("/api/v2/hosted/projects/preflight", "POST", {
+          ...baseBody,
+          schema_version: "videoforge-hosted-project-preflight/v3",
+          video_coverage_percent: 0,
+          ai_video_opening_enabled: false,
+          ai_video_opening_seconds: 0,
+        }),
+        createEnvironment,
+        {
+          ...coverageConfig,
+          environment: "production",
+          videoGenerationEnabled: false,
+          styleAnalysis: null,
+        },
+        executionContext,
+      );
+      expect(result?.status).toBe(200);
+      const data = (await result!.json()) as { blockers: { code: string }[]; estimate: unknown };
+      expect(data.blockers.some((x) => x.code === "SCENE_VIDEO_UNAVAILABLE")).toBe(false);
+      expect(data.estimate).toMatchObject({
+        motion: { target_seconds: 0, required_opening_seconds: 0, preliminary_usd: 0 },
+      });
+    } finally {
+      clearReadyPresets();
+    }
+  });
+
   it.each([0, 7, 15, 25, 50, 75, 100, 23])(
     "create/v3 pins immutable OPENING_180_V3 at %s percent",
     async (coverage) => {

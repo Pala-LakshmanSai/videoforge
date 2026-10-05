@@ -167,7 +167,10 @@ export async function prepareDurableDeterministicTimeline(
     revision.value.project_id !== command.projectId ||
     revision.value.project_revision_id !== command.projectRevisionId ||
     transcript.value.project_revision_id !== command.projectRevisionId ||
-    schedulerConfigForVersion(revision.value.scheduler_version) === null
+    schedulerConfigForVersion(
+      revision.value.scheduler_version,
+      revision.value.ai_video_opening_seconds,
+    ) === null
   ) {
     throw new DurableTimelineError(
       "TIMELINE_INPUT_MISMATCH",
@@ -199,7 +202,10 @@ export async function prepareDurableDeterministicTimeline(
     );
   }
 
-  const schedulerConfig = schedulerConfigForVersion(revision.value.scheduler_version);
+  const schedulerConfig = schedulerConfigForVersion(
+    revision.value.scheduler_version,
+    revision.value.ai_video_opening_seconds,
+  );
   if (!schedulerConfig) {
     throw new DurableTimelineError("TIMELINE_INPUT_MISMATCH", "Unsupported scheduler version.");
   }

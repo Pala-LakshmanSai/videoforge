@@ -133,11 +133,17 @@
       ]
     },
     "scheduler_version": {"type": "string", "minLength": 1, "maxLength": 160},
+    "ai_video_opening_seconds": {"type": "integer", "minimum": 6, "maximum": 3600, "multipleOf": 6},
     "scheduler_seed": {"type": "integer", "minimum": 0, "maximum": 4294967295},
     "prompt_writer_version": {"type": "string", "minLength": 1, "maxLength": 160},
     "prompt_compiler_version": {"type": "string", "minLength": 1, "maxLength": 160}
   },
   "allOf": [
+    {
+      "if": {"properties": {"scheduler_version": {"enum": ["scheduler-v10", "scheduler-v11"]}}, "required": ["scheduler_version"]},
+      "then": {"properties": {"ai_video_opening_seconds": {}}, "required": ["ai_video_opening_seconds"]},
+      "else": {"not": {"properties": {"ai_video_opening_seconds": {}}, "required": ["ai_video_opening_seconds"]}}
+    },
     {
       "if": {
         "properties": {"apply_extra_prompt_keywords": {"const": true}},

@@ -225,7 +225,7 @@ test("hosted auth mounts the product router and account-owned worker surfaces", 
   await page.getByRole("link", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   await expect(page.getByText("Chrome test computer")).toBeVisible();
-  await page.getByText("Add or update a computer", { exact: true }).click();
+  await page.getByText("Manual install & approval", { exact: true }).click();
   await expect(page.getByRole("link", { name: /Download for Windows/u })).toBeVisible();
   await expect(page.getByRole("link", { name: /Download for Mac/u })).toBeVisible();
   await page.screenshot({ path: "/tmp/videoforge-ui-settings-desktop.png" });
@@ -461,4 +461,127 @@ test("Stage 6 edits and regenerates exactly one scene while retaining accepted m
   expect(posts).toHaveLength(1);
   expect(unexpectedWrites).toEqual([]);
   await page.screenshot({ path: "/tmp/videoforge-scene-regeneration-review.png", fullPage: true });
+});
+
+test("Create keeps the configurable AI opening separate from whole-video coverage", async ({
+  page,
+}) => {
+  const unexpectedWrites: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() !== "GET" && request.url().includes("/api/v2/"))
+      unexpectedWrites.push(request.url());
+  });
+  await page.route("**/api/v2/hosted/project-catalog", (route) =>
+    route.fulfill({
+      json: {
+        avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
+        styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
+        default_image_style_version_id: "sv1",
+        media_worker_state: "ONLINE",
+        cloud_media: { available: true },
+        generation_provider: "KIE_FAL",
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: {
+          schema_version: "videoforge-hosted-gpu-readiness/v1",
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          provider_calls_authorized: false,
+          dispatch_available: false,
+          lanes: [
+            {
+              lane: "MAGE_IMAGE",
+              checkpoint: "V2-07",
+              qualification: "NOT_QUALIFIED",
+              visual_approval: "NOT_APPLICABLE",
+              provider_free_groundwork_commits: ["1283a23248c9b79832b6fb331b00474e1df70f81"],
+              missing_gates: ["identity_output", "cancellation_timeout", "max2_concurrency"],
+            },
+            {
+              lane: "SOULX_AVATAR",
+              checkpoint: "V2-08",
+              qualification: "NOT_QUALIFIED",
+              visual_approval: "APPROVED_EXACT_FULL_AND_SPLIT",
+              provider_free_groundwork_commits: [
+                "7039092707103ab35e8010c009e14409a6e52f63",
+                "84e00881d98e3e77dd8aad121453ed6e7287bc74",
+                "e49b93854d58c4faeb8bdd10b9b9df07321026db",
+                "f3557059d7d5f0637ea223b3e758389fbd80a52b",
+              ],
+              missing_gates: [
+                "V2_07_MAGE_QUALIFICATION",
+                "V2_08_IMAGE_PUBLICATION_AND_ENDPOINT_CONFIGURATION",
+                "V2_08_MAX1_LIVE_QUALIFICATION",
+              ],
+            },
+          ],
+        },
+        video_generation: {
+          enabled: true,
+          configurable_opening: true,
+          default_opening_seconds: 180,
+          required_opening_seconds: 180,
+          coverage_percent: 7,
+          coverage_default_percent: 7,
+          adjustable_coverage_supported: true,
+          usd_per_second: 0.01336,
+          resolution: "720p",
+          aspect_ratio: "16:9",
+        },
+      },
+    }),
+  );
+  // A real browser-decodable WAV keeps this control proof entirely provider-free.
+  const audioBytes = 20 * 32000;
+  const voiceover = Buffer.alloc(44 + audioBytes);
+  voiceover.write("RIFF", 0);
+  voiceover.writeUInt32LE(voiceover.length - 8, 4);
+  voiceover.write("WAVEfmt ", 8);
+  voiceover.writeUInt32LE(16, 16);
+  voiceover.writeUInt16LE(1, 20);
+  voiceover.writeUInt16LE(1, 22);
+  voiceover.writeUInt32LE(16000, 24);
+  voiceover.writeUInt32LE(32000, 28);
+  voiceover.writeUInt16LE(2, 32);
+  voiceover.writeUInt16LE(16, 34);
+  voiceover.write("data", 36);
+  voiceover.writeUInt32LE(audioBytes, 40);
+  await page.goto("/projects/new");
+  const opening = page.getByRole("checkbox", { name: "Full video opening" });
+  const minutes = page.getByRole("spinbutton", { name: "Opening minutes" });
+  const coverage = page.getByRole("spinbutton", { name: "Coverage percent" });
+  const create = page.getByRole("button", { name: "Create video" });
+  await expect(opening).toBeChecked();
+  await expect(minutes).toHaveValue("3");
+  await page.getByRole("textbox", { name: "Video title" }).fill("Opening control proof");
+  await page.getByLabel("Final voiceover").setInputFiles({
+    name: "opening-proof.wav",
+    mimeType: "audio/wav",
+    buffer: voiceover,
+  });
+  await expect(create).toBeEnabled();
+  await minutes.fill("2.5");
+  await coverage.fill("23");
+  await expect(
+    page.getByText(
+      "First 2.5 minutes: AI video only. Afterward: up to 23% coverage. Full scenes only.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByLabel("Preliminary scene footage estimate")).toHaveText(/20\.00s/);
+  await opening.uncheck();
+  await expect(minutes).toBeDisabled();
+  await expect(minutes).toHaveValue("2.5");
+  await expect(coverage).toHaveValue("23");
+  await expect(page.getByText("Up to 23% of your video. Full scenes only.")).toBeVisible();
+  await expect(page.getByLabel("Preliminary scene footage estimate")).toHaveText(/4\.60s/);
+  await opening.check();
+  await expect(minutes).toBeEnabled();
+  await expect(minutes).toHaveValue("2.5");
+  await minutes.fill("0.11");
+  await expect(create).toBeDisabled();
+  await expect(minutes).toHaveAttribute("aria-invalid", "true");
+  await opening.uncheck();
+  await expect(create).toBeEnabled();
+  await opening.check();
+  await expect(minutes).toHaveValue("0.11");
+  await expect(create).toBeDisabled();
+  expect(unexpectedWrites).toEqual([]);
 });

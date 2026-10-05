@@ -1,3 +1,21 @@
+configurable_ai_video_opening_2026_10_05:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  read_profile: v2_09_ai_video_opening
+  status: READY_FOR_PRODUCTION_PUBLICATION
+  branch: codex/configurable-ai-video-opening
+  base_source: eea53304ef093925fd1f90a306a99848e01bfc1f
+  production_baseline: b9f9805c3bfd84eea2f4545b5ebe8c23ec2ce7f1
+  production_baseline_version: 38d3ea38-54a5-477e-892a-2ad68f5f4bd5
+  decision: DEC_VIDEO_OPENING_001;defaultOn3minutes;custom0.1to60minutes_step0.1;Off_exact_original_whole_timeline_coverage;On_percent_only_remaining;whole_crossing_suffix_consumes_remaining_budget;historical_pins_immutable
+  plan: AI_VIDEO_OPENING_PLAN.md
+  authority: Direct_user_implementation_testing_publication_production_authority_without_another_confirmation;maximum_two_new_projects_USD12_new_liability_eight900second_CPU_rentals_no_retained_resources;stop_uncertain_identity_price_cap_risk_unsupported_retry_or_unconfirmed_cleanup
+  prior_provider_state: Earlier_two_tests_stopped_and_preserved;USD4.934096_conservative_allowance_with_original_unknown_charges;no_paid_replay_or_reuse_of_retired_unused_authority
+  paid_compute_shutdown: No_new_paid_compute_started
+  validation: Web550_Pipeline275_TScontracts115_Pythoncontracts97_native3_Workerd1_Chrome6_PASS;types_changed_file_format_lint_contracts_context_secrets_both_bundles_PASS;native268_ROLLBACK_exact_historical_preimages_PASS
+  canonical_aggregate: Baseline133_format_files_and_desktop_frozen_render_smoke_import_order_failures_preserved;BroadChrome28PASS16identical_baseFailures;separate_Workerd_PASS_after_owned_dev_port_release
+  remaining_gates: Production_additive_SQL_exact_Worker_release;fresh_bounded_artifact_and_cleanup_acceptance
+
 ai_video_opening_2026_10_04:
   checkpoint: V2-09
   selected_task: VF-10-09
@@ -2195,7 +2213,7 @@ hosted_text_model_dead_and_stage3_stranded_2026_09_18:
   status: DEPLOYED_VERIFIED_STAGE3_COMPLETED
   stage5_deadlock_2026_09_18: "Stage 5 (Write image prompts) started at 12:12:09Z (hosted_prompt_runs DISPATCHING, 3 batches / 30 scenes) but its first batch task prompt:scene-batch:1 and attempt 4d1ab94d have been RUNNING with no result for over twelve minutes: the server-side dispatch drives a multi-minute provider call inside one request, and when that request ends nothing requeues the attempt. hostedPromptRedispatchable refuses any in-flight run (state must be FAILED/UNKNOWN), and the continuation sweep only routes 'prompts' while prompt_state IS NULL, so neither the sweep nor the client can advance or replace it - the stage has no stale-attempt recovery, unlike the render/cancel paths (migration 0165). Fix pending: a bounded stale-attempt requeue for prompt batches plus sweep-driven resumption (one batch per tick, results already recorded durably per scene). Also fixed in this window: migration 0176 restored the prompt capability's declared model to google:gemini@3.5-flash, which 0173's gemma replacement had accidentally changed - every prompt dispatch had been failing with 'hosted prompt execution profile drifted' (sqlite 23514) on each sweep tick."
   outcome_live: "The stranded revision finished stage 3 on its own: hosted_voiceover_contexts 927ac080 reached SUCCEEDED at 12:05Z (provider_may_have_charge false), the sweep advanced the revision through stage 4 and dispatched stage 5 (prompts) at 12:07:58Z. Worker commit eb8d1a7b, gpu_transport QUALIFIED_EXACT."
-  symptom: "\"it's not showing any retry button, fix it\" on a project whose stage 03 (Understand voiceover context) was FAILED with 'Runware confirmed that the original task failed at its upstream provider without a usable result. Checking again cannot resume this task. No new inference request was submitted.' and 0/100, with stages 04+ PENDING."
+  symptom: '"it''s not showing any retry button, fix it" on a project whose stage 03 (Understand voiceover context) was FAILED with ''Runware confirmed that the original task failed at its upstream provider without a usable result. Checking again cannot resume this task. No new inference request was submitted.'' and 0/100, with stages 04+ PENDING.'
   root_cause_proven: "Two independent defects. (1) The pinned text model is dead at the provider: every dispatch to `deepseek:v4@flash` returned a non-2xx (the worker classified stage=http, i.e. VOICEOVER_CONTEXT_PROVIDER_UNAVAILABLE) in 7-8 s with no task created; the account's own Runware ledger (accountManagement getUsageErrors) records 2 server errors on 2026-09-16 and 7 more on 2026-09-18 against that model and zero accepted results since 2026-09-16T12:41Z, task details answer taskNotFound, and the catalog's successor `deepseek:v4.1@flash` is rejected by textInference as invalidModel. The key itself is fine (a control with a broken key returns 401 invalidApiKey; the real key passes auth and reaches the model check) and the balance is 19.39. (2) The stage row offered no action in that state, so the run could only sit: the client gated the in-row Retry to an UNKNOWN context that had not been conclusively failed."
   fix_provider: "Both hosted text stages now pin `google:gemini@3.5-flash`, measured against the exact contract shape (taskType textInference, outputFormat JSON, strict jsonSchema, thinkingLevel off, temperature 0.1, topP 0.9, maxTokens 350) returning schema-valid JSON with HTTP 200. voiceover-context.ts moves MODEL and its contract version to runware-gemini-3.5-flash-context-request-v10; the prompt writer in packages/pipeline pins the same model under runware-gemini-3.5-flash-prompt-request-v19. Migration 0167 recreates both dispatch capabilities so the execution profiles they write name the model the product actually sends."
   fix_budget: "The stage-3 redispatch budget moves 6 -> 10 on both sides (HOSTED_CONTEXT_REDISPATCH_BUDGET, the sweep's mirror, and the capability via migration 0167), so the revision that spent six attempts while the model was dead can continue automatically once the cause is gone; a drift-guard test now reads the newest migration that declares the budget and asserts it equals the application constant."
@@ -2205,7 +2223,7 @@ hosted_text_model_dead_and_stage3_stranded_2026_09_18:
 hosted_asr_retry_budget_and_silent_refusal_2026_09_18:
   checkpoint: V2-09
   status: DEPLOYED_AND_VERIFIED_LIVE
-  symptom: "\"after clicking retry also, it's failing again\" and then \"nothing is happening\": pressing the in-stage Retry on the failed transcription (helen, f88113b8-f8c3-4f8e-a6... ) produced no new attempt at all and no visible reason."
+  symptom: '"after clicking retry also, it''s failing again" and then "nothing is happening": pressing the in-stage Retry on the failed transcription (helen, f88113b8-f8c3-4f8e-a6... ) produced no new attempt at all and no visible reason.'
   root_cause_proven_two_defects: "(1) The press worked but the project was out of budget. POST /projects/:id/asr refused with 409 HOSTED_ASR_RETRY_LIMIT_REACHED once asrAttemptCount >= 3, and the count included attempts that failed for a local resource reason. All three of helen's ASR attempts carry failure_code MEDIA_EXECUTION_DISK_SPACE_INSUFFICIENT on their media_worker_leases row (the Mac had 1.0 GiB free against the worker's per-job requirement input*2 + 2 GiB, so the worker refused each one ~1.5 s after claiming it, and each earlier press did create a genuinely new attempt). A recoverable local condition therefore spent the whole bounded retry budget and left the project unretryable forever. (2) The refused press was invisible in the stage box: the client rendered the server's sentence only in the notice below the pipeline, so the row the owner pressed showed no change and read as 'nothing is happening'."
   fix_server: "The hand-off state query now reports two counts: asr_attempt_count excludes any attempt whose lease failure_code is in the canonical local-retryable set (SPAN_AUDIO_RETRYABLE_FAILURE_CODES, now exported from personal-worker.ts), and asr_total_attempt_count keeps the raw total. HOSTED_ASR_ATTEMPT_LIMIT (3) bounds only failures of the work itself, while HOSTED_ASR_TOTAL_ATTEMPT_CEILING (12) still bounds an owner retrying a full disk. The submission ordinal comes from the total, so a locally-failed attempt's identity can never be reused by the next hand-off."
   fix_client: "StageTimeline gained a retryNotices map rendered inside the stage row next to the pressed control; the transcription, context, prompt and GPU lanes now put the server's refusal sentence in that row, and the two bottom notices stop duplicating it while the row exists. The transcription stage projection also reports 0 progress for a terminal non-success attempt instead of the constant 50, which had made a stopped transcription read as 50/100 of the work while no transcript existed."
@@ -2509,7 +2527,12 @@ image_review_regeneration_request_2026_09_14:
   base_commit: 6be8853b
   detail: tasks/VF-10-09.md
   implemented: editable_saved_prompt_enter_submit_durable_single_scene_replacement_and_provider_receipt_acceptance
-  migrations: [0129_hosted_image_regeneration.sql, 0130_hosted_image_regeneration_cost.sql, 0131_hosted_image_regeneration_deadline_alignment.sql]
+  migrations:
+    [
+      0129_hosted_image_regeneration.sql,
+      0130_hosted_image_regeneration_cost.sql,
+      0131_hosted_image_regeneration_deadline_alignment.sql,
+    ]
   cost_admission: bounded_2usd_with_3usd_floor_and_durable_predispatch_guard
   remaining: none_for_requested_image_regeneration_and_signin_fix
   deadline_migration: 131
@@ -2774,7 +2797,6 @@ v2_09_live_presend_recovery_2026_09_10:
   cleanup: "Exact Workflow terminated; three two-lane health reads proved zero queued/in-progress/completed/failed/retried jobs and zero active workers. Atomic cleanup settled both attempts DEAD_LETTER/PERMANENT_FAILED, generation FAILED, lease RELEASED, assignments zero."
   provider_state: "No /run assignment or GPU job existed for the failed project; deployment/rebind created zero provider actions; paid compute zero and workersMin remains zero."
   next: "Delete the terminal failed project in Chrome, create one fresh project, and monitor the new Workflow through Stage6/7 assignment and terminal output. Never Retry the failed project."
-
 
 v2_09_same_project_continuation:
   control_source: "3c92dd71bf36b2a9053c4901420ad08044a8617f"
@@ -3503,7 +3525,17 @@ new_chat_handoff:
   live_qualification_deployment_completion_estimate_percent: 48
   estimate_is_acceptance_evidence: false
   next_action: "Request one replacement combined authority for preflight, conditional production activation, resumable Chrome authentication, one live E2E, and final zero-compute proof without Stage 6/7 rerun."
-  serial_live_order: [V2-07_MAGE, V2-08_SOULX, GUARDED_ACTIVATION_AND_MAX1_LANES, V2-09, V2-10, V2-11, V2-12, V2-13_FINAL_SMOKE_DRAIN_BILLING]
+  serial_live_order:
+    [
+      V2-07_MAGE,
+      V2-08_SOULX,
+      GUARDED_ACTIVATION_AND_MAX1_LANES,
+      V2-09,
+      V2-10,
+      V2-11,
+      V2-12,
+      V2-13_FINAL_SMOKE_DRAIN_BILLING,
+    ]
   temporary_compute_policy: "Keep Pods/workers at zero unless strictly required; drain immediately after each required phase and on success, failure, cancellation, expiry, or ambiguity; cleanup-only and no redispatch."
 
 two_track_execution:
@@ -3783,7 +3815,8 @@ provider_free_product_progress:
   credential_bootstrap_reuse_credentials_captured: 4
   credential_bootstrap_reuse_protected_files_written: 4
   credential_bootstrap_reuse_loader_compatibility_status: BLOCKED_REQUIRES_TRIMMED_CREDENTIAL_BYTES
-  credential_bootstrap_reuse_loader_compatibility_affected_files: [R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY]
+  credential_bootstrap_reuse_loader_compatibility_affected_files:
+    [R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY]
   credential_bootstrap_reuse_secret_output_incident_status: CONTAINED_REQUIRES_FRESH_ROTATION_AUTHORITY
   credential_bootstrap_rotation_normalization_proposal_path: "evidence/acceptance/VF-10-13/2026-08-27-credential-rotation-normalization-candidate/combined-credential-rotation-normalization-proposal.json"
   credential_bootstrap_rotation_normalization_proposal_sha256: "sha256:76f14ae25cff7840d0028be1ca0af87bbf325178d99a5ca2b80806aa3ddb2c73"
@@ -3826,7 +3859,8 @@ provider_free_product_progress:
   credential_bootstrap_reuse_audit_service_counts: "13_to_15"
   credential_bootstrap_reuse_audit_before_services_sha256: "sha256:868bd0892c1df56410e064e554df7cce396ae84fab5e2906a34b75cc564897d0"
   credential_bootstrap_reuse_audit_after_services_sha256: "sha256:3b55246afeb2fe025bb8cdc9764207f15519ce027c06e82416e610a838b30581"
-  credential_bootstrap_reuse_audit_newly_enabled_services: [firestore.googleapis.com, firebaserules.googleapis.com]
+  credential_bootstrap_reuse_audit_newly_enabled_services:
+    [firestore.googleapis.com, firebaserules.googleapis.com]
   credential_bootstrap_reuse_audit_resources_created: false
   credential_bootstrap_reuse_audit_databases_created: 0
   credential_bootstrap_reuse_audit_billing_associated: false
@@ -4652,9 +4686,24 @@ fast_completion_plan:
   target: best_case_three_day_invited_production_release
   checkpoints_remaining: [V2-09, V2-10, V2-11, V2-12, V2-13]
   verification: focused_changed_surface_tests_one_repair_cycle_canonical_at_v2_09_and_v2_13
-  never_reduced: [tenant_isolation, authority_and_caps, artifact_lineage, volume_integrity, zero_worker_drain]
-  completed_foundations_not_to_rebuild: [word_level_transcript, scheduler_v2_voiceover_splitting, three_compositions, tenant_queue, personal_worker_renderer]
-  broad_hardening_deferred: [separate_300_image_suite, separate_five_style_suite, ten_artificial_jobs, exhaustive_fault_matrix, broad_browser_matrix]
+  never_reduced:
+    [tenant_isolation, authority_and_caps, artifact_lineage, volume_integrity, zero_worker_drain]
+  completed_foundations_not_to_rebuild:
+    [
+      word_level_transcript,
+      scheduler_v2_voiceover_splitting,
+      three_compositions,
+      tenant_queue,
+      personal_worker_renderer,
+    ]
+  broad_hardening_deferred:
+    [
+      separate_300_image_suite,
+      separate_five_style_suite,
+      ten_artificial_jobs,
+      exhaustive_fault_matrix,
+      broad_browser_matrix,
+    ]
   roadmap: 22_PROJECT_COMPLETION_CHECKPOINTS.md
   copy_ready_prompts: templates/CHECKPOINT_CHAT_PROMPTS.md
 
@@ -6252,7 +6301,8 @@ pending_v2_07_attempt22_proposal:
   authority_path: evidence/acceptance/VF-10-07/2026-08-21-attempt22-template-environment-readback-candidate/approved-authority.json
   authority_sha256: "sha256:fecdfa6dee640d483a1787a726723bef08cdeaf455f5b7df0a2fbcdf3c3699f6"
   provider_calls_authorized: false
-  diagnostic_mismatch_categories: [identity, environment, flashboot, region, cuda, volume, gpu, workers, timing, scaler]
+  diagnostic_mismatch_categories:
+    [identity, environment, flashboot, region, cuda, volume, gpu, workers, timing, scaler]
 
 pending_v2_07_attempt21_proposal:
   mode: provider_free_diagnostic_candidate_after_attempt21
@@ -6272,7 +6322,8 @@ pending_v2_07_attempt21_proposal:
   authority_path: evidence/acceptance/VF-10-07/2026-08-21-attempt21-diagnostic-readback-candidate/approved-authority.json
   authority_sha256: "sha256:bc7580ad3f4782504587904115abb76738da72e3f2a048314a959475ef7316ec"
   provider_calls_authorized: false
-  diagnostic_mismatch_categories: [identity, environment, flashboot, region, cuda, volume, gpu, workers, timing, scaler]
+  diagnostic_mismatch_categories:
+    [identity, environment, flashboot, region, cuda, volume, gpu, workers, timing, scaler]
 
 provider_authority_historical_attempt38: &v2_07_provider_authority_historical
   mode: closed_consumed
@@ -7062,8 +7113,8 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/ai-video-opening
-  branch_upstream: origin/codex/api-capacity
+  branch: codex/configurable-ai-video-opening
+  branch_upstream: origin/codex/configurable-ai-video-opening
   branch_published: true
   current_source_head: "b89632043e2256f364280ba74b2bbab269994b72"
   current_source_head_semantics: published_API_capacity_source
@@ -7115,7 +7166,8 @@ v2_destination:
       precedent: imageforge
       required_evidence: immutable_hash_trust_metadata_and_native_clean_install
       optional_future_upgrades: [windows_authenticode, macos_developer_id_notarization]
-    external_release_gates: [immutable_release_publication, windows_native_clean_install, macos_native_clean_install]
+    external_release_gates:
+      [immutable_release_publication, windows_native_clean_install, macos_native_clean_install]
   runpod_region: EU-RO-1
   endpoints:
     mage:
@@ -8993,9 +9045,30 @@ provider_authority_attempt77: &v2_07_provider_authority_attempt77
   retained_volume_mutation_authorized: false
   v2_08_authorized: false
   model_id: Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot
-  resources: [published_mage_image, disposable_output_worker_route, disposable_runpod_endpoint, disposable_runpod_template, retained_two_sealed_50gb_volumes]
-  authorized_operations: [bounded_distinct_version_route_propagation, exact_python_urllib_pre_gpu_probe, bounded_v2_07_qualification, signal_safe_disposable_cleanup, three_final_zero_compute_reads]
-  allowed_operations: [bounded_distinct_version_route_propagation, exact_python_urllib_pre_gpu_probe, bounded_v2_07_qualification, signal_safe_disposable_cleanup, three_final_zero_compute_reads]
+  resources:
+    [
+      published_mage_image,
+      disposable_output_worker_route,
+      disposable_runpod_endpoint,
+      disposable_runpod_template,
+      retained_two_sealed_50gb_volumes,
+    ]
+  authorized_operations:
+    [
+      bounded_distinct_version_route_propagation,
+      exact_python_urllib_pre_gpu_probe,
+      bounded_v2_07_qualification,
+      signal_safe_disposable_cleanup,
+      three_final_zero_compute_reads,
+    ]
+  allowed_operations:
+    [
+      bounded_distinct_version_route_propagation,
+      exact_python_urllib_pre_gpu_probe,
+      bounded_v2_07_qualification,
+      signal_safe_disposable_cleanup,
+      three_final_zero_compute_reads,
+    ]
   rate_snapshot:
     - resource_id: runpod_serverless_flex_rtx4090
       billing_unit: gpu_hour
@@ -9038,7 +9111,14 @@ provider_authority_attempt78: &v2_07_provider_authority_attempt78
   retained_volume_mutation_authorized: false
   v2_08_authorized: false
   model_id: Comfy-Org/Mage-Flow@d8c99241f6fa80fbd453014234af2bf337ea21e6#int8-convrot
-  resources: [published_mage_image, disposable_output_worker_route, disposable_runpod_endpoint, disposable_runpod_template, retained_two_sealed_50gb_volumes]
+  resources:
+    [
+      published_mage_image,
+      disposable_output_worker_route,
+      disposable_runpod_endpoint,
+      disposable_runpod_template,
+      retained_two_sealed_50gb_volumes,
+    ]
   authorized_operations: []
   allowed_operations: []
   rate_snapshot:
@@ -9202,7 +9282,14 @@ provider_authority_e03_historical_snapshot:
   credential_access_authorized: true
   gpu_use_authorized: false
   actual_spend_usd: null
-  resources: ["runpod:mage-qualified-lane", "runpod:soulx-qualified-lane", "cloudflare:videoforge-production-runtime", "neon:production", "paired-mac:media-worker"]
+  resources:
+    [
+      "runpod:mage-qualified-lane",
+      "runpod:soulx-qualified-lane",
+      "cloudflare:videoforge-production-runtime",
+      "neon:production",
+      "paired-mac:media-worker",
+    ]
   historical_resources:
     - "github:Pala-LakshmanSai/videoforge:refs/heads/codex/serverless-v2-roadmap-v4"
     - "runpod:mage-production-lane:EU-RO-1:RTX4090"
@@ -9211,7 +9298,34 @@ provider_authority_e03_historical_snapshot:
     - "neon:videoforge-production-database"
     - "github:media-worker-v0.1.15"
     - "paired-mac:videoforge-personal-media-worker"
-  authorized_operations: ["push-clean-source", "readback-clean-source", "apply-migrations-0074-0086", "apply-v209-grants", "publish-media-worker-0.1.15", "readback-media-worker-0.1.15", "fresh-read-only-admission", "create-mage-production-lane-max-one", "create-soulx-production-lane-max-one", "persist-qualified-production-deployments", "render-qualified-production-config", "deploy-cloudflare-disabled-bootstrap", "upload-cloudflare-production-secrets", "deploy-cloudflare-qualified-production", "readback-qualified-production", "install-media-worker-0.1.15", "import-v209-qualified-activation", "run-one-v209-chrome-e2e", "verify-private-mp4-lineage", "reconcile-v209-production-safety", "reconcile-attributable-runpod-work", "clean-v209-transient-r2", "prove-three-zero-compute-reads", "read-settled-billing", "verify-retained-resources"]
+  authorized_operations:
+    [
+      "push-clean-source",
+      "readback-clean-source",
+      "apply-migrations-0074-0086",
+      "apply-v209-grants",
+      "publish-media-worker-0.1.15",
+      "readback-media-worker-0.1.15",
+      "fresh-read-only-admission",
+      "create-mage-production-lane-max-one",
+      "create-soulx-production-lane-max-one",
+      "persist-qualified-production-deployments",
+      "render-qualified-production-config",
+      "deploy-cloudflare-disabled-bootstrap",
+      "upload-cloudflare-production-secrets",
+      "deploy-cloudflare-qualified-production",
+      "readback-qualified-production",
+      "install-media-worker-0.1.15",
+      "import-v209-qualified-activation",
+      "run-one-v209-chrome-e2e",
+      "verify-private-mp4-lineage",
+      "reconcile-v209-production-safety",
+      "reconcile-attributable-runpod-work",
+      "clean-v209-transient-r2",
+      "prove-three-zero-compute-reads",
+      "read-settled-billing",
+      "verify-retained-resources",
+    ]
   historical_authorized_operations:
     - push-clean-source
     - readback-clean-source
@@ -9238,7 +9352,34 @@ provider_authority_e03_historical_snapshot:
     - prove-three-zero-compute-reads
     - read-settled-billing
     - verify-retained-resources
-  allowed_operations: ["push-clean-source", "readback-clean-source", "apply-migrations-0074-0086", "apply-v209-grants", "publish-media-worker-0.1.15", "readback-media-worker-0.1.15", "fresh-read-only-admission", "create-mage-production-lane-max-one", "create-soulx-production-lane-max-one", "persist-qualified-production-deployments", "render-qualified-production-config", "deploy-cloudflare-disabled-bootstrap", "upload-cloudflare-production-secrets", "deploy-cloudflare-qualified-production", "readback-qualified-production", "install-media-worker-0.1.15", "import-v209-qualified-activation", "run-one-v209-chrome-e2e", "verify-private-mp4-lineage", "reconcile-v209-production-safety", "reconcile-attributable-runpod-work", "clean-v209-transient-r2", "prove-three-zero-compute-reads", "read-settled-billing", "verify-retained-resources"]
+  allowed_operations:
+    [
+      "push-clean-source",
+      "readback-clean-source",
+      "apply-migrations-0074-0086",
+      "apply-v209-grants",
+      "publish-media-worker-0.1.15",
+      "readback-media-worker-0.1.15",
+      "fresh-read-only-admission",
+      "create-mage-production-lane-max-one",
+      "create-soulx-production-lane-max-one",
+      "persist-qualified-production-deployments",
+      "render-qualified-production-config",
+      "deploy-cloudflare-disabled-bootstrap",
+      "upload-cloudflare-production-secrets",
+      "deploy-cloudflare-qualified-production",
+      "readback-qualified-production",
+      "install-media-worker-0.1.15",
+      "import-v209-qualified-activation",
+      "run-one-v209-chrome-e2e",
+      "verify-private-mp4-lineage",
+      "reconcile-v209-production-safety",
+      "reconcile-attributable-runpod-work",
+      "clean-v209-transient-r2",
+      "prove-three-zero-compute-reads",
+      "read-settled-billing",
+      "verify-retained-resources",
+    ]
   historical_allowed_operations:
     - push-clean-source
     - readback-clean-source
@@ -9300,7 +9441,13 @@ v2_09_historical_consumed_native_authority:
   provider_mutations_authorized: false
   credential_access_authorized: true
   gpu_use_authorized: false
-  resources: ["runpod:mage-qualified-lane", "runpod:soulx-qualified-lane", "neon:production", "cloudflare:videoforge-production-runtime"]
+  resources:
+    [
+      "runpod:mage-qualified-lane",
+      "runpod:soulx-qualified-lane",
+      "neon:production",
+      "cloudflare:videoforge-production-runtime",
+    ]
   allowed_operations: ["account_identity_lookup", "inventory_lookup", "resource_identity_lookup"]
   authorized_operations: ["account_identity_lookup", "inventory_lookup", "resource_identity_lookup"]
   status: STOPPED_NO_RETRY
@@ -9313,9 +9460,26 @@ provider_authority: &v2_09_provider_authority_current
   paid_generation_authorized: false
   non_transferable: true
   authorized_by_user_at: "2026-10-04"
-  resources: [videoforge_production_worker, neon_production_schema, configured_Kie_Fal_Runware_J1_accounts]
-  authorized_operations: [metadata_migration, application_deploy, configuration_readback, artifact_verification, quota_lookup, resource_identity_lookup]
-  allowed_operations: [metadata_migration, application_deploy, configuration_readback, artifact_verification, quota_lookup, resource_identity_lookup]
+  resources:
+    [videoforge_production_worker, neon_production_schema, configured_Kie_Fal_Runware_J1_accounts]
+  authorized_operations:
+    [
+      metadata_migration,
+      application_deploy,
+      configuration_readback,
+      artifact_verification,
+      quota_lookup,
+      resource_identity_lookup,
+    ]
+  allowed_operations:
+    [
+      metadata_migration,
+      application_deploy,
+      configuration_readback,
+      artifact_verification,
+      quota_lookup,
+      resource_identity_lookup,
+    ]
 
 recommended_next_task:
   task_id: VF-10-09
@@ -9344,7 +9508,8 @@ recommended_next_task:
   application_code_changes_authorized: true
   spend_usd: 0
   resources: []
-  authorized_operations: [provider_free_tests, additive_migration, application_worker_release, production_deploy]
+  authorized_operations:
+    [provider_free_tests, additive_migration, application_worker_release, production_deploy]
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_and_v2_08_live_qualified_pass_clean
@@ -9556,7 +9721,7 @@ verification:
       - "pnpm --filter @videoforge/control-plane exec node --test tests/v2-06-hosted-auth.test.mjs (exit 0; 6/6)"
       - "pnpm --filter @videoforge/control-plane exec node --test tests/migrations-smoke.test.mjs (exit 0; 6/6)"
       - "node --test scripts/tests/v2-06-deployment.test.mjs scripts/tests/v2-06-activation-safety.test.mjs scripts/tests/v2-06-owned-render-fixture.test.mjs scripts/tests/v2-06-tenant-seed.test.mjs (exit 0; 28/28)"
-      - "VIDEOFORGE_UV=\"$PWD/.tools/uv-0.8.13/bin/uv\" pnpm python:lint (exit 0; 87 Python files)"
+      - 'VIDEOFORGE_UV="$PWD/.tools/uv-0.8.13/bin/uv" pnpm python:lint (exit 0; 87 Python files)'
       - "uv run --locked --no-sync python -m unittest discover -s workers/media-local/tests -p 'test_*.py' (exit 0; 39/39)"
       - "pnpm contracts:check (exit 0; 123 canonical files)"
       - "pnpm context:validate (exit 0)"

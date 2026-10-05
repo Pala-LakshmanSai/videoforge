@@ -10,10 +10,25 @@ export interface HostedVideoSelection {
 // Leave 0.1 seconds of provider frame-quantization headroom within the 12-second request limit.
 const MAX_VIDEO_FRAMES = 357;
 
-export type HostedVideoReplacementPolicy = "LEGACY_PREFIX_V1" | "WHOLE_SCENE_V2" | "OPENING_180_V3";
+export type HostedVideoReplacementPolicy =
+  | "LEGACY_PREFIX_V1"
+  | "WHOLE_SCENE_V2"
+  | "OPENING_180_V3"
+  | "OPENING_CONFIG_V4";
 export interface HostedVideoPolicy {
   readonly coveragePercent: number;
   readonly replacementPolicy: HostedVideoReplacementPolicy;
+  readonly openingSeconds?: number;
+}
+
+/** Historical policy always retains its original threshold. */
+export function hostedVideoOpeningSeconds(policy: HostedVideoPolicy): number {
+  if (policy.replacementPolicy === "OPENING_180_V3") return 180;
+  if (policy.replacementPolicy !== "OPENING_CONFIG_V4") return 0;
+  const seconds = policy.openingSeconds;
+  if (!Number.isSafeInteger(seconds) || seconds! < 6 || seconds! > 3600 || seconds! % 6 !== 0)
+    throw new Error("HOSTED_VIDEO_POLICY_INVALID");
+  return seconds!;
 }
 
 /** Select deterministic, spread image scenes within the pinned finished-film budget. */
@@ -25,14 +40,16 @@ export function planHostedVideoSelections(
     !Number.isSafeInteger(policy.coveragePercent) ||
     policy.coveragePercent < 0 ||
     policy.coveragePercent > 100 ||
-    !["LEGACY_PREFIX_V1", "WHOLE_SCENE_V2", "OPENING_180_V3"].includes(policy.replacementPolicy) ||
+    !["LEGACY_PREFIX_V1", "WHOLE_SCENE_V2", "OPENING_180_V3", "OPENING_CONFIG_V4"].includes(
+      policy.replacementPolicy,
+    ) ||
     (policy.replacementPolicy === "LEGACY_PREFIX_V1" && policy.coveragePercent !== 7)
   )
     throw new Error("HOSTED_VIDEO_POLICY_INVALID");
-  if (policy.replacementPolicy === "OPENING_180_V3") {
-    const opening = timeline.segments.filter(
-      (segment) => segment.start_frame < OPENING_VIDEO_FRAMES,
-    );
+  const openingSeconds = hostedVideoOpeningSeconds(policy);
+  if (openingSeconds > 0) {
+    const openingFrames = openingSeconds * 30;
+    const opening = timeline.segments.filter((segment) => segment.start_frame < openingFrames);
     if (
       opening.some(
         (segment) =>
@@ -42,14 +59,12 @@ export function planHostedVideoSelections(
       )
     )
       throw new Error("HOSTED_VIDEO_OPENING_TIMELINE_INVALID");
-    const budget = openingVideoBudget(timeline, policy.coveragePercent);
+    const budget = openingVideoBudget(timeline, policy.coveragePercent, openingSeconds);
     // Reuse the exact whole-scene spread/fill algorithm with the remaining-duration budget.
     const optional = planHostedVideoSelections(
       {
         total_frames: budget.optionalFrames,
-        segments: timeline.segments.filter(
-          (segment) => segment.start_frame >= OPENING_VIDEO_FRAMES,
-        ),
+        segments: timeline.segments.filter((segment) => segment.start_frame >= openingFrames),
       },
       { coveragePercent: 100, replacementPolicy: "WHOLE_SCENE_V2" },
     );
@@ -167,14 +182,23 @@ export const OPENING_VIDEO_FRAMES = 180 * 30;
 export function openingVideoBudget(
   timeline: Pick<TimelinePlanDocument, "total_frames" | "segments">,
   coveragePercent: number,
+  openingSeconds = 180,
 ) {
+  if (
+    !Number.isSafeInteger(openingSeconds) ||
+    openingSeconds < 6 ||
+    openingSeconds > 3600 ||
+    openingSeconds % 6 !== 0
+  )
+    throw new Error("HOSTED_VIDEO_POLICY_INVALID");
+  const openingFrames = openingSeconds * 30;
   const mandatoryFrames = timeline.segments
-    .filter((segment) => segment.start_frame < OPENING_VIDEO_FRAMES)
+    .filter((segment) => segment.start_frame < openingFrames)
     .reduce((sum, segment) => sum + segment.end_frame_exclusive - segment.start_frame, 0);
-  const remainingFrames = Math.max(0, timeline.total_frames - OPENING_VIDEO_FRAMES);
+  const remainingFrames = Math.max(0, timeline.total_frames - openingFrames);
   const crossingFrames = Math.max(
     0,
-    mandatoryFrames - Math.min(timeline.total_frames, OPENING_VIDEO_FRAMES),
+    mandatoryFrames - Math.min(timeline.total_frames, openingFrames),
   );
   const optionalFrames = Math.max(
     0,

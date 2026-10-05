@@ -255,3 +255,88 @@ describe("independent three-minute opening", () => {
     ).toThrow("HOSTED_VIDEO_OPENING_TIMELINE_INVALID");
   });
 });
+
+describe("configurable opening coverage", () => {
+  it.each([6, 30, 60, 180, 3600])(
+    "uses pinned %s seconds and the unchanged remaining spread algorithm",
+    (seconds) => {
+      const input = timeline(720);
+      const openingFrames = seconds * 30;
+      const on = {
+        ...input,
+        segments: input.segments.map((s) =>
+          s.start_frame < openingFrames ? { ...s, timeline_composition: "IMAGE_FULL" as const } : s,
+        ),
+      } as unknown as TimelinePlanDocument;
+      const selections = planHostedVideoSelections(on, {
+        replacementPolicy: "OPENING_CONFIG_V4",
+        openingSeconds: seconds,
+        coveragePercent: 23,
+      });
+      const opening = selections.filter(
+        (s) => Number(s.segmentId.split("-")[1]) * 150 < openingFrames,
+      );
+      const budget = openingVideoBudget(on, 23, seconds);
+      expect(opening.reduce((sum, s) => sum + s.videoFrameCount, 0)).toBe(budget.mandatoryFrames);
+      const optional = planHostedVideoSelections(
+        {
+          total_frames: budget.optionalFrames,
+          segments: on.segments.filter((s) => s.start_frame >= openingFrames),
+        },
+        { coveragePercent: 100, replacementPolicy: "WHOLE_SCENE_V2" },
+      );
+      expect(selections).toEqual([...opening, ...optional]);
+      const off = planHostedVideoSelections(input, {
+        coveragePercent: 23,
+        replacementPolicy: "WHOLE_SCENE_V2",
+      });
+      expect(off.reduce((sum, s) => sum + s.videoFrameCount, 0)).toBeLessThanOrEqual(
+        Math.floor((input.total_frames * 23) / 100),
+      );
+    },
+  );
+  it("retains exact fixed180 selection identity while the configurable duration changes", () => {
+    const input = timeline(120);
+    const allImages = {
+      ...input,
+      segments: input.segments.map((s) => ({ ...s, timeline_composition: "IMAGE_FULL" as const })),
+    } as unknown as TimelinePlanDocument;
+    const historic = planHostedVideoSelections(allImages, {
+      coveragePercent: 7,
+      replacementPolicy: "OPENING_180_V3",
+    });
+    expect(
+      planHostedVideoSelections(allImages, {
+        coveragePercent: 7,
+        replacementPolicy: "OPENING_CONFIG_V4",
+        openingSeconds: 180,
+      }),
+    ).toEqual(historic);
+    expect(
+      planHostedVideoSelections(allImages, {
+        coveragePercent: 7,
+        replacementPolicy: "OPENING_180_V3",
+        openingSeconds: 60,
+      }),
+    ).toEqual(historic);
+    expect(
+      planHostedVideoSelections(allImages, {
+        coveragePercent: 7,
+        replacementPolicy: "OPENING_CONFIG_V4",
+        openingSeconds: 60,
+      }),
+    ).not.toEqual(historic);
+  });
+  it.each([undefined, 0, 5, 7, 3606, 1.2, NaN])(
+    "fails closed on invalid threshold %s",
+    (seconds) => {
+      expect(() =>
+        planHostedVideoSelections(timeline(120), {
+          coveragePercent: 0,
+          replacementPolicy: "OPENING_CONFIG_V4",
+          openingSeconds: seconds,
+        }),
+      ).toThrow("HOSTED_VIDEO_POLICY_INVALID");
+    },
+  );
+});

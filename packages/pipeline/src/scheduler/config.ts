@@ -87,6 +87,8 @@ export const NARRATION_SHOT_SHORT_SCHEDULER_CONFIG = Object.freeze({
 export const AI_VIDEO_OPENING_SECONDS = 180;
 export const AI_VIDEO_OPENING_SCHEDULER_VERSION = "scheduler-v8";
 export const AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION = "scheduler-v9";
+export const CONFIGURABLE_AI_VIDEO_OPENING_SCHEDULER_VERSION = "scheduler-v10";
+export const CONFIGURABLE_AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION = "scheduler-v11";
 
 /** Preserve predecessor timing, then reserve the opening scenes for full-screen AI video. */
 export const AI_VIDEO_OPENING_SCHEDULER_CONFIG = Object.freeze({
@@ -107,12 +109,45 @@ export const AI_VIDEO_OPENING_SHORT_SCHEDULER_CONFIG = Object.freeze({
 export function schedulerHasAiVideoOpening(version: string): boolean {
   return (
     version === AI_VIDEO_OPENING_SCHEDULER_VERSION ||
-    version === AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION
+    version === AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION ||
+    schedulerHasConfigurableAiVideoOpening(version)
   );
+}
+
+export function schedulerHasConfigurableAiVideoOpening(version: string): boolean {
+  return (
+    version === CONFIGURABLE_AI_VIDEO_OPENING_SCHEDULER_VERSION ||
+    version === CONFIGURABLE_AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION
+  );
+}
+
+/** UI tenths of a minute are pinned as exact whole seconds before scheduling. */
+export function isValidAiVideoOpeningSeconds(value: unknown): value is number {
+  return (
+    Number.isSafeInteger(value) &&
+    Number(value) >= 6 &&
+    Number(value) <= 3_600 &&
+    Number(value) % 6 === 0
+  );
+}
+
+/** Historical versions never acquire configurable fields or a new default. */
+export function schedulerAiVideoOpeningSeconds(
+  version: string,
+  openingSeconds?: number,
+): number | null {
+  if (schedulerHasConfigurableAiVideoOpening(version))
+    return isValidAiVideoOpeningSeconds(openingSeconds) ? openingSeconds : null;
+  if (openingSeconds !== undefined) return null;
+  return schedulerHasAiVideoOpening(version) ? AI_VIDEO_OPENING_SECONDS : 0;
 }
 
 /** Preserve timing draws and segment identities when selecting the new role policy. */
 export function schedulerTimingVersion(version: string): string {
+  if (version === CONFIGURABLE_AI_VIDEO_OPENING_SCHEDULER_VERSION)
+    return SUPPORTED_SCHEDULER_VERSION;
+  if (version === CONFIGURABLE_AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION)
+    return WORD_BOUNDARY_SCHEDULER_VERSION;
   if (version === AI_VIDEO_OPENING_SCHEDULER_VERSION) return SUPPORTED_SCHEDULER_VERSION;
   if (version === AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION) return WORD_BOUNDARY_SCHEDULER_VERSION;
   if (version === NARRATION_SHOT_SCHEDULER_VERSION) return SUPPORTED_SCHEDULER_VERSION;
@@ -120,7 +155,18 @@ export function schedulerTimingVersion(version: string): string {
   return version;
 }
 
-export function schedulerConfigForVersion(version: string) {
+export function schedulerConfigForVersion(version: string, openingSeconds?: number) {
+  if (schedulerAiVideoOpeningSeconds(version, openingSeconds) === null) return null;
+  if (schedulerHasConfigurableAiVideoOpening(version)) {
+    const short = version === CONFIGURABLE_AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION;
+    return Object.freeze({
+      ...(short ? AI_VIDEO_OPENING_SHORT_SCHEDULER_CONFIG : AI_VIDEO_OPENING_SCHEDULER_CONFIG),
+      schema_version: short
+        ? "deterministic-timeline-scheduler-config/v11"
+        : "deterministic-timeline-scheduler-config/v10",
+      opening_seconds: openingSeconds!,
+    });
+  }
   if (version === AI_VIDEO_OPENING_SCHEDULER_VERSION) return AI_VIDEO_OPENING_SCHEDULER_CONFIG;
   if (version === AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION)
     return AI_VIDEO_OPENING_SHORT_SCHEDULER_CONFIG;

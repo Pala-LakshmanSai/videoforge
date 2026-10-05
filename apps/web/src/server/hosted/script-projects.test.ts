@@ -7,6 +7,7 @@ const fixture = vi.hoisted(() => ({
   uncertain: false,
   observed: "PROCESSING",
   creates: 0,
+  createBodies: [] as Record<string, unknown>[],
   commits: 0,
   schedules: 0,
   failSchedule: false,
@@ -46,7 +47,8 @@ vi.mock("./neon", () => ({
 vi.mock("./product", () => ({
   parseProjectOptions: vi.fn(),
   validateScriptProjectPresets: vi.fn(),
-  createProject: async () => {
+  createProject: async (request: Request) => {
+    fixture.createBodies.push((await request.json()) as Record<string, unknown>);
     fixture.creates++;
     return Response.json({ state: "UPLOAD_PENDING", object_key: "canonical-voiceover" });
   },
@@ -138,6 +140,7 @@ beforeEach(() => {
     uncertain: false,
     observed: "PROCESSING",
     creates: 0,
+    createBodies: [],
     commits: 0,
     schedules: 0,
     failSchedule: false,
@@ -201,3 +204,35 @@ it.each(["CANCELLED", "FAILED", "COMPLETE"])(
     expect(fixture.posts).toBe(0);
   },
 );
+
+it.each([
+  [true, 180],
+  [true, 60],
+  [false, 0],
+])("retains frozen opening=%s/%s through narration and ASR handoff", async (enabled, seconds) => {
+  fixture.intake.options = {
+    title: "River",
+    ai_video_opening_enabled: enabled,
+    ai_video_opening_seconds: seconds,
+    video_coverage_percent: 23,
+  };
+  await advance();
+  fixture.observed = "COMPLETED";
+  expect(await advance()).toBe("COMPLETE");
+  expect(fixture.createBodies).toHaveLength(1);
+  expect(fixture.createBodies[0]).toMatchObject({
+    schema_version: "videoforge-hosted-project-create/v4",
+    ai_video_opening_enabled: enabled,
+    ai_video_opening_seconds: seconds,
+    video_coverage_percent: 23,
+  });
+  expect(fixture.posts).toBe(1);
+});
+
+it("keeps old pending script intake on its original create schema", async () => {
+  await advance();
+  fixture.observed = "COMPLETED";
+  await advance();
+  expect(fixture.createBodies[0]?.schema_version).toBe("videoforge-hosted-project-create/v3");
+  expect(fixture.createBodies[0]).not.toHaveProperty("ai_video_opening_seconds");
+});

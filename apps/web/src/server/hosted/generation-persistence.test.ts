@@ -208,6 +208,32 @@ describe("hosted canonical timing persistence", () => {
     },
     { name: "fresh opted-in selections", replayed: false, hasPlan: true, selections: null },
     {
+      name: "custom six-second opening uses saved threshold even at zero remaining coverage",
+      replayed: false,
+      hasPlan: true,
+      selections: null,
+      coverage: 0,
+      policy: "OPENING_CONFIG_V4",
+      openingSeconds: 6,
+    },
+    {
+      name: "saved configurable opening selections replay without regeneration",
+      replayed: true,
+      hasPlan: true,
+      coverage: 0,
+      policy: "OPENING_CONFIG_V4",
+      openingSeconds: 6,
+      selections: [
+        {
+          segmentId: "image-scene",
+          sourceTaskKey: "image:image-scene",
+          videoFrameCount: 150,
+          durationSeconds: 5.1,
+        },
+      ],
+    },
+
+    {
       name: "a legacy revision without video opt-in",
       replayed: true,
       hasPlan: false,
@@ -265,9 +291,20 @@ describe("hosted canonical timing persistence", () => {
               timelineComposition: "IMAGE_FULL",
               requiredSlots: { image: { task_key: "image:image-scene" } },
             },
+            ...("openingSeconds" in scenario
+              ? [
+                  {
+                    segmentKey: "crossing-scene",
+                    startFrame: 150,
+                    endFrameExclusive: 300,
+                    timelineComposition: "IMAGE_FULL",
+                    requiredSlots: { image: { task_key: "image:crossing-scene" } },
+                  },
+                ]
+              : []),
             {
               segmentKey: "avatar-scene",
-              startFrame: 150,
+              startFrame: "openingSeconds" in scenario ? 300 : 150,
               endFrameExclusive: 529,
               timelineComposition: "AVATAR_FULL",
               requiredSlots: {},
@@ -301,7 +338,7 @@ describe("hosted canonical timing persistence", () => {
         return { rows: [{ replayed: scenario.replayed }], rowCount: 1 };
       if (
         sql.startsWith(
-          "SELECT selections, coverage_percent, replacement_policy FROM hosted_video_plans",
+          "SELECT selections, coverage_percent, replacement_policy, opening_seconds FROM hosted_video_plans",
         )
       ) {
         expect(values).toEqual([ACCOUNT, WORKSPACE, revisionId]);
@@ -312,6 +349,7 @@ describe("hosted canonical timing persistence", () => {
                   selections: scenario.selections,
                   coverage_percent: "coverage" in scenario ? scenario.coverage : 7,
                   replacement_policy: "policy" in scenario ? scenario.policy : "LEGACY_PREFIX_V1",
+                  opening_seconds: "openingSeconds" in scenario ? scenario.openingSeconds : 0,
                 },
               ]
             : [],
@@ -333,16 +371,31 @@ describe("hosted canonical timing persistence", () => {
     expect(planned).toEqual(
       scenario.hasPlan && scenario.selections === null
         ? [
-            "coverage" in scenario && scenario.coverage === 0
-              ? []
-              : [
+            "openingSeconds" in scenario
+              ? [
                   {
                     segmentId: "image-scene",
                     sourceTaskKey: "image:image-scene",
-                    videoFrameCount: "policy" in scenario ? 150 : 37,
-                    durationSeconds: "policy" in scenario ? 5.1 : 1.4,
+                    videoFrameCount: 150,
+                    durationSeconds: 5.1,
                   },
-                ],
+                  {
+                    segmentId: "crossing-scene",
+                    sourceTaskKey: "image:crossing-scene",
+                    videoFrameCount: 150,
+                    durationSeconds: 5.1,
+                  },
+                ]
+              : "coverage" in scenario && scenario.coverage === 0
+                ? []
+                : [
+                    {
+                      segmentId: "image-scene",
+                      sourceTaskKey: "image:image-scene",
+                      videoFrameCount: "policy" in scenario ? 150 : 37,
+                      durationSeconds: "policy" in scenario ? 5.1 : 1.4,
+                    },
+                  ],
           ]
         : [],
     );

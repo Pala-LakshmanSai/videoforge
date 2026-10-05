@@ -217,6 +217,8 @@ interface ProjectCreateInput {
   readonly userSeed: number | null;
   readonly executionBackend: "PERSONAL_WORKER" | "RUNPOD_POD";
   readonly videoCoveragePercent: number | null;
+  readonly aiVideoOpeningEnabled?: boolean;
+  readonly aiVideoOpeningSeconds?: number;
   readonly voiceover: {
     readonly filename: string;
     readonly contentType: string;
@@ -224,6 +226,27 @@ interface ProjectCreateInput {
     readonly checksumSha256: string;
     readonly durationMs: number;
   };
+}
+
+/** New requests pin their setting; older clients retain their published opening behavior. */
+export function resolvedAiVideoOpeningSeconds(
+  input: Pick<ProjectCreateInput, "aiVideoOpeningSeconds">,
+  config: Pick<HostedRuntimeConfiguration, "videoGenerationEnabled" | "environment">,
+): number {
+  return (
+    input.aiVideoOpeningSeconds ??
+    (config.videoGenerationEnabled || config.environment === "production" ? 180 : 0)
+  );
+}
+
+function sceneVideoUnavailable(
+  input: Pick<ProjectCreateInput, "aiVideoOpeningSeconds" | "videoCoveragePercent">,
+  config: HostedRuntimeConfiguration,
+): boolean {
+  return (
+    (resolvedAiVideoOpeningSeconds(input, config) > 0 || (input.videoCoveragePercent ?? 0) > 0) &&
+    (!config.videoGenerationEnabled || !config.styleAnalysis)
+  );
 }
 
 export function hostedRevisionConfigV2(input: {
@@ -234,6 +257,7 @@ export function hostedRevisionConfigV2(input: {
   readonly voiceoverSha256: string;
   readonly voiceoverDurationMs: number;
   readonly aiVideoOpening?: boolean;
+  readonly aiVideoOpeningSeconds?: number;
   readonly avatarProfileId: string;
   readonly avatarProfileVersionId: string;
   readonly avatarDisplayName: string;
@@ -285,13 +309,21 @@ export function hostedRevisionConfigV2(input: {
       avatar_quality_profile_id: null,
     },
     spend_cap_usd: null,
-    scheduler_version: input.aiVideoOpening
-      ? input.voiceoverDurationMs <= 30_000
-        ? "scheduler-v9"
-        : "scheduler-v8"
-      : input.voiceoverDurationMs <= 30_000
-        ? "scheduler-v7"
-        : "scheduler-v6",
+    ...(input.aiVideoOpeningSeconds && input.aiVideoOpening
+      ? { ai_video_opening_seconds: input.aiVideoOpeningSeconds }
+      : {}),
+    scheduler_version:
+      input.aiVideoOpening && input.aiVideoOpeningSeconds
+        ? input.voiceoverDurationMs <= 30_000
+          ? "scheduler-v11"
+          : "scheduler-v10"
+        : input.aiVideoOpening
+          ? input.voiceoverDurationMs <= 30_000
+            ? "scheduler-v9"
+            : "scheduler-v8"
+          : input.voiceoverDurationMs <= 30_000
+            ? "scheduler-v7"
+            : "scheduler-v6",
     scheduler_seed: input.schedulerSeed,
     prompt_writer_version: "scene-prompt-writer-v1",
     prompt_compiler_version: "mage-prompt-compiler-v1",
@@ -337,6 +369,24 @@ export function parseProjectOptions(
   const generationMode = record.generation_mode;
   const userSeed = record.user_seed;
   const executionBackend = record.execution_backend;
+  const configurableOpening =
+    record.schema_version === "videoforge-hosted-project-create/v4" ||
+    record.schema_version === "videoforge-hosted-project-preflight/v3" ||
+    record.schema_version === "videoforge-hosted-script-project/v2";
+  const openingEnabled = record.ai_video_opening_enabled;
+  const openingSeconds = record.ai_video_opening_seconds;
+  if (
+    (configurableOpening &&
+      (typeof openingEnabled !== "boolean" ||
+        !Number.isSafeInteger(openingSeconds) ||
+        (openingEnabled
+          ? Number(openingSeconds) < 6 ||
+            Number(openingSeconds) > 3600 ||
+            Number(openingSeconds) % 6 !== 0
+          : openingSeconds !== 0))) ||
+    (!configurableOpening && (openingEnabled !== undefined || openingSeconds !== undefined))
+  )
+    return null;
   if (
     (optionalScript !== undefined &&
       optionalScript !== null &&
@@ -375,6 +425,12 @@ export function parseProjectOptions(
     executionBackend: executionBackend === "RUNPOD_POD" ? "RUNPOD_POD" : "PERSONAL_WORKER",
     videoCoveragePercent:
       record.video_coverage_percent === undefined ? null : Number(record.video_coverage_percent),
+    ...(configurableOpening
+      ? {
+          aiVideoOpeningEnabled: openingEnabled as boolean,
+          aiVideoOpeningSeconds: Number(openingSeconds),
+        }
+      : {}),
   };
 }
 
@@ -399,10 +455,20 @@ function parseCreate(value: unknown): ProjectCreateInput | null {
     "execution_backend",
   ];
   const schemaVersion = record.schema_version;
+  const configurableOpening =
+    schemaVersion === "videoforge-hosted-project-create/v4" ||
+    schemaVersion === "videoforge-hosted-project-preflight/v3";
   const coverageSchema =
     schemaVersion === "videoforge-hosted-project-create/v3" ||
-    schemaVersion === "videoforge-hosted-project-preflight/v2";
-  const allowedKeys = coverageSchema ? [...v2Keys, "video_coverage_percent"] : v2Keys;
+    schemaVersion === "videoforge-hosted-project-preflight/v2" ||
+    configurableOpening;
+  const allowedKeys = coverageSchema
+    ? [
+        ...v2Keys,
+        "video_coverage_percent",
+        ...(configurableOpening ? ["ai_video_opening_enabled", "ai_video_opening_seconds"] : []),
+      ]
+    : v2Keys;
   if (
     schemaVersion !== "videoforge-hosted-project-create/v1" &&
     schemaVersion !== "videoforge-hosted-project-create/v2" &&
@@ -4381,14 +4447,17 @@ async function catalog(
       media_worker_state: data.workers > 0 ? "ONLINE" : "WAITING_FOR_YOUR_COMPUTER",
       local_media_free_bytes: data.availableDiskBytes,
       cloud_media: { available: data.cloudAvailable, message: data.cloudMessage },
-      ...(config.videoGenerationEnabled
+      ...(config.videoGenerationEnabled || config.environment === "production"
         ? {
             video_generation: {
               coverage_percent: 7,
               coverage_default_percent: 7,
               coverage_min_percent: 0,
               coverage_max_percent: 100,
-              adjustable_coverage_supported: true,
+              enabled: config.videoGenerationEnabled && Boolean(config.styleAnalysis),
+              adjustable_coverage_supported: config.videoGenerationEnabled,
+              configurable_opening: true,
+              default_opening_seconds: 180,
               required_opening_seconds: 180,
               usd_per_second: 0.01336,
               resolution: "720p",
@@ -5102,11 +5171,8 @@ async function projectPreflight(
     const videoCoveragePercent =
       input.videoCoveragePercent ?? (config.videoGenerationEnabled ? 7 : 0);
     const blockers: HostedPreflightBlocker[] = [];
-    if (
-      ((videoCoveragePercent > 0 || config.environment === "production") &&
-        !config.videoGenerationEnabled) ||
-      (config.videoGenerationEnabled && !config.styleAnalysis)
-    )
+    const openingSeconds = resolvedAiVideoOpeningSeconds(input, config);
+    if (sceneVideoUnavailable(input, config))
       blockers.push({
         code: "SCENE_VIDEO_UNAVAILABLE",
         message: config.videoGenerationEnabled
@@ -5182,9 +5248,17 @@ async function projectPreflight(
     const gpuProductState = hostedGpuProductState(gpuReadiness);
     return response({
       schema_version:
-        input.videoCoveragePercent === null
-          ? "videoforge-hosted-project-preflight/v1"
-          : "videoforge-hosted-project-preflight/v2",
+        input.aiVideoOpeningSeconds !== undefined
+          ? "videoforge-hosted-project-preflight/v3"
+          : input.videoCoveragePercent === null
+            ? "videoforge-hosted-project-preflight/v1"
+            : "videoforge-hosted-project-preflight/v2",
+      ...(input.aiVideoOpeningSeconds !== undefined
+        ? {
+            ai_video_opening_enabled: input.aiVideoOpeningEnabled,
+            ai_video_opening_seconds: openingSeconds,
+          }
+        : {}),
       video_coverage_percent: videoCoveragePercent,
       ok,
       ready: ok,
@@ -5205,20 +5279,22 @@ async function projectPreflight(
         generation_mode: input.generationMode,
         motion: {
           requested_coverage_percent: videoCoveragePercent,
-          target_seconds: config.videoGenerationEnabled
-            ? Math.min(180, input.voiceover.durationMs / 1000) +
-              (Math.max(0, input.voiceover.durationMs / 1000 - 180) * videoCoveragePercent) / 100
-            : ((input.voiceover.durationMs / 1000) * videoCoveragePercent) / 100,
-          required_opening_seconds: config.videoGenerationEnabled
-            ? Math.min(180, input.voiceover.durationMs / 1000)
-            : 0,
+          target_seconds:
+            Math.min(openingSeconds, input.voiceover.durationMs / 1000) +
+            (Math.max(0, input.voiceover.durationMs / 1000 - openingSeconds) *
+              videoCoveragePercent) /
+              100,
+          required_opening_seconds: Math.min(openingSeconds, input.voiceover.durationMs / 1000),
           preliminary_usd:
-            (config.videoGenerationEnabled
-              ? Math.min(180, input.voiceover.durationMs / 1000) +
-                (Math.max(0, input.voiceover.durationMs / 1000 - 180) * videoCoveragePercent) / 100
-              : ((input.voiceover.durationMs / 1000) * videoCoveragePercent) / 100) * 0.01336,
+            (Math.min(openingSeconds, input.voiceover.durationMs / 1000) +
+              (Math.max(0, input.voiceover.durationMs / 1000 - openingSeconds) *
+                videoCoveragePercent) /
+                100) *
+            0.01336,
           detail:
-            "First 3 minutes use AI video. Selected coverage applies only afterward. Whole crossing scenes finish in video; request timing allowances and Cloud compute add cost. Exact planned cost follows scheduling.",
+            openingSeconds > 0
+              ? `First ${openingSeconds / 60} minutes use AI video. Selected coverage applies only afterward. Whole crossing scenes finish in video; request timing allowances and Cloud compute add cost. Exact planned cost follows scheduling.`
+              : "Selected coverage applies to the entire timeline. Complete scenes are spread across it; request timing allowances and Cloud compute add cost. Exact planned cost follows scheduling.",
         },
       },
       blockers,
@@ -5237,12 +5313,7 @@ export async function validateScriptProjectPresets(
   config: HostedRuntimeConfiguration,
   input: Omit<ProjectCreateInput, "voiceover">,
 ) {
-  if (
-    (((input.videoCoveragePercent ?? 0) > 0 || config.environment === "production") &&
-      !config.videoGenerationEnabled) ||
-    (config.videoGenerationEnabled && !config.styleAnalysis)
-  )
-    throw new Error("SCENE_VIDEO_UNAVAILABLE");
+  if (sceneVideoUnavailable(input, config)) throw new Error("SCENE_VIDEO_UNAVAILABLE");
   if (input.executionBackend === "RUNPOD_POD") {
     const readiness = await hostedCloudProjectReadiness(transaction, config);
     if (!readiness.available) throw new Error(readiness.code ?? "CLOUD_MEDIA_NOT_READY");
@@ -5351,12 +5422,7 @@ export async function createProject(
         }
         return replay;
       }
-      if (
-        ((videoCoveragePercent > 0 || config.environment === "production") &&
-          !config.videoGenerationEnabled) ||
-        (config.videoGenerationEnabled && !config.styleAnalysis)
-      )
-        throw new Error("SCENE_VIDEO_UNAVAILABLE");
+      if (sceneVideoUnavailable(input, config)) throw new Error("SCENE_VIDEO_UNAVAILABLE");
       if (
         await hostedAccountCleanupPending(
           transaction,
@@ -5412,7 +5478,10 @@ export async function createProject(
         voiceoverAssetId: assetId,
         voiceoverSha256: input.voiceover.checksumSha256,
         voiceoverDurationMs: input.voiceover.durationMs,
-        aiVideoOpening: config.videoGenerationEnabled,
+        aiVideoOpening: resolvedAiVideoOpeningSeconds(input, config) > 0,
+        ...(input.aiVideoOpeningSeconds !== undefined
+          ? { aiVideoOpeningSeconds: input.aiVideoOpeningSeconds }
+          : {}),
         avatarProfileId: rowString(avatar, "profile_id"),
         avatarProfileVersionId: rowString(avatar, "version_id"),
         avatarDisplayName: rowString(avatar, "profile_name"),
@@ -5509,14 +5578,30 @@ export async function createProject(
         ],
       );
       if (config.videoGenerationEnabled) {
-        if (!config.styleAnalysis) throw new Error("HOSTED_VIDEO_GENERATION_KEY_MISSING");
-        await transaction.query("SELECT public.videoforge_pin_hosted_video_plan($1,$2,$3,$4,$5)", [
-          scope.account_id,
-          scope.workspace_id,
-          revisionId,
-          videoCoveragePercent,
-          "OPENING_180_V3",
-        ]);
+        if (input.aiVideoOpeningSeconds !== undefined) {
+          await transaction.query(
+            "SELECT public.videoforge_pin_hosted_video_plan($1,$2,$3,$4,$5,$6)",
+            [
+              scope.account_id,
+              scope.workspace_id,
+              revisionId,
+              videoCoveragePercent,
+              input.aiVideoOpeningSeconds > 0 ? "OPENING_CONFIG_V4" : "WHOLE_SCENE_V2",
+              input.aiVideoOpeningSeconds,
+            ],
+          );
+        } else {
+          await transaction.query(
+            "SELECT public.videoforge_pin_hosted_video_plan($1,$2,$3,$4,$5)",
+            [
+              scope.account_id,
+              scope.workspace_id,
+              revisionId,
+              videoCoveragePercent,
+              "OPENING_180_V3",
+            ],
+          );
+        }
       }
       await transaction.query(`UPDATE assets SET project_revision_id = $1 WHERE id = $2`, [
         revisionId,
@@ -8047,8 +8132,9 @@ async function projectDetail(
         : { rows: [] as Record<string, unknown>[] };
       const videoPlan = await transaction.query(
         `SELECT selections,planned_at,coverage_percent,replacement_policy,selection_sha256,
+          CASE WHEN replacement_policy='OPENING_180_V3' THEN 180 ELSE opening_seconds END AS opening_seconds,
           (SELECT sum(scene.end_frame_exclusive-scene.start_frame) FROM timeline_segments scene
-            WHERE scene.account_id=$1 AND scene.workspace_id=$2 AND scene.project_revision_id=$3 AND scene.start_frame<5400) AS opening_frames,
+            WHERE scene.account_id=$1 AND scene.workspace_id=$2 AND scene.project_revision_id=$3 AND scene.start_frame<30*(CASE WHEN replacement_policy='OPENING_180_V3' THEN 180 ELSE opening_seconds END)) AS opening_frames,
           (SELECT sum(scene.end_frame_exclusive-scene.start_frame) FROM timeline_segments scene
             WHERE scene.account_id=$1 AND scene.workspace_id=$2 AND scene.project_revision_id=$3
               AND scene.timeline_composition='IMAGE_FULL' AND scene.end_frame_exclusive-scene.start_frame<=357) AS eligible_frames
@@ -8600,7 +8686,14 @@ async function projectDetail(
     const videoUncertain = videoJobs.some((job) => job.state === "UNKNOWN_NO_RETRY");
     const apiPlan = detail.generation as Record<string, unknown> | null;
     const finalFrameCount = numberOrNull(apiPlan?.final_frame_count);
-    const requiredOpening = videoPlan?.replacement_policy === "OPENING_180_V3";
+    const requiredOpening = ["OPENING_180_V3", "OPENING_CONFIG_V4"].includes(
+      String(videoPlan?.replacement_policy),
+    );
+    const openingSeconds =
+      videoPlan?.replacement_policy === "OPENING_180_V3"
+        ? 180
+        : (numberOrNull(videoPlan?.opening_seconds) ?? 0);
+    const openingEndFrames = openingSeconds * 30;
     const noAvatarAudioNeeded =
       projectApiGeneration &&
       requiredOpening &&
@@ -8616,10 +8709,12 @@ async function projectDetail(
           numberOrNull(lane.planned_item_count) === 0,
       );
     const openingFrames = requiredOpening ? (numberOrNull(videoPlan?.opening_frames) ?? 0) : 0;
-    const openingDurationFrames = requiredOpening ? Math.min(finalFrameCount ?? 0, 5400) : 0;
+    const openingDurationFrames = requiredOpening
+      ? Math.min(finalFrameCount ?? 0, openingEndFrames)
+      : 0;
     const coverageFrames =
       requiredOpening && finalFrameCount !== null
-        ? Math.max(0, finalFrameCount - 5400)
+        ? Math.max(0, finalFrameCount - openingEndFrames)
         : finalFrameCount;
     const actualVideoCoverage =
       coverageFrames !== null && coverageFrames > 0
@@ -8628,7 +8723,7 @@ async function projectDetail(
             return (
               sum +
               (requiredOpening
-                ? Math.max(0, Math.min(frames, Number(job.start_frame) + frames - 5400))
+                ? Math.max(0, Math.min(frames, Number(job.start_frame) + frames - openingEndFrames))
                 : frames)
             );
           }, 0) *
@@ -8663,17 +8758,17 @@ async function projectDetail(
           requested_coverage_percent: requestedVideoCoverage,
           ...(requiredOpening
             ? {
-                required_opening_seconds: 180,
+                required_opening_seconds: openingSeconds,
                 opening_planned_seconds: Math.min(openingFrames, openingDurationFrames) / 30,
                 opening_completed_seconds:
                   acceptedVideoJobs
-                    .filter((job) => Number(job.start_frame) < 5400)
+                    .filter((job) => Number(job.start_frame) < openingEndFrames)
                     .reduce(
                       (sum, job) =>
                         sum +
                         Math.min(
                           numberOrNull(job.video_frame_count) ?? 0,
-                          5400 - Number(job.start_frame),
+                          openingEndFrames - Number(job.start_frame),
                         ),
                       0,
                     ) / 30,
@@ -9039,7 +9134,7 @@ async function projectDetail(
                     0,
                   ),
                   seedance_coverage_percent: requestedVideoCoverage,
-                  ...(requiredOpening ? { seedance_required_opening_seconds: 180 } : {}),
+                  ...(requiredOpening ? { seedance_required_opening_seconds: openingSeconds } : {}),
                   seedance_planned_coverage_percent: plannedVideoCoverage,
                   seedance_eligible_coverage_percent: eligibleVideoCoverage,
                   seedance_actual_coverage_percent: actualVideoCoverage,

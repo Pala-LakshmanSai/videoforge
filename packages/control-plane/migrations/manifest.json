@@ -1380,6 +1380,12 @@
       "name": "hosted_video_opening",
       "filename": "0267_hosted_video_opening.sql",
       "sha256": "sha256:82618989c40b00744ca3800518259e5e37fe21544f60fcce55d78a6d75b53185"
+    },
+    {
+      "version": 268,
+      "name": "hosted_video_configurable_opening",
+      "filename": "0268_hosted_video_configurable_opening.sql",
+      "sha256": "sha256:1848d46c420d49991b0b5a21798b18b9afe6e975ecd12ae655e9733d2554c6a6"
     }
   ]
 }

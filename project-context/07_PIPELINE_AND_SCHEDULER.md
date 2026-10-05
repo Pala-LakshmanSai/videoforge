@@ -139,7 +139,7 @@ V2–V5 behavior and saved revisions remain immutable. Golden hashes and timing/
 must pass before publication. Do not silently alter the legacy rotation or force every physical
 action into a hands-only view.
 
-Legacy precursor algorithm (fresh V8/V9 apply the mandatory opening policy below afterward):
+Legacy precursor algorithm (On V10/V11 and historical V8/V9 apply their pinned opening mask afterward):
 
 1. Start frame 0 with `AVATAR_FULL` on a natural 2–6-second phrase. A strong complete opening sentence
    may use 4–7 seconds.
@@ -162,6 +162,26 @@ Legacy precursor algorithm (fresh V8/V9 apply the mandatory opening policy below
 
 No LLM chooses timing, composition, crop, or boundaries.
 
+### Configurable AI video opening — 2026-10-05
+
+DEC_VIDEO_OPENING_001 now adds an independent Full video opening toggle, default On, and a
+0.1–60-minute duration in 0.1-minute increments, default 3 minutes. New create/v4, preflight/v3
+and script-project/v2 requests require ai_video_opening_enabled and ai_video_opening_seconds;
+Off normalizes seconds to zero. Pin script choices before narration so delayed continuation and
+idempotent retry never change them. Old request versions retain their fixed-opening behavior.
+
+Off retains exact scheduler-v6/v7 and WHOLE_SCENE_V2 whole-film coverage/spread/fill. On pins
+scheduler-v10/v11 and ai_video_opening_seconds in revision/timeline/config hashes; OPENING_CONFIG_V4
+stores matching immutable seconds. Convert precursor scenes starting before that threshold to
+IMAGE_FULL source slots, preserving words/frame bounds and later compositions. Require exact
+successful whole clips at readiness/render barriers; no required still/avatar fallback. Remaining
+budget is floor(max(0,T-opening_seconds*30)*P/100), less crossing-scene suffix before unchanged
+optional spread/fill. Short films are fully footage. Display chosen duration, remaining coverage
+and cost/progress separately. Qualified v3 render wire derives its whole-film ceiling; worker images
+remain unchanged.
+
+The fixed v8/v9 and OPENING_180_V3 implementation below is historical and stays immutable.
+
 ### Mandatory AI video opening — 2026-10-04
 
 DEC_VIDEO_OPENING_001 supersedes the legacy cold open for fresh revisions. Narration longer than
@@ -176,7 +196,7 @@ Converted opening scenes retain the precursor's 2–7-second bound; later full-i
 immutable. A film ending within 180 seconds has no avatar spans; its versioned generation work
 manifest permits zero avatar/span counts without weakening historical manifest checks.
 
-Pin `OPENING_180_V3` only for fresh revisions. Every scene starting before frame 5,400 requires a
+Historical fixed-opening revisions pin `OPENING_180_V3`. Every scene starting before frame 5,400 requires a
 successful accepted whole-scene video clip. No opening still, full avatar, split composition or
 still fallback may reach rendering. A scene crossing 3:00 finishes in motion to preserve its
 whole-word scene boundary. Require exact successful opening job/asset/receipt coverage at both
@@ -383,7 +403,6 @@ behind an earlier admitted project is queue waiting, not evidence of RunPod plac
 ## DEC_VIDEO_GENERATION_001 — 2026-10-02
 
 Fresh scene video retains the pinned Seedance1.0ProFast provider model, native geometry, padded duration checks, source receipts, private cost attribution and no-replay identity. The mandatory opening policy and remaining-duration percentage are owned by DEC_VIDEO_OPENING_001 above; legacy plans keep their original render contract and selection identities. Publication and paid acceptance remain distinct in CURRENT_STATE.yaml.
-
 
 ## Historical whole scene coverage (2026-10-03; fresh opening supersedes this)
 

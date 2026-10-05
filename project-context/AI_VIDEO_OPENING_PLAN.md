@@ -1,5 +1,24 @@
 # AI video opening — V2-09 / VF-10-09
 
+## Configurable opening follow-up — 5 October 2026
+
+Current user decision supersedes mandatory opening for fresh configurable requests. Create exposes a Full video opening toggle, On by default, and an opening duration of 3 minutes by default. Duration is 0.1–60 minutes in 0.1-minute increments, normalized once to immutable integer seconds. Off restores the exact original scheduler-v6/v7 and WHOLE_SCENE_V2 whole-timeline percentage/spread/fill behavior. On pins scheduler-v10/v11, ai_video_opening_seconds and OPENING_CONFIG_V4. Existing v8/v9 and OPENING_180_V3 remain fixed at 180 seconds. A crossing scene finishes wholly in footage; only its suffix consumes the remaining-duration allowance. No opening failure may become a still or avatar.
+
+Execution plan from clean eea53304 / currently published b9f9805c:
+
+1. Trace each writer/reader and freeze the new request fields, default, supported durations and backward-compatibility rules before code edits. Keep old request schemas and pending script intake behavior intact.
+2. Add the UI controls and carry them through preflight, audio creation, script intake and delayed continuation, request hashes, revision/timeline config hashes, selection, costs and Progress.
+3. Reuse the original optional whole-scene algorithm. Parameterize only the required opening threshold in a new immutable scheduler/policy. Prove Off parity, On/default/custom/short/crossing behavior, missing/forged footage rejection and historical replay.
+4. Expand native storage with additive migration268 and a six-argument pin overload; preserve old functions, RLS, roles, receipts, accepted media and qualified v3 renderer wire. Rehearse native migration/rollback and compare historical preimages before production mutation.
+5. Run affected package suites, schema parity, typechecks, lint, both bundles, quarantine, canonical aggregate, context and secret checks; explain inherited broad-suite failures without treating them as feature proof.
+6. Exercise the stable provider-free real-Chrome flow. Review the final diff; push a coherent tested commit. Apply only the guarded additive migration and exact reviewed Worker bundle, retaining all bindings/secrets/Workflows/runtime pins and rollback binaries.
+7. Verify production traffic/assets and real Chrome default/custom/Off controls, preflight, retained project recovery/Progress/Review/Library. Run bounded fresh production acceptance and verify private artifact lineage, native decode/playback and all paid CPU rentals clean. Short provider proof and deterministic180-second boundary proof remain separate.
+8. Record final source/version/tests/remaining gates, provider liability and compute cleanup in CURRENT_STATE and existing GPT Space Pages with conflict guards.
+
+The user's direct implementation/deployment/test authorization persists and explicitly requests no further permission questions. New feature qualification may use at most two new projects, USD12 of newly started/reserved provider/CPU liability and at most eight 900-second temporary CPU rentals, no retained resources or new model downloads. Resolve current rates and cleanup before dispatch; stop on uncertain request identity, price/cap risk, unsupported retry or unconfirmed cleanup. Earlier canceled tests retain their separate USD4.934096 conservative allowance and unknown charges; unused earlier authority stays retired. New acceptance never replays those submissions.
+
+## Historical fixed-opening release
+
 User decision, 4 October 2026: fresh videos use full-screen generated scene footage for the first 180 seconds, independently of the selected coverage percentage. The percentage applies only to the remaining film. Videos shorter than 180 seconds use footage throughout. Whole scenes crossing 3:00 finish as footage; their post-opening frames count toward the remaining-duration budget before optional scenes are selected. Hard cuts, narration, media quality and private ownership remain.
 
 ## Implementation and release sequence

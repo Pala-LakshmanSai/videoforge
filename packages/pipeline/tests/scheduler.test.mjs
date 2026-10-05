@@ -22,6 +22,9 @@ import {
   SUPPORTED_SCHEDULER_VERSION,
   AI_VIDEO_OPENING_SCHEDULER_VERSION,
   AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION,
+  CONFIGURABLE_AI_VIDEO_OPENING_SCHEDULER_VERSION,
+  CONFIGURABLE_AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION,
+  schedulerAiVideoOpeningSeconds,
 } from "../dist/src/index.js";
 
 import {
@@ -232,12 +235,13 @@ async function propertyRequest(
   seed,
   transcriptValue,
   schedulerVersion = SUPPORTED_SCHEDULER_VERSION,
+  openingSeconds,
 ) {
   const [revision, transcript] = await Promise.all([
-    validateAndHashContractDocument(
-      "projectRevisionConfig",
-      createRevisionValue(seed, schedulerVersion),
-    ),
+    validateAndHashContractDocument("projectRevisionConfig", {
+      ...createRevisionValue(seed, schedulerVersion),
+      ...(openingSeconds === undefined ? {} : { ai_video_opening_seconds: openingSeconds }),
+    }),
     validateAndHashContractDocument("transcriptTiming", transcriptValue),
   ]);
   return { revision, transcript, determinism };
@@ -1289,3 +1293,195 @@ for (const [name, durationMs, schedulerVersion, transcriptFactory, seed] of [
     );
   });
 }
+
+for (const openingSeconds of [6, 60, 180, 3_600]) {
+  test(`configurable opening ${openingSeconds}s preserves the original schedule after its boundary`, async () => {
+    const transcript = createPropertyTranscript({
+      durationMs: 600_000,
+      phraseStarts: Array.from({ length: 120 }, (_, index) => index * 5_000),
+    });
+    const off = requireSuccess(
+      await scheduleTimeline(
+        await propertyRequest(982_341, transcript, NARRATION_SHOT_SCHEDULER_VERSION),
+      ),
+    );
+    const request = await propertyRequest(
+      982_341,
+      transcript,
+      CONFIGURABLE_AI_VIDEO_OPENING_SCHEDULER_VERSION,
+      openingSeconds,
+    );
+    const on = requireSuccess(await scheduleTimeline(request));
+    assert.equal(on.value.ai_video_opening_seconds, openingSeconds);
+    assert.equal(validateTimelineSemantics(on.value, transcript), null);
+    assert.equal(on.sha256, requireSuccess(await scheduleTimeline(request)).sha256);
+    assert.equal(on.value.segments.length, off.value.segments.length);
+    assert.equal(on.value.total_frames, off.value.total_frames);
+    assert.equal(Object.hasOwn(off.value, "ai_video_opening_seconds"), false);
+    const missingOpeningVideo = structuredClone(on.value);
+    missingOpeningVideo.segments[0] = off.value.segments[0];
+    assert.deepEqual(validateTimelineSemantics(missingOpeningVideo, transcript).path, [
+      "segments",
+      0,
+      "timeline_composition",
+    ]);
+    for (const [index, segment] of on.value.segments.entries()) {
+      const original = off.value.segments[index];
+      for (const field of [
+        "start_frame",
+        "end_frame_exclusive",
+        "source_audio_start_ms",
+        "source_audio_end_ms",
+        "word_start",
+        "word_end_exclusive",
+        "phrase",
+      ])
+        assert.equal(segment[field], original[field], field);
+      if (segment.source_audio_start_ms < openingSeconds * 1_000) {
+        assert.equal(segment.timeline_composition, "IMAGE_FULL");
+        assert.deepEqual(Object.keys(segment.required_slots), ["image"]);
+      } else {
+        assert.equal(segment.timeline_composition, original.timeline_composition);
+        assert.equal(segment.segment_id, original.segment_id);
+        assert.deepEqual(segment.required_slots, original.required_slots);
+      }
+    }
+    if (openingSeconds < 600)
+      assert.ok(on.value.segments.some((segment) => segment.timeline_composition !== "IMAGE_FULL"));
+    else
+      assert.ok(
+        on.value.segments.every((segment) => segment.timeline_composition === "IMAGE_FULL"),
+      );
+  });
+}
+
+test("configurable three-minute openings preserve both historical opening schedules exactly", async () => {
+  for (const [previousVersion, nextVersion, transcript, seed] of [
+    [
+      AI_VIDEO_OPENING_SCHEDULER_VERSION,
+      CONFIGURABLE_AI_VIDEO_OPENING_SCHEDULER_VERSION,
+      createTranscriptValue(),
+      982_341,
+    ],
+    [
+      AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION,
+      CONFIGURABLE_AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION,
+      JSON.parse(
+        readFileSync(new URL("./fixtures/j1tts-short-transcript.json", import.meta.url), "utf8"),
+      ),
+      1000527468,
+    ],
+  ]) {
+    const before = requireSuccess(
+      await scheduleTimeline(await propertyRequest(seed, transcript, previousVersion)),
+    );
+    const after = requireSuccess(
+      await scheduleTimeline(await propertyRequest(seed, transcript, nextVersion, 180)),
+    );
+    assert.deepEqual(after.value.segments, before.value.segments);
+    assert.equal(after.value.total_frames, before.value.total_frames);
+    assert.equal(Object.hasOwn(before.value, "ai_video_opening_seconds"), false);
+    assert.notEqual(after.sha256, before.sha256);
+  }
+});
+
+for (const [version, transcript, seed, openingSeconds] of [
+  [CONFIGURABLE_AI_VIDEO_OPENING_SCHEDULER_VERSION, createTranscriptValue(), 982_341, 60],
+  [
+    CONFIGURABLE_AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION,
+    JSON.parse(
+      readFileSync(
+        new URL("./fixtures/j1tts-word-boundary-transcript.json", import.meta.url),
+        "utf8",
+      ),
+    ),
+    42107,
+    30,
+  ],
+]) {
+  test(`${version} compiles zero-avatar work with its exact opening config hash`, async () => {
+    const request = await propertyRequest(seed, transcript, version, openingSeconds);
+    const timeline = requireSuccess(await scheduleTimeline(request));
+    const compileRequest = {
+      revision: request.revision,
+      transcript: request.transcript,
+      timeline,
+      schedulerConfigHash: await sha256CanonicalJson(
+        schedulerConfigForVersion(version, openingSeconds),
+      ),
+      selectedSpanAudio: [],
+    };
+    const work = requireSuccess(await compileCompleteWorkPlan(compileRequest));
+    assert.equal(work.generationWorkManifest.value.schema_version, "generation-work-manifest/v2");
+    assert.equal(work.generationWorkManifest.value.scheduler_version, version);
+    assert.deepEqual(work.generationWorkManifest.value.avatar_spans, []);
+    assert.equal(work.generationWorkManifest.value.cost_counts.avatar_generation_count, 0);
+    assert.equal(
+      work.generationWorkManifest.sha256,
+      requireSuccess(await compileCompleteWorkPlan(compileRequest)).generationWorkManifest.sha256,
+    );
+    const wrongHash = await sha256CanonicalJson(
+      schedulerConfigForVersion(version, openingSeconds + 6),
+    );
+    const wrongConfig = await compileCompleteWorkPlan({
+      ...compileRequest,
+      schedulerConfigHash: wrongHash,
+    });
+    assert.equal(wrongConfig.ok, false);
+    assert.deepEqual(wrongConfig.error.path, ["schedulerConfigHash"]);
+    const mismatchedTimeline = {
+      ...timeline,
+      value: { ...timeline.value, ai_video_opening_seconds: openingSeconds + 6 },
+    };
+    const mismatch = await compileCompleteWorkPlan({
+      ...compileRequest,
+      timeline: mismatchedTimeline,
+    });
+    assert.equal(mismatch.ok, false);
+    assert.deepEqual(mismatch.error.path, ["timeline"]);
+  });
+}
+
+test("new opening pins fail closed while old versions reject configurable fields", async () => {
+  const version = CONFIGURABLE_AI_VIDEO_OPENING_SCHEDULER_VERSION;
+  for (const invalid of [undefined, null, 0, -6, 5, 7, 60.5, 3_606]) {
+    assert.equal(schedulerConfigForVersion(version, invalid), null);
+    assert.equal(schedulerAiVideoOpeningSeconds(version, invalid), null);
+    await assert.rejects(
+      validateAndHashContractDocument("projectRevisionConfig", {
+        ...createRevisionValue(982_341, version),
+        ...(invalid === undefined ? {} : { ai_video_opening_seconds: invalid }),
+      }),
+    );
+  }
+  for (const previous of [
+    NARRATION_SHOT_SCHEDULER_VERSION,
+    NARRATION_SHOT_SHORT_SCHEDULER_VERSION,
+    AI_VIDEO_OPENING_SCHEDULER_VERSION,
+    AI_VIDEO_OPENING_SHORT_SCHEDULER_VERSION,
+  ]) {
+    assert.equal(schedulerConfigForVersion(previous, 180), null);
+    await assert.rejects(
+      validateAndHashContractDocument("projectRevisionConfig", {
+        ...createRevisionValue(982_341, previous),
+        ai_video_opening_seconds: 180,
+      }),
+    );
+  }
+  const request = await propertyRequest(982_341, createTranscriptValue(), version, 60);
+  const timeline = requireSuccess(await scheduleTimeline(request));
+  for (const invalid of [undefined, 0, 7, 3_606]) {
+    const revision = {
+      ...request.revision,
+      value: { ...request.revision.value, ai_video_opening_seconds: invalid },
+    };
+    const rejected = await scheduleTimeline({ ...request, revision });
+    assert.equal(rejected.ok, false);
+    assert.deepEqual(rejected.error.path, ["revision", "ai_video_opening_seconds"]);
+    const plan = { ...timeline.value, ai_video_opening_seconds: invalid };
+    assert.deepEqual(validateTimelineSemantics(plan, request.transcript.value).path, [
+      "ai_video_opening_seconds",
+    ]);
+    await assert.rejects(validateAndHashContractDocument("timelinePlan", plan));
+  }
+});

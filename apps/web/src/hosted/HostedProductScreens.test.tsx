@@ -7479,6 +7479,200 @@ async function fillCoverageCreateForm(durationSeconds = 20) {
   });
 }
 
+function configurableOpeningCatalog(enabled = true) {
+  return coverageCatalog({
+    video_generation: {
+      ...coverageCatalog().video_generation,
+      enabled,
+      configurable_opening: true,
+      default_opening_seconds: 180,
+      required_opening_seconds: 180,
+      adjustable_coverage_supported: enabled,
+    },
+  });
+}
+
+it.each([0.1, 0.3, 0.5, 60])(
+  "pins a %s minute opening independently of coverage and its estimate",
+  async (minutes) => {
+    const requests: Record<string, unknown>[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const path = String(input);
+        if (path.endsWith("/project-catalog")) return Response.json(configurableOpeningCatalog());
+        if (path.endsWith("/preflight")) {
+          requests.push(JSON.parse(String(init?.body)));
+          return Response.json({ ok: true, ready: true });
+        }
+        if (path.endsWith("/hosted/projects")) {
+          requests.push(JSON.parse(String(init?.body)));
+          throw new TypeError("Confirmation interrupted");
+        }
+        throw new Error(`Unexpected request: ${path}`);
+      }),
+    );
+    renderHosted(<HostedCreateProjectScreen />);
+    await fillCoverageCreateForm(600);
+    expect(screen.getByRole("checkbox", { name: "Full video opening" })).toBeChecked();
+    expect(screen.getByRole("spinbutton", { name: "Opening minutes" })).toHaveValue(3);
+    fireEvent.change(screen.getByLabelText("Opening minutes"), {
+      target: { value: String(minutes) },
+    });
+    fireEvent.change(screen.getByLabelText("Coverage percent"), { target: { value: "23" } });
+    const seconds = minutes * 60;
+    const target = Math.min(600, seconds) + Math.max(0, 600 - seconds) * 0.23;
+    await waitFor(() =>
+      expect(screen.getByLabelText("Preliminary scene footage estimate")).toHaveTextContent(
+        `${target.toFixed(2)}s · Base estimate $${(target * 0.01336).toFixed(2)}`,
+      ),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Create video" }));
+    await screen.findByText("Confirmation interrupted");
+    expect(requests).toHaveLength(2);
+    expect(requests[0]).toMatchObject({
+      schema_version: "videoforge-hosted-project-preflight/v3",
+      video_coverage_percent: 23,
+      ai_video_opening_enabled: true,
+      ai_video_opening_seconds: seconds,
+    });
+    expect(requests[1]).toMatchObject({
+      schema_version: "videoforge-hosted-project-create/v4",
+      video_coverage_percent: 23,
+      ai_video_opening_enabled: true,
+      ai_video_opening_seconds: seconds,
+    });
+    expect(screen.getByLabelText("Opening minutes")).toBeDisabled();
+    expect(screen.getByLabelText("Full video opening")).toBeDisabled();
+  },
+);
+
+it.each(["0", "0.05", "0.11", "60.1", ""])(
+  "rejects opening minutes %s only while enabled and retains the input",
+  async (value) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json(configurableOpeningCatalog())),
+    );
+    renderHosted(<HostedCreateProjectScreen />);
+    await fillCoverageCreateForm(600);
+    fireEvent.change(screen.getByLabelText("Opening minutes"), { target: { value } });
+    expect(screen.getByRole("button", { name: "Create video" })).toBeDisabled();
+    expect(screen.getByLabelText("Opening minutes")).toHaveAttribute("aria-invalid", "true");
+    fireEvent.click(screen.getByLabelText("Full video opening"));
+    expect(screen.getByRole("button", { name: "Create video" })).toBeEnabled();
+    await waitFor(() =>
+      expect(screen.getByLabelText("Preliminary scene footage estimate")).toHaveTextContent(
+        "42.00s · Base estimate $0.56",
+      ),
+    );
+    fireEvent.click(screen.getByLabelText("Full video opening"));
+    expect(screen.getByRole("button", { name: "Create video" })).toBeDisabled();
+    expect(screen.getByLabelText("Opening minutes")).toHaveValue(
+      value === "" ? null : Number(value),
+    );
+  },
+);
+
+it("allows unavailable video providers only when both opening and coverage are Off", async () => {
+  const requests: Record<string, unknown>[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith("/project-catalog"))
+        return Response.json(configurableOpeningCatalog(false));
+      requests.push(JSON.parse(String(init?.body)));
+      if (String(input).endsWith("/preflight")) return Response.json({ ok: true, ready: true });
+      throw new TypeError("Confirmation interrupted");
+    }),
+  );
+  renderHosted(<HostedCreateProjectScreen />);
+  await fillCoverageCreateForm();
+  fireEvent.click(screen.getByRole("button", { name: "Off" }));
+  expect(screen.getByRole("button", { name: "Create video" })).toBeDisabled();
+  fireEvent.click(screen.getByLabelText("Full video opening"));
+  expect(screen.getByRole("button", { name: "Create video" })).toBeEnabled();
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
+  await screen.findByText("Confirmation interrupted");
+  expect(requests).toHaveLength(2);
+  for (const request of requests)
+    expect(request).toMatchObject({
+      video_coverage_percent: 0,
+      ai_video_opening_enabled: false,
+      ai_video_opening_seconds: 0,
+    });
+});
+
+it.each(["duration", "toggle"])(
+  "rejects an in-flight preflight after opening %s changes",
+  async (change) => {
+    let resolvePreflight: ((response: Response) => void) | undefined;
+    let creates = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).endsWith("/project-catalog"))
+          return Response.json(configurableOpeningCatalog());
+        if (String(input).endsWith("/preflight"))
+          return new Promise<Response>((resolve) => {
+            resolvePreflight = resolve;
+          });
+        creates++;
+        throw new Error("Unexpected create");
+      }),
+    );
+    renderHosted(<HostedCreateProjectScreen />);
+    await fillCoverageCreateForm();
+    fireEvent.click(screen.getByRole("button", { name: "Create video" }));
+    await waitFor(() => expect(resolvePreflight).toBeDefined());
+    if (change === "duration")
+      fireEvent.change(screen.getByLabelText("Opening minutes"), { target: { value: "2" } });
+    else fireEvent.click(screen.getByLabelText("Full video opening"));
+    await act(async () => resolvePreflight!(Response.json({ ok: true, ready: true })));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Inputs changed");
+    expect(creates).toBe(0);
+  },
+);
+
+it("rejects a late opening preflight when footage availability changes", async () => {
+  let enabled = true;
+  let resolvePreflight: ((response: Response) => void) | undefined;
+  let creates = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/project-catalog"))
+        return Response.json(configurableOpeningCatalog(enabled));
+      if (String(input).endsWith("/preflight"))
+        return new Promise<Response>((resolve) => {
+          resolvePreflight = resolve;
+        });
+      creates++;
+      throw new Error("Unexpected create");
+    }),
+  );
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}>
+      <HostedCreateProjectScreen />
+    </QueryClientProvider>,
+  );
+  await fillCoverageCreateForm();
+  fireEvent.click(screen.getByRole("button", { name: "Create video" }));
+  await waitFor(() => expect(resolvePreflight).toBeDefined());
+  enabled = false;
+  await act(async () => {
+    await client.refetchQueries({ queryKey: ["hosted-project-catalog"] });
+  });
+  await screen.findByText(
+    "Scene video generation is currently unavailable. Turn off the opening and choose Off coverage, or retry later.",
+  );
+  await act(async () => resolvePreflight!(Response.json({ ok: true, ready: true })));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Availability changed");
+  expect(creates).toBe(0);
+  expect(screen.getByRole("button", { name: "Create video" })).toBeDisabled();
+});
+
 it("keeps the required AI opening and its price when optional footage is Off", async () => {
   const preflights: Record<string, unknown>[] = [];
   const creates: Record<string, unknown>[] = [];
@@ -7637,12 +7831,16 @@ it.each([0, 7, 15, 25, 50, 75, 100, 23])(
     fireEvent.click(screen.getByRole("button", { name: "Create video" }));
     await waitFor(() => expect(creates).toHaveLength(1));
     expect(preflights[0]).toMatchObject({
-      schema_version: "videoforge-hosted-project-preflight/v2",
+      schema_version: "videoforge-hosted-project-preflight/v3",
       video_coverage_percent: coverage,
+      ai_video_opening_enabled: false,
+      ai_video_opening_seconds: 0,
     });
     expect(JSON.parse(creates[0]!.body)).toMatchObject({
-      schema_version: "videoforge-hosted-project-create/v3",
+      schema_version: "videoforge-hosted-project-create/v4",
       video_coverage_percent: coverage,
+      ai_video_opening_enabled: false,
+      ai_video_opening_seconds: 0,
     });
     expect(screen.getByLabelText("Coverage percent")).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "100%" }));
@@ -8124,7 +8322,9 @@ it("blocks positive coverage when unavailable and allows Off without scene-video
   renderHosted(<HostedCreateProjectScreen />);
   await fillCoverageCreateForm();
   expect(
-    screen.getByText("Scene video generation is currently unavailable. Choose Off or retry later."),
+    screen.getByText(
+      "Scene video generation is currently unavailable. Turn off the opening and choose Off coverage, or retry later.",
+    ),
   ).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Create video" })).toBeDisabled();
   fireEvent.click(screen.getByRole("button", { name: "Off" }));
@@ -8286,65 +8486,73 @@ it.each([0, 75])(
   },
 );
 
-it("shows the required opening scene-video stage when optional footage coverage is zero", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async () =>
-      Response.json({
-        project: {
-          id: "required-opening",
-          title: "Required opening",
-          revision_id: "revision",
-          revision_state: "LOCKED",
-        },
-        generation_provider: "KIE_FAL",
-        attempts: [],
-        generation: null,
-        gpu_transport: "DISABLED_UNQUALIFIED",
-        gpu_readiness: gpuReadiness,
-        stages: [
-          {
-            id: "video-generation",
-            name: "Generate scene videos",
-            status: "RUNNING",
-            progress_percent: 50,
+it.each([30, 180])(
+  "shows the pinned %s-second opening scene-video stage when optional footage coverage is zero",
+  async (openingSeconds) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          project: {
+            id: "required-opening",
+            title: "Required opening",
+            revision_id: "revision",
+            revision_state: "LOCKED",
           },
-          { id: "render", name: "Assemble final video", status: "PENDING" },
-        ],
-        cost: {
-          api_estimate: {
-            kie_images: 12,
-            kie_usd: 0.048,
-            fal_avatar_seconds: 0,
-            fal_usd: 0,
-            seedance_seconds: 180,
-            seedance_usd: 2.4048,
-            seedance_coverage_percent: 0,
-            seedance_required_opening_seconds: 180,
-            seedance_planned_coverage_percent: 0,
-            seedance_actual_coverage_percent: 0,
-            seedance_fallback_count: 0,
-            pricing_checked_at: "2026-10-04",
+          generation_provider: "KIE_FAL",
+          attempts: [],
+          generation: null,
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+          stages: [
+            {
+              id: "video-generation",
+              name: "Generate scene videos",
+              status: "RUNNING",
+              progress_percent: 50,
+            },
+            { id: "render", name: "Assemble final video", status: "PENDING" },
+          ],
+          cost: {
+            api_estimate: {
+              kie_images: 12,
+              kie_usd: 0.048,
+              fal_avatar_seconds: 0,
+              fal_usd: 0,
+              seedance_seconds: openingSeconds,
+              seedance_usd: openingSeconds * 0.01336,
+              seedance_coverage_percent: 0,
+              seedance_required_opening_seconds: openingSeconds,
+              seedance_planned_coverage_percent: 0,
+              seedance_actual_coverage_percent: 0,
+              seedance_fallback_count: 0,
+              pricing_checked_at: "2026-10-04",
+            },
           },
-        },
-      }),
-    ),
-  );
-  renderHosted(<HostedProjectScreen projectId="required-opening" />);
-  expect(await screen.findByLabelText("Scene footage coverage")).toHaveTextContent(
-    "First 3 minutes: AI video only · Afterward 0%",
-  );
-  expect(stageRow("Generate scene videos")).toHaveTextContent(/running/i);
-  expect(screen.getByLabelText("Generate scene videos elapsed time")).toBeInTheDocument();
-  expect(screen.queryByText("Scene footage off · $0.")).not.toBeInTheDocument();
-  expect(screen.queryByText("No full scene fits. Scene footage skipped.")).not.toBeInTheDocument();
-});
+        }),
+      ),
+    );
+    renderHosted(<HostedProjectScreen projectId="required-opening" />);
+    expect(await screen.findByLabelText("Scene footage coverage")).toHaveTextContent(
+      `First ${openingSeconds / 60} minutes: AI video only · Afterward 0%`,
+    );
+    expect(
+      screen.getByText(new RegExp(`after ${openingSeconds === 30 ? "30s" : "3m 00s"}`)),
+    ).toBeInTheDocument();
+    expect(stageRow("Generate scene videos")).toHaveTextContent(/running/i);
+    expect(screen.getByLabelText("Generate scene videos elapsed time")).toBeInTheDocument();
+    expect(screen.queryByText("Scene footage off · $0.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("No full scene fits. Scene footage skipped."),
+    ).not.toBeInTheDocument();
+  },
+);
 
 it("queues script and voice in one Create action, preserving identity after a lost response", async () => {
   const submissions: { body: string; key: string }[] = [];
   const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const path = String(input);
-    if (path.endsWith("/project-catalog")) return Response.json(coverageCatalog());
+    if (path.endsWith("/project-catalog")) return Response.json(configurableOpeningCatalog());
     if (path.endsWith("/voiceovers/voices"))
       return Response.json({
         voices: [
@@ -8379,6 +8587,8 @@ it("queues script and voice in one Create action, preserving identity after a lo
   fireEvent.change(screen.getByLabelText("Voiceover script"), {
     target: { value: "Every river begins with a single drop. This is our narration." },
   });
+  fireEvent.change(screen.getByLabelText("Opening minutes"), { target: { value: "0.5" } });
+  fireEvent.change(screen.getByLabelText("Coverage percent"), { target: { value: "23" } });
   expect(screen.queryByRole("button", { name: "Generate voiceover" })).toBeNull();
   expect(screen.getByRole("button", { name: "Create video" })).toBeEnabled();
   fireEvent.click(screen.getByRole("button", { name: "Create video" }));
@@ -8390,7 +8600,10 @@ it("queues script and voice in one Create action, preserving identity after a lo
   expect(JSON.parse(submissions[0]!.body)).toMatchObject({
     voice_id: "alice",
     script: expect.stringContaining("Every river"),
-    schema_version: "videoforge-hosted-script-project/v1",
+    schema_version: "videoforge-hosted-script-project/v2",
+    video_coverage_percent: 23,
+    ai_video_opening_enabled: true,
+    ai_video_opening_seconds: 30,
   });
   expect(JSON.parse(submissions[0]!.body).voiceover).toBeUndefined();
   expect(routerState.navigate).not.toHaveBeenCalled();

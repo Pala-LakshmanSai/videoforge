@@ -323,7 +323,9 @@
         "scheduler_version": {
           "enum": [
             "scheduler-v8",
-            "scheduler-v9"
+            "scheduler-v9",
+            "scheduler-v10",
+            "scheduler-v11"
           ]
         }
       }

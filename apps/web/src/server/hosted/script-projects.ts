@@ -17,6 +17,7 @@ import {
   validateScriptProjectPresets,
   createProject,
   commitProject,
+  resolvedAiVideoOpeningSeconds,
 } from "./product";
 import { voices, j1Fetch, observeJ1Voiceover, type Job } from "./j1tts";
 import { generatedVoiceoverAudio, fixedLengthAudioStream } from "./generated-voiceover-audio";
@@ -138,6 +139,7 @@ export async function createScriptProject(
     const raw = await parseHostedJson(request, "SCRIPT_PROJECT_INVALID", 524288);
     if (raw instanceof Response) return raw;
     const body = plainRecord(raw);
+    const configurableOpening = body?.schema_version === "videoforge-hosted-script-project/v2";
     const allowed = [
       "schema_version",
       "title",
@@ -151,10 +153,11 @@ export async function createScriptProject(
       "video_coverage_percent",
       "script",
       "voice_id",
+      ...(configurableOpening ? ["ai_video_opening_enabled", "ai_video_opening_seconds"] : []),
     ];
     if (
       !body ||
-      body.schema_version !== "videoforge-hosted-script-project/v1" ||
+      (body.schema_version !== "videoforge-hosted-script-project/v1" && !configurableOpening) ||
       Object.keys(body).some((k) => !allowed.includes(k)) ||
       typeof body.script !== "string" ||
       !body.script.trim() ||
@@ -223,6 +226,12 @@ export async function createScriptProject(
       const stored = {
         ...selected,
         ...pins,
+        ...(configurableOpening
+          ? {
+              ai_video_opening_enabled: options.aiVideoOpeningEnabled,
+              ai_video_opening_seconds: resolvedAiVideoOpeningSeconds(options, config),
+            }
+          : {}),
         user_seed: options.userSeed ?? Math.floor(Math.random() * 4294967296),
       };
       return (
@@ -448,7 +457,10 @@ export async function advanceScriptProject(
   };
   const body = {
     ...intake.options,
-    schema_version: "videoforge-hosted-project-create/v3",
+    schema_version:
+      intake.options.ai_video_opening_enabled === undefined
+        ? "videoforge-hosted-project-create/v3"
+        : "videoforge-hosted-project-create/v4",
     optional_script: intake.script,
     voiceover: intake.audio.metadata,
   };
