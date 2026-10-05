@@ -1,5 +1,9 @@
 Completed-video Avatar/Voiceover/Image style details are published in both libraries under DEC_LIBRARY_002. Read library_video_details_2026_10_05 in CURRENT_STATE.yaml and LIBRARY_VIDEO_DETAILS_PLAN.md. Ordinary privacy and designated-owner Centralized Library access remain.
 
+Current user task2026-10-05: matching Scene videos progress graphic (V2-09/VF-10-09,
+DEC_PROGRESS_007). Read CURRENT_STATE.yaml and VIDEO_GENERATION_PROGRESS_PLAN.md. Existing
+production6c1f010a/Worker784e63b4/native277 is the verified predecessor; preserve other changes.
+
 Voice catalog filter work: read `voice_filters_2026_10_05` in CURRENT_STATE.yaml and VOICE_FILTERS_PLAN.md for implementation, release and acceptance.
 
 Centralized Library is live under `DEC_LIBRARY_001`, with creator names/emails on every card and native275. Concurrent voice dropdowns preserve it; read `centralized_library_2026_10_05` in CURRENT_STATE.yaml.

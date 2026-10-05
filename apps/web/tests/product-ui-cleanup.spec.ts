@@ -97,8 +97,12 @@ for (const owner of [true, false]) {
             stages: stages.map(([id, name]) => ({
               id,
               name,
-              status: id === "render" && !complete ? "RUNNING" : "COMPLETE",
-              progress_percent: complete ? 100 : 90,
+              status:
+                ["render", "video-generation"].includes(id!) && !complete ? "RUNNING" : "COMPLETE",
+              progress_percent: complete ? 100 : 40,
+              started_at: "2026-10-05T09:00:00Z",
+              completed_at: complete ? "2026-10-05T09:02:31Z" : null,
+              detail: id === "video-generation" ? `${complete ? 5 : 2} of 5 clips accepted` : null,
             })),
             gpu_readiness: { state: "DISABLED_UNQUALIFIED", lanes: [] },
             review: complete
@@ -181,7 +185,13 @@ for (const owner of [true, false]) {
     await expect(hero).toBeVisible();
     await expect(hero.getByText("Estimated", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Refresh now", exact: true })).toHaveCount(0);
+    const videoBar = page.getByRole("progressbar", { name: "Scene videos progress" });
+    await expect(videoBar).toHaveAttribute("aria-valuenow", "40");
+    await expect(videoBar.locator("..")).toContainText("Generating");
     await expect(hero.getByText("Video complete", { exact: true })).toBeVisible({ timeout: 5000 });
+    await expect(videoBar).toHaveAttribute("aria-valuenow", "100");
+    await expect(videoBar.locator("..")).toContainText("5 of 5 clips accepted");
+    await expect(videoBar.locator("..")).toContainText("2m 31s");
     expect(reads).toBeGreaterThan(1);
     await expect(hero.getByText("Total cost so far", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "View video", exact: true })).toBeVisible();
@@ -204,6 +214,9 @@ for (const owner of [true, false]) {
     expect(geometry.contained).toBe(true);
     expect(geometry.overflow).toBe(false);
     await page.screenshot({ path: info.outputPath(`progress-${owner}.png`) });
+    await videoBar
+      .locator("..")
+      .screenshot({ path: info.outputPath(`video-generation-${owner}.png`) });
     if (geometry.width > 1240) {
       expect(geometry.height).toBeLessThan(500);
       expect(new Set(geometry.cards.map((card) => Math.round(card.y))).size).toBe(1);

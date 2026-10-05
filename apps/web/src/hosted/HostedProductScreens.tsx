@@ -1710,21 +1710,26 @@ export function HostedElapsed({
 
 function HostedGpuLaneActivityPanel({
   lanes,
+  videoStage,
   apiGeneration = false,
 }: {
   readonly lanes: readonly HostedGpuLaneActivity[];
+  readonly videoStage?: HostedStage;
   readonly apiGeneration?: boolean;
 }) {
   const visible = lanes.filter(
     (lane) =>
       lane.attempt_state !== null || lane.provider_status != null || lane.runtime_state !== null,
   );
-  if (visible.length === 0) return null;
+  if (visible.length === 0 && !videoStage) return null;
+  const videoStatus = videoStage ? hostedStageStatus(videoStage.status) : "PENDING";
+  const videoActive = ["RUNNING", "STARTING", "RETRYING", "QUEUED"].includes(videoStatus);
+  const videoPercent = videoStage ? hostedProgressValue(videoStage) : 0;
   return (
     <Panel
       className="gpu-lane-panel"
       eyebrow={apiGeneration ? "Via APIs" : "On the GPU"}
-      heading="Image and avatar generation"
+      heading={videoStage ? "Image, avatar and video generation" : "Image and avatar generation"}
     >
       <ul className="gpu-lane-list">
         {visible.map((lane) => {
@@ -1776,6 +1781,45 @@ function HostedGpuLaneActivityPanel({
             </li>
           );
         })}
+        {videoStage ? (
+          <li className="gpu-lane-item">
+            <div className="gpu-lane-head">
+              <span className="gpu-lane-name">Scene videos</span>
+              <span className={`gpu-lane-phase gpu-lane-phase-${videoActive ? "active" : "idle"}`}>
+                {videoActive ? <span className="live-progress-pulse" aria-hidden="true" /> : null}
+                {videoStatus === "PENDING"
+                  ? "Waiting"
+                  : videoStatus === "ACTION_REQUIRED"
+                    ? "Needs attention"
+                    : videoStatus === "RUNNING"
+                      ? "Generating"
+                      : videoStatus.replaceAll("_", " ").toLowerCase()}
+              </span>
+              <HostedElapsed
+                since={videoStage.started_at ?? null}
+                until={videoStage.completed_at ?? null}
+                running={videoActive}
+                label="Scene videos elapsed time"
+              />
+            </div>
+            <div
+              className={`gpu-lane-track${videoActive && videoPercent === 0 ? " gpu-lane-track-indeterminate" : ""}`}
+              role="progressbar"
+              aria-label="Scene videos progress"
+              {...(videoStage.progress_percent !== null
+                ? { "aria-valuenow": videoPercent, "aria-valuemin": 0, "aria-valuemax": 100 }
+                : {})}
+            >
+              <span
+                className="gpu-lane-fill"
+                style={
+                  videoActive && videoPercent === 0 ? undefined : { width: `${videoPercent}%` }
+                }
+              />
+            </div>
+            <p className="helper gpu-lane-detail">{videoStage.detail}</p>
+          </li>
+        ) : null}
       </ul>
     </Panel>
   );
@@ -7210,6 +7254,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           />
           <HostedGpuLaneActivityPanel
             lanes={query.data.gpu_lanes ?? []}
+            videoStage={
+              pipelineStages.some((stage) => stage.id === "video-generation")
+                ? stages.find((stage) => stage.id === "video-generation")
+                : undefined
+            }
             apiGeneration={query.data.generation_provider === "KIE_FAL"}
           />
 

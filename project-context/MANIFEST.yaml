@@ -4,8 +4,8 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-10-05"
 source_of_truth: project-context
 
-current_selected_profile: v2_09_library_video_details
-current_selected_brief: LIBRARY_VIDEO_DETAILS_PLAN.md
+current_selected_profile: v2_09_video_generation_progress
+current_selected_brief: VIDEO_GENERATION_PROGRESS_PLAN.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -25,6 +25,10 @@ conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
 target_profile_word_budget: 15000
 
 read_profiles:
+  v2_09_video_generation_progress:
+    - VIDEO_GENERATION_PROGRESS_PLAN.md
+    - 05_UI_UX_SPEC.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
   v2_09_library_video_details:
     - LIBRARY_VIDEO_DETAILS_PLAN.md
     - 05_UI_UX_SPEC.md
@@ -293,6 +297,7 @@ historical_runpod_invariants:
   - final_two_lane_smoke_and_independent_zero_worker_drain_required_for_runpod_release
 
 approved_decisions:
+  DEC_PROGRESS_007: scene_video_graphic_uses_authoritative_stage_progress_timing_and_fallback_detail
   DEC_LIBRARY_002: completed_render_pinned_avatar_voiceover_style_details_in_both_libraries
   DEC_LIBRARY_001: exact_owner_read_only_completed_video_collection
   DEC_API_CAPACITY_001: published_shared_gates;plan40daily30to40minute_Cloud_videos_same_cost_Kie_Fal_account_pools;Runware_unchanged

@@ -1,3 +1,21 @@
+video_generation_progress_2026_10_05:
+  status: LOCAL_VERIFIED_RELEASE_PENDING
+  checkpoint: V2-09
+  read_profile: v2_09_video_generation_progress
+  task_brief: VIDEO_GENERATION_PROGRESS_PLAN.md
+  branch: codex/video-generation-progress
+  authority: User_matching_scene_video_progress_UI_and_production_publication
+  base_executable: "6c1f010aae7864a10aa5c214d674ac1f3d83f54c"
+  base_worker: "784e63b4-e48b-4d59-832d-89a5577d03ca"
+  native_migration: 277
+  new_inference_compute_retained_resource_spend_usd: 0
+  new_workflow_instances: 0
+  driver_restart: false
+  local_validation: focused265_config18_installedChrome15_types_lint_bothBuilds_quarantines_context_secrets_PASS
+  backend_schema_changes: none
+  unrelated_compute_inventory: NOT_REFRESHED_UI_ONLY_TASK
+  remaining_gates: inherited_broad_CI_Local_long_form_provider_editorial_invoice_native_saved_download_policy_separate
+
 library_video_details_2026_10_05:
   checkpoint: V2-09
   task_id: VF-10-09
@@ -2836,7 +2854,7 @@ updated_at: "2026-09-19T04:41:41Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: Library_video_details
+current_milestone: Video_generation_progress
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -7397,8 +7415,8 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/library-video-details
-  branch_upstream: origin/codex/library-video-details
+  branch: codex/video-generation-progress
+  branch_upstream: origin/codex/video-generation-progress
   branch_published: true
   current_source_head: "6c1f010aae7864a10aa5c214d674ac1f3d83f54c"
   current_source_head_semantics: executable_release_identity_recorded_after_publication_evidence_commits_follow
@@ -9751,15 +9769,15 @@ provider_authority: &v2_09_provider_authority_current
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: Library_video_details
-  status: PRODUCTION_GREEN_LIBRARY_VIDEO_DETAILS
-  dependency_status: focused12_config18_Chrome15_bothBuilds_quarantines_nativeRuntime7_liveHTTP_and_Chrome_PASS
-  authorization_status: User_both_libraries_completed_settings_and_production_preserving_other_changes
+  milestone: Video_generation_progress
+  status: LOCAL_GREEN_VIDEO_GENERATION_PROGRESS
+  dependency_status: focused265_config18_Chrome15_types_lint_builds_quarantines_context_secrets_PASS
+  authorization_status: User_matching_scene_video_progress_graphic_and_production_preserving_other_changes
   task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current
-  read_profile: v2_09_library_video_details
-  task_brief: LIBRARY_VIDEO_DETAILS_PLAN.md
-  goal: Show_completed_revision_avatar_voiceover_and_style_in_both_libraries
+  read_profile: v2_09_video_generation_progress
+  task_brief: VIDEO_GENERATION_PROGRESS_PLAN.md
+  goal: Matching_scene_video_progress_graphic_with_real_status_counts_timing
   provider_mode: fixture
   provider_calls_authorized: true
   read_only_provider_calls_authorized: true

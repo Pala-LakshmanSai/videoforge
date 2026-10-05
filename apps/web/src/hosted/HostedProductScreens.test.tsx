@@ -1303,7 +1303,7 @@ it("keeps rendering available after optional scene clips fall back to original s
     ),
   );
   renderHosted(<HostedProjectScreen projectId="fallback" />);
-  expect(await screen.findByText(detail)).toBeInTheDocument();
+  expect((await screen.findAllByText(detail)).length).toBeGreaterThan(0);
   expect(stageRow("Generate scene videos")).toHaveTextContent(/complete/i);
   expect(stageRow("Assemble final video")).toHaveTextContent(/running/i);
   expect(screen.queryByRole("button", { name: /create a new video/i })).not.toBeInTheDocument();
@@ -8502,6 +8502,54 @@ it("shows saved requested, planned and completed scene footage and fallbacks in 
   expect(screen.getByText("Full scenes only. Actual coverage may be lower.")).toBeInTheDocument();
 });
 
+it.each([
+  ["WAITING", 0, "Waiting"],
+  ["RUNNING", 0, "Generating"],
+  ["RUNNING", 40, "Generating"],
+  ["RETRY_WAIT", 40, "retrying"],
+  ["ACTION_REQUIRED", 40, "Needs attention"],
+  ["FAILED", 40, "failed"],
+  ["COMPLETE", 100, "complete"],
+] as const)(
+  "shows matching scene-video graphics for %s at %s%%",
+  async (status, percent, label) => {
+    const detail = "2 of 5 clips accepted · Original images remain saved.";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          project: { id: "video-bar", title: "Scene-video progress", revision_state: "LOCKED" },
+          generation_provider: "KIE_FAL",
+          attempts: [],
+          generation: null,
+          gpu_readiness: gpuReadiness,
+          stages: [
+            {
+              id: "video-generation",
+              name: "Generate scene videos",
+              status,
+              progress_percent: percent,
+              detail,
+              started_at: "2026-10-05T09:00:00Z",
+              completed_at: status === "COMPLETE" ? "2026-10-05T09:02:31Z" : null,
+            },
+          ],
+        }),
+      ),
+    );
+    renderHosted(<HostedProjectScreen projectId="video-bar" />);
+    const bar = await screen.findByRole("progressbar", { name: "Scene videos progress" });
+    expect(bar).toHaveAttribute("aria-valuenow", String(percent));
+    const row = bar.closest("li")!;
+    expect(row).toHaveTextContent(label);
+    expect(row).toHaveTextContent(detail);
+    expect(row.querySelector(".live-progress-pulse") !== null).toBe(
+      ["RUNNING", "RETRY_WAIT"].includes(status),
+    );
+    if (status === "COMPLETE") expect(row).toHaveTextContent("2m 31s");
+  },
+);
+
 it.each([0, 75])(
   "shows zero planned scenes at target %s and hides Off's scene-video stage",
   async (target) => {
@@ -8552,6 +8600,9 @@ it.each([0, 75])(
     if (target === 0) {
       expect(coverage).toHaveTextContent("Scene footage off");
       expect(screen.queryByLabelText("Generate scene videos elapsed time")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("progressbar", { name: "Scene videos progress" }),
+      ).not.toBeInTheDocument();
     } else {
       expect(coverage).toHaveTextContent("Requested up to 75% · Planned 0% · Completed 0%");
       expect(screen.getByText("No full scene fits. Scene footage skipped.")).toBeInTheDocument();

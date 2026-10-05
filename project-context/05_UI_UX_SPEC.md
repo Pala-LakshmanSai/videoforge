@@ -160,6 +160,11 @@ the only persistent applied-state indicator.
 
 ### 4. Progress
 
+Scene videos shares the image/avatar generation panel and gradient track, status and elapsed timer.
+Its percentage, counts/fallback explanation and times come from the authoritative scene-video stage;
+loaded media-page counts never imply completion. Hide it when footage is Off without a required
+opening. Keep uncertain outcomes explicit and automatic status reads intact (DEC_PROGRESS_007).
+
 - DEC_UX_008 removes the Estimated time metric and manual Refresh now button for all accounts.
   Active/recoverable work polls automatically; retry/cancel/delete and reconnect behavior remain.
   The compact summary shows status/stage, projected cost and total elapsed, with cost cards spanning
