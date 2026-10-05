@@ -85,5 +85,56 @@
   "newRentedCompute": 0,
   "uncertainTasks": 0,
   "textToVideoImplemented": false,
-  "editorialLimits": "Camera translation and exact parallax are unmeasured; sources remain somewhat polished; no universal quality guarantee."
+  "editorialLimits": "Camera translation and exact parallax are unmeasured; sources remain somewhat polished; no universal quality guarantee.",
+  "production": {
+    "source": "a5ff97e7d1e5b02f346ddb297f58a3eda421ab57",
+    "workerVersion": "6e60d1c0-c8a3-49d8-8d8a-b101e94b5c9d",
+    "trafficPercent": 100,
+    "migration": 273,
+    "bindings": 55,
+    "secretNames": 27,
+    "workflowIdentities": 3,
+    "publicAssetsVerified": 30,
+    "anonymousCatalogStatus": 401,
+    "nativeFreshPin": "NATURAL_HANDHELD_V1",
+    "nativeLegacyPin": "FIXED_CAMERA_V1",
+    "rollbackOnlyFreshRevisionRemoved": true,
+    "historicalPlansJobsExact": true,
+    "activeProviderLeases": 0,
+    "newPaidProjects": 0,
+    "finalFunctional": {
+      "at": "2026-10-05T07:32:49.294Z",
+      "readOnlyDownload200": true,
+      "contentType": "video/mp4",
+      "attachment": true,
+      "bytes": 10953398,
+      "checksumExact": true,
+      "completeRunPodInventory": true,
+      "podCount": 0,
+      "newRentals": 0,
+      "newPaidProjects": 0,
+      "chromeRetainedPlay": {
+        "duration": 20.333008,
+        "ended": true,
+        "error": null,
+        "played": [
+          [
+            0,
+            20.333008
+          ]
+        ]
+      },
+      "nativeChromeDownloadHistory": "UNVERIFIED_BROWSER_URL_POLICY_BLOCKED"
+    },
+    "chromeCreate": {
+      "apiHealthy": true,
+      "openingOffMinutesHidden": true,
+      "openingRetoggleRetained": true,
+      "customMinutes": 2.5,
+      "coveragePercent": 23,
+      "avatarOffFullscreenCopy": true,
+      "cloudReady": true,
+      "libraryRetainedExports": true
+    }
+  }
 }
