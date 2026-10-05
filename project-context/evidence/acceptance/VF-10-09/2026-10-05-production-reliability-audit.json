@@ -1,0 +1,234 @@
+{
+  "at": "2026-10-05T08:17:34.799324+00:00",
+  "checkpoint": "V2-09",
+  "task": "VF-10-09",
+  "source": "332b7092ee45f6e5379cec7099c29c6ae85c5c09",
+  "paidProjects": 0,
+  "paidInference": 0,
+  "newRentals": 0,
+  "logs": [
+    {
+      "name": "canonical.log",
+      "sha256": "sha256:9851717dc4171502f7b9e00f11f9587ac1bdffbeb21e6735e42dfe11a8451e83"
+    },
+    {
+      "name": "web-repaired-suite.log",
+      "sha256": "sha256:1612414585ac09894b3b90b62f224652cdfaf15dd37f6bc4b9e60a74dd1815cd"
+    },
+    {
+      "name": "control-plane-final.log",
+      "sha256": "sha256:53cd90565709a8301f664d48fe43cf6b0e996ef389b2faa6b483ece1301e137a"
+    },
+    {
+      "name": "pipeline-suite.log",
+      "sha256": "sha256:d8dc69e596f882c2dcba307c938e6cc9c6744ba0266b645b1f774f162dd0e1e3"
+    },
+    {
+      "name": "worker-owned-suite.log",
+      "sha256": "sha256:00b88edaf9ecf2ddb790cd5f5587de69b521936f11869c397f534019107264bb"
+    },
+    {
+      "name": "avatar-primary-suite.log",
+      "sha256": "sha256:99ccc6dde23bde6e4cf2cbf91e9a0adc4e3cbe9b8636902a822b58dea1395f36"
+    },
+    {
+      "name": "media-local-suite.log",
+      "sha256": "sha256:61ab313863bdffc1eb1c318983ffa9430bc465207b6dca075fa506a8666c03cc"
+    },
+    {
+      "name": "transcribe-suite.log",
+      "sha256": "sha256:d33746a167fb33a2671c4a63a03f320ffb0862869db01e331291c8c51e63d82c"
+    },
+    {
+      "name": "span-suite.log",
+      "sha256": "sha256:c1e803fb90a9705fb8a139767b3f53988b67dd1a127c041baff84e8a699adf8b"
+    },
+    {
+      "name": "avatar-fixture-suite.log",
+      "sha256": "sha256:7b5ab41a6447fb409d2fa009970d63ddec9af5939138fddb27339e8dad9ad520"
+    },
+    {
+      "name": "contract-tests.log",
+      "sha256": "sha256:92c625501cc9b89b78656a74b3c8d3f207918183a6e6fe55d3d221609e0f66d9"
+    },
+    {
+      "name": "other-packages.log",
+      "sha256": "sha256:cdd6ee11a21ec132971f76d4f4de7cf17b87019c0273fe191e47b042d3e5c4e5"
+    },
+    {
+      "name": "types-final.log",
+      "sha256": "sha256:77cbf1cc1b96dcdcfabe375e9457a48195172ab51f3077c5cf044d34757d45a6"
+    },
+    {
+      "name": "lint.log",
+      "sha256": "sha256:2d235213a8ddfa66b17fec18e6889ee89aeda79b118f6c1e325a5dbf34e933d9"
+    },
+    {
+      "name": "root-lint-final.log",
+      "sha256": "sha256:7082767525070e9d1c09403f4c09ffc55ecb40e9d4fc2d80d1ecac69747b5b5c"
+    },
+    {
+      "name": "scripts-repaired-suite.log",
+      "sha256": "sha256:8b430f741195f2c17fd4d953e3a6d79999462098b624ba48e8f1a2d1ce9681c3"
+    },
+    {
+      "name": "chrome-suite.log",
+      "sha256": "sha256:7f613f8486dcc03f920ca1dfa6d6f772052467f7aee20e4df7880260effd458d"
+    },
+    {
+      "name": "chrome-runtime-green.log",
+      "sha256": "sha256:f0d582cfb0980b8a3965e262299ae84800d41418e71fabf3660306a43a782d46"
+    },
+    {
+      "name": "workerd-isolated-final.log",
+      "sha256": "sha256:d21d502616bffeefdb0530c3c3a843ad96d892ccc6f8cc488c692028e76a6649"
+    },
+    {
+      "name": "sql-green.log",
+      "sha256": "sha256:0fd183808b67478408220985ce74cbc10593cab343d9cd3db2d0e9cc4823911d"
+    },
+    {
+      "name": "exact-recovery-final.log",
+      "sha256": "sha256:942df21e4de7269e3891404c022cb3d93ecc71586d3c154465f151a3837544ab"
+    },
+    {
+      "name": "final-changed-web.log",
+      "sha256": "sha256:f1fa91e64ada709aaef7d1419a3247dcb199cadbd35f1b13ec580261dfe2f56a"
+    },
+    {
+      "name": "script-guards-complete.log",
+      "sha256": "sha256:3b4e15fed12d5923046fb000ed3fc87008bd3030c10e925c31d0833435a279f8"
+    },
+    {
+      "name": "dependencies-final.log",
+      "sha256": "sha256:627e4d1d975e67d4def7b2895bb203efdabf9bdeb8578061d48000bf7acdda74"
+    },
+    {
+      "name": "dependencies-production.log",
+      "sha256": "sha256:15950a68a7ed99c59779717acefdceb3f69cfd31bde67d2c954f2a3cea4d7955"
+    },
+    {
+      "name": "context-precommit.log",
+      "sha256": "sha256:19627241c9135fc2804e733f643820ccfd2145768796be4013a2ab3de03f59ad"
+    },
+    {
+      "name": "secrets-precommit.log",
+      "sha256": "sha256:e57cd597dcf2721c4463b1fb80ee6a91260805f77a07e64b1a6195472b5a7cdb"
+    },
+    {
+      "name": "exact-commit-worker-build.log",
+      "sha256": "sha256:528c117c1e7720986cca84551e556cedcf5cedc6f054a0aca2e6fb9facaa8d47"
+    }
+  ],
+  "workerVersion": "37d37bb8-d0df-44f7-a679-fce8171a8651",
+  "trafficPercent": 100,
+  "nativeMigration": 274,
+  "bindingCount": 55,
+  "secretNameCount": 27,
+  "workflowIdentityCount": 3,
+  "publicPayloadsExact": 30,
+  "anonymousPrivateCatalogStatus": 401,
+  "actualRuntimeReadinessGrant": {
+    "accountsChecked": 9,
+    "due": 0,
+    "foreignReady": false,
+    "directWrite": false,
+    "operatorRecovery": false
+  },
+  "downloadAndInventory": {
+    "at": "2026-10-05T08:23:56.868Z",
+    "readOnlyDownload200": true,
+    "contentType": "video/mp4",
+    "attachment": true,
+    "bytes": 10953398,
+    "checksumExact": true,
+    "completeRunPodInventory": true,
+    "podCount": 0,
+    "newRentals": 0,
+    "newPaidProjects": 0,
+    "nativeChromeDownloadHistory": "UNVERIFIED_BROWSER_URL_POLICY_BLOCKED"
+  },
+  "chromePlayback": {
+    "at": "2026-10-05T08:27:36.582Z",
+    "duration": 20.333008,
+    "ended": true,
+    "error": null,
+    "height": 1080,
+    "played": [
+      [
+        0,
+        20.333008
+      ]
+    ],
+    "time": 20.333008,
+    "width": 1920
+  },
+  "createControls": {
+    "at": "2026-10-05T08:24:09.419Z",
+    "openingOffMinutesHidden": true,
+    "avatarOffSelectorHidden": true,
+    "cloudReady": false
+  },
+  "observer": {
+    "version": "fd1c81e7-6e60-40f7-a9c8-30e377a30319",
+    "status": "running",
+    "error": null,
+    "successfulTick": true,
+    "originalParamsPreserved": true,
+    "generationWorkflowsRestarted": 0
+  },
+  "workflowVersions": [
+    {
+      "name": "videoforge-video-workflow",
+      "id": "9daf1799-3a3c-4a68-aee1-565247f25be4"
+    },
+    {
+      "name": "videoforge-pair-workflow",
+      "id": "7a62bd82-1e66-47cd-bb66-30ccc8974161"
+    },
+    {
+      "name": "videoforge-continuation-workflow",
+      "id": "fd1c81e7-6e60-40f7-a9c8-30e377a30319"
+    }
+  ],
+  "cron": [
+    {
+      "outcome": "ok",
+      "version": {
+        "id": "37d37bb8-d0df-44f7-a679-fce8171a8651"
+      },
+      "cron": "* * * * *",
+      "scheduledTime": 1791188720000,
+      "exceptions": []
+    },
+    {
+      "outcome": "ok",
+      "version": {
+        "id": "37d37bb8-d0df-44f7-a679-fce8171a8651"
+      },
+      "cron": "* * * * *",
+      "scheduledTime": 1791188780000,
+      "exceptions": []
+    },
+    {
+      "outcome": "ok",
+      "version": {
+        "id": "37d37bb8-d0df-44f7-a679-fce8171a8651"
+      },
+      "cron": "* * * * *",
+      "scheduledTime": 1791188840000,
+      "exceptions": []
+    }
+  ],
+  "canonicalAllGreen": false,
+  "openGates": [
+    "inherited format and managed uv",
+    "historical activation and worker fixtures",
+    "broad Chrome qualification debt",
+    "native Docker unavailable",
+    "dev braces patch unavailable",
+    "production Local device offline",
+    "provider credits quotas longform concurrency editorial invoice limits"
+  ],
+  "newPaidInference": 0
+}

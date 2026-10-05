@@ -192,6 +192,8 @@ Apply these only to attempts already pinned to `RUNPOD`:
 
 ## Task ownership and evidence
 
+[Workflows](PRODUCTION_RELIABILITY_AUDIT.md).
+
 Each task brief records checkpoint, dependency/gates, base commit, owned files/modules, collision
 notes, exact commands, Chrome route/fixture, provider authority/cap, rollback, acceptance, and evidence
 path. Parallel agents own disjoint files; shared migrations/schemas/root shell serialize.

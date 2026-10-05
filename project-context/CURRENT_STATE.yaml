@@ -7,15 +7,22 @@ production_reliability_audit_2026_10_05:
   base_source: 2dbd16c8
   production_baseline: a5ff97e7d1e5b02f346ddb297f58a3eda421ab57
   production_baseline_version: 6e60d1c0-c8a3-49d8-8d8a-b101e94b5c9d
-  status: VERIFIED_REPAIR_READY_FOR_PRODUCTION_PUBLICATION
+  status: AUDIT_COMPLETE_VERIFIED_REPAIR_PUBLISHED_OPEN_GATES_NAMED
   authority: User_entire_app_reliability_audit_confirmed_repairs_verification_existing_production_publication_permission;no_new_paid_work
   provider_spend: USD0_new_project_inference_or_rental;accepted_uncertain_work_never_replayed
-  paid_compute_shutdown: Complete_RunPod_inventory_zeroPods_at2026_10_05T08_02_44Z;active_leases0_no_new_compute
+  paid_compute_shutdown: Complete_RunPod_inventory_zeroPods_at2026_10_05T08_23_56Z;active_generations_leases_waiters0_no_new_compute
   native_migration: 274
   repair: Minute_sweep_recovers_saved_PREPARED_clips_and_accepted_media_without_a_RENDER_attempt;never_replays_existing_attempts_or_uncertain_jobs
   validation: ControlPlane734_PASS12skipped;Web3031_PASS8historical_failures1skip;Pipeline284_PASS;ContractsTS115_Python97_PASS;all_types_lints_Workerd_PASS;native_9actual_runtime_accounts_due0_acceptedReady_true_foreign_false_no_direct_writes_or_operator_recovery
   production_inventory: No_active_generation_or_waiter_or_occupied_provider_slot;continuation_driver_RUNNING;runware8_06519USD_floor0_25PASS_at08_05_44Z
-  remaining_gates: Exact_matching_Worker_publication_assets_native_role_heartbeat_live_Chrome_readback;inherited_CI_unpublished_braces_fix_Local_offline_longform_concurrent_provider_credit_quota_limits_separate
+  production_source: 332b7092ee45f6e5379cec7099c29c6ae85c5c09
+  production_version: 37d37bb8-d0df-44f7-a679-fce8171a8651
+  production_traffic_percent: 100
+  publication: Native274_55bindings27secrets3WorkflowIdentities30public_payload_hashes_exact_privateAnon401_routes_domains_cron_traffic_preserved
+  background_recovery: New_Worker_minute_cron_observed_OK_no_exceptions;matching_Workflow_registrations_published;idle_singleton_observer_refreshed_original_params_versionfd1c81e7_6e60_40f7_a9c8_30e377a30319_RUNNING_successful_tick_errorNull;no_generation_Workflow_restart
+  production_chrome: OpeningOff_minutes_absent_AvatarOff_selector_absent_CloudReady;retained20_333008seconds_full_playback_endedTrue_errorNull_1080p;app_MP4_download200_attachment_10953398bytes_exactChecksum
+  evidence: evidence/acceptance/VF-10-09/2026-10-05-production-reliability-audit.md
+  remaining_gates: No_scoped_repair_publication_gate;canonical_CI_historical_test_debt_unpublished_dev_braces_fix_Local_offline_longform_concurrent_provider_credit_quota_editorial_invoice_limits_separate
 
 natural_footage_experiment_2026_10_05:
   checkpoint: V2-09
@@ -7233,10 +7240,10 @@ repository:
   branch: codex/production-reliability-audit
   branch_upstream: origin/codex/production-reliability-audit
   branch_published: true
-  current_source_head: "a5ff97e7d1e5b02f346ddb297f58a3eda421ab57"
-  current_source_head_semantics: retained_natural_motion_production_source_pending_reliability_release
+  current_source_head: "332b7092ee45f6e5379cec7099c29c6ae85c5c09"
+  current_source_head_semantics: verified_production_reliability_executable_source_evidence_commits_follow
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Resolve Git HEAD for the reliability audit; a5ff97e7 is retained production before this release. Primary unrelated work is preserved."
+  current_source_head_note: "Resolve Git HEAD; executable source332b7092 is published as Worker37d37bb8. Evidence handoff commits follow; primary unrelated work remains preserved."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
@@ -9590,8 +9597,8 @@ recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
   milestone: Production_reliability_audit
-  status: VERIFIED_REPAIR_AWAITING_EXACT_WORKER_PUBLICATION
-  dependency_status: production_a5ff97e7_Worker6e60d1c0_native274;additive_read_grant_native_role_verified
+  status: AUDIT_COMPLETE_VERIFIED_REPAIR_PUBLISHED_OPEN_GATES_NAMED
+  dependency_status: production332b7092_Worker37d37bb8_native274_new_Workflow_registrations_and_observer_verified;open_CI_external_Local_capacity_gates_named
   authorization_status: User_app_audit_repairs_verification_and_existing_production_publication_permission;no_new_paid_work
   task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current
