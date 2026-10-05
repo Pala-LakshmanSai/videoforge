@@ -250,6 +250,13 @@ Under `DEC_DELIVERY_003`, verified outputs enter private Library automatically. 
 optional viewer, download and provenance remain. Preset approvals remain independent.
 
 - Library shows only account-owned previews/downloads/manifests/retention/archive states.
+- Every completed-video card in both libraries shows Avatar, Voiceover and Image style. Read the
+  render attempt's locked revision and pinned versions, never the current draft or newest presets.
+  Avatar uses its saved display-name snapshot/version; Off shows No avatar. Style names resolve
+  through the pinned tenant-owned version, with its version number. Generated script narration
+  shows the saved voice name only when the actual audio checksum matches; uploads show the original
+  filename. Missing historical metadata shows Not recorded. These labels grant no preset/source
+  access and never expose IDs, hashes, scripts or storage keys.
 - Usage is removed under DEC_UX_008; its bookmarks redirect to Queue. Internal billing, retention
   and reconciliation records remain available to their existing server/operator paths.
 - Fixed recurring retained-volume billing is an operational/shared service cost and is shown

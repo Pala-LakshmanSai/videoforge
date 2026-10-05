@@ -1,3 +1,5 @@
+import { LibraryVideoDetails } from "../components/LibraryVideoDetails";
+import type { VideoDetails } from "../lib/library-video-details";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, Download, Library, Play, Trash2 } from "lucide-react";
@@ -17,6 +19,7 @@ interface HostedLibraryItem {
   readonly checksum_sha256: string;
   readonly download_url: string;
   readonly download_expires_at: string;
+  readonly video_details?: VideoDetails;
 }
 
 interface HostedLibraryResponse {
@@ -94,6 +97,7 @@ function HostedLibraryScreen() {
               <video controls preload="metadata" src={output.download_url}>
                 Your browser does not support video playback.
               </video>
+              <LibraryVideoDetails details={output.video_details} />
               <div className="entity-card-footer">
                 <Badge tone="success">Ready</Badge>
                 <div className="cluster">

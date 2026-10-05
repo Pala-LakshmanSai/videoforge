@@ -28,6 +28,15 @@ const outputs = Array.from({ length: 6 }, (_, index) => ({
   created_at: "2026-10-05T09:00:00Z",
   content_length: 12_000_000,
   available: true,
+  video_details: {
+    avatar_enabled: index % 2 === 0,
+    avatar_name: "Original presenter",
+    avatar_version: 2,
+    voiceover_name: index % 2 === 0 ? "Original narrator" : null,
+    voiceover_filename: "narration-with-a-long-descriptive-original-filename.mp3",
+    image_style_name: "Natural Documentary",
+    image_style_version: 1,
+  },
   watch_url: `/api/v2/centralized-library/${index + 100}/watch`,
   download_url: `/api/v2/centralized-library/${index + 100}/download`,
 }));
@@ -139,6 +148,10 @@ test("owner collection supports search, creator filters, keyboard playback and e
     return route.fulfill({ status: 404, json: { error: { code: "UNEXPECTED_FIXTURE_REQUEST" } } });
   });
   await page.goto("/centralized-library");
+  await expect(page.getByText("Original presenter · v2").first()).toBeVisible();
+  await expect(page.getByText("No avatar").first()).toBeVisible();
+  await expect(page.getByText("Original narrator").first()).toBeVisible();
+  await expect(page.getByText("Natural Documentary · v1").first()).toBeVisible();
   await expect(page.locator(".central-video")).toHaveCount(6);
   for (let index = 0; index < outputs.length; index++) {
     const card = page.locator(".central-video").nth(index);
@@ -262,4 +275,72 @@ test("another team manager cannot see the dock option or request the collection"
   await expect(page.getByRole("link", { name: "Centralized Library", exact: true })).toHaveCount(0);
   expect(requested).toBe(false);
   await expect(page.getByRole("link", { name: "Library", exact: true })).toBeVisible();
+});
+
+test("private Library shows completed settings and preserves playback, download and delete confirmation", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.route("**/api/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === "/api/v2/tenant")
+      return route.fulfill({
+        json: {
+          schema_version: "videoforge-hosted-tenant/v1",
+          account_id: creators[0]!.creator_id,
+          workspace_id: creators[1]!.creator_id,
+          workspace_name: "Synthetic private library",
+          can_view_centralized_library: false,
+          user: { id: "member", name: "Member", email: "member@example.test" },
+        },
+      });
+    if (path === "/api/v2/hosted/status")
+      return route.fulfill({
+        json: {
+          authentication: ["GOOGLE"],
+          environment: "staging",
+          commit: "library-details-chrome",
+        },
+      });
+    if (path === "/api/v2/library")
+      return route.fulfill({
+        json: {
+          schema_version: "videoforge-hosted-library/v1",
+          outputs: [
+            { ...outputs[0], project_id: "project", download_url: mediaOrigin + "/download" },
+            { ...outputs[1], project_id: "project", download_url: mediaOrigin + "/download" },
+          ],
+        },
+      });
+    return route.fulfill({ json: { projects: [], voices: [] } });
+  });
+  await page.goto("/library");
+  await expect(page.getByText("Original presenter · v2")).toBeVisible();
+  await expect(page.getByText("No avatar")).toBeVisible();
+  await expect(page.getByText("Original narrator")).toBeVisible();
+  await expect(page.getByText("Natural Documentary · v1").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Centralized Library" })).toHaveCount(0);
+  const video = page.locator(".library-output video").first();
+  await expect(video).toHaveAttribute("controls", "");
+  const downloadEvent = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Download MP4" }).first().click();
+  const download = await downloadEvent;
+  const path = await download.path();
+  expect(path).not.toBeNull();
+  expect(createHash("sha256").update(readFileSync(path!)).digest("hex")).toBe(
+    createHash("sha256").update(bytes).digest("hex"),
+  );
+  let confirmed = false;
+  page.once("dialog", async (dialog) => {
+    confirmed = dialog.type() === "confirm";
+    await dialog.dismiss();
+  });
+  await page.getByRole("button", { name: "Delete", exact: true }).first().click();
+  expect(confirmed).toBe(true);
+  await expect(page.locator(".library-output")).toHaveCount(2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  expect(errors).toEqual([]);
 });

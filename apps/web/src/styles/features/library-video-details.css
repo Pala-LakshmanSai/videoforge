@@ -1,0 +1,39 @@
+.library-video-details {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid rgb(153 165 219 / 16%);
+  border-radius: 12px;
+  background: rgb(125 144 245 / 4%);
+}
+.library-video-details > div {
+  min-width: 0;
+}
+.library-video-details dt {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #aab6dd;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.library-video-details dd {
+  margin: 4px 0 0;
+  color: #eef1ff;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.library-video-details small {
+  display: block;
+  margin-top: 2px;
+  color: #a6abc0;
+  overflow-wrap: anywhere;
+}
+@media (min-width: 680px) {
+  .library-output .library-video-details {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

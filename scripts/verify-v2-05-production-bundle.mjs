@@ -94,9 +94,10 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // Centralized Library adds exactly 293 production and 390 staging bytes for lazy route dispatch.
 // The owner-only query and video serving remain dynamically loaded; all quarantine checks stay.
 // Additive276 manifest adds precisely116 bytes per closure; one-byte overflow checks stay.
+// Completed-video metadata plus additive277 adds2342 measured bytes per closure; same quarantine.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_830_888,
-  "wrangler.staging.jsonc": 2_832_807,
+  "wrangler.production.jsonc": 2_833_230,
+  "wrangler.staging.jsonc": 2_835_149,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",

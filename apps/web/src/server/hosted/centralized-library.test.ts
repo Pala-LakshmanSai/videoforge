@@ -4,6 +4,10 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { canViewCentralizedLibrary, handleCentralizedLibrary } from "./centralized-library";
+import {
+  LIBRARY_VIDEO_DETAILS_SQL,
+  LIBRARY_VIDEO_DETAILS_JOINS_SQL,
+} from "./library-video-details";
 import { HOSTED_COMPLETED_RENDER_SQL } from "./completed-render";
 import type { HostedR2BucketBinding } from "./configuration";
 const migration = readFileSync(
@@ -62,9 +66,60 @@ async function database() {
       "utf8",
     ),
   );
+  await db.exec(`
+    ALTER TABLE project_revisions ADD COLUMN revision_config_payload jsonb, ADD COLUMN avatar_profile_id uuid,
+      ADD COLUMN avatar_profile_version_id uuid, ADD COLUMN image_style_id uuid, ADD COLUMN image_style_version_id uuid;
+    ALTER TABLE assets ADD COLUMN binary_sha256 text;
+    CREATE TABLE avatar_profile_versions(id uuid, account_id uuid, workspace_id uuid, profile_id uuid, version_number integer);
+    CREATE TABLE avatar_profiles(id uuid, account_id uuid, workspace_id uuid, name text);
+    CREATE TABLE image_style_versions(id uuid, account_id uuid, workspace_id uuid, style_id uuid, version_number integer);
+    CREATE TABLE image_styles(id uuid, account_id uuid, workspace_id uuid, name text);
+    CREATE TABLE hosted_script_projects(project_id uuid, account_id uuid, workspace_id uuid, voice_name text, audio jsonb);
+  `);
+  const metadataMigration = readFileSync(
+    resolve(
+      process.cwd(),
+      "../../packages/control-plane/migrations/0277_hosted_library_video_details.sql",
+    ),
+    "utf8",
+  );
+  expect(metadataMigration).toContain(LIBRARY_VIDEO_DETAILS_SQL);
+  expect(metadataMigration).toContain(LIBRARY_VIDEO_DETAILS_JOINS_SQL);
+  await db.exec(metadataMigration);
   return db;
 }
 describe("centralized Library owner boundary", () => {
+  it("projects another creator's completed metadata without granting foreign access or leaking source keys", async () => {
+    const db = await database();
+    try {
+      await db.exec(
+        `UPDATE project_revisions SET revision_config_payload='{"avatar_enabled":false}' WHERE id='${uuid(32)}';`,
+      );
+      await db.exec("SET ROLE videoforge_v209_runtime_dc9612d6");
+      const result = await db.query<{ data: { outputs: { video_details: unknown }[] } }>(
+        "SELECT videoforge_read_centralized_library('owner-token', $1) data",
+        [uuid(1001)],
+      );
+      expect(result.rows[0]!.data.outputs[0]!.video_details).toEqual({
+        avatar_enabled: false,
+        avatar_name: null,
+        avatar_version: null,
+        voiceover_name: null,
+        voiceover_filename: null,
+        image_style_name: null,
+        image_style_version: null,
+      });
+      expect(
+        (
+          await db.query<{ data: unknown }>(
+            "SELECT videoforge_read_centralized_library('member-token') data",
+          )
+        ).rows[0]!.data,
+      ).toEqual({ error: "CENTRALIZED_LIBRARY_FORBIDDEN" });
+    } finally {
+      await db.close();
+    }
+  });
   it("executes real migration and session fences under the runtime role, with retained-history pagination and search", async () => {
     const db = await database();
     try {

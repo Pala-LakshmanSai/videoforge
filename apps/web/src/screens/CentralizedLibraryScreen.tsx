@@ -1,3 +1,5 @@
+import { LibraryVideoDetails } from "../components/LibraryVideoDetails";
+import type { VideoDetails } from "../lib/library-video-details";
 import * as Dialog from "@radix-ui/react-dialog";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -26,6 +28,7 @@ interface Creator {
   creator_email: string;
 }
 interface Video extends Creator {
+  video_details?: VideoDetails;
   attempt_id: string;
   title: string;
   created_at: string;
@@ -130,6 +133,7 @@ function VideoCard({
           </time>
           <span>{size(video.content_length)}</span>
         </p>
+        <LibraryVideoDetails details={video.video_details} />
         <div className="central-card-actions">
           <Button
             variant="secondary"

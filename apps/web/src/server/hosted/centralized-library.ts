@@ -25,6 +25,7 @@ interface LibraryRow {
   content_length: number;
   checksum_sha256: string;
   voiceover_filename: string | null;
+  video_details?: import("../../lib/library-video-details").VideoDetails;
   creator_id: string;
   creator_name: string;
   creator_email: string;

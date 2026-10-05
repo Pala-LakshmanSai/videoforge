@@ -27,6 +27,15 @@ describe("hosted Library", () => {
                 attempt_id: attemptId,
                 project_id: "22222222-2222-4222-8222-222222222222",
                 title: "Owned render",
+                video_details: {
+                  avatar_enabled: false,
+                  avatar_name: null,
+                  avatar_version: null,
+                  voiceover_name: "Original narrator",
+                  voiceover_filename: "narration.mp3",
+                  image_style_name: "Documentary",
+                  image_style_version: 2,
+                },
                 created_at: "2026-08-17T10:00:00.000Z",
                 content_length: 12_000_000,
                 checksum_sha256: `sha256:${"a".repeat(64)}`,
@@ -55,6 +64,10 @@ describe("hosted Library", () => {
       const download = await screen.findByRole("link", { name: /Download MP4/u });
       expect(download).toHaveAttribute("href", "https://private.example.test/signed-output");
       expect(download).toHaveAttribute("download", "");
+      expect(screen.getByText("No avatar")).toBeVisible();
+      expect(screen.getByText("Original narrator")).toBeVisible();
+      expect(screen.getByText("narration.mp3")).toBeVisible();
+      expect(screen.getByText("Documentary · v2")).toBeVisible();
       expect(screen.getByRole("link", { name: "View video" })).toBeVisible();
       expect(screen.queryByRole("link", { name: "Review" })).not.toBeInTheDocument();
       fireEvent.click(screen.getByRole("button", { name: "Delete" }));

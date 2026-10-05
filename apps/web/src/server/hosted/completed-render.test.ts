@@ -3,6 +3,10 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
+import {
+  LIBRARY_VIDEO_DETAILS_SQL,
+  LIBRARY_VIDEO_DETAILS_JOINS_SQL,
+} from "./library-video-details";
 import { HOSTED_COMPLETED_RENDER_SQL } from "./completed-render";
 
 const account = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -16,7 +20,9 @@ function productionQuery(file: string, functionName: string, select: string): st
   const start = source.indexOf(select, source.indexOf(`async function ${functionName}(`));
   return source
     .slice(start, source.indexOf("`", start))
-    .replaceAll("${HOSTED_COMPLETED_RENDER_SQL}", () => HOSTED_COMPLETED_RENDER_SQL);
+    .replaceAll("${HOSTED_COMPLETED_RENDER_SQL}", () => HOSTED_COMPLETED_RENDER_SQL)
+    .replaceAll("${LIBRARY_VIDEO_DETAILS_SQL}", () => LIBRARY_VIDEO_DETAILS_SQL)
+    .replaceAll("${LIBRARY_VIDEO_DETAILS_JOINS_SQL}", () => LIBRARY_VIDEO_DETAILS_JOINS_SQL);
 }
 const librarySql = productionQuery(
   "app.ts",
@@ -49,10 +55,63 @@ async function database() {
     INSERT INTO hosted_cpu_job_attempts VALUES('${attempt}','${account}','${workspace}','${project}','${revision}','RENDER','SUCCEEDED','2026-10-05',null,'final',42,'${hash}');
     INSERT INTO hosted_cpu_upload_authorities VALUES('${attempt}','${account}','${workspace}','PRIMARY_RESULT_OUTPUT',now(),'final','video/mp4',42,'${hash}');
   `);
+  await db.exec(`
+    ALTER TABLE project_revisions ADD COLUMN revision_config_payload jsonb, ADD COLUMN avatar_profile_id uuid,
+      ADD COLUMN avatar_profile_version_id uuid, ADD COLUMN image_style_id uuid, ADD COLUMN image_style_version_id uuid;
+    ALTER TABLE assets ADD COLUMN binary_sha256 text;
+    CREATE TABLE avatar_profile_versions(id uuid, account_id uuid, workspace_id uuid, profile_id uuid, version_number integer);
+    CREATE TABLE avatar_profiles(id uuid, account_id uuid, workspace_id uuid, name text);
+    CREATE TABLE image_style_versions(id uuid, account_id uuid, workspace_id uuid, style_id uuid, version_number integer);
+    CREATE TABLE image_styles(id uuid, account_id uuid, workspace_id uuid, name text);
+    CREATE TABLE hosted_script_projects(project_id uuid, account_id uuid, workspace_id uuid, voice_name text, audio jsonb);
+  `);
   return db;
 }
 
 describe("completed output publication without human approval", () => {
+  it("reads the completed revision's pinned settings, historical names and exact narration checksum", async () => {
+    const db = await database();
+    try {
+      await db.exec(`
+        INSERT INTO avatar_profiles VALUES('${attempt}','${account}','${workspace}','Renamed avatar');
+        INSERT INTO avatar_profile_versions VALUES('${attempt}','${account}','${workspace}','${attempt}',2);
+        INSERT INTO image_styles VALUES('${attempt}','${account}','${workspace}','Documentary');
+        INSERT INTO image_style_versions VALUES('${attempt}','${account}','${workspace}','${attempt}',3);
+        INSERT INTO assets VALUES('${attempt}','${account}','${workspace}','${project}','VOICEOVER','{"filename":"original.mp3"}','${hash}');
+        INSERT INTO hosted_script_projects VALUES('${project}','${account}','${workspace}','Original narrator','{"metadata":{"checksum_sha256":"${hash}"}}');
+        UPDATE project_revisions SET avatar_profile_id='${attempt}',avatar_profile_version_id='${attempt}',image_style_id='${attempt}',image_style_version_id='${attempt}',voiceover_asset_id='${attempt}',revision_config_payload='{"avatar_binding":{"avatar_display_name_snapshot":"Original avatar"}}';
+        INSERT INTO project_revisions(id,account_id,workspace_id,project_id,revision_number,status,revision_config_payload) VALUES('ffffffff-ffff-4fff-8fff-ffffffffffff','${account}','${workspace}','${project}',2,'DRAFT','{"avatar_enabled":false}');
+      `);
+      const details = async () =>
+        (
+          await db.query<{ video_details: Record<string, unknown> }>(librarySql, [
+            account,
+            workspace,
+          ])
+        ).rows[0]!.video_details;
+      expect(await details()).toEqual({
+        avatar_enabled: true,
+        avatar_name: "Original avatar",
+        avatar_version: 2,
+        voiceover_name: "Original narrator",
+        voiceover_filename: "original.mp3",
+        image_style_name: "Documentary",
+        image_style_version: 3,
+      });
+      await db.exec(
+        `UPDATE hosted_script_projects SET audio='{"metadata":{"checksum_sha256":"other"}}'; UPDATE image_style_versions SET account_id='${workspace}'; UPDATE project_revisions SET revision_config_payload='{"avatar_enabled":false}' WHERE id='${revision}';`,
+      );
+      expect(await details()).toMatchObject({
+        avatar_enabled: false,
+        voiceover_name: null,
+        voiceover_filename: "original.mp3",
+        image_style_name: null,
+        image_style_version: null,
+      });
+    } finally {
+      await db.close();
+    }
+  });
   it("runs the real Library and download SQL without any reviews table and fails closed on incomplete output", async () => {
     const db = await database();
     try {
@@ -114,9 +173,9 @@ describe("completed output publication without human approval", () => {
     const db = await database();
     try {
       await db.exec(`
-        ALTER TABLE project_revisions ADD COLUMN revision_config_hash text, ADD COLUMN revision_config_payload jsonb,
-          ADD COLUMN avatar_profile_id uuid, ADD COLUMN avatar_profile_version_id uuid, ADD COLUMN avatar_profile_hash text,
-          ADD COLUMN image_style_id uuid, ADD COLUMN image_style_version_id uuid, ADD COLUMN style_profile_hash text,
+        ALTER TABLE project_revisions ADD COLUMN revision_config_hash text,
+          ADD COLUMN avatar_profile_hash text,
+          ADD COLUMN style_profile_hash text,
           ADD COLUMN voiceover_binary_sha256 text;
         ALTER TABLE hosted_cpu_job_attempts ADD COLUMN request_sha256 text, ADD COLUMN replay_count integer,
           ADD COLUMN submitted_at timestamptz, ADD COLUMN terminal_at timestamptz;

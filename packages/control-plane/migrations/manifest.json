@@ -1434,6 +1434,12 @@
       "name": "hosted_centralized_video_delete",
       "filename": "0276_hosted_centralized_video_delete.sql",
       "sha256": "sha256:522f5c8cc1a608b1b798d00cba2cf6dce50c881a2d8d9cf3fad04c69a445df8d"
+    },
+    {
+      "version": 277,
+      "name": "hosted_library_video_details",
+      "filename": "0277_hosted_library_video_details.sql",
+      "sha256": "sha256:b3bc53d4cd9bd67c140533c2b45a59f595ba1bd3332ca9e998a49177fc504fb3"
     }
   ]
 }

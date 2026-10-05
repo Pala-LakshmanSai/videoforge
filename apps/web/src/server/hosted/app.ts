@@ -1,3 +1,4 @@
+import { LIBRARY_VIDEO_DETAILS_SQL, LIBRARY_VIDEO_DETAILS_JOINS_SQL } from "./library-video-details";
 import { voiceoverVideoDownloadFilename } from "./download-filename";
 import {
   hostedAccountCleanupPending,
@@ -80,6 +81,7 @@ interface HostedLibraryRow extends Record<string, unknown> {
   readonly content_length: string | number;
   readonly checksum_sha256: string;
   readonly voiceover_filename: string | null;
+  readonly video_details: import("../../lib/library-video-details").VideoDetails;
 }
 
 export function hostedCpuPrimaryOutput(kind: "ASR" | "SPAN_AUDIO" | "RENDER") {
@@ -152,7 +154,8 @@ async function handleHostedLibrary(
                 attempt.created_at, authority.object_key, authority.content_type,
                 authority.issued_content_length AS content_length,
                 authority.issued_checksum_sha256 AS checksum_sha256,
-                voiceover.metadata->>'filename' AS voiceover_filename
+                voiceover.metadata->>'filename' AS voiceover_filename,
+                ${LIBRARY_VIDEO_DETAILS_SQL}
            FROM hosted_cpu_job_attempts AS attempt
            JOIN projects AS project
              ON project.account_id = attempt.account_id
@@ -170,6 +173,7 @@ async function handleHostedLibrary(
             AND voiceover.project_id = revision.project_id
             AND voiceover.id = revision.voiceover_asset_id
             AND voiceover.kind = 'VOICEOVER'
+           ${LIBRARY_VIDEO_DETAILS_JOINS_SQL}
            JOIN hosted_cpu_upload_authorities AS authority
              ON authority.account_id = attempt.account_id
             AND authority.workspace_id = attempt.workspace_id
@@ -221,6 +225,7 @@ async function handleHostedLibrary(
         attempt_id: output.attempt_id,
         project_id: output.project_id,
         title: output.title,
+        video_details: output.video_details,
         created_at: new Date(output.created_at).toISOString(),
         content_length: contentLength,
         checksum_sha256: output.checksum_sha256,
