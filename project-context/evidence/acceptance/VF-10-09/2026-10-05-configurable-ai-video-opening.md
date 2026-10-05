@@ -49,15 +49,29 @@ retaining every earlier ownership/latest-revision/cleanup/receipt guard. Three n
 guard suites and an actual-failed-attempt rollback rehearsal passed with exact
 function/row/ledger preimages; native apply changed only that helper, preserving ACLs.
 Supported Chrome retry now advances the same saved project on scheduler-v7,
-WHOLE_SCENE_V2/25%/0opening, without reupload or paid-task replay. Export remains running.
+WHOLE_SCENE_V2/25%/0opening, without reupload or paid-task replay. The recovered
+export succeeded: 3 images, 1 Fal avatar and 1 scene clip, 610 frames, 20.333008s,
+1920x1080/30fps, 7,458,012 bytes. Selected footage is 101/610 frames (16.6%)
+under the original whole-film 25% ceiling. Native checksum, full decode and original
+narration correlation 0.9992132673 at zero offset passed. Real Chrome played to
+ended=true/error=null; approval and Library retention passed. This is recovered
+acceptance, not an uninterrupted generation-speed benchmark.
 
 UI refinement255tests and all six Chrome tests pass, including418px screenshots,
 hidden Off duration, retained custom value, zero-second submission and keyboard focus.
-Both bundles/types/owned formatting pass. Refined UI publication remains pending.
+Both bundles/types/owned formatting pass. Source a21ac5d8746aafa199ee4eaff5d923da53b4362c
+is now published at 100% on Worker dad79410-a3c0-48c9-aac7-e4c94ef7e8a9.
+All 55 bindings, 27 secrets and 3 Workflow identities remain exact; 30 public assets
+match and anonymous private catalog access returns 401. Qualified Cloud pins and
+disabled CPU fallback remain unchanged. Live Chrome confirms On default 3, custom
+2.5 retained after Off/On, no duration input while Off, coverage 23 retained, correct
+whole-film/remaining-film copy, script controls and Cloud ready. Actual production
+On/Off screenshots are retained privately; the temporary review tab was closed.
 Private execution evidence is retained under
 `.videoforge/configurable-opening-20261005`; credentials are excluded.
-The production rollback target remains Worker38d3ea38. Returning to that older
-worker requires no new V4 jobs or draining those jobs first; additive SQL268 can
+The immediate UI rollback target is Worker5f91ff42 (same configurable policy).
+Returning to the older fixed-opening Worker38d3ea38 requires no new V4 jobs or
+draining those jobs first; additive SQL268 and compatible function-only SQL269 can
 remain for legacy compatibility. Native function/constraint preimages are retained
 privately before application. Never replay accepted or uncertain paid work.
 
@@ -69,3 +83,13 @@ uncertain identity, price/cap risk, unsupported replay or unconfirmed cleanup.
 Prior failed/cancelled projects and their USD4.934096 conservative liability remain
 separate; the original UNKNOWN request and cost reserve are preserved. Fresh proof
 does not establish 30–40-minute throughput or provider invoice totals.
+
+Final read-only cleanup at 2026-10-05T02:37:19Z verifies all five new rentals CLEAN,
+complete RunPod inventory empty, zero account provider leases and unfinished uploads,
+and all requested/elapsed rentals within 900 seconds. Conservative new-scope total
+is USD4.6372626666666665 below USD12: full LLM reservations, rounded compute at
+maximum retained rates, image/scene-video planning allowances and Fal compute time
+at the authenticated USD0.00125/compute-second quote. Fal output duration is not
+its billing unit. Provider invoices, storage and egress remain unverified. Historical
+UNKNOWN liability stays separate. No accepted/uncertain task was replayed; unused
+bounded test authority is retired and no new compute is held.
