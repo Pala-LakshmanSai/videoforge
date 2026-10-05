@@ -1,3 +1,19 @@
+voice_filters_2026_10_05:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  read_profile: v2_09_short_live_e2e
+  status: LOCAL_VALIDATED_READY_FOR_AUTHORIZED_UI_PUBLICATION
+  branch: codex/voice-filters
+  base_source: 610b7bed
+  user_authority: Implement_useful_voice_catalog_filters_from_plan_through_production;new_paid_generation_compute_USD0.
+  behavior: Gender_explicit_accent_language_region_style_tone_use_case_preview_availability_sort_counts_reset_before_pagination;existing_prefix_search_tabs_privacy_preserved.
+  validation: Focused39PASS;Web_Worker_types_changed_lint_both_builds_bundle_context_secrets_PASS;installed_Chrome1280_and390px_PASS.
+  provider_spend: USD0_new_generation_or_compute.
+  paid_compute_shutdown: No_compute_started_stopped_or_reaudited;existing_lifecycle_unchanged.
+  publication: Not_yet_published;current_baseline4660b1b9_Worker9872d035_native274.
+  remaining_gates: Production_publication_and_authenticated_readback;inherited_full_CI_Local_longform_provider_editorial_invoice_gates_separate.
+  plan: VOICE_FILTERS_PLAN.md
+
 automatic_library_delivery_2026_10_05:
   checkpoint: V2-09
   selected_task: VF-10-09

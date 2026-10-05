@@ -1,3 +1,5 @@
+Voice catalog filter work: read `voice_filters_2026_10_05` in CURRENT_STATE.yaml and VOICE_FILTERS_PLAN.md for implementation, release and acceptance.
+
 Automatic delivery: AUTOMATIC_LIBRARY_DELIVERY_PLAN.md. No final approval.
 
 Production reliability audit: read PRODUCTION_RELIABILITY_AUDIT.md and CURRENT_STATE.yaml.

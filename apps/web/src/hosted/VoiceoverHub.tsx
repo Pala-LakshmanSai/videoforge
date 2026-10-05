@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bookmark,
   Check,
@@ -14,7 +14,18 @@ import {
   X,
 } from "lucide-react";
 import { VoiceSelect } from "./VoiceSelect";
-import { matchesVoiceName, type Voice } from "./voice-library";
+import {
+  compareVoices,
+  emptyVoiceFilters,
+  matchesVoiceFilters,
+  matchesVoiceName,
+  voiceFacetLabel,
+  voiceFilterLabels,
+  voiceTraits,
+  type Voice,
+  type VoiceFacet,
+  type VoiceFilters,
+} from "./voice-library";
 export type { Voice } from "./voice-library";
 import { PageHeader } from "../components/PageHeader";
 
@@ -65,6 +76,9 @@ export function VoiceoverHub() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"saved" | "starred" | "all" | null>(null);
   const [limit, setLimit] = useState(60);
+  const [traitsFilter, setTraitsFilter] = useState<VoiceFilters>(emptyVoiceFilters);
+  const [previewOnly, setPreviewOnly] = useState(false);
+  const [sort, setSort] = useState<string | null>(null);
   const [preview, setPreview] = useState<Voice | null>(null);
   const [playing, setPlaying] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -77,10 +91,11 @@ export function VoiceoverHub() {
   const savedCount = all.filter((voice) => voice.saved).length;
   const starredCount = all.filter((voice) => voice.starred).length;
   const selectedFilter = filter ?? (savedCount ? "saved" : "all");
+  const selectedSort = sort ?? (selectedFilter === "all" ? "name" : "favorites");
   useEffect(() => {
     if (voices.data && filter === null) setFilter(savedCount ? "saved" : "all");
   }, [voices.data, filter, savedCount]);
-  useEffect(() => setLimit(60), [search, selectedFilter]);
+  useEffect(() => setLimit(60), [search, selectedFilter, traitsFilter, previewOnly, sort]);
   useEffect(() => {
     if (!notice) return;
     const timeout = window.setTimeout(() => setNotice(""), 4000);
@@ -140,6 +155,7 @@ export function VoiceoverHub() {
     onSuccess: () => {
       setImportId("");
       setSearch("");
+      clearFilters();
       setFilter("saved");
       closeImport();
       importDetails.current?.querySelector("summary")?.focus();
@@ -147,17 +163,84 @@ export function VoiceoverHub() {
       return client.invalidateQueries({ queryKey: ["voiceover-voices"] });
     },
   });
-  const visible = all
-    .filter(
-      (voice) =>
-        (selectedFilter === "all" || (selectedFilter === "saved" ? voice.saved : voice.starred)) &&
-        matchesVoiceName(voice, search),
-    )
-    .sort(
-      (a, b) =>
-        (selectedFilter === "all" ? 0 : Number(b.starred) - Number(a.starred)) ||
-        a.name.localeCompare(b.name),
+  const catalog = useMemo(() => all.map((voice) => ({ voice, traits: voiceTraits(voice) })), [all]);
+  const scoped = catalog.filter(
+    ({ voice }) =>
+      (selectedFilter === "all" || (selectedFilter === "saved" ? voice.saved : voice.starred)) &&
+      matchesVoiceName(voice, search) &&
+      (!previewOnly || Boolean(voice.preview_url)),
+  );
+  const activeFilterCount =
+    Object.values(traitsFilter).filter(Boolean).length + Number(previewOnly);
+  const visible = scoped
+    .filter(({ traits }) => matchesVoiceFilters(traits, traitsFilter))
+    .map(({ voice }) => voice)
+    .sort((a, b) =>
+      selectedSort === "reverse"
+        ? b.name.localeCompare(a.name)
+        : selectedSort === "favorites"
+          ? compareVoices(a, b)
+          : a.name.localeCompare(b.name),
     );
+  function clearFilters() {
+    setTraitsFilter(emptyVoiceFilters);
+    setPreviewOnly(false);
+  }
+  function facetControl(facet: VoiceFacet) {
+    const values = [
+      ...new Set(
+        catalog.flatMap(({ traits }) => (traits[facet].length ? traits[facet] : ["unspecified"])),
+      ),
+    ];
+    const options = values
+      .map((value) => ({
+        value,
+        label: voiceFacetLabel(facet, value),
+        count: scoped.filter(
+          ({ traits }) =>
+            matchesVoiceFilters(traits, traitsFilter, facet) &&
+            (value === "unspecified" ? !traits[facet].length : traits[facet].includes(value)),
+        ).length,
+      }))
+      .sort(
+        (a, b) =>
+          Number(a.value === "unspecified") - Number(b.value === "unspecified") ||
+          a.label.localeCompare(b.label),
+      );
+    return (
+      <label className="voice-facet" key={facet}>
+        <span>{voiceFilterLabels[facet]}</span>
+        <select
+          aria-label={voiceFilterLabels[facet]}
+          value={traitsFilter[facet]}
+          disabled={voices.isPending || Boolean(voices.error)}
+          onChange={(event) =>
+            setTraitsFilter((current) => ({ ...current, [facet]: event.target.value }))
+          }
+        >
+          <option value="">
+            Any{" "}
+            {facet === "useCase"
+              ? "use case"
+              : facet === "region"
+                ? "language / region"
+                : facet === "style"
+                  ? "style / tone"
+                  : facet}
+          </option>
+          {options.map((option) => (
+            <option
+              key={option.value}
+              value={option.value}
+              disabled={!option.count && traitsFilter[facet] !== option.value}
+            >
+              {option.label} ({option.count.toLocaleString()})
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
   const displayed = visible.slice(0, limit);
   function listen(voice: Voice) {
     setPreviewError(null);
@@ -260,6 +343,55 @@ export function VoiceoverHub() {
             </button>
           )}
         </div>
+        <div className="voice-facet-row" role="group" aria-label="Filter voices">
+          {(["gender", "accent", "region"] as const).map(facetControl)}
+        </div>
+        <details className="voice-more-filters">
+          <summary>
+            More filters
+            {traitsFilter.style || traitsFilter.useCase || previewOnly
+              ? ` (${Number(Boolean(traitsFilter.style)) + Number(Boolean(traitsFilter.useCase)) + Number(previewOnly)})`
+              : ""}
+          </summary>
+          <div className="voice-facet-row">
+            {facetControl("style")}
+            {facetControl("useCase")}
+            <label className="voice-preview-filter">
+              <input
+                type="checkbox"
+                checked={previewOnly}
+                onChange={(event) => setPreviewOnly(event.target.checked)}
+              />
+              Has audio preview
+            </label>
+          </div>
+        </details>
+        {Boolean(activeFilterCount) && (
+          <div className="voice-active-filters" role="group" aria-label="Active voice filters">
+            {(Object.keys(voiceFilterLabels) as VoiceFacet[])
+              .filter((facet) => traitsFilter[facet])
+              .map((facet) => (
+                <button
+                  key={facet}
+                  type="button"
+                  aria-label={`Remove ${voiceFilterLabels[facet]} filter`}
+                  onClick={() => setTraitsFilter((current) => ({ ...current, [facet]: "" }))}
+                >
+                  {voiceFilterLabels[facet]}: {voiceFacetLabel(facet, traitsFilter[facet])}
+                  <X size={13} aria-hidden="true" />
+                </button>
+              ))}
+            {previewOnly && (
+              <button type="button" onClick={() => setPreviewOnly(false)}>
+                Has audio preview
+                <X size={13} aria-hidden="true" />
+              </button>
+            )}
+            <button type="button" className="voice-clear-filters" onClick={clearFilters}>
+              Clear filters
+            </button>
+          </div>
+        )}
         <div className="voice-hub-library-row">
           <div className="voice-hub-filters" role="group" aria-label="Voice library">
             {(
@@ -281,6 +413,18 @@ export function VoiceoverHub() {
               </button>
             ))}
           </div>
+          <label className="voice-sort">
+            <span>Sort</span>
+            <select
+              aria-label="Sort"
+              value={selectedSort}
+              onChange={(event) => setSort(event.target.value)}
+            >
+              <option value="name">Name A–Z</option>
+              <option value="reverse">Name Z–A</option>
+              <option value="favorites">Favorites first</option>
+            </select>
+          </label>
           <p className="voice-results-count" role="status">
             {voices.isPending
               ? "Loading library…"
@@ -366,23 +510,30 @@ export function VoiceoverHub() {
       {!voices.isPending && !voices.error && !visible.length && (
         <div className="voice-hub-empty">
           <span className="voice-empty-symbol">
-            {search.trim() ? <Search size={28} /> : <Bookmark size={28} />}
+            {search.trim() || activeFilterCount ? <Search size={28} /> : <Bookmark size={28} />}
           </span>
           <h3>
-            {search.trim()
+            {search.trim() || activeFilterCount
               ? "No matching voices"
               : selectedFilter === "starred"
                 ? "Your favorites belong here"
                 : "Build your voice library"}
           </h3>
           <p>
-            {search.trim()
-              ? "Try the beginning of a voice name, or browse the full library."
-              : selectedFilter === "starred"
-                ? "Star a voice to find it first when you create."
-                : "Listen to a few voices, then save the ones you love."}
+            {activeFilterCount
+              ? "Try a different filter, or clear filters to see more voices."
+              : search.trim()
+                ? "Try the beginning of a voice name, or browse the full library."
+                : selectedFilter === "starred"
+                  ? "Star a voice to find it first when you create."
+                  : "Listen to a few voices, then save the ones you love."}
           </p>
           <div className="voice-empty-actions">
+            {Boolean(activeFilterCount) && (
+              <button className="button button-secondary" onClick={clearFilters}>
+                Clear filters
+              </button>
+            )}
             {search && (
               <button className="button button-secondary" onClick={clearSearch}>
                 Clear search
@@ -657,7 +808,9 @@ export function ScriptVoiceover({
   const status = useQuery({
     queryKey: ["voiceover-job", activeJob?.id],
     queryFn: () => voiceoverJson<{ job: VoiceoverJob }>(`/api/v2/voiceovers/jobs/${activeJob!.id}`),
-    enabled: Boolean(activeJob && ["WAITING", "PROCESSING", "SUBMITTING"].includes(activeJob.state)),
+    enabled: Boolean(
+      activeJob && ["WAITING", "PROCESSING", "SUBMITTING"].includes(activeJob.state),
+    ),
     retry: false,
     refetchInterval: 3_000,
   });
@@ -754,7 +907,8 @@ export function ScriptVoiceover({
     busy ||
     !jobs.isFetchedAfterMount ||
     Boolean(
-      activeJob && ["WAITING", "PROCESSING", "SUBMITTING", "UNKNOWN_NO_RETRY"].includes(activeJob.state),
+      activeJob &&
+        ["WAITING", "PROCESSING", "SUBMITTING", "UNKNOWN_NO_RETRY"].includes(activeJob.state),
     );
   const inputLocked = locked || unconfirmed;
   return (
@@ -840,7 +994,11 @@ export function ScriptVoiceover({
         </p>
       )}
       {activeJob && ["WAITING", "PROCESSING", "SUBMITTING"].includes(activeJob.state) && (
-        <p role="status">{activeJob.state === "WAITING" ? "Waiting for voiceover capacity… You can return later." : "Creating voiceover… You can return later."}</p>
+        <p role="status">
+          {activeJob.state === "WAITING"
+            ? "Waiting for voiceover capacity… You can return later."
+            : "Creating voiceover… You can return later."}
+        </p>
       )}
       {activeJob?.state === "UNKNOWN_NO_RETRY" && (
         <p role="alert">

@@ -743,3 +743,106 @@
     animation: none;
   }
 }
+
+.voice-facet-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.voice-facet {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.voice-facet > span,
+.voice-sort > span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.voice-facet select,
+.voice-sort select {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  color-scheme: dark;
+}
+.voice-facet select:focus-visible,
+.voice-sort select:focus-visible,
+.voice-preview-filter input:focus-visible,
+.voice-more-filters summary:focus-visible {
+  outline: 2px solid #e7a9bd;
+  outline-offset: 3px;
+}
+.voice-more-filters {
+  font-size: 13px;
+}
+.voice-more-filters summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 5px 0;
+}
+.voice-more-filters[open] > .voice-facet-row {
+  margin-top: 14px;
+}
+.voice-preview-filter {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  align-self: end;
+  min-height: 42px;
+  font-size: 13px;
+}
+.voice-preview-filter input {
+  width: 17px;
+  height: 17px;
+  accent-color: #d488a3;
+}
+.voice-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.voice-active-filters button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid #cf7d9e40;
+  border-radius: 8px;
+  background: #ce769519;
+  color: #edb7ca;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.voice-active-filters .voice-clear-filters {
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+}
+.voice-sort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.voice-sort select {
+  width: auto;
+}
+@media (max-width: 640px) {
+  .voice-facet-row {
+    grid-template-columns: 1fr;
+  }
+  .voice-sort {
+    margin-left: 0;
+  }
+}
