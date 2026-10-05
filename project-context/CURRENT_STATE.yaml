@@ -34,7 +34,7 @@ centralized_library_2026_10_05:
   creator_details_commit: abd49b6e0da3f3290bf26a72c764a7993223d981
   acceptance_commit: 12ce6a20
   project_memory: Project61_Root51_Index81_Coverage76_guarded_writes_readbacks_PASS_voice_release_and_other_projects_preserved
-  status: PRODUCTION_PUBLISHED_VERIFIED_CREATOR_ATTRIBUTION
+  status: PRODUCTION_PUBLISHED_VERIFIED_CREATOR_ATTRIBUTION_CONFIRMED_DELETE
   authority: User_2026_10_05_visible_creator_details_push_production_preserve_concurrent_voice_filters
   decision: DEC_LIBRARY_001
   deletion_followup: UI_focus_container_hero1100px_stack_confirmed_per_video_delete_explicitly_authorized_2026_10_05
@@ -42,9 +42,10 @@ centralized_library_2026_10_05:
   deletion_validation: Focused29PASS_finalAPI4PASS_Chrome6_at1440_977_320px_types_lint_bothQuarantines_context_secrets_config18_oneByte_PASS
   deletion_native: Actual_runtime_plan_finalize_retry_PASS_foreign_denied_rollback_original30outputs_preserved_all30prefixes_bound_one_audit_event
   deletion_spend: USD0_new_provider_compute_retained_resources_no_generation_or_driver_restart
-  deletion_production_source: 17c3608b1389f3304ebb0046b8627c9bb597d3ef
-  deletion_production_version: befa8996-f301-4d9c-83a1-b261b6959278
-  deletion_publication: Source100percent_35publicAssetHashes_exact_55bindings27secrets3WorkflowIdentities_preserved
+  deletion_production_source: 3899d418fd212761b7c962090a88d777073968d2
+  deletion_production_version: 2f122c78-bb01-434b-892a-604541e8045c
+  deletion_publication: Source100percent_35publicAssetHashes_exact_55bindings27secrets3WorkflowIdentities_preserved_matchingRegistrations_refreshed_noInstances_noDriverRestart
+  creator_uuid_regression: Strict_PostgreSQL_shape_accepts_legacy_version_variant_bits_all5liveFilters_HTTP200_exactCounts1_12_2_1_14_sum30_malformed_rejected
   deletion_live: Owner30deleteButtons_confirm_cancel_focus_noOverflow_977px_totals_stack_1080p_fullplay_errorNull_MP4checksum_PASS;foreignDELETE403_origin403_missing404;original_user_videos_deleted0
   migration: 275_native_applied_atomic_function_and_ledger
   native_auth: Exact_owner30outputs5creators;all_tested_foreign_missing_sessions_denied_actual_runtime;definer_true_runtimeEXECUTE_true_publicEXECUTE_false
@@ -7352,10 +7353,10 @@ repository:
   branch: codex/centralized-library
   branch_upstream: origin/codex/centralized-library
   branch_published: true
-  current_source_head: "17c3608b1389f3304ebb0046b8627c9bb597d3ef"
+  current_source_head: "3899d418fd212761b7c962090a88d777073968d2"
   current_source_head_semantics: executable_release_identity_recorded_after_publication_evidence_commits_follow
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Resolve Git HEAD; executable17c3608b / Workerbefa8996 publishes the library layout fix and confirmed video deletion, preserving themed voice dropdowns. Evidence handoff commits follow; unrelated work remains preserved."
+  current_source_head_note: "Resolve Git HEAD; executable3899d418 / Worker2f122c78 publishes the library layout fix, confirmed video deletion and all five database-UUID creator filters, preserving themed voice dropdowns. Evidence handoff commits follow; unrelated work remains preserved."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."

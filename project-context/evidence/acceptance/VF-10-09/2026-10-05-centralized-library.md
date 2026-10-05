@@ -119,7 +119,7 @@ all30 original outputs with zero R2 deletion. Native276 committed atomically; SE
 Actual restricted runtime plan/finalize/retry passes with rollback restoring all30 originals. Planning
 uses row locks and requires an ordinary read/write transaction even when no rows are mutated.
 
-Executable `17c3608b1389f3304ebb0046b8627c9bb597d3ef` is published at100% as Worker
+Initial follow-up executable `17c3608b1389f3304ebb0046b8627c9bb597d3ef` was published at100% as Worker
 `befa8996-f301-4d9c-83a1-b261b6959278`. All35 public asset hashes/lengths match;55 bindings,
 27 secrets and3 Workflow identities/configuration are preserved. Signed-in production shows30 Delete
 controls, exact creator/title confirmation, Cancel/focus restoration, one focus highlight and no977px
@@ -134,3 +134,16 @@ Final compatibility correction: four of five creator IDs are database-generated 
 version/variant bits. The API now validates PostgreSQL UUID shape rather than imposing v1–v5 bits;
 all creator filters remain usable while malformed values stay rejected. A regression covers such
 creator and attempt IDs. No new schema or permission expansion accompanies this correction.
+
+Final executable `3899d418fd212761b7c962090a88d777073968d2` / Worker
+`2f122c78-bb01-434b-892a-604541e8045c` is live at100%, native276. All5 live creator
+filters return HTTP200 and only the selected creator, with counts1/12/2/1/14 totaling30.
+The regression uses a synthetic nonstandard UUID rather than a real identity. Final API4,
+Chrome6, types/lint and both production/staging quarantines pass after this correction. All35
+public asset byte lengths/SHA256 match;55 bindings,27 secrets and3 Workflow identities preserved.
+Matching registrations refreshed once, reconciling the first successful response rather than replaying
+it when the GET response omitted a version field. PUT receipts and GET identity readbacks verify
+all3; deployment traffic still points exactly to the final Worker. No instance or driver restart.
+Private publication/registration, asset, creator-filter and native-runtime proof are retained under
+`.videoforge/centralized-library-20261005/release3/` and `release2/`; credentials and identities
+are excluded from tracked evidence. All30 production outputs remain; zero user videos deleted.

@@ -65,5 +65,8 @@ Apply additive276 only after native auth/privilege qualification; reuse exact at
 and audit retention deletion only after R2 absence verification. No paid provider/compute work.
 Preserve concurrent voice dropdowns and reject further production drift before deployment.
 
-Published follow-up executable17c3608b/Workerbefa8996 at100%, native276. Layout, owner confirmation,
-foreign/origin denial, retained playback/download and synthetic deletion pass; all30 originals kept.
+Final executable3899d418/Worker2f122c78 at100% supersedes initial17c3608b/Workerbefa8996; native276.
+Layout, confirmation, foreign/origin denial, playback/download and synthetic deletion pass; all30
+originals kept. Strict database UUID shape restores all5 creator filters (counts1/12/2/1/14).
+All35 public asset hashes,55 bindings,27 secrets and3 matching Workflow registrations verified;
+voice dropdowns preserved, no Workflow instance or driver restart.
