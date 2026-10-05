@@ -3,6 +3,13 @@ import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./con
 import { createNeonPool } from "./neon";
 import { response } from "./hosted-product-route-common";
 import { serveHostedVideo } from "./serve-video";
+import {
+  deleteHostedR2ObjectsAndVerify,
+  hostedCompleteAttemptArtifactKeys,
+  hostedJobArtifactPrefix,
+} from "./r2";
+import { sha256 } from "./crypto";
+import { canonicalJson } from "./submission";
 
 export const CENTRALIZED_LIBRARY_OWNER = "demo9gss@gmail.com";
 export function canViewCentralizedLibrary(email: string): boolean {
@@ -31,6 +38,18 @@ interface LibraryData {
   creators: { creator_id: string; creator_name: string; creator_email: string }[];
 }
 interface Dependencies {
+  publicOrigin?: string;
+  remove?(
+    token: string,
+    attempt: string,
+    facts: string | null,
+  ): Promise<{
+    error?: string;
+    deleted?: boolean;
+    artifact_prefix?: string;
+    job_spec_object_key?: string;
+    object_keys?: string[];
+  }>;
   authenticate(
     request: Request,
   ): Promise<{ token: string; email: string; verified: boolean } | Response>;
@@ -47,12 +66,70 @@ export async function handleCentralizedLibrary(
   request: Request,
   deps: Dependencies,
 ): Promise<Response> {
-  if (request.method !== "GET") return response({ error: { code: "METHOD_NOT_ALLOWED" } }, 405);
+  const url = new URL(request.url);
+  const deletion = /^\/api\/v2\/centralized-library\/([^/]+)$/u.exec(url.pathname);
+  const deleting = request.method === "DELETE" && deletion;
+  if (request.method !== "GET" && !deleting)
+    return response({ error: { code: "METHOD_NOT_ALLOWED" } }, 405);
+  if (deleting && request.headers.get("origin") !== new URL(deps.publicOrigin ?? url.origin).origin)
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
   const identity = await deps.authenticate(request);
   if (identity instanceof Response) return identity;
   if (!identity.verified || !canViewCentralizedLibrary(identity.email))
     return response({ error: { code: "CENTRALIZED_LIBRARY_FORBIDDEN" } }, 403);
-  const url = new URL(request.url);
+  if (deleting) {
+    if (!UUID.test(deletion[1]!)) return response({ error: { code: "VIDEO_NOT_FOUND" } }, 404);
+    if (!deps.bucket || !deps.remove)
+      return response({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
+    try {
+      const plan = await deps.remove(identity.token, deletion[1]!, null);
+      if (plan.error)
+        return response(
+          { error: { code: plan.error } },
+          plan.error === "CENTRALIZED_LIBRARY_FORBIDDEN" ? 403 : 404,
+        );
+      if (plan.deleted) return new Response(null, { status: 204 });
+      const keys = hostedCompleteAttemptArtifactKeys(
+        plan.job_spec_object_key,
+        plan.object_keys ?? [],
+      );
+      if (keys.length !== 3)
+        return response({ error: { code: "CPU_ATTEMPT_OUTPUT_INCOMPLETE" } }, 409);
+      if (hostedJobArtifactPrefix(keys[0]!) !== plan.artifact_prefix)
+        return response({ error: { code: "CPU_ATTEMPT_OUTPUT_INCOMPLETE" } }, 409);
+      const verification = await deleteHostedR2ObjectsAndVerify(
+        deps.bucket,
+        hostedJobArtifactPrefix(keys[0]!),
+        keys,
+      );
+      const facts = await sha256(
+        canonicalJson({
+          attempt_id: deletion[1],
+          actor: identity.email,
+          deleted_keys: keys,
+          post_delete_verification: verification,
+          reason: "CENTRALIZED_OWNER_DELETE",
+        }),
+      );
+      const finished = await deps.remove(identity.token, deletion[1]!, facts);
+      if (!finished.deleted)
+        return response(
+          { error: { code: finished.error ?? "VIDEO_DELETE_FAILED" } },
+          finished.error === "CENTRALIZED_LIBRARY_FORBIDDEN" ? 403 : 409,
+        );
+      return new Response(null, { status: 204 });
+    } catch {
+      return response(
+        {
+          error: {
+            code: "VIDEO_DELETE_FAILED",
+            message: "Deletion could not be verified. Retry this video.",
+          },
+        },
+        503,
+      );
+    }
+  }
   const media = /^\/api\/v2\/centralized-library\/([^/]+)\/(watch|download)$/u.exec(url.pathname);
   if (url.pathname !== "/api/v2/centralized-library" && !media)
     return response({ error: { code: "VIDEO_NOT_FOUND" } }, 404);
@@ -128,7 +205,15 @@ export async function handleHostedCentralizedLibrary(
   const pool = createNeonPool(config.neon.databaseUrl);
   try {
     return await handleCentralizedLibrary(request, {
+      publicOrigin: config.publicOrigin,
       bucket: environment.PRIVATE_ARTIFACTS,
+      remove: async (token, attempt, facts) => {
+        const result = await pool.query(
+          "SELECT videoforge_delete_centralized_video($1,$2,$3) AS result",
+          [token, attempt, facts],
+        );
+        return result.rows[0]!.result;
+      },
       authenticate: async (candidate) => {
         const session = await createHostedAuth({ config, pool, executionContext }).api.getSession({
           headers: candidate.headers,
@@ -138,8 +223,11 @@ export async function handleHostedCentralizedLibrary(
         if (session.user.emailVerified !== true || !canViewCentralizedLibrary(session.user.email))
           return response({ error: { code: "CENTRALIZED_LIBRARY_FORBIDDEN" } }, 403);
         const rate = await pool.query<{ allowed: boolean }>(
-          "SELECT videoforge_consume_hosted_rate_limit($1,'hosted_read') AS allowed",
-          [session.session.token],
+          "SELECT videoforge_consume_hosted_rate_limit($1,$2) AS allowed",
+          [
+            session.session.token,
+            candidate.method === "DELETE" ? "hosted_mutation" : "hosted_read",
+          ],
         );
         if (!rate.rows[0]?.allowed)
           return response({ error: { code: "HOSTED_RATE_LIMITED" } }, 429);

@@ -1,4 +1,6 @@
 .central-library {
+  width: 100%;
+  min-width: 0;
   max-width: 1360px;
   margin: 0 auto;
   padding: 12px 0 32px;
@@ -15,6 +17,9 @@
   background:
     radial-gradient(ellipse at 90% 0, #3d73ff18, transparent 65%),
     linear-gradient(120deg, #121529, #0c0e1e);
+}
+.central-hero-copy {
+  min-width: 0;
 }
 .central-eyebrow {
   display: flex;
@@ -110,6 +115,19 @@
 .central-search input {
   width: 100%;
   box-shadow: none;
+}
+.central-search input:focus,
+.central-filter select:focus {
+  outline: none;
+  box-shadow: none;
+}
+.central-search:focus-within,
+.central-filter:focus-within {
+  box-shadow: 0 0 0 3px #809eff25;
+}
+.central-search > svg,
+.central-filter > svg {
+  flex-shrink: 0;
 }
 .central-search input::placeholder {
   color: #999fb8;
@@ -284,8 +302,20 @@
 }
 .central-card-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 17px;
+}
+.central-card-actions .central-delete {
+  flex: 0 0 38px;
+  color: #f7a8b3;
+}
+.central-delete-dialog {
+  width: min(480px, calc(100vw - 32px));
+  padding: 24px;
+}
+.central-delete-dialog > .central-card-actions {
+  margin-top: 24px;
 }
 .central-card-actions .button {
   flex: 1;
@@ -409,7 +439,7 @@
     gap: 16px;
   }
 }
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .central-hero {
     align-items: stretch;
     flex-direction: column;

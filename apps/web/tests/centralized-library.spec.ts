@@ -76,6 +76,7 @@ test.afterAll(async () => {
 test("owner collection supports search, creator filters, keyboard playback and exact MP4 download", async ({
   page,
 }, testInfo) => {
+  const deleted = new Set<string>();
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.route("**/api/**", async (route) => {
@@ -99,9 +100,17 @@ test("owner collection supports search, creator filters, keyboard playback and e
       return route.fulfill({
         json: { projects: [{ id: "00000000-0000-4000-8000-000000000999" }] },
       });
+    if (
+      route.request().method() === "DELETE" &&
+      url.pathname.startsWith("/api/v2/centralized-library/")
+    ) {
+      deleted.add(url.pathname.split("/").at(-1)!);
+      return route.fulfill({ status: 204 });
+    }
     if (url.pathname === "/api/v2/centralized-library") {
       const matches = outputs.filter(
         (video) =>
+          !deleted.has(video.attempt_id) &&
           (!url.searchParams.get("creator") ||
             video.creator_id === url.searchParams.get("creator")) &&
           video.title.toLowerCase().includes((url.searchParams.get("search") ?? "").toLowerCase()),
@@ -110,7 +119,7 @@ test("owner collection supports search, creator filters, keyboard playback and e
         json: {
           outputs: matches.map((video) => ({ ...video, download_url: `${mediaOrigin}/download` })),
           total: matches.length,
-          total_videos: 6,
+          total_videos: outputs.length - deleted.size,
           total_bytes: 72_000_000,
           creators,
           page_size: 48,
@@ -143,6 +152,26 @@ test("owner collection supports search, creator filters, keyboard playback and e
     dock.getByRole("link", { name: "Centralized Library", exact: true }),
   ).toHaveAttribute("aria-current", "page");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole("searchbox", { name: "Search videos" }).focus();
+  expect(
+    await page
+      .getByRole("searchbox", { name: "Search videos" })
+      .evaluate((element) => getComputedStyle(element).outlineStyle),
+  ).toBe("none");
+  expect(
+    await page
+      .locator(".central-search")
+      .evaluate((element) => getComputedStyle(element).boxShadow),
+  ).not.toBe("none");
+  expect(
+    await page.locator(".central-hero").evaluate((hero) => {
+      const box = hero.getBoundingClientRect();
+      return [...hero.querySelectorAll(".central-stats > div")].every((element) => {
+        const r = element.getBoundingClientRect();
+        return r.left >= box.left && r.right <= box.right;
+      });
+    }),
+  ).toBe(true);
   await page.screenshot({ path: testInfo.outputPath("collection.png"), fullPage: true });
   await page.getByRole("searchbox", { name: "Search videos" }).fill("no-match");
   await expect(page.getByText("No videos match", { exact: true })).toBeVisible();
@@ -180,6 +209,21 @@ test("owner collection supports search, creator filters, keyboard playback and e
   await page.keyboard.press("Escape");
   await expect(dialog).not.toBeVisible();
   await expect(trigger).toBeFocused();
+  const remove = page.getByRole("button", { name: "Delete Harbor film 2", exact: true });
+  await remove.click();
+  const confirmation = page.getByRole("dialog", { name: "Delete this video?" });
+  await expect(confirmation.getByText(/Maya/)).toBeVisible();
+  await confirmation.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(remove).toBeFocused();
+  expect(deleted.size).toBe(0);
+  await remove.click();
+  await confirmation.getByRole("button", { name: "Delete video", exact: true }).click();
+  await expect(confirmation).not.toBeVisible();
+  await expect(page.getByText("No videos match", { exact: true })).toBeVisible();
+  expect(deleted.size).toBe(1);
+  await page.getByRole("button", { name: "Clear filters", exact: true }).click();
+  await expect(page.locator(".central-video")).toHaveCount(5);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(errors).toEqual([]);
 });
 test("another team manager cannot see the dock option or request the collection", async ({

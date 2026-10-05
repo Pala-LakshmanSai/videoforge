@@ -8,7 +8,7 @@ Selected read profile `v2_09_centralized_library`. Decision `DEC_LIBRARY_001`, u
 Only the exact admitted, verified, non-revoked designated owner can discover, watch and download all
 users' retained completed renders. Preserve every ordinary tenant API and private preset/input/cost
 boundary. Include retained render history without requiring final human approval. Explicitly deleted
-outputs and archived projects stay excluded. No edit/delete actions or generation changes.
+outputs and archived projects stay excluded. Confirmed per-video deletion is authorized by the2026-10-05 follow-up; no project/source deletion or generation changes.
 
 Owned: hosted centralized-library route/migration, shared authorized-MP4 serving extraction, tenant
 capability, identity context, dock button, page/route/CSS, focused tests and context. The main checkout
@@ -39,7 +39,7 @@ Verify exact source/asset hashes, anonymous denial, other-account denial, owner 
 retained-film watch/seek and checksum-matching MP4 download in real Chrome. Record native function
 privileges and unchanged tenant isolation. Roll back traffic immediately if auth, playback, artifact,
 configuration or preservation checks fail; revoke the new function grant if needed. Existing accepted
-source/Worker remains the rollback. No output/user data deletion or generation replay.
+source/Worker remains the rollback. No unrelated output/user data deletion or generation replay.
 
 Finite-action spend cap: USD 0 for new provider inference, GPU/CPU rentals and retained resources.
 No GPU offering, model download or retained volume is needed. Existing hosting and authenticated
@@ -57,3 +57,10 @@ acceptance2dfc1bf9; stop and reconcile any further concurrent release before dep
 See [production acceptance](evidence/acceptance/VF-10-09/2026-10-05-centralized-library.md) and
 `centralized_library_2026_10_05` in CURRENT_STATE.yaml. Local synthetic previews do not prove live
 all-user access, native schema publication, provider quality or long-form production.
+
+## Layout and deletion follow-up
+
+The user explicitly authorizes the UI fix, confirmed per-video deletion and production publication.
+Apply additive276 only after native auth/privilege qualification; reuse exact attempt-prefix cleanup
+and audit retention deletion only after R2 absence verification. No paid provider/compute work.
+Preserve concurrent voice dropdowns and reject further production drift before deployment.

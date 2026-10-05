@@ -1,5 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
+  Trash2,
   UsersRound,
   X,
 } from "lucide-react";
@@ -50,9 +51,11 @@ function size(bytes: number) {
 function VideoCard({
   video,
   onWatch,
+  onDelete,
 }: {
   video: Video;
   onWatch(trigger: HTMLButtonElement): void;
+  onDelete(trigger: HTMLButtonElement): void;
 }) {
   const [duration, setDuration] = useState<number | null>(null);
   const [visible, setVisible] = useState(false);
@@ -149,12 +152,21 @@ function VideoCard({
           ) : (
             <span className="central-unavailable">File unavailable</span>
           )}
+          <Button
+            variant="secondary"
+            className="central-delete"
+            aria-label={`Delete ${video.title}`}
+            onClick={(event) => onDelete(event.currentTarget)}
+          >
+            <Trash2 size={15} />
+          </Button>
         </div>
       </div>
     </article>
   );
 }
 export function CentralizedLibraryScreen() {
+  const queryClient = useQueryClient();
   const identity = useHostedIdentity();
   const allowed = identity?.canViewCentralizedLibrary === true;
   const [search, setSearch] = useState("");
@@ -162,6 +174,29 @@ export function CentralizedLibraryScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [playbackFailed, setPlaybackFailed] = useState(false);
   const watchTrigger = useRef<HTMLButtonElement | null>(null);
+  const deleteTrigger = useRef<HTMLButtonElement | null>(null);
+  const [deleteVideo, setDeleteVideo] = useState<Video | null>(null);
+  const remove = useMutation({
+    mutationFn: async (attempt: string) => {
+      const response = await fetch(`/api/v2/centralized-library/${attempt}`, {
+        method: "DELETE",
+        headers: { accept: "application/json" },
+      });
+      if (response.status === 403 || response.status === 401)
+        throw new Error("Your owner session is no longer authorized. Sign in again.");
+      if (!response.ok)
+        throw new Error("The video could not be deleted. Retry to complete deletion.");
+    },
+    onSuccess: async () => {
+      setDeleteVideo(null);
+      setSelectedId(null);
+      setFilters((previous) => ({ ...previous, page: 0 }));
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["centralized-library"] }),
+        queryClient.invalidateQueries({ queryKey: ["hosted-library"] }),
+      ]);
+    },
+  });
   useEffect(() => {
     if (search.trim() === filters.search) return;
     const timeout = window.setTimeout(
@@ -340,6 +375,11 @@ export function CentralizedLibraryScreen() {
                 setPlaybackFailed(false);
                 setSelectedId(video.attempt_id);
               }}
+              onDelete={(trigger) => {
+                deleteTrigger.current = trigger;
+                remove.reset();
+                setDeleteVideo(video);
+              }}
             />
           ))}
         </div>
@@ -369,6 +409,49 @@ export function CentralizedLibraryScreen() {
           </div>
         </footer>
       ) : null}
+      <Dialog.Root
+        open={allowed && !!deleteVideo}
+        onOpenChange={(open) => {
+          if (!open && !remove.isPending) setDeleteVideo(null);
+        }}
+      >
+        <Dialog.Portal>
+          <Dialog.Overlay className="sheet-overlay" />
+          <Dialog.Content
+            className="central-player central-delete-dialog"
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              if (deleteTrigger.current?.isConnected) deleteTrigger.current.focus();
+              else document.querySelector<HTMLInputElement>(".central-search input")?.focus();
+            }}
+          >
+            <Dialog.Title>Delete this video?</Dialog.Title>
+            <Dialog.Description>
+              Permanently delete “{deleteVideo?.title}” by {deleteVideo?.creator_name} (
+              {deleteVideo?.creator_email}) from both libraries. This cannot be undone. The project
+              and source media stay saved.
+            </Dialog.Description>
+            {remove.isError ? <p role="alert">{remove.error.message}</p> : null}
+            <div className="central-card-actions">
+              <Button
+                variant="secondary"
+                disabled={remove.isPending}
+                onClick={() => setDeleteVideo(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                disabled={remove.isPending}
+                onClick={() => deleteVideo && remove.mutate(deleteVideo.attempt_id)}
+              >
+                <Trash2 size={15} />
+                {remove.isPending ? "Deleting…" : "Delete video"}
+              </Button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
       <Dialog.Root
         open={!!selected}
         onOpenChange={(open) => {

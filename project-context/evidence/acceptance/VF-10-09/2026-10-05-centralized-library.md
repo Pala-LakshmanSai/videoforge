@@ -93,3 +93,26 @@ separate. Rollback preserves the additive migration; revoke its runtime grant if
 GPT Space Project61/Root51/Index81/Coverage76 guarded updates and readbacks preserve the concurrent
 voice-dropdown release, historical evidence and unrelated projects. Acceptance source `12ce6a20`
 is pushed; subsequent commits contain only memory/handoff evidence.
+
+## UI and confirmed deletion follow-up
+
+The subsequent user instructions authorize the UI correction, per-video Delete and production
+publication. Search/creator focus now highlights the whole control rather than drawing inner vertical
+outlines. The section fills its parent, hero copy can shrink and totals stack at1100px, with no overflow
+at977/320px. Every card retains Watch/Download plus a clearly named Delete control. Confirmation
+shows the exact title/creator/email and permanent removal from both libraries; Cancel restores focus,
+pending disables repeat actions and failures remain retryable. Projects and input media stay saved.
+
+Additive276 supplies one fixed exact-owner/session-checked plan/finalize RPC, with no PUBLIC EXECUTE
+or RLS change. It accepts only eligible completed renders, binds the three artifact keys to the exact
+tenant/workspace/project/revision/render-attempt prefix, reuses existing R2 delete/head/paginated-list
+absence verification, then atomically records retention deletion and its audit event. Repeated deletes
+are idempotent. Same-origin/owner/native-session/rate checks protect DELETE independently of the UI.
+
+29 focused checks plus the final four API/SQL checks and six installed-Chrome journeys pass at1440,
+977 and320px: focus geometry, creator details, search/filter, full playback, download checksum,
+confirmation/cancel/one-video deletion and other-manager denial. Types/lint, context/secrets, both
+production/staging quarantines and18 config tests pass. Migration manifest adds exactly116 bytes to
+each measured static closure; one-byte overflow rejection remains intact. Native transaction checks
+prove all30 prefixes, foreign denial, one idempotent audit event and list hiding; rollback preserves
+all30 original outputs with zero R2 deletion. Actual-runtime and live publication checks follow.

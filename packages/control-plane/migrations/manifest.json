@@ -1428,6 +1428,12 @@
       "name": "hosted_centralized_library",
       "filename": "0275_hosted_centralized_library.sql",
       "sha256": "sha256:14de61538cff8dfc7b7d443c001caec448a2abb45c77e6494ff0109892c97c51"
+    },
+    {
+      "version": 276,
+      "name": "hosted_centralized_video_delete",
+      "filename": "0276_hosted_centralized_video_delete.sql",
+      "sha256": "sha256:522f5c8cc1a608b1b798d00cba2cf6dce50c881a2d8d9cf3fad04c69a445df8d"
     }
   ]
 }

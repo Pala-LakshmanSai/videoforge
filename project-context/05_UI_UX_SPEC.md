@@ -255,7 +255,7 @@ size totals, search, creator filter, newest-first cards, and 48-item pagination.
 video preview, visible creator name and email, saved title, date, duration and size, with Watch and Download. Watch opens a
 keyboard-accessible player with native video controls and immediate MP4 download. Loading, empty,
 filtered-empty, unavailable-file and expired/denied-session states are explicit; denied reads remove
-cached videos and close the player. The page and dock fit desktop and mobile. No edit/delete controls.
+cached videos and close the player. The page and dock fit desktop and mobile. Confirmed per-video Delete is available only to the designated owner.
 
 ### 9. Settings
 
@@ -367,3 +367,7 @@ Voiceover Hub is in primary navigation. New libraries open All voices; existing 
 ### Voice catalog filters — 2026-10-05
 
 The Hub combines gender, explicit accent, language/region, style/tone and use-case filters with name-prefix search and the selected library tab before pagination. Native selects show counts respecting other selections and disable unavailable choices. Missing traits are Not specified. Accent comes only from catalog tags or descriptive name suffixes; supported-region codes do not imply an accent or a particular language in multilingual countries. More filters offers style/use case and audio-preview availability; name ascending/descending and favorites sorting, removable filter chips, clear/reset and matching empty states complete the flow. No guessed age or quality rating. Implementation/release acceptance follows VOICE_FILTERS_PLAN.md.
+
+Centralized Library per-video Delete uses a creator/title confirmation, pending/error states and
+verified attempt-artifact cleanup. Project/source media remain. Search and creator fields use one
+container focus highlight; hero totals stack at1100px to retain space in narrower panels.

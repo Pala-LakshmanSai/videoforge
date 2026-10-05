@@ -50,6 +50,18 @@ async function database() {
   );
   await db.exec(sessionMigration.slice(start, sessionMigration.indexOf("$$;", start) + 3));
   await db.exec(migration);
+  await db.exec(
+    `ALTER TABLE hosted_cpu_job_attempts ADD COLUMN job_spec_object_key text, ADD COLUMN version integer DEFAULT 1, ADD COLUMN updated_at timestamptz; CREATE TABLE hosted_cpu_job_events(id uuid,account_id uuid,workspace_id uuid,attempt_id uuid,sequence integer,kind text,facts_sha256 text,occurred_at timestamptz);`,
+  );
+  await db.exec(
+    readFileSync(
+      resolve(
+        process.cwd(),
+        "../../packages/control-plane/migrations/0276_hosted_centralized_video_delete.sql",
+      ),
+      "utf8",
+    ),
+  );
   return db;
 }
 describe("centralized Library owner boundary", () => {
@@ -258,5 +270,100 @@ describe("centralized Library owner boundary", () => {
       ).status,
     ).toBe(404);
     expect(canViewCentralizedLibrary(" DEMO9GSS@GMAIL.COM ")).toBe(true);
+  });
+});
+
+describe("centralized per-video deletion", () => {
+  it("keeps foreign tenants private and records exactly one idempotent retention event for the owner", async () => {
+    const db = await database();
+    try {
+      const remove = async (token: string, facts: string | null = null) =>
+        (
+          await db.query<{
+            data: { error?: string; deleted?: boolean; job_spec_object_key?: string };
+          }>("SELECT videoforge_delete_centralized_video($1,$2,$3) data", [
+            token,
+            uuid(1001),
+            facts,
+          ])
+        ).rows[0]!.data;
+      await db.exec("SET ROLE videoforge_v209_runtime_dc9612d6");
+      for (const token of ["member-token", "manager-token", "missing"])
+        expect((await remove(token, hash)).error).toBe("CENTRALIZED_LIBRARY_FORBIDDEN");
+      expect((await remove("owner-token", "bad")).error).toBe("DELETION_FACTS_INVALID");
+      expect((await remove("owner-token")).deleted).not.toBe(true);
+      expect(await remove("owner-token", hash)).toEqual({ deleted: true });
+      expect(await remove("owner-token", hash)).toEqual({ deleted: true });
+      await db.exec("RESET ROLE");
+      expect(
+        (await db.query("SELECT * FROM hosted_cpu_job_events WHERE attempt_id=$1", [uuid(1001)]))
+          .rows,
+      ).toHaveLength(1);
+      expect(
+        (
+          await db.query(
+            "SELECT * FROM hosted_cpu_job_attempts WHERE retention_deleted_at IS NOT NULL",
+          )
+        ).rows,
+      ).toHaveLength(1);
+      expect((await db.query("SELECT * FROM projects WHERE status='ACTIVE'")).rows).toHaveLength(2);
+      const list = (
+        await db.query<{ data: { total: number } }>(
+          "SELECT videoforge_read_centralized_library('owner-token') data",
+        )
+      ).rows[0]!.data;
+      expect(list.total).toBe(50);
+      const publicExecute = (
+        await db.query(
+          "SELECT 1 FROM pg_proc,LATERAL aclexplode(proacl) acl WHERE proname='videoforge_delete_centralized_video' AND acl.grantee=0",
+        )
+      ).rows;
+      expect(publicExecute).toHaveLength(0);
+      await db.exec("UPDATE hosted_auth_users SET email_verified=false WHERE id='owner'");
+      expect((await remove("owner-token", hash)).error).toBe("CENTRALIZED_LIBRARY_FORBIDDEN");
+    } finally {
+      await db.close();
+    }
+  }, 30_000);
+  it("requires owner and same origin, verifies exact R2 absence before audit, and leaves retry possible on failure", async () => {
+    const prefix = `tenant/${uuid(2)}/workspace/${uuid(12)}/project/${uuid(22)}/revision/${uuid(32)}/lane/render/job/${uuid(1001)}/artifact/`;
+    const keys = [prefix + "job.json", prefix + "output.mp4", prefix + "result.json"];
+    let identity = { token: "owner-token", email: "demo9gss@gmail.com", verified: true };
+    const remove = vi.fn(async (_token: string, _attempt: string, facts: string | null) =>
+      facts
+        ? { deleted: true }
+        : { artifact_prefix: prefix, job_spec_object_key: keys[0], object_keys: keys.slice(1) },
+    );
+    const bucket = {
+      delete: vi.fn(),
+      head: vi.fn(async () => null),
+      list: vi.fn(async () => ({ objects: [], truncated: false })),
+    } as unknown as HostedR2BucketBinding;
+    const deps = {
+      authenticate: async () => identity,
+      read: vi.fn(),
+      remove,
+      bucket,
+      publicOrigin: "https://site",
+    };
+    const request = (origin: string | null = "https://site") =>
+      new Request(`https://site/api/v2/centralized-library/${uuid(1001)}`, {
+        method: "DELETE",
+        headers: origin ? { origin } : {},
+      });
+    expect((await handleCentralizedLibrary(request(null), deps)).status).toBe(403);
+    expect((await handleCentralizedLibrary(request("https://evil"), deps)).status).toBe(403);
+    identity = { ...identity, email: "alex@example.test" };
+    expect((await handleCentralizedLibrary(request(), deps)).status).toBe(403);
+    expect(remove).not.toHaveBeenCalled();
+    expect(bucket.delete).not.toHaveBeenCalled();
+    identity = { ...identity, email: "demo9gss@gmail.com" };
+    expect((await handleCentralizedLibrary(request(), deps)).status).toBe(204);
+    expect(bucket.delete).toHaveBeenCalledWith([...keys].sort());
+    expect(remove.mock.calls[1]![2]).toMatch(/^sha256:[0-9a-f]{64}$/u);
+    remove.mockClear();
+    vi.mocked(bucket.head).mockResolvedValueOnce({} as never);
+    expect((await handleCentralizedLibrary(request(), deps)).status).toBe(503);
+    expect(remove).toHaveBeenCalledTimes(1);
   });
 });
