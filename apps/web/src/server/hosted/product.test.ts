@@ -64,7 +64,7 @@ const testState = vi.hoisted(() => {
       sql.includes(
         "SELECT authority.object_key, authority.issued_content_length AS content_length",
       ) &&
-      sql.includes("JOIN hosted_project_reviews AS review")
+      sql.includes("FROM projects AS project")
     )
       return { rows: approvedDownloadRows, affectedRows: approvedDownloadRows.length };
     // The picker's "which avatar can this workspace actually dispatch" lookup. It also selects the
@@ -197,7 +197,7 @@ const testState = vi.hoisted(() => {
   };
 });
 
-describe("approved final MP4 download", () => {
+describe("completed final MP4 download", () => {
   const path = `/api/v2/hosted/projects/${PROJECT_ID}/download`;
   const bytes = new TextEncoder().encode("fixture-mp4-bytes");
   const checksum = `sha256:${"a".repeat(64)}`;
@@ -210,7 +210,7 @@ describe("approved final MP4 download", () => {
     ["Café – 你好.mp3", "Café – 你好.mp4"],
     ["na\r\nme.mp3", "na__me.mp4"],
   ])(
-    "downloads the approved MP4 using saved voiceover filename %s",
+    "downloads the completed MP4 using saved voiceover filename %s",
     async (sourceFilename, filename) => {
       testState.approvedDownloadRows.push({
         object_key: key,
@@ -259,7 +259,7 @@ describe("approved final MP4 download", () => {
           ),
         );
         expect(String(query?.[0])).toContain(
-          "review.output_checksum_sha256 = authority.issued_checksum_sha256",
+          "attempt.result_checksum_sha256 = authority.issued_checksum_sha256",
         );
         expect(String(query?.[0])).toContain("attempt.project_revision_id = revision.id");
         expect(String(query?.[0])).toContain(
@@ -1720,7 +1720,7 @@ describe("hosted product route contract", () => {
       const stage = (id: string) => body.stages.find((value) => value.id === id);
       expect(stage("prepare")).toMatchObject({ started_at: started, completed_at: locked });
       expect(stage("render")).toMatchObject({ started_at: locked, completed_at: rendered });
-      expect(stage("review")).toMatchObject({ started_at: rendered, completed_at: null });
+      expect(stage("review")).toBeUndefined();
       expect(stage("technical-check")).toMatchObject({ started_at: null, completed_at: null });
       expect(stage("planning")).toMatchObject({ started_at: null, completed_at: null });
       const stageIds = body.stages.map((value) => String(value.id));
@@ -2392,12 +2392,25 @@ describe("hosted product route contract", () => {
     });
   });
 
+  it("retires final approval without reading or mutating tenant data", async () => {
+    testState.query.mockClear();
+    const result = await handleHostedProductRequest(
+      request(`/api/v2/hosted/projects/${PROJECT_ID}/review`, "POST", {
+        attempt_id: "22222222-2222-4222-8222-222222222222",
+      }),
+      environment,
+      config,
+      executionContext,
+    );
+    expect(result?.status).toBe(410);
+    await expect(errorCode(result)).resolves.toBe("APPROVAL_REMOVED");
+    expect(testState.query).not.toHaveBeenCalled();
+  });
+
   it("fails closed before tenant data access when the hosted rate limit is exhausted", async () => {
     testState.query.mockClear();
     testState.rateLimitRows[0]!.allowed = false;
-    const candidate = request(`/api/v2/hosted/projects/${PROJECT_ID}/review`, "POST", {
-      attempt_id: "22222222-2222-4222-8222-222222222222",
-    });
+    const candidate = request(`/api/v2/hosted/projects/${PROJECT_ID}/manifest`, "GET");
     const result = await handleHostedProductRequest(
       candidate,
       environment,
@@ -2701,7 +2714,47 @@ describe("hosted product route contract", () => {
     }
   });
 
-  it("keeps provenance manifest unavailable until an approved render exists", async () => {
+  it.each([null, "2026-10-04T10:00:00.000Z"])(
+    "serves completed provenance immediately; preserves actual historical approval %s",
+    async (approvedAt) => {
+      const previous = testState.projectRows[0]!;
+      testState.projectRows[0] = {
+        ...previous,
+        revision_state: "LOCKED",
+        render_attempt_id: "22222222-2222-4222-8222-222222222222",
+        attempt_state: "SUCCEEDED",
+        object_key: "final.mp4",
+        content_type: "video/mp4",
+        content_length: 42,
+        checksum_sha256: `sha256:${"a".repeat(64)}`,
+        output_checksum_sha256: `sha256:${"a".repeat(64)}`,
+        approved_at: approvedAt,
+        approved_by_user_id: approvedAt ? "actual-owner" : null,
+      };
+      try {
+        const result = await handleHostedProductRequest(
+          request(`/api/v2/hosted/projects/${PROJECT_ID}/manifest`, "GET"),
+          environment,
+          config,
+          executionContext,
+        );
+        expect(result?.status).toBe(200);
+        expect(await result!.json()).toMatchObject({
+          creative_approval: {
+            state: approvedAt ? "APPROVED" : "NOT_REQUIRED",
+            approved_at: approvedAt,
+            approved_by_user_id: approvedAt ? "actual-owner" : null,
+          },
+          guarantees: { approval_required: false },
+          cost: { projected_usd: null, settled_usd: null },
+        });
+      } finally {
+        testState.projectRows[0] = previous;
+      }
+    },
+  );
+
+  it("keeps provenance manifest unavailable until a technically complete render exists", async () => {
     const result = await handleHostedProductRequest(
       request(`/api/v2/hosted/projects/${PROJECT_ID}/manifest`, "GET"),
       environment,
@@ -2709,7 +2762,7 @@ describe("hosted product route contract", () => {
       executionContext,
     );
     expect(result?.status).toBe(409);
-    await expect(errorCode(result)).resolves.toBe("PROJECT_APPROVAL_REQUIRED");
+    await expect(errorCode(result)).resolves.toBe("PROJECT_OUTPUT_NOT_READY");
   });
 
   it("preserves SYSTEM preset materialization and global queue contract in source", () => {
@@ -3587,7 +3640,7 @@ describe("hosted product route contract", () => {
   it("suppresses failed tasks with an exact committed accepted runtime unit", () => {
     const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");
     const start = source.indexOf("const failedTasks = await transaction.query(");
-    const end = source.indexOf("const review = await transaction.query(", start);
+    const end = source.indexOf("return {", start);
     const query = source.slice(start, end);
 
     expect(start).toBeGreaterThanOrEqual(0);

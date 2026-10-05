@@ -1,5 +1,8 @@
 import { voiceoverVideoDownloadFilename } from "./download-filename";
-import { hostedAccountCleanupPending, HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE } from "./hosted-v209-queue-admission";
+import {
+  hostedAccountCleanupPending,
+  HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE,
+} from "./hosted-v209-queue-admission";
 import { SharedAdmissionRepository } from "@videoforge/control-plane";
 
 import { createHostedAuth, type HostedExecutionContext } from "./auth";
@@ -124,6 +127,7 @@ async function handleHostedLibrary(
   config: ReturnType<typeof hostedRuntimeConfiguration>,
   executionContext: HostedExecutionContext,
 ): Promise<Response> {
+  const { HOSTED_COMPLETED_RENDER_SQL } = await import("./completed-render");
   const bucket = environment.PRIVATE_ARTIFACTS;
   if (!bucket) return json({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
   const pool = createNeonPool(config.neon.databaseUrl);
@@ -155,7 +159,7 @@ async function handleHostedLibrary(
             AND project.workspace_id = attempt.workspace_id
             AND project.id = attempt.project_id
             AND project.project_kind = 'USER'
-           LEFT JOIN project_revisions AS revision
+           JOIN project_revisions AS revision
              ON revision.account_id = attempt.account_id
             AND revision.workspace_id = attempt.workspace_id
             AND revision.project_id = attempt.project_id
@@ -171,15 +175,13 @@ async function handleHostedLibrary(
             AND authority.workspace_id = attempt.workspace_id
             AND authority.attempt_id = attempt.id
             AND authority.source = 'PRIMARY_RESULT_OUTPUT'
-           JOIN hosted_project_reviews AS review
-             ON review.account_id = attempt.account_id
-            AND review.workspace_id = attempt.workspace_id
-            AND review.project_id = attempt.project_id
-            AND review.render_attempt_id = attempt.id
+           LEFT JOIN hosted_cpu_upload_authorities AS result_document
+             ON result_document.account_id=attempt.account_id AND result_document.workspace_id=attempt.workspace_id
+            AND result_document.attempt_id=attempt.id AND result_document.source='RESULT_DOCUMENT'
+            AND result_document.issued_at IS NOT NULL
           WHERE attempt.account_id = $1 AND attempt.workspace_id = $2
-            AND attempt.kind = 'RENDER' AND attempt.state = 'SUCCEEDED'
-            AND attempt.retention_deleted_at IS NULL
-            AND authority.issued_at IS NOT NULL
+            AND project.status='ACTIVE' AND revision.status='LOCKED'
+            AND (${HOSTED_COMPLETED_RENDER_SQL})
           ORDER BY attempt.created_at DESC, attempt.id DESC`,
         [accountId, workspaceId],
       );

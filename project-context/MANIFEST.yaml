@@ -4,8 +4,8 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-10-05"
 source_of_truth: project-context
 
-current_selected_profile: v2_09_cloud_compute_cost
-current_selected_brief: CLOUD_COMPUTE_COST_PLAN.md
+current_selected_profile: v2_09_automatic_library_delivery
+current_selected_brief: AUTOMATIC_LIBRARY_DELIVERY_PLAN.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -25,6 +25,11 @@ conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
 target_profile_word_budget: 15000
 
 read_profiles:
+  v2_09_automatic_library_delivery:
+    - AUTOMATIC_LIBRARY_DELIVERY_PLAN.md
+    - 05_UI_UX_SPEC.md
+    - 07_PIPELINE_AND_SCHEDULER.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
   v2_09_cloud_compute_cost:
     - CLOUD_COMPUTE_COST_PLAN.md
     - 11_COST_SPEED_BUDGET.md
@@ -299,6 +304,7 @@ approved_decisions:
   DEC_DB_001: additive_postgres_contracts_pglite_tests_neon_production
   DEC_DISPATCH_001: durable_api_task_identity_and_historical_serverless_authority
   DEC_DELIVERY_001: fast_bounded_checkpoints_focused_tests_sample_driven_hardening
+  DEC_DELIVERY_003: automatic_verified_final_output_library_delivery_no_human_approval
   DEC_DELIVERY_002: historical_runpod_certification_fresh_api_acceptance_current
   DEC_HOSTING_001: superseded_cloud_run_hosting_decision_history
   DEC_IMAGE_001: superseded_mage_historical_attempts_only

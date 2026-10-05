@@ -35,7 +35,7 @@ function HostedLibraryScreen() {
   const query = useQuery({
     queryKey: ["hosted-library"],
     queryFn: hostedLibrary,
-    refetchInterval: 240_000,
+    refetchInterval: 5_000,
   });
   const remove = useMutation({
     mutationFn: async (attemptId: string) => {
@@ -102,7 +102,7 @@ function HostedLibraryScreen() {
                     href={`/projects/${output.project_id}/review`}
                   >
                     <Play size={15} />
-                    Review
+                    View video
                   </a>
                   <a className="button button-secondary" href={output.download_url} download>
                     <Download size={15} />

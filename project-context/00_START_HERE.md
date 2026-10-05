@@ -1,3 +1,5 @@
+Automatic delivery: AUTOMATIC_LIBRARY_DELIVERY_PLAN.md. No final approval.
+
 Production reliability audit: read PRODUCTION_RELIABILITY_AUDIT.md and CURRENT_STATE.yaml.
 Audit all current production stages and shared recovery paths; default provider-free and read-only live inventory.
 

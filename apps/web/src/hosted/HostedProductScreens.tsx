@@ -25,7 +25,7 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import type { ImageStyleHubVersionResponse } from "@videoforge/contracts/image-style-hub";
 import { PageHeader } from "../components/PageHeader";
 import {
@@ -1212,6 +1212,9 @@ function SceneFootageCoverage({ coverage }: { coverage: HostedSceneFootageCovera
 }
 
 interface HostedReviewSnapshot {
+  readonly state?: "COMPLETE" | "NOT_READY";
+  readonly approval_required?: false;
+  readonly completed_attempt_id?: string | null;
   readonly scene_footage_coverage?: HostedSceneFootageCoverage | null;
   readonly contact_sheet?: readonly HostedContactSheetItem[];
   readonly avatar_footage?: readonly HostedAvatarFootageItem[];
@@ -1948,6 +1951,22 @@ function isHostedV209PreSendIntegrityError(error: unknown): boolean {
   );
 }
 
+function completedVideoAvailable(
+  review: HostedReviewSnapshot | null | undefined,
+  attempt: HostedAttempt | undefined,
+) {
+  if (attempt?.state !== "SUCCEEDED" || !attempt.preview_url) return false;
+  if (!review) return true;
+  return (
+    (review.state === "COMPLETE" || Boolean(review.download_url)) &&
+    (!review.completed_attempt_id || review.completed_attempt_id === attempt.id)
+  );
+}
+
+function isFinalVideoReviewStage(stage: HostedStage) {
+  return stage.id === "review" || ["Review", "Review and approve"].includes(stage.name);
+}
+
 export function hostedProjectPollInterval(data: ProjectDetailResponse | undefined) {
   if (cloudComputeNeedsPolling(data?.cost?.cloud_compute)) return 2_000;
   if (data?.queue?.blocked_reason === "HOSTED_CLOUD_CLEANUP_PENDING") return 2_000;
@@ -1958,16 +1977,16 @@ export function hostedProjectPollInterval(data: ProjectDetailResponse | undefine
       : 2000;
   if (data.voiceover_context?.automatic_retry_pending === true) return 2_000;
   if (["DISPATCHING", "UNKNOWN"].includes(data.prompt_progress?.state ?? "")) return 2_000;
-  const activeWork = hostedHasActiveWork(data.stages, data.attempts, data.gpu_lanes);
-  const terminalStage =
-    hostedTerminalStageStatus(data.stages, data.attempts, data.gpu_lanes) !== null;
+  const stages = data.stages?.filter((stage) => !isFinalVideoReviewStage(stage));
+  const activeWork = hostedHasActiveWork(stages, data.attempts, data.gpu_lanes);
+  const terminalStage = hostedTerminalStageStatus(stages, data.attempts, data.gpu_lanes) !== null;
   const terminalAttempt =
     !activeWork &&
     data.attempts.some((attempt) => ["FAILED", "CANCELLED"].includes(attempt.state.toUpperCase()));
   const terminalContext = !activeWork && data.voiceover_context?.state === "FAILED";
   const complete =
-    Boolean(data.stages?.length) &&
-    data.stages!.every((stage) =>
+    Boolean(stages?.length) &&
+    stages!.every((stage) =>
       ["COMPLETE", "SUCCEEDED", "APPROVED", "READY_FOR_REVIEW"].includes(stage.status),
     );
   return terminalStage || terminalAttempt || terminalContext || complete ? false : 2_000;
@@ -2689,7 +2708,6 @@ const HUMAN_PIPELINE_STAGES = [
   "Generate avatar",
   "Assemble",
   "Technical check",
-  "Review",
 ] as const;
 
 function fallbackHostedStages(
@@ -2720,13 +2738,9 @@ function fallbackHostedStages(
                 (asr?.state === "SUCCEEDED" ? "ACTION_REQUIRED" : "WAITING"))
             : name === "Plan"
               ? planStatus
-              : name === "Review"
-                ? render?.state === "SUCCEEDED"
-                  ? "REVIEW_REQUIRED"
-                  : "WAITING"
-                : name === "Technical check" || name === "Assemble"
-                  ? renderStatus
-                  : "NOT_REPORTED",
+              : name === "Technical check" || name === "Assemble"
+                ? renderStatus
+                : "NOT_REPORTED",
     detail: "Durable stage detail was not returned by the hosted service.",
   }));
 }
@@ -5213,7 +5227,6 @@ const NARRATION_FOLLOWING_STAGES = [
   ["video-generation", "Generate scene videos"],
   ["avatar-generation", "Generate avatar video"],
   ["render", "Assemble final video"],
-  ["review", "Review and approve"],
 ] as const;
 
 function narrationMessage(narration: NonNullable<ProjectDetailResponse["voiceover_generation"]>) {
@@ -5271,6 +5284,14 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       previousData?.project.id === projectId ? previousData : undefined,
     retry: false,
   });
+  const completedRender = currentHostedAttempt(
+    query.data?.attempts.filter((attempt) => attempt.kind === "RENDER") ?? [],
+  );
+  const videoAvailable = completedVideoAvailable(query.data?.review, completedRender);
+  const completedRenderId = videoAvailable ? completedRender?.id : undefined;
+  useEffect(() => {
+    if (completedRenderId) void queryClient.invalidateQueries({ queryKey: ["hosted-library"] });
+  }, [completedRenderId, queryClient]);
   const [additionalMedia, setAdditionalMedia] = useState<{
     readonly images: readonly HostedContactSheetItem[];
     readonly avatar: readonly HostedAvatarFootageItem[];
@@ -5940,9 +5961,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       </>
     );
   }
-  const stages = query.data.stages?.length
-    ? query.data.stages
-    : fallbackHostedStages(asr, render, query.data.generation, query.data.voiceover_context);
+  const stages = (
+    query.data.stages?.length
+      ? query.data.stages
+      : fallbackHostedStages(asr, render, query.data.generation, query.data.voiceover_context)
+  ).filter((stage) => !isFinalVideoReviewStage(stage));
   const cloudStageAttempts: Readonly<Record<string, HostedAttempt | undefined>> = {
     transcription: asr,
     "audio-spanning": currentHostedAttempt(
@@ -6120,7 +6143,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   );
   const terminalBlocked = terminalStageStatus === "BLOCKED";
   const terminalCancelled = terminalStageStatus === "CANCELLED";
-  const allComplete = uiStages.every((stage) => stage.status === "COMPLETE");
+  const allComplete =
+    (!cloudCleanupPending && videoAvailable) ||
+    uiStages.every((stage) => stage.status === "COMPLETE");
   const overallStatus = hasFailed
     ? "Needs attention"
     : hasActionRequired
@@ -6134,9 +6159,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               ? "Waiting for generation"
               : "Waiting for GPUs"
             : allComplete
-              ? render?.approved_at
-                ? "Approved"
-                : "Ready for review"
+              ? "Complete"
               : hasRunning
                 ? "Running"
                 : "Waiting";
@@ -6154,30 +6177,34 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         )
       : estimateStopped
         ? "Unavailable"
-        : render?.state === "SUCCEEDED"
+        : videoAvailable
           ? "Ready"
-          : apiTimeEstimate?.overrun
-            ? "Taking longer"
-            : (apiEstimateRange ??
-              (query.data.generation ? "No reliable estimate" : "After scene plan"));
+          : render?.state === "SUCCEEDED"
+            ? "Finished"
+            : apiTimeEstimate?.overrun
+              ? "Taking longer"
+              : (apiEstimateRange ??
+                (query.data.generation ? "No reliable estimate" : "After scene plan"));
   const estimatedTimeDetail =
     query.data.generation_provider !== "KIE_FAL"
       ? "remaining"
       : estimateStopped
         ? "project stopped"
-        : render?.state === "SUCCEEDED"
-          ? "ready for review"
-          : apiTimeEstimate?.overrun
-            ? apiTimeEstimate?.basis === "RECENT_FULL_RENDER"
-              ? "than the recent full render; times vary"
-              : "than recent short runs; API and render times vary"
-            : apiEstimateRange
+        : videoAvailable
+          ? "available in Library"
+          : render?.state === "SUCCEEDED"
+            ? "output unavailable"
+            : apiTimeEstimate?.overrun
               ? apiTimeEstimate?.basis === "RECENT_FULL_RENDER"
-                ? "remaining · based on the recent full render; times vary"
-                : "remaining · based on live progress and recent short runs; times vary"
-              : query.data.generation
-                ? "provider timing varies"
-                : "timing available after planning";
+                ? "than the recent full render; times vary"
+                : "than recent short runs; API and render times vary"
+              : apiEstimateRange
+                ? apiTimeEstimate?.basis === "RECENT_FULL_RENDER"
+                  ? "remaining · based on the recent full render; times vary"
+                  : "remaining · based on live progress and recent short runs; times vary"
+                : query.data.generation
+                  ? "provider timing varies"
+                  : "timing available after planning";
   const statusToneValue = hasFailed
     ? "danger"
     : hasActionRequired
@@ -6191,12 +6218,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             : hasRunning
               ? "info"
               : "warning";
-  const stableRenderPreviewUrl = render?.preview_url
-    ? stableHostedMediaUrl(mediaUrlCacheRef.current, mediaContext, "render", {
-        id: render.id,
-        video_url: render.preview_url,
-      })
-    : null;
+  const stableRenderPreviewUrl =
+    videoAvailable && render?.preview_url
+      ? stableHostedMediaUrl(mediaUrlCacheRef.current, mediaContext, "render", {
+          id: render.id,
+          video_url: render.preview_url,
+        })
+      : null;
   const firstContactSheet = query.data.review?.contact_sheet ?? query.data.contact_sheet ?? [];
   const firstAvatarFootage = query.data.review?.avatar_footage ?? query.data.avatar_footage ?? [];
   const firstSceneFootage = query.data.review?.scene_footage ?? query.data.scene_footage;
@@ -6475,8 +6503,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       running,
     };
   });
-  // Wall time counts concurrent stages once and includes queue/handoff waits. Human review
-  // happens after production and must not extend the saved production duration.
+  // Wall time counts concurrent stages once and includes queue/handoff waits.
   const elapsedStopped =
     estimateStopped ||
     render?.state === "SUCCEEDED" ||
@@ -6784,14 +6811,19 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         eyebrow="Live project"
         title={query.data.project.title}
         actions={
-          render?.state === "SUCCEEDED" ? (
-            <Link
-              className="button button-primary"
-              to="/projects/$projectId/review"
-              params={{ projectId }}
-            >
-              Review video
-            </Link>
+          videoAvailable ? (
+            <>
+              <Link
+                className="button button-primary"
+                to="/projects/$projectId/review"
+                params={{ projectId }}
+              >
+                View video
+              </Link>
+              <Link className="button button-secondary" to="/library">
+                Library
+              </Link>
+            </>
           ) : undefined
         }
       />
@@ -7491,26 +7523,13 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
 }
 
 export function HostedReviewScreen({ projectId }: { projectId: string }) {
-  const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: ["hosted-project", projectId],
     queryFn: () => readJson<ProjectDetailResponse>(`/api/v2/hosted/projects/${projectId}`),
   });
-  const candidate = useMemo(
-    () =>
-      [...(query.data?.attempts ?? [])]
-        .reverse()
-        .find((attempt) => attempt.kind === "RENDER" && attempt.state === "SUCCEEDED"),
-    [query.data],
+  const candidate = currentHostedAttempt(
+    query.data?.attempts.filter((attempt) => attempt.kind === "RENDER") ?? [],
   );
-  const approve = useMutation({
-    mutationFn: () =>
-      readJson(`/api/v2/hosted/projects/${projectId}/review`, {
-        method: "POST",
-        body: JSON.stringify({ attempt_id: candidate?.id }),
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-project", projectId] }),
-  });
   const review = query.data?.review;
   const contactSheet = review?.contact_sheet ?? query.data?.contact_sheet ?? [];
   const qualityFlags = review?.quality_flags ?? query.data?.quality_flags ?? [];
@@ -7518,16 +7537,16 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
   const downloadUrl = review?.download_url ?? `/api/v2/hosted/projects/${projectId}/download`;
   if (query.isPending)
     return (
-      <Panel eyebrow="Review" heading="Loading candidate">
+      <Panel eyebrow="Video" heading="Loading output">
         <p>Checking output…</p>
       </Panel>
     );
-  if (query.isError || !candidate?.preview_url)
+  if (query.isError || !candidate?.preview_url || !completedVideoAvailable(review, candidate))
     return (
       <EmptyState
         icon={<AlertTriangle />}
-        title="Output is not ready for review"
-        body="A verified render is required before review."
+        title="Video is not ready yet"
+        body="Your video will appear in Library after rendering and verification finish."
         action={
           <Link
             className="button button-secondary"
@@ -7542,20 +7561,16 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
   return (
     <>
       <PageHeader
-        eyebrow={candidate.approved_at ? "Approved" : "Review required"}
-        title="Review"
+        eyebrow="Ready"
+        title="Video"
         description={query.data?.project.title}
         actions={
-          <Button
-            disabled={Boolean(candidate.approved_at)}
-            busy={approve.isPending}
-            onClick={() => approve.mutate()}
-          >
-            <ShieldCheck size={16} /> {candidate.approved_at ? "Approved" : "Approve final"}
-          </Button>
+          <Link className="button button-secondary" to="/library">
+            Library
+          </Link>
         }
       />
-      <Panel className="review-player" eyebrow="Private candidate" heading="Final output">
+      <Panel className="review-player" eyebrow="Private video" heading="Final output">
         <SceneFootageCoverage
           coverage={
             review?.scene_footage_coverage ?? sceneFootageCoverageFromCost(query.data?.cost)
@@ -7565,18 +7580,10 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
           <video controls preload="metadata" src={candidate.preview_url} />
         </div>
         <div className="review-player-meta">
-          <Badge tone={candidate.approved_at ? "success" : "warning"}>
-            {candidate.approved_at ? "APPROVED" : "REVIEW NEEDED"}
-          </Badge>
-          {candidate.approved_at && downloadUrl ? (
-            <a className="button button-secondary" href={downloadUrl} download>
-              <Download size={16} /> Download MP4
-            </a>
-          ) : (
-            <Button variant="secondary" disabled>
-              <Download size={16} /> Download after approval
-            </Button>
-          )}
+          <Badge tone="success">READY</Badge>
+          <a className="button button-secondary" href={downloadUrl} download>
+            <Download size={16} /> Download MP4
+          </a>
         </div>
       </Panel>
       <Panel eyebrow="Scenes" heading="Contact sheet">
@@ -7598,7 +7605,7 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
           <p className="helper">No scene images available.</p>
         )}
       </Panel>
-      <Panel eyebrow="Quality gate" heading="Review flags">
+      <Panel eyebrow="Quality" heading="Quality flags">
         {qualityFlags.length > 0 ? (
           <div className="entity-list">
             {qualityFlags.map((flag, index) => (
@@ -7616,11 +7623,11 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
             ))}
           </div>
         ) : (
-          <p className="helper">No flags returned. Review the video before approving.</p>
+          <p className="helper">No quality flags returned.</p>
         )}
       </Panel>
       <Panel eyebrow="Provenance" heading="Download evidence">
-        {manifestUrl && candidate.approved_at ? (
+        {manifestUrl ? (
           <a
             className="button button-secondary"
             href={manifestUrl}
@@ -7629,12 +7636,9 @@ export function HostedReviewScreen({ projectId }: { projectId: string }) {
             <Download size={16} /> Download provenance manifest
           </a>
         ) : (
-          <p className="helper">Available after approval.</p>
+          <p className="helper">No provenance manifest is available for this output.</p>
         )}
       </Panel>
-      {approve.isError ? (
-        <div className="validation validation-danger">{approve.error.message}</div>
-      ) : null}
     </>
   );
 }

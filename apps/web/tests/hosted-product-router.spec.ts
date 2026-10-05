@@ -659,3 +659,92 @@ test("Create keeps the configurable AI opening separate from whole-video coverag
   await expect(create).toBeDisabled();
   expect(unexpectedWrites).toEqual([]);
 });
+
+test("finished video appears in Library and the legacy viewer downloads without approval", async ({
+  page,
+}) => {
+  const projectId = "88888888-8888-4888-8888-888888888888";
+  let libraryReads = 0;
+  const mutations: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST") mutations.push(new URL(request.url()).pathname);
+  });
+  await page.route("**/api/v2/library", (route) => {
+    libraryReads += 1;
+    return route.fulfill({
+      json: {
+        schema_version: "videoforge-hosted-library/v1",
+        outputs:
+          libraryReads === 1
+            ? []
+            : [
+                {
+                  attempt_id: attemptId,
+                  project_id: projectId,
+                  title: "Automatically delivered video",
+                  created_at: "2026-10-05T10:00:00Z",
+                  content_length: 12_000_000,
+                  checksum_sha256: `sha256:${"a".repeat(64)}`,
+                  download_url: `/api/v2/hosted/projects/${projectId}/download`,
+                  download_expires_at: "2026-10-05T10:05:00Z",
+                },
+              ],
+      },
+    });
+  });
+  await page.route(`**/api/v2/hosted/projects/${projectId}`, (route) =>
+    route.fulfill({
+      json: {
+        project: {
+          id: projectId,
+          title: "Automatically delivered video",
+          revision_id: "revision",
+          revision_state: "LOCKED",
+        },
+        attempts: [
+          {
+            id: attemptId,
+            kind: "RENDER",
+            state: "SUCCEEDED",
+            approved_at: null,
+            preview_url: `/api/v2/hosted/projects/${projectId}/download`,
+          },
+        ],
+        stages: [
+          { id: "render", name: "Assemble final video", status: "COMPLETE", progress_percent: 100 },
+          { id: "review", name: "Review and approve", status: "ACTION_REQUIRED" },
+        ],
+        generation: null,
+        gpu_readiness: { state: "DISABLED_UNQUALIFIED", lanes: [] },
+        review: {
+          state: "COMPLETE",
+          manifest_url: `/api/v2/hosted/projects/${projectId}/manifest`,
+          download_url: `/api/v2/hosted/projects/${projectId}/download`,
+        },
+      },
+    }),
+  );
+  await page.goto(`/projects/${projectId}`);
+  await expect(
+    page
+      .getByRole("region", { name: "Live video progress" })
+      .getByText("Complete", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Review and approve", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "View video", exact: true })).toBeVisible();
+  await page.goto("/library");
+  await expect(page.getByRole("heading", { name: "No finished videos" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Automatically delivered video" })).toBeVisible({
+    timeout: 10_000,
+  });
+  await page.getByRole("link", { name: "View video", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/projects/${projectId}/review$`));
+  await expect(page.getByRole("heading", { name: "Video", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Download MP4", exact: true })).toHaveAttribute(
+    "href",
+    `/api/v2/hosted/projects/${projectId}/download`,
+  );
+  await expect(page.getByRole("link", { name: "Download provenance manifest" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Approve/ })).toHaveCount(0);
+  expect(mutations).toEqual([]);
+});

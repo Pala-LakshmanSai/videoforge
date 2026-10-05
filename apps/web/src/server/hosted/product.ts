@@ -1,3 +1,4 @@
+import { HOSTED_COMPLETED_RENDER_SQL } from "./completed-render";
 import { hostedDownloadDisposition, voiceoverVideoDownloadFilename } from "./download-filename";
 import { readCloudCompute } from "./cloud-compute";
 import { readProjectApiCost } from "./project-api-cost";
@@ -3759,7 +3760,7 @@ async function projectManifest(
                 revision.avatar_profile_hash, revision.image_style_id,
                 revision.image_style_version_id, revision.style_profile_hash,
                 revision.voiceover_asset_id, revision.voiceover_binary_sha256,
-                review.render_attempt_id, review.output_checksum_sha256,
+                attempt.id AS render_attempt_id, authority.issued_checksum_sha256 AS output_checksum_sha256,
                 review.approved_by_user_id, review.approved_at,
                 attempt.request_sha256, attempt.state AS attempt_state,
                 attempt.replay_count, attempt.submitted_at, attempt.terminal_at,
@@ -3770,28 +3771,41 @@ async function projectManifest(
            JOIN project_revisions AS revision
              ON revision.account_id = project.account_id
             AND revision.workspace_id = project.workspace_id AND revision.project_id = project.id
+           LEFT JOIN LATERAL (
+             SELECT candidate.* FROM hosted_cpu_job_attempts candidate
+              WHERE candidate.account_id=revision.account_id AND candidate.workspace_id=revision.workspace_id
+                AND candidate.project_id=project.id AND candidate.project_revision_id=revision.id
+                AND candidate.kind='RENDER'
+              ORDER BY candidate.created_at DESC, candidate.id DESC LIMIT 1
+           ) AS attempt ON true
            LEFT JOIN hosted_project_reviews AS review
-             ON review.account_id = project.account_id
-            AND review.workspace_id = project.workspace_id AND review.project_id = project.id
-           LEFT JOIN hosted_cpu_job_attempts AS attempt
-             ON attempt.account_id = review.account_id
-            AND attempt.workspace_id = review.workspace_id AND attempt.id = review.render_attempt_id
+             ON review.account_id=attempt.account_id AND review.workspace_id=attempt.workspace_id
+            AND review.project_id=project.id AND review.render_attempt_id=attempt.id
+           LEFT JOIN hosted_cpu_upload_authorities AS result_document
+             ON result_document.account_id=attempt.account_id AND result_document.workspace_id=attempt.workspace_id
+            AND result_document.attempt_id=attempt.id AND result_document.source='RESULT_DOCUMENT'
+            AND result_document.issued_at IS NOT NULL
            LEFT JOIN hosted_cpu_upload_authorities AS authority
              ON authority.account_id = attempt.account_id
             AND authority.workspace_id = attempt.workspace_id AND authority.attempt_id = attempt.id
-            AND authority.source = 'PRIMARY_RESULT_OUTPUT' AND authority.issued_at IS NOT NULL
+            AND authority.source = 'PRIMARY_RESULT_OUTPUT' AND (${HOSTED_COMPLETED_RENDER_SQL})
           WHERE project.account_id = $1 AND project.workspace_id = $2 AND project.id = $3
             AND project.status = 'ACTIVE'
             AND project.project_kind = 'USER'
-          ORDER BY revision.revision_number DESC, review.approved_at DESC NULLS LAST
+          ORDER BY revision.revision_number DESC
           LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId],
       );
       return project.rows[0] ?? null;
     });
     if (!data) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
-    if (!data.render_attempt_id || !data.object_key || data.attempt_state !== "SUCCEEDED")
-      return response({ error: { code: "PROJECT_APPROVAL_REQUIRED" } }, 409);
+    if (
+      data.revision_state !== "LOCKED" ||
+      !data.render_attempt_id ||
+      !data.object_key ||
+      data.attempt_state !== "SUCCEEDED"
+    )
+      return response({ error: { code: "PROJECT_OUTPUT_NOT_READY" } }, 409);
     const manifest = {
       schema_version: "videoforge-hosted-provenance-manifest/v1",
       project: {
@@ -3813,7 +3827,7 @@ async function projectManifest(
         voiceover_sha256: data.voiceover_binary_sha256,
       },
       creative_approval: {
-        state: "APPROVED",
+        state: data.approved_at ? "APPROVED" : "NOT_REQUIRED",
         render_attempt_id: data.render_attempt_id,
         approved_by_user_id: data.approved_by_user_id,
         approved_at: timestampOrNull(data.approved_at),
@@ -3834,9 +3848,9 @@ async function projectManifest(
         submitted_at: timestampOrNull(data.submitted_at),
         terminal_at: timestampOrNull(data.terminal_at),
       },
-      cost: { provider: "personal-worker", projected_usd: 0, settled_usd: 0 },
+      cost: { provider: "project-attributed", projected_usd: null, settled_usd: null },
       guarantees: {
-        approval_required: true,
+        approval_required: false,
         provider_exactly_once_execution_claimed: false,
         provider_exactly_once_billing_claimed: false,
       },
@@ -7647,8 +7661,7 @@ async function projectDetail(
                   ELSE lease.failure_code END AS error_code,
                 authority.object_key, authority.content_type,
                 authority.issued_content_length AS content_length,
-                authority.issued_checksum_sha256 AS output_checksum_sha256,
-                review.approved_at
+                authority.issued_checksum_sha256 AS output_checksum_sha256
            FROM hosted_cpu_job_attempts AS attempt
            LEFT JOIN cloud_media_jobs AS cloud_job
              ON cloud_job.account_id=attempt.account_id AND cloud_job.workspace_id=attempt.workspace_id
@@ -7669,19 +7682,19 @@ async function projectDetail(
                 AND worker_lease.attempt_id = attempt.id
               ORDER BY worker_lease.created_at DESC LIMIT 1
            ) AS lease ON true
+           LEFT JOIN hosted_cpu_upload_authorities AS result_document
+             ON result_document.account_id=attempt.account_id AND result_document.workspace_id=attempt.workspace_id
+            AND result_document.attempt_id=attempt.id AND result_document.source='RESULT_DOCUMENT'
+            AND result_document.issued_at IS NOT NULL
            LEFT JOIN hosted_cpu_upload_authorities AS authority
              ON authority.account_id = attempt.account_id
             AND authority.workspace_id = attempt.workspace_id
             AND authority.attempt_id = attempt.id
             AND authority.source = 'PRIMARY_RESULT_OUTPUT' AND authority.issued_at IS NOT NULL
-            AND (NOT EXISTS(SELECT 1 FROM hosted_render_only_runs run WHERE run.id=attempt.id) OR EXISTS(SELECT 1 FROM hosted_render_only_runs run WHERE run.id=attempt.id AND run.account_id=attempt.account_id AND run.workspace_id=attempt.workspace_id AND run.state='SUCCEEDED' AND run.output_receipt_id IS NOT NULL AND run.final_output->>'checksumSha256'=authority.issued_checksum_sha256))
-           LEFT JOIN hosted_project_reviews AS review
-             ON review.account_id = attempt.account_id
-            AND review.workspace_id = attempt.workspace_id
-            AND review.render_attempt_id = attempt.id
+            AND (${HOSTED_COMPLETED_RENDER_SQL})
           WHERE attempt.account_id = $1 AND attempt.workspace_id = $2 AND attempt.project_id = $3
             AND attempt.project_revision_id = $4
-          ORDER BY attempt.created_at`,
+          ORDER BY attempt.created_at, attempt.id`,
         [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
       );
       const voiceoverContext = await transaction.query(
@@ -8368,20 +8381,6 @@ async function projectDetail(
           ORDER BY task.updated_at DESC`,
         [scope.account_id, scope.workspace_id, currentRevisionId, projectId],
       );
-      const review = await transaction.query(
-        `SELECT review.render_attempt_id, review.output_checksum_sha256,
-                review.approved_by_user_id, review.approved_at
-           FROM hosted_project_reviews AS review
-           JOIN hosted_cpu_job_attempts AS attempt
-             ON attempt.account_id = review.account_id
-            AND attempt.workspace_id = review.workspace_id
-            AND attempt.id = review.render_attempt_id
-            AND attempt.project_revision_id = $4
-          WHERE review.account_id = $1 AND review.workspace_id = $2
-            AND review.project_id = $3
-          ORDER BY review.approved_at DESC LIMIT 1`,
-        [scope.account_id, scope.workspace_id, projectId, currentRevisionId],
-      );
       return {
         project: project.rows[0],
         localWorker:
@@ -8435,7 +8434,6 @@ async function projectDetail(
         cost: cost.rows[0] ?? null,
         zeroWorkers: zeroWorkers.rows[0] ?? null,
         failedTasks: failedTasks.rows,
-        review: review.rows[0] ?? null,
       };
     });
     if (!detail?.project) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
@@ -8688,11 +8686,7 @@ async function projectDetail(
         .find((value) => value.kind === kind);
     const asr = latestAttempt("ASR");
     const render = latestAttempt("RENDER");
-    const currentRenderApproved = Boolean(
-      detail.review &&
-        render &&
-        (detail.review as Record<string, unknown>).render_attempt_id === render.id,
-    );
+    const completedRender = attempts.find((value) => value.id === render?.id && value.preview_url);
     const cloudMedia =
       (detail.project as Record<string, unknown>).media_execution_backend === "RUNPOD_POD";
     const renderReferenceMs = recentFullRenderDurationMs(
@@ -9153,30 +9147,6 @@ async function projectDetail(
         detail: "VideoForge verifies the final file, duration, audio, and checksum.",
         eta_ms: null,
       },
-      {
-        id: "review",
-        name: "Review and approve",
-        // Awaiting the owner's approval is a normal, non-terminal state: this stage can never read
-        // COMPLETE before that approval exists. Reporting it as BLOCKED made the client treat a
-        // finished render as a terminal block, which stopped live polling and hid "Ready for review".
-        status: currentRenderApproved
-          ? "COMPLETE"
-          : render?.state === "SUCCEEDED"
-            ? "READY_FOR_REVIEW"
-            : "WAITING",
-        progress_percent: currentRenderApproved ? 100 : 0,
-        started_at: render?.state === "SUCCEEDED" ? timestampOrNull(render?.terminal_at) : null,
-        completed_at: timestampOrNull(
-          currentRenderApproved
-            ? (detail.review as Record<string, unknown> | null)?.approved_at
-            : null,
-        ),
-        detail:
-          render?.state === "SUCCEEDED"
-            ? "Your video is ready for final review."
-            : "Final review opens after the technical check passes.",
-        eta_ms: null,
-      },
     ].filter(
       (stage) => avatarEnabled || !["audio-spanning", "avatar-generation"].includes(stage.id),
     );
@@ -9401,25 +9371,8 @@ async function projectDetail(
           }
         : {}),
     } as const;
-    let downloadUrl: string | null = null;
-    const reviewRow = detail.review as Record<string, unknown> | null;
-    const manifestUrl = reviewRow ? `/api/v2/hosted/projects/${projectId}/manifest` : null;
-    if (reviewRow) {
-      const approvedAttempt = attempts.find(
-        (value) => value.id === reviewRow.render_attempt_id && value.preview_url,
-      );
-      const outputObjectKey = approvedAttempt?.object_key;
-      const outputLength = numberOrNull(approvedAttempt?.content_length);
-      const outputChecksum = approvedAttempt?.output_checksum_sha256;
-      if (
-        typeof outputObjectKey === "string" &&
-        outputLength !== null &&
-        typeof outputChecksum === "string" &&
-        SHA256.test(outputChecksum)
-      ) {
-        downloadUrl = `/api/v2/hosted/projects/${projectId}/download`;
-      }
-    }
+    const downloadUrl = completedRender ? `/api/v2/hosted/projects/${projectId}/download` : null;
+    const manifestUrl = completedRender ? `/api/v2/hosted/projects/${projectId}/manifest` : null;
     return response({
       schema_version: "videoforge-hosted-project-detail/v1",
       voiceover_generation: scriptIntake ? scriptProjectStatus(scriptIntake) : null,
@@ -9492,6 +9445,9 @@ async function projectDetail(
       },
       scale_to_zero: scaleToZero,
       review: {
+        state: completedRender ? "COMPLETE" : "NOT_READY",
+        approval_required: false,
+        completed_attempt_id: completedRender?.id ?? null,
         contact_sheet: sheet,
         avatar_footage: footage,
         ...(videoPlan
@@ -9563,11 +9519,6 @@ async function downloadApprovedRender(
             AND attempt.workspace_id = project.workspace_id
             AND attempt.project_id = project.id
             AND attempt.project_revision_id = revision.id
-           LEFT JOIN hosted_project_reviews AS review
-             ON review.account_id = attempt.account_id
-            AND review.workspace_id = attempt.workspace_id
-            AND review.project_id = project.id
-            AND review.render_attempt_id = attempt.id
            JOIN hosted_cpu_upload_authorities AS authority
              ON authority.account_id = attempt.account_id
             AND authority.workspace_id = attempt.workspace_id
@@ -9593,23 +9544,15 @@ async function downloadApprovedRender(
                  AND current_revision.workspace_id = project.workspace_id
                  AND current_revision.project_id = project.id
             )
-            AND attempt.kind = 'RENDER' AND attempt.state = 'SUCCEEDED'
-            AND attempt.retention_deleted_at IS NULL
-            AND (NOT EXISTS(SELECT 1 FROM hosted_render_only_runs run WHERE run.id=attempt.id)
-              OR EXISTS(SELECT 1 FROM hosted_render_only_runs run WHERE run.id=attempt.id AND run.account_id=attempt.account_id
-                AND run.workspace_id=attempt.workspace_id AND run.state='SUCCEEDED' AND run.output_receipt_id IS NOT NULL
-                AND run.final_output->>'checksumSha256'=authority.issued_checksum_sha256))
-            AND authority.issued_at IS NOT NULL
-            AND authority.content_type = 'video/mp4'
-            AND (($4::uuid IS NOT NULL AND attempt.id = $4)
-              OR ($4::uuid IS NULL AND review.output_checksum_sha256 = authority.issued_checksum_sha256))
-            AND ((attempt.result_object_key = authority.object_key
-              AND attempt.result_content_length = authority.issued_content_length
-              AND attempt.result_checksum_sha256 = authority.issued_checksum_sha256)
-              OR (attempt.result_object_key = result_document.object_key
-              AND attempt.result_content_length = result_document.issued_content_length
-              AND attempt.result_checksum_sha256 = result_document.issued_checksum_sha256))
-          ORDER BY review.approved_at DESC LIMIT 1`,
+            AND (${HOSTED_COMPLETED_RENDER_SQL})
+            AND (($4::uuid IS NOT NULL AND attempt.id=$4)
+              OR ($4::uuid IS NULL AND attempt.id=(
+                SELECT latest.id FROM hosted_cpu_job_attempts latest
+                 WHERE latest.account_id=attempt.account_id AND latest.workspace_id=attempt.workspace_id
+                   AND latest.project_id=attempt.project_id AND latest.project_revision_id=attempt.project_revision_id
+                   AND latest.kind='RENDER'
+                 ORDER BY latest.created_at DESC, latest.id DESC LIMIT 1)))
+          ORDER BY attempt.created_at DESC, attempt.id DESC LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId, previewAttemptId],
       );
     });
@@ -9622,7 +9565,7 @@ async function downloadApprovedRender(
       size > 10 * 1024 ** 3 ||
       !SHA256.test(artifact.checksum_sha256)
     )
-      return response({ error: { code: "APPROVED_RENDER_NOT_FOUND" } }, 404);
+      return response({ error: { code: "COMPLETED_RENDER_NOT_FOUND" } }, 404);
     const head = await bucket.head(artifact.object_key);
     if (
       !head ||
@@ -9635,7 +9578,7 @@ async function downloadApprovedRender(
         artifact.checksum_sha256,
       ))
     )
-      return response({ error: { code: "APPROVED_RENDER_UNAVAILABLE" } }, 503);
+      return response({ error: { code: "COMPLETED_RENDER_UNAVAILABLE" } }, 503);
     const rangeHeader = request.headers.get("range");
     let range: { offset: number; length: number } | undefined;
     if (rangeHeader) {
@@ -9664,7 +9607,7 @@ async function downloadApprovedRender(
       object.httpMetadata?.contentType !== "video/mp4" ||
       (head.etag && object.etag !== head.etag)
     )
-      return response({ error: { code: "APPROVED_RENDER_UNAVAILABLE" } }, 503);
+      return response({ error: { code: "COMPLETED_RENDER_UNAVAILABLE" } }, 503);
     return new Response(object.body, {
       status: range ? 206 : 200,
       headers: {
@@ -9681,79 +9624,6 @@ async function downloadApprovedRender(
         "x-content-type-options": "nosniff",
         "x-videoforge-artifact-sha256": artifact.checksum_sha256,
       },
-    });
-  } finally {
-    await pool.end();
-  }
-}
-
-async function approveReview(
-  request: Request,
-  projectId: string,
-  config: HostedRuntimeConfiguration,
-  executionContext: HostedExecutionContext,
-): Promise<Response> {
-  if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
-  if (!sameOrigin(request, config))
-    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
-  const pool = createNeonPool(config.neon.databaseUrl);
-  try {
-    const scope = await sessionScope(request, config, pool, executionContext);
-    if (scope instanceof Response) return scope;
-    const body = await parseHostedJson(request, "REVIEW_REJECTED", 4_096);
-    if (body instanceof Response) return body;
-    const attemptId = (body as { attempt_id?: unknown } | null)?.attempt_id;
-    if (typeof attemptId !== "string" || !UUID.test(attemptId))
-      return response({ error: { code: "REVIEW_REJECTED" } }, 400);
-    const approved = await createNeonExecutor(pool).transaction(async (transaction) => {
-      await transaction.query("SELECT set_config($1, $2, true)", [
-        "videoforge.account_id",
-        scope.account_id,
-      ]);
-      const result = await transaction.query<{ checksum: string }>(
-        `SELECT authority.issued_checksum_sha256 AS checksum
-           FROM hosted_cpu_job_attempts AS attempt
-           JOIN hosted_cpu_upload_authorities AS authority
-             ON authority.account_id = attempt.account_id
-            AND authority.workspace_id = attempt.workspace_id
-            AND authority.attempt_id = attempt.id
-            AND authority.source = 'PRIMARY_RESULT_OUTPUT'
-            AND authority.issued_at IS NOT NULL
-          WHERE attempt.account_id = $1 AND attempt.workspace_id = $2
-            AND attempt.project_id = $3 AND attempt.id = $4
-            AND attempt.kind = 'RENDER' AND attempt.state = 'SUCCEEDED'
-            AND attempt.retention_deleted_at IS NULL
-            AND (NOT EXISTS(SELECT 1 FROM hosted_render_only_runs run WHERE run.id=attempt.id)
-              OR EXISTS(SELECT 1 FROM hosted_render_only_runs run WHERE run.id=attempt.id AND run.account_id=attempt.account_id
-                AND run.workspace_id=attempt.workspace_id AND run.state='SUCCEEDED' AND run.output_receipt_id IS NOT NULL
-                AND run.final_output->>'checksumSha256'=authority.issued_checksum_sha256))`,
-        [scope.account_id, scope.workspace_id, projectId, attemptId],
-      );
-      const target = result.rows[0];
-      if (!target) return null;
-      await transaction.query(
-        `INSERT INTO hosted_project_reviews (
-           id, account_id, workspace_id, project_id, render_attempt_id,
-           output_checksum_sha256, approved_by_user_id
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7)
-         ON CONFLICT (account_id, workspace_id, project_id, render_attempt_id) DO NOTHING`,
-        [
-          crypto.randomUUID(),
-          scope.account_id,
-          scope.workspace_id,
-          projectId,
-          attemptId,
-          target.checksum,
-          scope.user_id,
-        ],
-      );
-      return target;
-    });
-    if (!approved) return response({ error: { code: "REVIEW_CANDIDATE_NOT_FOUND" } }, 404);
-    return response({
-      schema_version: "videoforge-hosted-review/v1",
-      state: "APPROVED",
-      attempt_id: attemptId,
     });
   } finally {
     await pool.end();
@@ -9925,7 +9795,7 @@ export async function handleHostedProductRequest(
     return retryProjectAttempt(request, retry[1]!, config, executionContext);
   const review = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/review$/u.exec(url.pathname);
   if (request.method === "POST" && review)
-    return approveReview(request, review[1]!, config, executionContext);
+    return response({ error: { code: "APPROVAL_REMOVED" } }, 410);
   const preview =
     /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/renders\/([0-9a-f-]+)\/preview$/u.exec(
       url.pathname,

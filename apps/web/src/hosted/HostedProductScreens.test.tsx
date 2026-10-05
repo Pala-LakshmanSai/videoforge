@@ -702,6 +702,19 @@ describe("hosted project polling", () => {
     },
   );
 
+  it("stops polling a completed production pipeline with a legacy approval row", () => {
+    expect(
+      hostedProjectPollInterval(
+        detail({
+          stages: [
+            { id: "render", name: "Assemble final video", status: "COMPLETE" },
+            { id: "review", name: "Review and approve", status: "ACTION_REQUIRED" },
+          ],
+        }),
+      ),
+    ).toBe(false);
+  });
+
   it("keeps polling while a nonterminal hosted stage is running", () => {
     expect(
       hostedProjectPollInterval(
@@ -1068,9 +1081,9 @@ function stageList(overrides: Readonly<Record<string, string>> = {}) {
 }
 
 it.each([
-  { motion: false, stageIds: true, count: 9 },
-  { motion: true, stageIds: true, count: 10 },
-  { motion: false, stageIds: false, count: 9 },
+  { motion: false, stageIds: true, count: 8 },
+  { motion: true, stageIds: true, count: 9 },
+  { motion: false, stageIds: false, count: 8 },
 ])(
   "hides internal stages but preserves numbering and timing ($motion, $stageIds)",
   async ({ motion, stageIds, count }) => {
@@ -1152,32 +1165,96 @@ it.each(["CLEAN", "COMPLETE"])(
   },
 );
 
-it("keeps approved downloads on the authenticated route when no download URL is reported", async () => {
-  const projectId = "11111111-1111-4111-8111-111111111111";
+it.each([null, "2026-09-26T05:00:00Z"])(
+  "downloads a finished output without an approval action (%s)",
+  async (approvedAt) => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          project: { id: projectId, title: "Final" },
+          attempts: [
+            {
+              id: "render",
+              kind: "RENDER",
+              state: "SUCCEEDED",
+              approved_at: approvedAt,
+              preview_url: "https://expired-preview.invalid/final-mp4?expired=true",
+            },
+          ],
+          review: {
+            state: "COMPLETE",
+            download_url: null,
+            manifest_url: "/verified-manifest.json",
+          },
+        }),
+      ),
+    );
+    renderHosted(<HostedReviewScreen projectId={projectId} />);
+    expect(await screen.findByRole("link", { name: "Download MP4" })).toHaveAttribute(
+      "href",
+      `/api/v2/hosted/projects/${projectId}/download`,
+    );
+    expect(screen.getByRole("link", { name: "Download MP4" })).toHaveAttribute("download", "");
+    expect(screen.getByRole("link", { name: "Download provenance manifest" })).toHaveAttribute(
+      "href",
+      "/verified-manifest.json",
+    );
+    expect(screen.getByText("READY")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Approve/ })).not.toBeInTheDocument();
+    expect(
+      vi.mocked(fetch).mock.calls.every(([, init]) => !init?.method || init.method === "GET"),
+    ).toBe(true);
+  },
+);
+
+it("does not show an older successful video after the newest render fails", async () => {
+  const fetchMock = vi.fn(async () =>
+    Response.json({
+      project: { id: "latest-output", title: "Latest output" },
+      attempts: [
+        { id: "old", kind: "RENDER", state: "SUCCEEDED", preview_url: "/old.mp4" },
+        { id: "new", kind: "RENDER", state: "FAILED", preview_url: null },
+      ],
+      review: { state: "NOT_READY", download_url: null, manifest_url: null },
+    }),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  renderHosted(<HostedReviewScreen projectId="latest-output" />);
+  expect(await screen.findByText("Video is not ready yet")).toBeVisible();
+  expect(screen.queryByRole("link", { name: "Download MP4" })).not.toBeInTheDocument();
+  expect(document.querySelector("video")).toBeNull();
+});
+
+it("does not announce Library availability for a completed render with missing verified output", async () => {
   vi.stubGlobal(
     "fetch",
     vi.fn(async () =>
       Response.json({
-        project: { id: projectId, title: "Final" },
-        attempts: [
-          {
-            id: "render",
-            kind: "RENDER",
-            state: "SUCCEEDED",
-            approved_at: "2026-09-26T05:00:00Z",
-            preview_url: "https://expired-preview.invalid/final-mp4?expired=true",
-          },
+        project: {
+          id: "missing-output",
+          title: "Missing output",
+          revision_id: "revision",
+          revision_state: "LOCKED",
+        },
+        generation_provider: "KIE_FAL",
+        attempts: [{ id: "render", kind: "RENDER", state: "SUCCEEDED", preview_url: "/stale.mp4" }],
+        stages: [
+          { id: "render", name: "Assemble final video", status: "COMPLETE", progress_percent: 100 },
         ],
-        review: { download_url: null },
+        gpu_readiness: gpuReadiness,
+        generation: null,
+        review: { state: "NOT_READY", download_url: null, manifest_url: null },
       }),
     ),
   );
-  renderHosted(<HostedReviewScreen projectId={projectId} />);
-  expect(await screen.findByRole("link", { name: "Download MP4" })).toHaveAttribute(
-    "href",
-    `/api/v2/hosted/projects/${projectId}/download`,
-  );
-  expect(screen.getByRole("link", { name: "Download MP4" })).toHaveAttribute("download", "");
+  renderHosted(<HostedProjectScreen projectId="missing-output" />);
+  await screen.findByText("Missing output");
+  expect(screen.queryByRole("link", { name: "View video" })).not.toBeInTheDocument();
+  expect(screen.queryByText("available in Library")).not.toBeInTheDocument();
+  expect(screen.getByText("output unavailable")).toBeInTheDocument();
+  expect(document.querySelector("video")).toBeNull();
 });
 
 it("keeps rendering available after optional scene clips fall back to original stills", async () => {
@@ -1388,6 +1465,7 @@ it("shows ready without stale remaining time or generation notice after render s
                 id: "render",
                 kind: "RENDER",
                 state: "SUCCEEDED",
+                preview_url: "/verified-output.mp4",
                 terminal_at: "2026-09-25T05:03:00Z",
               },
             ]
@@ -1439,7 +1517,7 @@ it("shows ready without stale remaining time or generation notice after render s
   const metric = within(hero).getByText("Estimated").closest<HTMLElement>(".metric");
   expect(metric).not.toBeNull();
   await waitFor(() => expect(within(metric!).getByText("Ready")).toBeInTheDocument());
-  expect(within(metric!).getByText("ready for review")).toBeInTheDocument();
+  expect(within(metric!).getByText("available in Library")).toBeInTheDocument();
   expect(screen.queryByText(/Generation is running/u)).not.toBeInTheDocument();
 });
 
@@ -1483,7 +1561,7 @@ it("shows a reasoned disabled Retry for every failed stage without a safe recove
   renderHosted(<HostedProjectScreen projectId={projectId} />);
   const list = await screen.findByRole("list", { name: "Project stages" });
   const rows = within(list).getAllByRole("listitem");
-  expect(rows).toHaveLength(9);
+  expect(rows).toHaveLength(8);
   for (const row of rows) {
     expect(within(row).getByRole("button", { name: "Retry" })).toBeDisabled();
     expect(within(row).getByRole("alert")).toHaveTextContent(
@@ -2185,7 +2263,7 @@ it("shows frozen elapsed times in stage rows and the audio spanning panel", asyn
     "2m 12s",
   );
   expect(screen.getByLabelText("Assemble final video elapsed time")).toHaveTextContent("2m 30s");
-  expect(screen.getByLabelText("Review and approve elapsed time")).toHaveTextContent("—");
+  expect(screen.queryByLabelText("Review and approve elapsed time")).not.toBeInTheDocument();
   expect(screen.getByLabelText("Span audio elapsed time")).toHaveTextContent("1m 01s");
   expect(screen.getByLabelText("Total elapsed time")).toHaveTextContent(/^12m 30s$/);
 });
@@ -5402,7 +5480,7 @@ describe("hosted product journey", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps an approved completed video on the final stage", async () => {
+  it("finishes on assembly and opens an unapproved output without the legacy approval stage", async () => {
     const projectId = "11111111-1111-4111-8111-111111111111";
     vi.stubGlobal(
       "fetch",
@@ -5419,8 +5497,8 @@ describe("hosted product journey", () => {
               id: "33333333-3333-4333-8333-333333333333",
               kind: "RENDER",
               state: "SUCCEEDED",
-              approved_at: "2026-09-14T10:00:00Z",
-              preview_url: null,
+              approved_at: null,
+              preview_url: "/verified-output.mp4",
             },
           ],
           gpu_transport: "DISABLED_UNQUALIFIED",
@@ -5428,8 +5506,13 @@ describe("hosted product journey", () => {
           generation: null,
           stages: Array.from({ length: 10 }, (_, index) => ({
             id: `stage-${index + 1}`,
-            name: index === 9 ? "Review and approve" : `Stage ${index + 1}`,
-            status: "COMPLETE",
+            name:
+              index === 9
+                ? "Review and approve"
+                : index === 8
+                  ? "Assemble final video"
+                  : `Stage ${index + 1}`,
+            status: index === 9 ? "ACTION_REQUIRED" : "COMPLETE",
             progress_percent: 100,
           })),
         }),
@@ -5437,11 +5520,14 @@ describe("hosted product journey", () => {
     );
     renderHosted(<HostedProjectScreen projectId={projectId} />);
     const progress = await screen.findByRole("region", { name: "Live video progress" });
-    expect(within(progress).getByText("10/10")).toBeInTheDocument();
+    expect(within(progress).getByText("09/09")).toBeInTheDocument();
     expect(
-      within(progress).getByRole("heading", { name: "Review and approve" }),
+      within(progress).getByRole("heading", { name: "Assemble final video" }),
     ).toBeInTheDocument();
-    expect(within(progress).getByText("Approved")).toBeInTheDocument();
+    expect(within(progress).getByText("Complete")).toBeInTheDocument();
+    expect(screen.queryByText("Review and approve")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View video" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Library" })).toBeInTheDocument();
   });
 
   it.each([
@@ -8446,7 +8532,7 @@ it("allows a corrected coverage choice and new identity after a definite rejecte
   expect(JSON.parse(requests[1]!.body)).toMatchObject({ video_coverage_percent: 100 });
 });
 
-it("shows saved requested, planned and completed scene footage and fallbacks in Review", async () => {
+it("shows saved requested, planned and completed scene footage and fallbacks in the video viewer", async () => {
   vi.stubGlobal(
     "fetch",
     vi.fn(async () =>
@@ -8456,6 +8542,7 @@ it("shows saved requested, planned and completed scene footage and fallbacks in 
           { id: "render", kind: "RENDER", state: "SUCCEEDED", preview_url: "/preview.mp4" },
         ],
         review: {
+          state: "COMPLETE",
           scene_footage_coverage: {
             requested_coverage_percent: 100,
             planned_coverage_percent: 62.5,
@@ -8723,9 +8810,9 @@ it.each(["WAITING", "GENERATING", "PREPARING", "FAILED", "UNKNOWN_NO_RETRY"])(
     renderHosted(<HostedProjectScreen projectId="narration" />);
     expect(await screen.findByText("Every river")).toBeVisible();
     const hero = screen.getByRole("region", { name: "Live video progress" });
-    expect(within(hero).getByText("01/11")).toBeInTheDocument();
+    expect(within(hero).getByText("01/10")).toBeInTheDocument();
     const stages = screen.getByRole("list", { name: "Project stages" });
-    expect(within(stages).getAllByRole("listitem")).toHaveLength(11);
+    expect(within(stages).getAllByRole("listitem")).toHaveLength(10);
     expect(within(stages).getByText("Generate voiceover")).toBeInTheDocument();
     expect(within(stages).getByText("Transcribe voiceover")).toBeInTheDocument();
     expect(screen.getByText("Waiting for first visual")).toBeInTheDocument();

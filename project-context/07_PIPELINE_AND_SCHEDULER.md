@@ -48,7 +48,7 @@ flowchart TD
     B --> RM["Resolved render manifest"]
     RM --> F["Selected Local or Cloud: FFmpeg render and FFprobe"]
     F --> R["Ready for review"]
-    R --> AP["Explicit approval and private download"]
+    R --> AP["Automatic private Library and download"]
 ```
 
 After admission, derivative preparation/transcription/scheduling/prompt/span preparation may overlap
@@ -362,12 +362,12 @@ only permitted motion treatment.
 
 ## 11. Review and delivery
 
-A valid final output becomes `READY_FOR_REVIEW`. Technical checks cannot approve relevance,
-anatomy, pseudo-text, identity, lip sync, or style. Explicit user approval creates immutable
-`production-manifest/v3` binding approval actor/time, tenant/revision/timeline, generation/render
-manifests, accepted Serverless provenance receipts, exact provider attempts/cost snapshot,
-avatar/style/model profiles, QA, and final SHA-256. Inactive manifest versions cannot resolve new work.
-Preview/download URLs are short-lived and tenant-authorized.
+Verified renders enter private Library automatically under `DEC_DELIVERY_003`, with immediate
+playback/download/provenance. No human approval; completion does not prove visual quality.
+Preserve tenant/revision, retention, successful output/result/checksum binding, render-only receipt
+and private-object validation. Optional viewer keeps contact sheets/flags; genuine prior approvals
+remain provenance. Never fabricate approval. Versioned manifests retain timeline/attempt/receipt,
+profile/QA/SHA-256 identity. URLs remain short-lived and tenant-authorized.
 
 Terminal workflow releases the account/global admission lease only after lane attempts, callbacks,
 artifacts, and cost records reconcile. New fair work may then be admitted. Workers scale to zero

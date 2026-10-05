@@ -1,0 +1,13 @@
+# Automatic finished-video delivery — V2-09 / VF-10-09
+
+User removes the final-video approval step and authorizes implementation, verification and production deployment. The latest explicit user decision supersedes earlier manual final-approval requirements. Avatar preset/style publication approvals are independent and remain unchanged.
+
+Base: evidence head 1f455864; executable 78c48dcc / Worker 3184f912 at 100%, native274. Owned checkout codex/automatic-library-delivery. Primary checkout has unrelated work and remains untouched. No new paid generation, compute, provider submissions or schema/data migration.
+
+1. Trace shared hosted Local/Cloud completion, Library, preview, download and manifest gates. Replace manual review dependencies with verified SUCCEEDED render readiness. Preserve tenant/revision, retention, exact output/checksum/result binding, render-only receipt and R2 checks. Never manufacture human approval. Existing retained complete unapproved outputs become visible without regeneration; incomplete/failed/deleted/mismatched outputs stay unavailable.
+2. Remove final approval pipeline stage, button and approval-dependent delivery copy. Retain the existing review URL as an optional viewer, contact sheet and provenance access. Completed Progress links to Library and output; Library remains private. Historical genuine approval records remain provenance only.
+3. Run focused backend/SQL/UI regressions, tenant and malformed-output negatives, types, lint, context, secret scans and both builds. Exercise provider-free Chrome and Workerd parity, then read-only actual-runtime SQL qualification against retained output identities. Distinguish short retained proof from new paid or long-form proof.
+4. Commit/push clean owned source. Publish exact artifacts at100% while preserving bindings, secrets, Workflow identities, routes/domain/cron/redaction and active state. Publish matching registrations without restarting healthy driver or generation. Confirm source/settings/assets and authenticated Chrome Library/view/download/manifest behavior. Zero new paid work and independent complete rental inventory required.
+5. Record evidence/current state and update existing GPT Space project/index/coverage/root with guarded edits and readbacks. Inherited CI/Local/provider/long-form/invoice/editorial gates remain separate.
+
+Rollback: restore prior executable78c48dcc; no schema reversal or user state rewrite. Stop when finished verified outputs automatically appear in production Library with immediate playback/download, approval controls absent, focused checks green, no new compute and deployment parity proved.

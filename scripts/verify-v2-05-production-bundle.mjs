@@ -89,8 +89,10 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // providers, generated validators and native code remain outside the static entry.
 // Explicit API Workflow attempt timeout and retry policy add exactly 470 bytes to each
 // measured closure. No imports/dependencies or quarantine checks change.
+// Automatic Library delivery adds 97 measured production bytes for the lazy shared artifact guard
+// and exact result-document binding. All dynamic-provider, validator and CPU quarantine checks remain.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_830_382,
+  "wrangler.production.jsonc": 2_830_479,
   "wrangler.staging.jsonc": 2_832_301,
 })[wranglerConfig];
 const workerForbidden = [

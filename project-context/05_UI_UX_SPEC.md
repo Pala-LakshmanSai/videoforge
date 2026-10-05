@@ -162,7 +162,7 @@ the only persistent applied-state indicator.
   time. Render-only retries retain their own attempt start. Individual stage timers stay unchanged.
 
 - Human stage rows: Prepare -> Transcribe -> Plan -> Write image prompts -> Generate images /
-  Generate avatar -> Assemble -> Technical check -> Review.
+  Generate avatar -> Assemble -> Technical check -> Library.
 - Image/avatar lane cards may progress in parallel and show current counts such as `Image 42/80` or
   `Avatar clip 18/52`.
 - Automatic worker lifecycle wording is read-only: `Waiting for worker`, `Worker starting`, `Verifying
@@ -203,9 +203,9 @@ the only persistent applied-state indicator.
   pending scope confirmation and implementation. Other scenes and avatar footage remain unchanged.
   Repeated clicks and lost-response recovery must not create duplicate paid attempts.
 
-- Final render is `Ready for review`. Explicit **Approve final** records reviewer/revision. Approved
-  **Download MP4** and **Manifest** are direct private actions. MP4 downloads use the pinned
-  voiceover filename, replacing its MP3/WAV suffix with `.mp4`, independently of project title.
+- Verified final renders enter Library automatically. **Download MP4** and **Manifest** are direct
+  private actions. MP4 filenames use the pinned voiceover filename with its suffix replaced by `.mp4`.
+
 
 ### 6. Avatar Hub
 
@@ -236,6 +236,9 @@ the only persistent applied-state indicator.
   deletion from provider retention. Clicking Analyze records the disclosure acknowledgement.
 
 ### 8. Library and Usage
+
+Under `DEC_DELIVERY_003`, verified outputs enter private Library automatically. No final approval step;
+optional viewer, download and provenance remain. Preset approvals remain independent.
 
 - Library shows only account-owned previews/downloads/manifests/retention/archive states.
 - Usage shows per-project/lane/model costs, queue wait, worker-init/model-ready/inference/upload/
@@ -330,7 +333,7 @@ The UI passes when two signed-in fixture accounts can each see only their own da
 private reusable presets plus global built-ins, submit without infrastructure decisions, receive
 fair private queue state, and run one video per account concurrently up to the global two-video
 bound. Each can monitor truthful automatic worker and media stages, recover/cancel/retry without
-duplicate submission, review the three-composition hard-cut output, approve, and privately download.
+duplicate submission, play the three-composition hard-cut output and privately download.
 No manual Pod/GPU control or foreign data appears; cost and worker readiness/scale-down are truthful;
 all existing visual/accessibility/responsive gates remain green in real Chrome.
 
