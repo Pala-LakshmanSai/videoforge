@@ -230,5 +230,34 @@
     "production Local device offline",
     "provider credits quotas longform concurrency editorial invoice limits"
   ],
-  "newPaidInference": 0
+  "newPaidInference": 0,
+  "finalRuntime": {
+    "at": "2026-10-05T08:34:52.121Z",
+    "state": {
+      "active": 0,
+      "leases": 0,
+      "ledger": 274,
+      "waiters": 0,
+      "heartbeat": {
+        "at": "2026-10-05T08:33:59.77904+00:00",
+        "due": 0,
+        "failure": null
+      }
+    },
+    "observer": {
+      "version": "fd1c81e7-6e60-40f7-a9c8-30e377a30319",
+      "status": "running",
+      "successfulTicks": 7,
+      "originalParamsExact": true
+    }
+  },
+  "projectMemory": {
+    "projectSequence": 55,
+    "rootSequence": 46,
+    "indexSequence": 75,
+    "coverageSequence": 70,
+    "freshReadbackHashesExact": true,
+    "unrelatedIndexRowsExact": true,
+    "acceptanceCommit": "de736c37b424efc7a0327ec3183047de31da1730"
+  }
 }
