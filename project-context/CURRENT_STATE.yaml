@@ -1,3 +1,26 @@
+natural_footage_experiment_2026_10_05:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  read_profile: v2_09_natural_footage_experiment
+  plan: NATURAL_FOOTAGE_EXPERIMENT_PLAN.md
+  branch: codex/natural-footage-tests
+  base_source: 4298834b361fa74c7a76218d7daa0f7a3aa80ca0
+  status: FIRST_ROUND_COMPLETE_AWAITING_USER_SELECTION_PRODUCTION_UNCHANGED
+  authority: User_cumulativeUSD4_API_only_prompt_tests_initial_variations_then_preferred_strategy_confirmation_then_explicit_production_approval
+  requirements: Mostly_subtle_casual_handheld_pan_drift_parallax_restrained_scene_activity_available_light_raw_slightly_soft_unpolished;approximately15percent_livelier_scene_supported_action_candidate
+  diagnosis: Shared_Runware_adapter_and_saved_SQL_manifests_pin_cameraFixed_true_preventing_pan_tilt_zoom;generic_motion_prompt_appends_entire_still_prompt
+  provider_spend: Initial12_plus6_source_comparison_clips_and2Kie_images_USD1_72_conservative_ceiling;RunwareUSD0_0134persecond_KieUSD0_004perimage_total_capUSD4_including_future_confirmation
+  paid_compute_shutdown: No_rented_compute_started_API_only
+  production_source: b5ed9f70d195b7bdb75fd9d17f3e6af3574f1e04
+  production_version: 7c5820ff-20a2-4fb2-b206-2736e49b119c
+  validation: All18_native_hash_geometry_duration_silent_full_decode_PASS_all_Chrome_metadata_errorNull_subset_full_playback;C_garden_visually_rejected_equipment_observer
+  reported_video_usd: 1.21280184
+  estimated_source_image_usd: 0.008
+  reported_plus_estimated_usd: 1.22080184
+  remaining_cap_usd: 2.77919816
+  evidence: evidence/acceptance/VF-10-09/2026-10-05-natural-footage-tests.md
+  remaining_gates: User_selection_then_heldout_confirmation_and_explicit_approval_before_fresh_policy_implementation_and_deployment
+
 avatar_composition_controls_2026_10_05:
   checkpoint: V2-09
   selected_task: VF-10-09
@@ -2615,18 +2638,18 @@ updated_at: "2026-09-19T04:41:41Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: Avatar_composition_controls
+current_milestone: Natural_footage_prompt_qualification
 current_task: VF-10-09
 current_wave: v2_09_short_live_e2e
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 task_stage: bounded_mutation
 application_code_changes_authorized: true
 provider_calls_authorized: true
-read_only_provider_calls_authorized: true
+read_only_provider_calls_authorized: false
 remote_or_cloud_mutations_authorized: true
 credential_access_authorized: true
 gpu_use_authorized: false
-maximum_external_spend_usd: 0
+maximum_external_spend_usd: 4
 
 v2_09_stage6_7_autonomous_mvp_repair_2026_09_13:
   status: "ACCEPTED_DEPLOYED_ZERO_COMPUTE"
@@ -7176,17 +7199,17 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/avatar-composition-controls
-  branch_upstream: origin/codex/avatar-composition-controls
+  branch: codex/natural-footage-tests
+  branch_upstream: origin/codex/natural-footage-tests
   branch_published: true
-  current_source_head: "b89632043e2256f364280ba74b2bbab269994b72"
-  current_source_head_semantics: published_API_capacity_source
+  current_source_head: "b5ed9f70d195b7bdb75fd9d17f3e6af3574f1e04"
+  current_source_head_semantics: retained_avatar_composition_production_source
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Resolve Git HEAD for the evidence handoff; b8963204 is the deployed API capacity source. Main unrelated work is preserved."
+  current_source_head_note: "Resolve Git HEAD for the experiment evidence handoff; b5ed9f70 is retained production. Primary unrelated work is preserved."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
-  working_tree_expected: clean_tracked_after_api_capacity_handoff_commit
+  working_tree_expected: clean_tracked_after_natural_footage_experiment_handoff_commit
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
 live_development:
@@ -7200,8 +7223,8 @@ live_development:
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
   provider_mode: production
   provider_calls_authorized: true
-  authorized_spend_usd: 0
-  provider_authority_scope: API_capacity_application_release_only_no_new_paid_generation
+  authorized_spend_usd: 4
+  provider_authority_scope: Isolated_Runware_scene_video_and_Kie_source_image_experiments_only_no_production_mutation
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -9517,49 +9540,48 @@ v2_09_historical_consumed_native_authority:
   note: "Continuing user authorization permits source repairs and fresh exact successor records; it does not replay this consumed click. Retained qualified deployment remains present and idle."
 
 provider_authority: &v2_09_provider_authority_current
-  mode: deployment
-  provider: Cloudflare_and_Neon_application_release_with_read_only_API_quota_lookup
-  cap_usd: 0
-  paid_generation_authorized: false
+  mode: paid
+  provider: RUNWARE_SEEDANCE_AND_KIE_Z_IMAGE
+  cap_usd: 4
+  paid_generation_authorized: true
   non_transferable: true
-  authorized_by_user_at: "2026-10-04"
+  authorized_by_user_at: "2026-10-05"
   resources:
-    [videoforge_production_worker, neon_production_schema, configured_Kie_Fal_Runware_J1_accounts]
-  authorized_operations:
-    [
-      metadata_migration,
-      application_deploy,
-      configuration_readback,
-      artifact_verification,
-      quota_lookup,
-      resource_identity_lookup,
-    ]
-  allowed_operations:
-    [
-      metadata_migration,
-      application_deploy,
-      configuration_readback,
-      artifact_verification,
-      quota_lookup,
-      resource_identity_lookup,
-    ]
+    - "https://api.runware.ai/v1"
+    - "bytedance:2@2"
+    - "https://api.kie.ai/api/v1/jobs/createTask"
+    - "z-image"
+    - "source_asset:5e37bef9-8af0-13e1-bac9-8627ad717354"
+    - "source_asset:674b3431-eb04-40b8-6269-86e8dbfe012a"
+  rate_snapshot:
+    - resource_id: "bytedance:2@2_720p_16_9"
+      billing_unit: generated_second
+      usd_per_unit: 0.0134
+      checked_at: "2026-10-05"
+    - resource_id: "z-image_16_9"
+      billing_unit: generated_image
+      usd_per_unit: 0.004
+      checked_at: "2026-10-05"
+  application_code_authority_scope: Local_experiment_scripts_and_context_only_production_prompt_policy_requires_second_round_approval
+  authorized_operations: [isolated_source_image_tests, isolated_scene_video_tests, exact_uuid_observation, local_output_verification]
+  allowed_operations: [isolated_source_image_tests, isolated_scene_video_tests, exact_uuid_observation, local_output_verification]
 
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: Avatar_composition_controls
-  status: IMPLEMENTING_PROVIDER_FREE
-  dependency_status: production_417e7225_Workerc38d4bd0_native269_verified
-  authorization_status: User_explicitly_authorizes_implementation_tests_production_publication_without_further_confirmation
+  milestone: Natural_footage_prompt_qualification
+  status: FIRST_ROUND_COMPLETE_AWAITING_USER_SELECTION
+  dependency_status: production_b5ed9f70_Worker7c5820ff_native272_verified
+  authorization_status: User_USD4_isolated_API_tests_two_rounds_of_selection_before_production_approval
   task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current
-  read_profile: v2_09_avatar_composition
-  task_brief: AVATAR_COMPOSITION_PLAN.md
-  goal: Preserve_avatar_composition_with_opening_motion_and_optional_avatar_free_pipeline
+  read_profile: v2_09_natural_footage_experiment
+  task_brief: NATURAL_FOOTAGE_EXPERIMENT_PLAN.md
+  goal: Qualify_subtle_handheld_available_light_raw_slightly_soft_footage
   provider_mode: production
   provider_calls_authorized: true
-  read_only_provider_calls_authorized: true
-  maximum_external_spend_usd: 0
+  read_only_provider_calls_authorized: false
+  maximum_external_spend_usd: 4
   remote_or_cloud_mutations_authorized: true
   credential_access_authorized: true
   credential_value_read_authorized: true
@@ -9569,10 +9591,9 @@ recommended_next_task:
   gpu_use_authorized: false
   retained_volume_mutation_authorized: false
   application_code_changes_authorized: true
-  spend_usd: 0
+  spend_usd: 1.22080184
   resources: []
-  authorized_operations:
-    [provider_free_tests, additive_migration, application_worker_release, production_deploy]
+  authorized_operations: [isolated_source_image_tests, isolated_scene_video_tests, exact_uuid_observation, local_output_verification]
 
 verification:
   state: v2_06_complete_green_independently_audited_v2_07_and_v2_08_live_qualified_pass_clean

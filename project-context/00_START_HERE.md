@@ -1,3 +1,8 @@
+Natural footage experiments: read NATURAL_FOOTAGE_EXPERIMENT_PLAN.md and CURRENT_STATE.yaml.
+The user authorizes cumulativeUSD4 isolated scene-video and source-image tests for subtle handheld motion,
+available light and a raw slightly soft look. Two rounds of user selection precede production.
+The current adapter and immutable manifests still pin cameraFixed=true; production is unchanged.
+
 Current user correction: opening footage replaces photos while preserving normal avatar layouts.
 Separate Avatar toggle defaults On; Off uses full-screen visual scenes and skips avatar work.
 Read AVATAR_COMPOSITION_PLAN.md and CURRENT_STATE.yaml; earlier full-screen-only opening is historical.

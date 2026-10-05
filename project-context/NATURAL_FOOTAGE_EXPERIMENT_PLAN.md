@@ -1,0 +1,35 @@
+# Natural footage prompt qualification — 5 October 2026
+
+Checkpoint V2-09 / VF-10-09. User authorizes isolated API experiments with a cumulative USD4 hard ceiling (raised explicitly from USD2 on 5 October), followed by two rounds of human selection before production activation. Lighting follow-up requires available environmental light, ordinary exposure and slightly soft unpolished texture. The later reference/motion follow-up permits roughly15% livelier footage when the scene supports it; this is a candidate editorial mix, not an accepted implementation.
+
+## Evidence and hypothesis
+
+The current shared Runware adapter sends `providerSettings.bytedance.cameraFixed=true`; native immutable video manifests also pin `cameraFixed=true`. The official Seedance1.0ProFast schema describes this as preventing pan/tilt/zoom. Current prompts concatenate the complete photograph prompt with generic subtle physical movement, without a specific camera move or action budget. Both the camera setting and overloaded still prose are plausible contributors. Existing still images also constrain initial light/texture; changing video words cannot establish a universal source-image improvement.
+
+Reference IDs: `6jZ7ib2Edes` (existing private Ranga research) and `xgew77S132Q` (new user reference). References are observation-only and never provider inputs or generated product assets. Judge relevant footage samples, not presenters, advertisements or source graphics. No claim of full-reference viewing.
+
+## Execute in order
+
+1. Read current source/provider controls and current official rate. Reuse owned checksum-verified accepted stills; keep model `bytedance:2@2`,1248×704,5seconds and per-scene seed constant across arms. No project generation, avatar call or rented compute. The later authorized extension includes two isolated new source images.
+2. Two contrasting source scenes × five arms: saved production prompt/camera fixed; same prompt/camera free; compact casual handheld; structured gentle pan; small forward handheld drift/parallax. Add one livelier action probe using the same source. All candidates specify available light, ordinary color/exposure and soft natural detail while retaining identities and clear physical evidence.
+3. Persist every UUID/request identity and liability before its single POST. First-round maximum12clips atUSD0.09 reserved each =USD1.08. Current official720p16:9 rateUSD0.0134/sec implies approximatelyUSD0.804 total. Stop further submission on rate changes, uncertain identity/outcome or insufficient budget. Reconcile existing UUIDs only; never replay an uncertain paid request. Actual receipts govern reported spend; remaining cumulativeUSD4 covers later confirmation. No perpetual rentals/resources.
+4. Verify returned identity/cost, geometry, duration, full decode and checksum. Review full native clips for camera movement, restrained action, anatomy/object continuity, texture and lighting. Show labeled raw clips and an HTML comparison using original files, without postprocessing their look. User selects the preferred candidate; no production change at this boundary.
+5. Generate several held-out examples of the chosen prompt strategy within the remainingUSD4. Include quiet object/environment, human handling and modest natural activity; include a supported livelier example. User approves consistency before production policy implementation.
+6. Only after that approval: bind a fresh versioned scene-video policy and camera control at the shared provider/manifest seam; preserve all saved prompts/claims/media and older revisions. Preserve opening/remainder selection, Avatar On/Off compositions and existing billing/recovery. The approximate85/15 activity mix must respect narrated facts and avoid inventing action in static subjects.
+7. Focused native/API contract and historical-byte tests, provider-free full/split/render acceptance, current types/build/security checks and real Chrome. Deploy the verified exact source with rollback/readback and live acceptance; retain historical unrelated gates separately. Further paid validation requires remaining authorized budget or a new explicit cap.
+
+## Stop condition
+
+This phase ends with real comparison outputs, itemized receipts and the user's preference pending. Prompt wording is experimental; neither deterministic camera control nor consistent realism is guaranteed by text alone. Production stays on its current verified source until the requested second-round approval.
+
+## First-round correction
+
+The first garden C result invents visible filming equipment and a second person. Reject it for continuity. One additional fresh E probe describes viewpoint-only motion and explicitly excludes filming equipment/additional observers; this increases the conservative initial reservation toUSD1.08 while retaining the cumulativeUSD4 cap. No failed or accepted UUID is reused.
+
+## Source look comparison extension
+
+The user explicitly raised the cumulative test cap to USD4. Two isolated Kie z-image sources test available light and ordinary soft detail, then three viewpoint strategies A/B/E per source produce six fresh five-second clips. At most18 clips reserved at USD0.09 plus two images reserved at USD0.05 yields a conservative initial-phase ceiling of USD1.72, retaining at leastUSD2.28 for later chosen-strategy confirmation. Current official z-image pricing is0.8credits/image, approximatelyUSD0.004; provider credits are not a settled invoice. Each new source is visually checked before video submission. Prompt A now describes a handheld viewpoint without a visible person filming; all new candidates explicitly exclude camera equipment and extra observers. This is an exploratory comparison: new source composition differs from the original and cannot prove a pure causal lighting effect. No existing prompt, accepted asset or production policy is rewritten.
+
+## Completed first round
+
+All18 Runware outputs and both Kie source images reconciled. Video receipts totalUSD1.21280184; image credits estimateUSD0.008; subtotalUSD1.22080184 withUSD2.77919816 remaining underUSD4. Native full-decode/hash/geometry/duration/silent checks and within-source pairing pass. All18 clips load in Chrome with valid durations and no media errors; a documented subset played fully. C garden is visually rejected, and all other candidates remain pending human selection rather than production-qualified. No app source or production change. [Acceptance and exact sanitized prompts](evidence/acceptance/VF-10-09/2026-10-05-natural-footage-tests.md). Next: owner preference, held-out confirmation, owner consistency approval, then versioned implementation and release gates above.
