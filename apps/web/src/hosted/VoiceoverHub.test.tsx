@@ -42,17 +42,27 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 it("keeps a queued narration locked and observes it without creating another request", async () => {
-  const job = { id: "queued-voice", state: "WAITING", script: "Saved narration script.",
-    voice_id: "alice", filename: "saved.mp3", audio_url: null };
+  const job = {
+    id: "queued-voice",
+    state: "WAITING",
+    script: "Saved narration script.",
+    voice_id: "alice",
+    filename: "saved.mp3",
+    audio_url: null,
+  };
   const fetcher = vi.fn(async (url: RequestInfo | URL) =>
-    Response.json(String(url).endsWith("/voices") ? { voices } : { job }));
+    Response.json(String(url).endsWith("/voices") ? { voices } : { job }),
+  );
   vi.stubGlobal("fetch", fetcher);
   wrap(<ScriptVoiceover disabled={false} onReady={vi.fn()} onInvalidate={vi.fn()} />);
   await screen.findByText("Waiting for voiceover capacity… You can return later.");
   expect(screen.getByLabelText("Voiceover script")).toBeDisabled();
   expect(screen.getByRole("button", { name: "Generate voiceover" })).toBeDisabled();
-  await waitFor(() => expect(fetcher.mock.calls.some(([url]) =>
-    String(url).endsWith("/jobs/queued-voice"))).toBe(true));
+  await waitFor(() =>
+    expect(fetcher.mock.calls.some(([url]) => String(url).endsWith("/jobs/queued-voice"))).toBe(
+      true,
+    ),
+  );
 });
 it("shows private saved voices and saves a star through authenticated API", async () => {
   const fetcher = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
@@ -499,4 +509,131 @@ it("ignores a stale playback rejection after switching voices", async () => {
   rejectFirst(new Error("aborted"));
   await waitFor(() => expect(screen.getByRole("button", { name: "Pause Bob" })).toBeVisible());
   expect(screen.queryByText("Couldn't play sample. Try again.")).toBeNull();
+});
+
+it("combines counted voice filters with search, library tabs, sorting and resets without mutations", async () => {
+  const items = [
+    {
+      ...voices[0],
+      tags: "Female, Calm, Narrative Story",
+      name: "Alice - British",
+      languages: "gb,us",
+    },
+    { ...voices[1], tags: "Male, Calm, Conversational", name: "Bob - American", languages: "us" },
+    {
+      ...voices[1],
+      voice_id: "bea",
+      tags: "Female, Deep, Advertisement",
+      name: "Bea - Indian",
+      languages: "in",
+      preview_url: "/bea.mp3",
+    },
+    { ...voices[1], voice_id: "unknown", name: "Zoe", tags: "", languages: "" },
+  ];
+  const fetcher = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
+    Response.json({ voices: items }),
+  );
+  vi.stubGlobal("fetch", fetcher);
+  wrap(<VoiceoverHub />);
+  await screen.findByRole("heading", { name: "Alice - British" });
+  fireEvent.click(screen.getByRole("button", { name: /^All voices/ }));
+  fireEvent.change(screen.getByLabelText("Gender", { exact: true }), {
+    target: { value: "female" },
+  });
+  expect(screen.queryByRole("heading", { name: "Bob - American" })).toBeNull();
+  expect(
+    within(screen.getByLabelText("Accent", { exact: true })).getByRole("option", {
+      name: "American (0)",
+    }),
+  ).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Accent", { exact: true }), {
+    target: { value: "indian" },
+  });
+  expect(screen.getByRole("heading", { name: "Bea - Indian" })).toBeVisible();
+  expect(screen.queryByRole("heading", { name: "Alice - British" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: /^Saved/ }));
+  expect(screen.getByRole("heading", { name: "No matching voices" })).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Explore all voices" }));
+  expect(screen.getByRole("heading", { name: "Bea - Indian" })).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Remove Accent filter" }));
+  fireEvent.change(screen.getByLabelText("Style / tone", { exact: true }), {
+    target: { value: "calm" },
+  });
+  fireEvent.change(screen.getByLabelText("Use case", { exact: true }), {
+    target: { value: "narrative story" },
+  });
+  fireEvent.change(screen.getByLabelText("Language / region", { exact: true }), {
+    target: { value: "gb" },
+  });
+  expect(screen.getByRole("heading", { name: "Alice - British" })).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+  fireEvent.click(screen.getByLabelText("Has audio preview"));
+  expect(screen.queryByRole("heading", { name: "Bob - American" })).toBeNull();
+  fireEvent.change(screen.getByLabelText("Sort", { exact: true }), {
+    target: { value: "reverse" },
+  });
+  expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
+    "Bea - Indian",
+    "Alice - British",
+  ]);
+  fireEvent.change(screen.getByRole("searchbox", { name: "Search voices" }), {
+    target: { value: " B " },
+  });
+  expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
+    "Bea - Indian",
+  ]);
+  expect(fetcher.mock.calls.every((call) => !(call[1] as RequestInit | undefined)?.method)).toBe(
+    true,
+  );
+});
+
+it("filters the complete catalog beyond the first page and resets pagination", async () => {
+  const items = Array.from({ length: 70 }, (_, i) => ({
+    ...voices[1],
+    voice_id: `voice-${i}`,
+    name: `Voice ${String(i).padStart(2, "0")}`,
+    tags: i === 69 ? "Female" : "Male",
+  }));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => Response.json({ voices: items })),
+  );
+  wrap(<VoiceoverHub />);
+  await screen.findByRole("heading", { name: "Voice 00" });
+  expect(screen.queryByRole("heading", { name: "Voice 69" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Show more voices" }));
+  expect(screen.getByRole("heading", { name: "Voice 69" })).toBeVisible();
+  fireEvent.change(screen.getByLabelText("Gender", { exact: true }), {
+    target: { value: "female" },
+  });
+  expect(screen.getByRole("heading", { name: "Voice 69" })).toBeVisible();
+  expect(screen.queryByRole("button", { name: "Show more voices" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+  expect(screen.queryByRole("heading", { name: "Voice 69" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Show more voices" })).toBeVisible();
+});
+
+it("sorts saved voices alphabetically when explicitly requested, preserving the default favorite order", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        voices: [
+          { ...voices[0], name: "Zoe", starred: true },
+          { ...voices[1], name: "Alice", saved: true },
+        ],
+      }),
+    ),
+  );
+  wrap(<VoiceoverHub />);
+  await screen.findByRole("heading", { name: "Zoe" });
+  expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
+    "Zoe",
+    "Alice",
+  ]);
+  fireEvent.change(screen.getByLabelText("Sort", { exact: true }), { target: { value: "name" } });
+  expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
+    "Alice",
+    "Zoe",
+  ]);
 });

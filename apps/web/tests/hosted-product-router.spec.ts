@@ -748,3 +748,68 @@ test("finished video appears in Library and the legacy viewer downloads without 
   await expect(page.getByRole("button", { name: /Approve/ })).toHaveCount(0);
   expect(mutations).toEqual([]);
 });
+
+for (const width of [1280, 390]) {
+  test(`Voice filters combine and reset at ${width}px without generating narration`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const voices = [
+      {
+        voice_id: "alice",
+        name: "Alice - British",
+        tags: "Female, Calm, Narrative Story",
+        languages: "gb,us",
+        saved: false,
+        starred: false,
+        preview_url: null,
+      },
+      {
+        voice_id: "bob",
+        name: "Bob - American",
+        tags: "Male, Deep, Conversational",
+        languages: "us",
+        saved: false,
+        starred: false,
+        preview_url: null,
+      },
+      {
+        voice_id: "bea",
+        name: "Bea - Indian",
+        tags: "Female, Calm, Conversational",
+        languages: "in",
+        saved: false,
+        starred: false,
+        preview_url: null,
+      },
+    ];
+    const posts: string[] = [];
+    page.on("request", (request) => {
+      if (request.method() === "POST") posts.push(request.url());
+    });
+    await page.route("**/api/v2/voiceovers/voices", (route) => route.fulfill({ json: { voices } }));
+    await page.goto("/voiceovers");
+    await expect(page.getByRole("heading", { name: "Bob - American" })).toBeVisible();
+    await page.getByLabel("Gender", { exact: true }).selectOption("female");
+    await expect(page.getByRole("heading", { name: "Bob - American" })).toHaveCount(0);
+    await page.getByLabel("Accent", { exact: true }).selectOption("british");
+    await page.getByLabel("Language / region", { exact: true }).selectOption("gb");
+    await page.getByText("More filters", { exact: true }).click();
+    await page.getByLabel("Style / tone", { exact: true }).selectOption("calm");
+    await page.getByLabel("Use case", { exact: true }).selectOption("narrative story");
+    await expect(page.getByRole("article")).toHaveCount(1);
+    await expect(page.getByRole("heading", { name: "Alice - British" })).toBeVisible();
+    await page.getByLabel("Has audio preview").check();
+    await expect(page.getByRole("heading", { name: "No matching voices" })).toBeVisible();
+    await page.getByRole("button", { name: "Clear filters", exact: true }).first().click();
+    await expect(page.getByRole("article")).toHaveCount(3);
+    await page.getByLabel("Sort", { exact: true }).selectOption("reverse");
+    await expect(page.getByRole("article").first()).toContainText("Bob - American");
+    await page.getByRole("searchbox", { name: "Search voices" }).fill(" b ");
+    await expect(page.getByRole("article")).toHaveCount(2);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+    expect(posts).toEqual([]);
+  });
+}
