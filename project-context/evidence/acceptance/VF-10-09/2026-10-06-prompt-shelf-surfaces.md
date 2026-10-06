@@ -36,12 +36,12 @@ Exact sealed original requests and full saved responses replay with zero HTTP:
 first four batches40/40 writer acceptance and independent compilation PASS. The final
 replacement remains rejected with nine locally valid scenes and the true portrait
 illustration rejected. Tests cover all three required fields, supported blank physical
-surfaces and positive text/graphics negatives. Pipeline290 and focused web85 PASS; affected pipeline/web/worker types and lint, vNext firewall, context and secret scan PASS. Rebuilt-dist independent bare-word/digit-on-blank probes reject. Production builds/publication remain pending.
+surfaces and positive text/graphics negatives. Pipeline290 and focused web85 PASS; affected pipeline/web/worker types and lint, vNext firewall, context and secret scan PASS. Rebuilt-dist independent bare-word/digit-on-blank probes reject. Both production builds and production bundle firewall PASS. Published executable `7e2bd59ecb15a4b3886a9ce5e7ee2ef7f65d2a71` / Worker `fb52fe35-c1c8-4620-a833-a267dc19a6e8` at100%, native281 unchanged. All36public asset bytes/SHA256 and anonymous private-catalog401 PASS; exact55bindings/27secret names/resources/custom-domain/crons/threeWorkflow identities and qualifiedCloud/Desktop0.1.52 pins preserved. Configuration changed only the source commit. Brave reload confirms30/156saved and completed voiceover/transcription/context/planning stages. Independent live GET verifies matching coordinator `f6cd9f91-9379-41f0-b438-34ce51a51576` RUNNING with original params and successful error-null continuation0-1 tick at07:43:44–07:43:45UTC.
 
 Private diagnosis evidence is under `.videoforge/prompt-invalid-20261006-1301/` in
 the primary checkout; customer scripts/provider payloads remain untracked and private.
 The current terminal project retains30/156 accepted scenes and its exact known
 USD0.333352 cumulative costs. No revival, paid replay, identity/counter reset, new
-resource or workflow restart occurred during diagnosis. Fresh whole-film/provider,
+resource or workflow restart occurred during diagnosis. Publication applied the existing three Workflow registrations and restarted only the stable-id coordinator once at a verified sleeping boundary. Guards required globalDUE0, no waiters/dispatching prompts/nonterminal CPU attempts, exact30-prefix/run/claim/replacement/cost preimages, one unchanged terminal-held admission lease and immutable archived/inert work. No provider Workflow restart or inference; one historical STOPPING/UNKNOWN Cloud liability remained preserved. Known restart acknowledgment was reconciled using GET only through its temporary QUEUED placeholder to matching RUNNING; no replay. Fresh whole-film/provider,
 editorial, invoice and inherited broader-CI gates remain separate. External provider
 output remains probabilistic; this repair does not prove all future outputs valid.
