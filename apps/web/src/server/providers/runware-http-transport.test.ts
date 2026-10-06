@@ -165,23 +165,49 @@ describe("Runware server HTTP transport", () => {
   });
 
   it("recovers an exact async response without an archive read or inference", async () => {
-    const request = await asyncPromptRequest();
+    const base = await asyncPromptRequest();
+    const lunaTask = {
+      ...base.request,
+      model: "openai:gpt@6-luna",
+      outputFormat: "JSON",
+      jsonSchema: { name: "scenes", strict: true, schema: { type: "object" } },
+      settings: { systemPrompt: "system", thinkingLevel: "none", maxTokens: 2048 },
+      messages: [{ role: "user", content: "{}" }],
+    };
+    const requestBytes = canonicalizeJson([lunaTask]);
     const fetcher = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
       expect(JSON.parse(String(init?.body))).toEqual([
-        { taskType: "getResponse", taskUUID: request.request.taskUUID },
+        { taskType: "getResponse", taskUUID: base.request.taskUUID },
       ]);
-      return jsonResponse(completeAsyncText(request.request.taskUUID));
+      return jsonResponse({
+        ...completeAsyncText(base.request.taskUUID),
+        model: "openai:gpt@6-luna",
+        usage: {
+          promptTokens: 10,
+          completionTokens: 20,
+          totalTokens: 30,
+          completionTokensDetails: { reasoningTokens: 7 },
+        },
+      });
     });
     await expect(
       retrieveRunwareTextTaskDetails({
         apiKey: "runware-test-key-at-least-twenty-characters",
-        originalTaskUUID: request.request.taskUUID,
-        originalRequestBytes: request.requestBytes,
-        originalRequestSha256: request.requestSha256,
+        originalTaskUUID: base.request.taskUUID,
+        originalRequestBytes: requestBytes,
+        originalRequestSha256: await testHash(requestBytes),
         fetch: fetcher,
       }),
-    ).resolves.toMatchObject({ outputText: "x".repeat(16_000), costUsd: 0.001 });
+    ).resolves.toMatchObject({
+      outputText: "x".repeat(16_000),
+      costUsd: 0.001,
+      providerModel: "openai:gpt@6-luna",
+      usage: { reasoningTokens: 7 },
+    });
     expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher.mock.calls.map((call) => JSON.parse(String(call[1]?.body))[0].taskType)).toEqual([
+      "getResponse",
+    ]);
   });
 
   it("distinguishes exact terminal redacted archives with verified known cost from generated output", async () => {
@@ -469,6 +495,7 @@ describe("Runware server HTTP transport", () => {
                 completionTokens: 20,
                 totalTokens: 30,
                 cachedInputTokens: 2,
+                completionTokensDetails: { reasoningTokens: 9 },
               },
             },
           ],
@@ -489,7 +516,13 @@ describe("Runware server HTTP transport", () => {
       outputText: '{"summary":"recovered"}',
       costUsd: 0.001,
       finishReason: "stop",
-      usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30, cachedInputTokens: 2 },
+      usage: {
+        inputTokens: 10,
+        outputTokens: 20,
+        totalTokens: 30,
+        cachedInputTokens: 2,
+        reasoningTokens: 9,
+      },
       originalRequestBytes,
       originalRequestSha256,
     });
@@ -795,7 +828,12 @@ describe("Runware server HTTP transport", () => {
         text: { batch_id: "batch_001", scenes: [] },
         cost: 0.001,
         finishReason: "stop",
-        usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
+        usage: {
+          promptTokens: 10,
+          completionTokens: 20,
+          totalTokens: 30,
+          thinkingTokens: 6,
+        },
       }),
     );
     const transport = new RunwarePromptHttpTransport({
@@ -809,11 +847,92 @@ describe("Runware server HTTP transport", () => {
     expect({ ...first, latencyMs: 0 }).toEqual({ ...replay, latencyMs: 0 });
     expect(first).toMatchObject({
       status: "succeeded",
-      usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30, cachedInputTokens: 0 },
+      usage: {
+        inputTokens: 10,
+        outputTokens: 20,
+        totalTokens: 30,
+        cachedInputTokens: 0,
+        reasoningTokens: 6,
+      },
       costUsd: 0.001,
     });
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(ledger.snapshot()).toMatchObject({ reservedUsd: 0, settledUsd: 0.001 });
+  });
+
+  it("passes the sealed Luna JSON-schema task bytes unchanged", async () => {
+    const base = await asyncPromptRequest();
+    const task = {
+      ...base.request,
+      model: "openai:gpt@6-luna",
+      outputFormat: "JSON",
+      jsonSchema: { name: "scenes", strict: true, schema: { type: "object" } },
+      settings: { systemPrompt: "system", thinkingLevel: "none", maxTokens: 2048 },
+      messages: [{ role: "user", content: "{}" }],
+    };
+    const requestBytes = canonicalizeJson([task]);
+    const request = {
+      ...base,
+      request: task,
+      requestBytes,
+      requestSha256: await testHash(requestBytes),
+    } as unknown as RunwarePromptTransportRequest;
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = String(init?.body);
+      if (fetcher.mock.calls.length === 1) {
+        expect(body).toBe(requestBytes);
+        return jsonResponse({ taskType: "textInference", taskUUID: task.taskUUID });
+      }
+      expect(JSON.parse(body)).toEqual([{ taskType: "getResponse", taskUUID: task.taskUUID }]);
+      return jsonResponse({
+        ...completeAsyncText(task.taskUUID),
+        model: "openai:gpt@6-luna",
+      });
+    });
+    const transport = new RunwarePromptHttpTransport({
+      apiKey: "runware-test-key-at-least-twenty-characters",
+      ledger: new RunwareSpendLedger(0.2),
+      fetch: fetcher,
+      maximumRequestCostUsd: 0.02,
+      pollIntervalMs: 1,
+    });
+    await expect(transport.dispatch(request)).resolves.toMatchObject({
+      status: "succeeded",
+      providerModel: "openai:gpt@6-luna",
+    });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects malformed or out-of-range prompt reasoning usage", async () => {
+    for (const usage of [
+      { promptTokens: 10, completionTokens: 20, totalTokens: 30, reasoningTokens: -1 },
+      { promptTokens: 10, completionTokens: 20, totalTokens: 30, reasoningTokens: 21 },
+      {
+        promptTokens: 10,
+        completionTokens: 20,
+        totalTokens: 30,
+        reasoningTokens: 4,
+        completionTokensDetails: { reasoningTokens: 5 },
+      },
+    ]) {
+      const transport = new RunwarePromptHttpTransport({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        ledger: new RunwareSpendLedger(0.2),
+        fetch: async () =>
+          jsonResponse({
+            taskUUID: "11111111-1111-8111-8111-111111111111",
+            taskType: "textInference",
+            text: "{}",
+            cost: 0.001,
+            finishReason: "stop",
+            usage,
+          }),
+        maximumRequestCostUsd: 0.02,
+      });
+      await expect(transport.dispatch(promptRequest())).rejects.toMatchObject({
+        code: "RUNWARE_RESPONSE_INVALID",
+      });
+    }
   });
 
   it("maps Gemini reasoning usage through the distinct style transport", async () => {

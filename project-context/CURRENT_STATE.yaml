@@ -1,3 +1,41 @@
+runware_luna_prompts_2026_10_06:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  read_profile: v2_09_runware_luna_prompts
+  branch: codex/gpt6-luna-prompt-writer
+  status: V38_PARTIAL_SERVICE_ACCEPTANCE_142_OF_152_FINAL_SCENE_AND_FULL_REVIEW_PENDING
+  base: d4eac449c50db0840986cb2c15a4b8724b721536
+  production_executable: 69175135c0402ce0fdcbfdbbf12abf5d60c06628
+  production_worker_version: 453a1c95-b248-44a0-8f1a-eccebf7ec3f3
+  production_native_schema: 282
+  stopped_candidate_request_version: runware-gpt-6-luna-prompt-request-v34
+  stopped_candidate_profile: Runware_profile8_not_deployed
+  stopped_source_manifest_hash: "sha256:cd11cc3d209ecee0ef9f141178a62810306bb656a4fcc1a4a5f81b0ab6892ddc"
+  latest_candidate_request_version: runware-gpt-6-luna-prompt-request-v38
+  latest_candidate_result: v38_first_full_run_19_posts_142_of_152_service_accepted;135_rows_batches_2_15_revalidated_zero_HTTP;new_first7_two_posts_service_accepted_and_independently_reviewed_zero_findings;batch16_nine_individually_valid_one_overlimit;independent_all152_review_incomplete;not_qualified_or_published
+  v37_historical_result: first_batch_accepted;second_batch_rejected_depiction_transfer;one_targeted_correction_also_rejected_depiction_transfer;correction_estimate_USD0.000231;full_stage_not_run
+  v37_historical_source_manifest_hash: "sha256:9ca10f4b77407f8c69a56d43bf25af200a18acc0487c1660692a27c458ebb63b"
+  v38_original_full_run_source_manifest_hash: "sha256:ab69f26a761fa08b0eef3ecee379987a9966b02c5f45baa1f8c1f596f0f98371"
+  v38_current_source_manifest_hash: "sha256:ad411a3e9ed286a630a9b3e9a5cbaad55f9484e6fe9e640f8a301d7440134ad0"
+  v38_source_manifest_files: 195
+  v38_pre_guard_dryrun_harness_hash: "sha256:5523f8243a4545d9369819db606047390b0f88a9212336737dd6bb08064fdd2c"
+  v38_pre_guard_dryrun_plan_hash: "sha256:94fbe29ee6584b9650590195dfb70315b27254464386f31d4b7f4a5774e2a246"
+  v38_pre_guard_dryrun_reserved_worst_case_micro_usd: 104169
+  v38_first_full_run_posts: 19
+  v38_current_service_accepted: 142
+  v38_batch16_individually_valid: 9
+  v38_batch16_overlimit_unresolved: 1
+  v38_original_final10_one_post_authority: CONSUMED
+  v38_additional_final_scene_post_authority: PENDING_EXPLICIT_HUMAN_APPROVAL_MAX_ONE_POST_USD0.01
+  v38_first7_independent_review: ZERO_FINDINGS_ALL_SEVEN
+  v38_independent_review_all152_complete: false
+  latest_two_provider_calls: v38_first7_guarded_service_retest_two_posts_pinned_estimate_USD0.001876
+  user_authority: Replace_image_prompt_writer_with_exact_gpt6_luna_preserve_functionality_use_Luna_workers_and_publish_qualified_result.
+  provider_spend: latest_account_readback_2026_10_06T19:53Z_120_Luna_requests_USD0.121421_cumulative_account_USD3.090390_predates_new2posts_not_current_not_invoice;new_guarded_first7_two_posts_pinned_estimate_USD0.001876;prior_scanner_defect_first7_pinned_estimate_USD0.001703;current_conservative_liability_inclusive_bound_USD3.098814_includes_unresolved_v34_HTTP524_max_liability_USD0.006429;user_total_cap_USD6;original_final10_one_POST_USD0.01_authority_consumed;additional_final_scene_one_POST_USD0.01_requires_explicit_human_approval
+  paid_compute_shutdown: No_compute_started_stopped_or_reinventoried
+  remaining_gates: preserve_unresolved_v34_HTTP524_no_replay;resolve_final_overlimit_scene_only_after_explicit_one_POST_USD0.01_approval;complete_independent_review_all152;native_publication;browser_acceptance;full_film_editorial_and_broad_CI_not_claimed
+  brief: RUNWARE_LUNA_PROMPTS_PLAN.md
+
 account_menu_copy_2026_10_06:
   checkpoint: V2-09
   selected_task: VF-10-09
@@ -3119,13 +3157,13 @@ image_review_regeneration_request_2026_09_14:
 updated_at: "2026-10-05T20:20:00Z"
 
 phase: serverless_v2_two_track_execution_active
-implementation_authorized_in_current_task: true
-current_milestone: Preloaded_account_menu
+implementation_authorized_in_current_task: false
+current_milestone: Runware_Luna_prompt_writer
 current_task: VF-10-09
-current_wave: v2_09_assembly_webp_recovery
+current_wave: v2_09_runware_luna_prompts
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: assembly_repair_handoff_complete
-application_code_changes_authorized: true
+task_stage: final_scene_and_full_quality_review_pending
+application_code_changes_authorized: false
 provider_calls_authorized: false
 read_only_provider_calls_authorized: false
 remote_or_cloud_mutations_authorized: false
@@ -7681,9 +7719,9 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/account-switching
-  branch_upstream: origin/codex/account-switching
-  branch_published: true
+  branch: codex/gpt6-luna-prompt-writer
+  branch_upstream: none
+  branch_published: false
   current_source_head: "69175135c0402ce0fdcbfdbbf12abf5d60c06628"
   current_source_head_semantics: executable_release_identity_recorded_after_publication_evidence_commits_follow
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
@@ -7706,7 +7744,7 @@ live_development:
   provider_mode: fixture
   provider_calls_authorized: false
   authorized_spend_usd: 0
-  provider_authority_scope: Next_task_provider_free;completed_repair_and_original_generation_authority_recorded_in_assembly_webp_recovery_2026_10_06
+  provider_authority_scope: No_provider_calls_until_explicit_approval_for_one_final_scene_correction;previous_USD6_authority_and_spend_are_historical;ordinary_dev_server_default_fixture_unchanged;no_media_or_GPU
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -10027,24 +10065,23 @@ provider_authority: &v2_09_provider_authority_current
   cap_usd: 0
   paid_generation_authorized: false
   non_transferable: true
-  authorized_by_user_at: "2026-10-06"
   resources: []
   authorized_operations: []
   allowed_operations: []
-  rate_snapshot: []
+  prior_user_authority: USD6_total_prompt_qualification_and_publication_authority_recorded_2026_10_06;current_final_scene_post_not_authorized_without_new_approval
 
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: Preloaded_account_menu
-  status: COMPLETE
-  dependency_status: Productionaa47e419_native282_preloaded_menu_and_independent_browser_sessions_verified_prior_fixes_preserved
-  authorization_status: Explicit_user_add_switching_validate_and_push_production_no_new_paid_generation
-  task_stage: production_acceptance_complete
+  milestone: Runware_Luna_prompt_writer
+  status: IN_PROGRESS
+  dependency_status: V38_partial_service_acceptance_142_of_152_new7_independent_review_zero_findings_final_scene_needs_explicit_approval_all152_review_and_publication_pending
+  authorization_status: Original_USD6_qualification_authority_and_final10_single_POST_consumed;one_more_final_scene_POST_max_USD0.01_pending_explicit_human_approval
+  task_stage: final_scene_and_full_quality_review_pending
   provider_authority: *v2_09_provider_authority_current
-  read_profile: v2_09_account_switching
-  task_brief: evidence/acceptance/VF-10-09/2026-10-06-account-switching.md
-  goal: Preload_visible_browser_accounts_warm_navigation_and_switch_without_document_reload
+  read_profile: v2_09_runware_luna_prompts
+  task_brief: RUNWARE_LUNA_PROMPTS_PLAN.md
+  goal: Qualify_and_publish_exact_Runware_GPT6_Luna_for_fresh_image_prompt_batches
   provider_mode: fixture
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
@@ -10057,10 +10094,17 @@ recommended_next_task:
   worker_image_publication_authorized: false
   gpu_use_authorized: false
   retained_volume_mutation_authorized: false
-  application_code_changes_authorized: true
+  application_code_changes_authorized: false
   spend_usd: 0
-  resources: []
-  authorized_operations: []
+  spend_basis: current_provider_free_pause_pending_explicit_final_scene_approval
+  historical_latest_account_readback_usd: 3.090390
+  historical_account_readback_basis: 2026_10_06T19_53Z_predates_guarded_first7_retest_not_current_not_invoice
+  conservative_prior_cost_usd: 3.098814
+  latest_guarded_first7_pinned_estimate_usd: 0.001876
+  unresolved_liability_max_usd: 0.006429
+  latest_comparison_pinned_estimate_usd: 0.000751
+  resources: ["RUNWARE:openai:gpt@6-luna", "https://api.runware.ai/v1/chat/completions", "cloudflare:videoforge-v2-13-production", "neon:production-DATABASE_URL-binding"]
+  authorized_operations: ["Prompt_only_Luna_qualification", "Read_only_usage_reconciliation", "Guarded_native_migration", "Qualified_production_publication"]
 
 
 verification:

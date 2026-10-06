@@ -3,6 +3,7 @@ import { promptExecutionInputHash } from "@videoforge/control-plane/prompts";
 import { NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH } from "@videoforge/pipeline";
 import { promptStyleTreatmentPositiveSuffix } from "@videoforge/pipeline/prompts";
 import * as promptRuntime from "@videoforge/pipeline/prompts";
+import { buildKieScenePrompt } from "../providers/kie-image-prompt";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -15,6 +16,7 @@ import {
 
 import {
   hostedPromptAuthority,
+  HOSTED_LUNA_PROMPT_BATCH_MAX_OUTPUT_TOKENS,
   compileAndPersistHostedPromptBatch,
   hostedPromptBatchPlan,
   recoverHostedPromptBatchPlan,
@@ -237,7 +239,7 @@ function successfulPromptFetcher() {
           },
           cost: 0.00001,
           finishReason: "stop",
-          model: "google:gemini@3.5-flash",
+          model: task.model,
         },
       ],
     });
@@ -318,6 +320,7 @@ describe("versioned prompt request recovery", () => {
       // Exercises an actual planner budget rejection, not an invented provider error.
       expect(await recoverHostedPromptBatchPlan(authority, binding)).toEqual(legacy);
       expect(seen).toEqual([
+        "runware-luna-grounded-v1",
         "grounded-scenes-v1",
         "validated-scenes-v1",
         "no-graphics-async-v1",
@@ -337,6 +340,77 @@ describe("versioned prompt request recovery", () => {
     } finally {
       planner.mockRestore();
     }
+  });
+
+  it("selects Luna for fresh plans with the preserved ten-scene and output ceilings", () => {
+    const planned = hostedPromptBatchPlan(authorityFor(true));
+    expect(planned.requestPolicy).toBe("runware-luna-grounded-v1");
+    expect(planned.batches.every((batch) => batch.batch.scenes.length <= 10)).toBe(true);
+    expect(
+      planned.batches.every(
+        (batch) => batch.maxOutputTokens <= HOSTED_LUNA_PROMPT_BATCH_MAX_OUTPUT_TOKENS,
+      ),
+    ).toBe(true);
+  });
+
+  it("budgets Luna literals against the real Kie builder for custom styles and HANDS_ACTION", () => {
+    const base = authorityFor(false);
+    const custom = {
+      ...base,
+      style: { ...base.style, positiveSuffix: "soft tactile film grain ".repeat(16) },
+      scenes: base.scenes.map((scene) => ({ ...scene, inImageShotRole: "HANDS_ACTION" as const })),
+    };
+    const legacy = hostedPromptBatchPlan(custom, "grounded-scenes-v1");
+    expect(legacy.batches[0]?.batch.literalCharacterLimit).toBeUndefined();
+    const legacyScene = legacy.batches[0]!.batch.scenes[0]!;
+    const overflowing = promptRuntime.compileImagePrompt({
+      compilerPolicy: custom.compilerPolicy,
+      expectedScene: legacyScene,
+      writerOutput: {
+        scene_id: legacyScene.sceneId,
+        literal_subject: "x".repeat(240),
+        action: "y".repeat(240),
+        environment: "z".repeat(240),
+        in_image_shot_role: legacyScene.inImageShotRole,
+        lighting_context: "available daylight",
+        continuity_tags: [],
+        prompt_core: "A supported physical scene.",
+      },
+      style: custom.style,
+      styleProfileHash: custom.styleProfileHash,
+      extraPromptKeywords: custom.extraPromptKeywords,
+      applyExtraPromptKeywords: custom.applyExtraPromptKeywords,
+    });
+    expect(() => buildKieScenePrompt(overflowing, { handAnatomy: true })).toThrow("INPUT_INVALID");
+
+    const luna = hostedPromptBatchPlan(custom);
+    const budget = luna.batches[0]?.batch.literalCharacterLimit;
+    expect(budget).toBeGreaterThanOrEqual(90);
+    const subjectLength = Math.min(240, Math.max(1, Math.floor(budget! / 3)));
+    const literalSubject = "s".repeat(subjectLength);
+    const remaining = budget! - literalSubject.length;
+    const action = "a".repeat(Math.min(240, Math.max(1, Math.floor(remaining / 2))));
+    const environment = "e".repeat(Math.min(240, remaining - action.length));
+    const scene = luna.batches[0]!.batch.scenes[0]!;
+    const compiled = promptRuntime.compileImagePrompt({
+      compilerPolicy: custom.compilerPolicy,
+      expectedScene: scene,
+      writerOutput: {
+        scene_id: scene.sceneId,
+        literal_subject: literalSubject,
+        action,
+        environment,
+        in_image_shot_role: scene.inImageShotRole,
+        lighting_context: "available daylight",
+        continuity_tags: [],
+        prompt_core: "A supported physical scene.",
+      },
+      style: custom.style,
+      styleProfileHash: custom.styleProfileHash,
+      extraPromptKeywords: custom.extraPromptKeywords,
+      applyExtraPromptKeywords: custom.applyExtraPromptKeywords,
+    });
+    expect(buildKieScenePrompt(compiled, { handAnatomy: true }).length).toBeLessThanOrEqual(800);
   });
 
   it.each([false, true])("pins legacy plan hash for natural=%s", async (natural) => {
@@ -725,7 +799,7 @@ describe("versioned prompt request recovery", () => {
       usage: { inputTokens: 100, outputTokens: 200, totalTokens: 300, cachedInputTokens: 0 },
       costUsd: 0.01,
       finishReason: "stop",
-      providerModel: "google:gemini@3.5-flash",
+      providerModel: original.request.model,
       latencyMs: 0,
     };
     const correction = promptRuntime.buildRunwarePromptCorrection(entry.batch, source.outputText)!;
@@ -866,7 +940,7 @@ describe("versioned prompt request recovery", () => {
         };
         const recoveredPlan = await recoverHostedPromptBatchPlan(authority, binding);
         expect(recoveredPlan).toEqual(planned);
-        expect(hostedPromptBatchPlan(authority).requestPolicy).toBe("grounded-scenes-v1");
+        expect(hostedPromptBatchPlan(authority).requestPolicy).toBe("runware-luna-grounded-v1");
         const fetcher = successfulPromptFetcher();
         const results: Parameters<
           NonNullable<Parameters<typeof dispatchOneHostedPromptBatch>[0]["recordResult"]>
@@ -1079,7 +1153,7 @@ describe("hosted prompt authority", () => {
       identity,
       reservedCostMicroUsd: 8_000_000,
     });
-    const batchPlan = hostedPromptBatchPlan(authority);
+    const batchPlan = hostedPromptBatchPlan(authority, "grounded-scenes-v1");
     const persistedBatchPlanBinding = {
       plannedBatchCount: batchPlan.batchCount,
       plannedSceneCount: batchPlan.totalScenes,
@@ -1643,7 +1717,7 @@ describe("hosted Runware prompt writer", () => {
       runHostedPromptExecution({
         scope: { workspaceId: authority.workspaceId, actorUserId: ids.workspace },
         authority,
-        batchPlan: hostedPromptBatchPlan(authority),
+        batchPlan: hostedPromptBatchPlan(authority, "grounded-scenes-v1"),
         command: {
           projectId: authority.projectId,
           revisionId: authority.revisionId,

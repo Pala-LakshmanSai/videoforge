@@ -1,3 +1,26 @@
+## Runware GPT-6 Luna prompt writer migration — 2026-10-06
+
+User-approved fresh prompt writer AIR: `openai:gpt@6-luna`, using the existing Runware
+key at `/v1/chat/completions`, strict JSON and candidate `reasoning_effort=low`. Authenticated
+modelSearch confirms the AIR; native textInference rejects it with invalidModel while
+the compatible canary succeeds. No direct OpenAI credential or provider switch.
+Current GPT-6 Luna token-rate basis perM USD0.10 input,0.01 cached,0.125 cache-write,
+0.50 output; calculate integer micro-USD estimates once, distinguish them from invoices,
+and qualify Runware account usage independently before production.
+Source: https://runware.ai/docs/tools/compatible-apis .
+
+Fresh candidate request v38/profile8 identify the compatible transport; profile8 is not
+deployed and production remains on Gemini with native schema282. A private v37 none-versus-low
+comparison supporting the v38 candidate reused v37 system/user messages and strict schema,
+changing only wire reasoning from none to low. Both scenes passed with zero corrections (375
+reasoning tokens within 599 output; pinned estimate USD0.000751). It did not submit a sealed
+v38 request and is not full-stage qualification. Historical Gemini
+v24-v32/native task polling remain unchanged. Context/reference analysis and image/avatar/footage
+providers retain their separate pins. Full-stage qualification, independent review, native
+publication and browser acceptance remain open;
+see CURRENT_STATE.yaml and RUNWARE_LUNA_PROMPTS_PLAN.md.
+
+
 # Models and providers
 
 Status: fresh generation selected for Kie and Fal APIs; historical Serverless evidence retained
@@ -7,6 +30,43 @@ Rates and provider behavior are time-sensitive. Refresh official sources and liv
 configuration before any mutation or paid proposal. Do not hard-code planning rates as provider
 truth. Existing Pod evidence proves specific artifacts and samples; it does not prove queue-based
 Serverless startup, concurrency, timeout, scale-to-zero, or billing behavior.
+
+## GPT-6 Luna prompt-writer migration status (2026-10-06)
+
+Runware modelSearch returned AIR `openai:gpt@6-luna`; native `/v1` textInference returned
+HTTP400 `invalidModel`, while `/v1/chat/completions` passed a bounded strict-JSON canary. Request
+v38/profile8 remains undeployed and uses low reasoning. Official references:
+[OpenAI GPT-6 Luna](https://developers.openai.com/api/docs/models/gpt-6-luna),
+[Runware compatible APIs](https://runware.ai/docs/tools/compatible-apis), and
+[Runware GPT-6 Luna](https://runware.ai/models/openai-gpt-6-luna).
+
+The first v38 full-stage run made 19 posts and service-accepted 142/152 rows. The original
+final-ten one-post approval was consumed; batch 16 has nine individually valid rows and one
+over-limit unresolved scene. Independent review found a same-object companion in accepted scene
+6. A prior first-seven retest exposed the scanner form of that defect (pinned estimate
+USD0.001703). The Luna-only guard now compares primary subject/action/object heads and rejects
+unsupported static self-companions. It does not change v38 request bytes. Offline revalidation
+covered 135 scenes from batches 2–15 with zero HTTP; 18 eligible wire branches remained unchanged.
+A fresh first-seven service retest accepted all seven in two posts (pinned estimate USD0.001876).
+Independent review of those seven found zero findings, including corrected scene 6's scanner at
+the checkout lane. One further final-scene correction needs explicit human approval for at most
+one POST and USD0.01; the consumed final-ten approval does not authorize it.
+
+The latest Runware account readback at 19:53 UTC showed 120 requests, USD0.121421 in Luna usage,
+and USD3.090390 cumulative account usage. It predates the separate two-post retest and is not a
+current readback, invoice, or run-specific cost. The current conservative liability-inclusive
+bound is USD3.098814, including the unresolved v34 HTTP 524 maximum liability of USD0.006429;
+never replay that request. Reasoning is a subset of completion tokens and is charged once at the
+pinned output rate. The current 195-file local source manifest is
+`sha256:ad411a3e9ed286a630a9b3e9a5cbaad55f9484e6fe9e640f8a301d7440134ad0`.
+
+Current-source pipeline323 tests, build, typecheck, lint, formatting and diff checks pass. Earlier
+web362, native32 and build/secret/graph checks remain separate prior evidence, not a claim of
+broad-CI completion after the latest local guard. Current production remains executable69175135 /
+Worker453a1c95 / native282. Independent review of all 152 rows, the over-limit final scene, native publication,
+browser acceptance, broad CI, and full-film visual/editorial review remain open. See
+`RUNWARE_LUNA_PROMPTS_PLAN.md` and `2026-10-06-runware-luna-prompts.md` for the separate service,
+quality, cost, publication, and full-film gates.
 
 ## Fresh ordinary generation (2026-09-24 decision)
 

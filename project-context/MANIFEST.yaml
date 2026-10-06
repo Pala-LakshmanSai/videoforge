@@ -1,11 +1,11 @@
 schema_version: "2.0"
 project: VideoForge
 phase_source: CURRENT_STATE.yaml
-last_updated: "2026-10-06"
+last_updated: "2026-10-07"
 source_of_truth: project-context
 
-current_selected_profile: v2_09_account_switching
-current_selected_brief: evidence/acceptance/VF-10-09/2026-10-06-account-switching.md
+current_selected_profile: v2_09_runware_luna_prompts
+current_selected_brief: RUNWARE_LUNA_PROMPTS_PLAN.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -25,6 +25,11 @@ conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
 target_profile_word_budget: 15000
 
 read_profiles:
+  v2_09_runware_luna_prompts:
+    - RUNWARE_LUNA_PROMPTS_PLAN.md
+    - 08_MODELS_AND_PROVIDERS.md
+    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
   v2_09_account_switching:
     - evidence/acceptance/VF-10-09/2026-10-06-account-switching.md
     - 19_IMPLEMENTATION_PLAYBOOK.md
@@ -377,7 +382,7 @@ approved_decisions:
   DEC_IMAGE_003: image_review_rule_retained_mage_retry_historical_only
   DEC_IMAGE_SHOT_001: narration_preserving_shot_quality_selection_request_v23
   DEC_PROMPT_COMPACT_001: compact_v24_batch_instructions_preserve_constraints_and_runtime_guards
-  DEC_LLM_001: current_runware_gemini_3_5_flash_deepseek_historical
+  DEC_LLM_001: current_runware_gpt_6_luna_candidate_partial_qualification
   DEC_LLM_002: scene_content_and_bounded_context_never_ai_timeline_layout
   DEC_OUTPUT_001: full_avatar_full_image_split_only
   DEC_OUTPUT_002: hard_cuts_no_graphics_text_or_transitions

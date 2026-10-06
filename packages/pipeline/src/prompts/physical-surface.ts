@@ -1,5 +1,8 @@
 /** Project an explicitly text-free surface without deleting its physical relationships. */
-export function projectTextFreePhysicalSurfaces(value: string): string {
+export function projectTextFreePhysicalSurfaces(
+  value: string,
+  options: { readonly includeProductContainerModifiers?: boolean } = {},
+): string {
   const normalized = value.normalize("NFKC");
   // A positive mark anywhere makes the description ambiguous. Never erase the noun that
   // lets the independent compiler reject it; a later negative cannot cancel that mark.
@@ -13,8 +16,9 @@ export function projectTextFreePhysicalSurfaces(value: string): string {
   )
     return value;
 
-  const modifiers =
-    "(?:back|front|white|black|green|brown|red|blue|yellow|orange|purple|pink|grey|gray|beige|cream|tan|gold|silver|plain|paper|small|large|rectangular|square|round|wooden|metal|plastic)";
+  const modifiers = options.includeProductContainerModifiers
+    ? "(?:back|front|white|black|green|brown|red|blue|yellow|orange|purple|pink|grey|gray|beige|cream|tan|gold|silver|plain|paper|small|large|rectangular|square|round|wooden|metal|plastic|bottle|jar|container|package|carton|can|box)"
+    : "(?:back|front|white|black|green|brown|red|blue|yellow|orange|purple|pink|grey|gray|beige|cream|tan|gold|silver|plain|paper|small|large|rectangular|square|round|wooden|metal|plastic)";
   const color =
     "(?:white|black|green|brown|red|blue|yellow|orange|purple|pink|grey|gray|beige|cream|tan|gold|silver)";
   const relationModifiers =
@@ -67,4 +71,50 @@ export function projectTextFreePhysicalSurfaces(value: string): string {
     },
   );
   return projected;
+}
+
+/**
+ * Runware Luna may describe a generic store/name-brand category without asking
+ * for a visible mark. Project only that category when a physical good is named
+ * and the same field contains no positive request for text, labels, branding,
+ * or other marks. Keep this separate from the legacy projection so sealed
+ * Gemini prompt behavior stays unchanged.
+ */
+export function projectRunwareLunaPhysicalProductCategory(value: string): string {
+  const withoutNegatedMark = removeRunwareLunaNegativeProductSurfaceMentions(value);
+  if (!/\b(?:store|name)[- ]brand\b/iu.test(withoutNegatedMark)) return withoutNegatedMark;
+  const category = /\b(?:store|name)[- ]brand\b/giu;
+  const withoutCategory = withoutNegatedMark.normalize("NFKC").replace(category, " ");
+  const physicalGood =
+    /\b(?:bottles?|jars?|containers?|packages?|cartons?|cans?|boxes?|products?|goods|items?|sauces?|foods?)\b/iu;
+  const positiveMark =
+    /\b(?:print(?:s|ed|ing)?|writ(?:e|es|ten|ing)|read(?:s|ing)|word(?:s|ed|ing)?|letter(?:s|ed|ing)?|number(?:s|ed|ing)?|logos?|branding|brand\s+names?|labels?|mark(?:s|ed|ing)?|text(?:s|ual)?|inscri(?:be|bes|bed|bing|ption|ptions)|engrav(?:e|es|ed|ing)|etch(?:es|ed|ing)?|spell(?:s|ed|ing)?|barcod(?:e|es|ed|ing)|quot(?:e|es|ed|ing)|says?)\b/iu;
+  if (!physicalGood.test(withoutCategory) || positiveMark.test(withoutCategory))
+    return withoutNegatedMark;
+  return withoutNegatedMark
+    .normalize("NFKC")
+    .replace(category, "unmarked")
+    .replace(/\bunmarked(?:\s+unmarked)+\b/giu, "unmarked");
+}
+
+/** Remove only directly negated mark mentions on fields that name a physical good. */
+export function removeRunwareLunaNegativeProductSurfaceMentions(value: string): string {
+  if (
+    !/\b(?:bottles?|jars?|containers?|packages?|cartons?|cans?|boxes?|products?|goods|items?)\b/iu.test(
+      value,
+    )
+  )
+    return value;
+  const mark =
+    "(?:text|writing|words?|letters?|numbers?|names?|logos?|branding|labels?|marks?|inscriptions?|engravings?|etching|barcodes?|pictures?|photos?|portraits?|images?|imagery|illustrations?|graphics?|symbols?|faces?)";
+  const negatedMark = new RegExp(
+    `(?:\\s+(?:with\\s+)?|[,;:]\\s*)\\b(?:no|not|never|without)\\s+(?:(?:a|an|the|any|visible|printed|painted|drawn|depicted|pictured|illustrated|celebrity|famous|well[- ]known)\\s+){0,4}(?:${mark})\\b`,
+    "giu",
+  );
+  return value
+    .replace(negatedMark, "")
+    .replace(/\s+([,;:])/gu, "$1")
+    .replace(/([,;:])\s*[.!?]?$/u, "")
+    .replace(/\s+/gu, " ")
+    .trim();
 }

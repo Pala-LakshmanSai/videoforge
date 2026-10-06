@@ -1,3 +1,20 @@
+## Selected prompt-provider transition — 2026-10-06
+
+The user approved replacing fresh image-prompt writing with Runware AIR `openai:gpt@6-luna` through its compatible Chat Completions endpoint.
+The new policy retains the grounded scene contract, immutable style inputs, strict local
+validation and compiler-v5, with request v38, low reasoning and provider strict JSON. The
+original v38 run service-accepted 142/152 scenes in 19 posts; the final batch left nine
+individually valid rows and one over-limit scene, and its approved one-post final-ten cap was
+consumed. Independent review found an unsupported same-object companion in accepted scene 6. A
+Luna-only primary-head guard now catches bottle/scanner self-companions without changing wire
+text. Under the updated guard, 135 prior rows revalidated offline and a separate seven-scene
+service retest accepted all seven in two posts; independent review of those seven found zero
+findings, including corrected scene 6's scanner at the checkout lane. Full 152-scene review and
+the over-limit final scene remain open. Production remains Gemini at
+executable69175135/Worker453a1c95/native282. Existing v24-v32 requests and saved compiled
+outputs retain exact identities. See DEC_LLM_001, CURRENT_STATE.yaml and the selected migration
+brief; neither service acceptance nor pipeline tests prove image quality or publication.
+
 # Visual identity and image prompting
 
 Status: durable prompt/style authority and fixture image acceptance complete

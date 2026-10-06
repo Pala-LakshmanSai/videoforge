@@ -22,6 +22,7 @@ import {
   type PromptSceneInput,
   type PromptWriterSceneOutput,
 } from "@videoforge/pipeline/prompts";
+import { kieScenePromptLiteralCharacterLimit } from "../providers/kie-image-prompt";
 
 import {
   HostedPromptExecutionError,
@@ -342,6 +343,7 @@ export function hostedPromptAuthority(input: {
  * The 14336 ceiling still admits at most ten scenes (1024 + 10*512 + 8192) per request.
  */
 export const HOSTED_PROMPT_BATCH_MAX_OUTPUT_TOKENS = 14_336 as const;
+export const HOSTED_LUNA_PROMPT_BATCH_MAX_OUTPUT_TOKENS = 6_144 as const;
 
 /**
  * Derive transport batches from the complete immutable Stage 4 image-scene list.
@@ -350,11 +352,52 @@ export const HOSTED_PROMPT_BATCH_MAX_OUTPUT_TOKENS = 14_336 as const;
  */
 export function hostedPromptBatchPlan(
   authority: PromptExecutionAuthority,
-  requestPolicy: PromptRequestPolicy = "grounded-scenes-v1",
+  requestPolicy: PromptRequestPolicy = "runware-luna-grounded-v1",
 ): PromptBatchPlan {
   let literalCharacterLimit: number | undefined;
   try {
-    literalCharacterLimit = naturalDocumentaryLiteralCharacterLimit(authority);
+    literalCharacterLimit =
+      requestPolicy === "runware-luna-grounded-v1"
+        ? Math.min(
+            naturalDocumentaryLiteralCharacterLimit(authority) ?? Number.MAX_SAFE_INTEGER,
+            ...[
+              ...new Map(
+                authority.scenes.map((scene) => [
+                  `${scene.inImageShotRole}:${scene.layout}`,
+                  scene,
+                ]),
+              ).values(),
+            ].map((scene) =>
+              kieScenePromptLiteralCharacterLimit(
+                compileImagePrompt({
+                  compilerPolicy: "local-evidence-v1",
+                  writerOutput: {
+                    scene_id: scene.sceneId,
+                    literal_subject: "x",
+                    action: "x",
+                    environment: "x",
+                    in_image_shot_role: scene.inImageShotRole,
+                    lighting_context: "x",
+                    continuity_tags: [],
+                    prompt_core: "x",
+                  },
+                  expectedScene: scene,
+                  style: authority.style,
+                  styleProfileHash: authority.styleProfileHash,
+                  extraPromptKeywords: authority.extraPromptKeywords,
+                  applyExtraPromptKeywords: authority.applyExtraPromptKeywords,
+                }),
+              ),
+            ),
+          )
+        : naturalDocumentaryLiteralCharacterLimit(authority);
+    if (
+      requestPolicy === "runware-luna-grounded-v1" &&
+      (!Number.isSafeInteger(literalCharacterLimit) || literalCharacterLimit! < 90)
+    )
+      throw new RangeError(
+        "The pinned image style leaves too little Kie prompt room for a grounded scene.",
+      );
   } catch {
     // This runs before preparing/claiming a paid batch, not after provider submission.
     throw new HostedPromptExecutionError("HOSTED_PROMPT_INPUT_INVALID", "FAILED", false, null);
@@ -370,7 +413,13 @@ export function hostedPromptBatchPlan(
     storyContext: authority.storyContext,
     continuityTags: authority.continuityTags,
     scenes: authority.scenes,
-    options: { maxOutputTokens: HOSTED_PROMPT_BATCH_MAX_OUTPUT_TOKENS, requestPolicy },
+    options: {
+      maxOutputTokens:
+        requestPolicy === "runware-luna-grounded-v1"
+          ? HOSTED_LUNA_PROMPT_BATCH_MAX_OUTPUT_TOKENS
+          : HOSTED_PROMPT_BATCH_MAX_OUTPUT_TOKENS,
+      requestPolicy,
+    },
   });
 }
 
@@ -380,6 +429,7 @@ export async function recoverHostedPromptBatchPlan(
   binding: HostedPromptBatchPlanBinding,
 ): Promise<PromptBatchPlan> {
   for (const policy of [
+    "runware-luna-grounded-v1",
     "grounded-scenes-v1",
     "validated-scenes-v1",
     "no-graphics-async-v1",
@@ -396,10 +446,12 @@ export async function recoverHostedPromptBatchPlan(
       // A larger new instruction may not fit a legacy run's single-scene budget.
       // Only this known sizing rejection is a non-match; other defects propagate.
       if (
-        error instanceof PipelineDomainError &&
-        error.failure.code === "PROMPT_INPUT_INVALID" &&
-        error.failure.message ===
-          "A single prompt scene exceeds the conservative request budget; reduce its context before dispatch."
+        (error instanceof HostedPromptExecutionError &&
+          error.problemCode === "HOSTED_PROMPT_INPUT_INVALID") ||
+        (error instanceof PipelineDomainError &&
+          error.failure.code === "PROMPT_INPUT_INVALID" &&
+          error.failure.message ===
+            "A single prompt scene exceeds the conservative request budget; reduce its context before dispatch.")
       )
         continue;
       throw error;
@@ -511,7 +563,8 @@ export async function runHostedPromptExecution(input: {
   const authority = {
     ...input.authority,
     compilerPolicy:
-      input.batchPlan.requestPolicy === "grounded-scenes-v1"
+      input.batchPlan.requestPolicy === "grounded-scenes-v1" ||
+      input.batchPlan.requestPolicy === "runware-luna-grounded-v1"
         ? ("local-evidence-v1" as const)
         : undefined,
   };

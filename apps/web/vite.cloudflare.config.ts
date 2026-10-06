@@ -4,14 +4,15 @@ import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 import { defineConfig, transformWithEsbuild, type Plugin } from "vite";
 
-/** Reduce parse bytes only; identifiers, syntax and request-string contents stay intact. */
+/** Compact the prompt owner while preserving diagnostic names and canonical string values. */
 export function minifyHostedPromptRouteChunk(code: string, name: string, fileName: string) {
-  if (name !== "hosted-prompt-route") return null;
+  if (!["hosted-prompt-route", "compiler", "runware-http-transport"].includes(name)) return null;
   return transformWithEsbuild(code, fileName, {
     target: "esnext",
     minifyWhitespace: true,
-    minifyIdentifiers: false,
-    minifySyntax: false,
+    minifyIdentifiers: name === "hosted-prompt-route",
+    keepNames: name === "hosted-prompt-route",
+    minifySyntax: name === "hosted-prompt-route",
     legalComments: "inline",
   });
 }

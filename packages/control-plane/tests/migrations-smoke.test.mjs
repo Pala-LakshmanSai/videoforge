@@ -258,8 +258,9 @@ test("hosted prompt progress upgrades the exact 0059 chain through latest manife
       (row) => row.proname === "videoforge_prepare_hosted_prompt_run",
     );
     assert.match(prompt.definition, /scene-prompt-writer-v2/u);
-    assert.match(prompt.definition, /Hosted Runware scene prompts',profile_revision,'PROMPT/u);
-    assert.match(prompt.definition, /profile_revision:=7/u);
+    assert.match(prompt.definition, /profile_name text:='Hosted Runware scene prompts'/u);
+    assert.match(prompt.definition, /profile_name,profile_revision,'PROMPT'/u);
+    assert.match(prompt.definition, /profile_revision:=CASE WHEN request_policy='runware-luna-grounded-v1' THEN 8 ELSE 7 END/u);
     const progressSurface = await executor.query(
       `SELECT c.relrowsecurity, c.relforcerowsecurity,
               to_regprocedure('public.videoforge_record_hosted_prompt_scene(uuid,jsonb)') IS NOT NULL

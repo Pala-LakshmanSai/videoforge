@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
+import { naturalDocumentaryRequiredPrompt } from "../dist/src/prompts/natural-documentary-prompt-policy.js";
 
 import {
   IN_IMAGE_SHOT_ROLES,
@@ -15,13 +16,20 @@ import {
   RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE,
   RUNWARE_PROMPT_MODEL,
   RUNWARE_PROMPT_REQUEST_VERSION,
+  RUNWARE_LUNA_PROMPT_MODEL,
+  RUNWARE_LUNA_PROMPT_REQUEST_VERSION,
+  RUNWARE_LUNA_PROMPT_MAX_OUTPUT_TOKENS,
+  RUNWARE_LUNA_UNMARKED_PRODUCT_INSTRUCTION,
   RunwarePromptWriter,
   SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
   buildPromptBatch,
   buildRunwarePromptRequest,
   buildRunwarePromptCorrection,
   projectTextFreePhysicalSurfaces,
+  projectRunwareLunaPhysicalProductCategory,
   compileImagePrompt,
+  naturalDocumentaryLiteralCharacterLimit,
+  plainGeometry,
 } from "../dist/src/index.js";
 
 const layouts = ["IMAGE_FULL", "SPLIT_RIGHT_IMAGE"];
@@ -79,6 +87,23 @@ function makeBatch(count = 25, styleIndex = 0) {
   });
 }
 
+function withScenePhrase(batch, phrase) {
+  return {
+    ...batch,
+    scenes: Object.freeze(
+      batch.scenes.map((scene) =>
+        Object.freeze({
+          ...scene,
+          phrase,
+          sentenceContext: phrase,
+          priorContext: null,
+          nextContext: null,
+        }),
+      ),
+    ),
+  };
+}
+
 function payload(request) {
   return JSON.parse(request.request.messages[0].content);
 }
@@ -96,7 +121,18 @@ function output(request, options = {}) {
     prompt_core: `Close documentary view of ${scene.exact_phrase.toLowerCase()} in an ordinary farm setting, marker ${options.marker ?? request.attemptIndex}`,
   }));
   const changed = options.change ? options.change(rows, requestPayload) : rows;
-  return JSON.stringify({ batch_id: requestPayload.batch_id, scenes: changed });
+  const complete =
+    request.request.model === RUNWARE_LUNA_PROMPT_MODEL
+      ? changed.map((row) => ({
+          ...row,
+          literal_subject: /[.!?]$/u.test(row.literal_subject)
+            ? row.literal_subject
+            : `${row.literal_subject}.`,
+          action: /[.!?]$/u.test(row.action) ? row.action : `${row.action}.`,
+          environment: /[.!?]$/u.test(row.environment) ? row.environment : `${row.environment}.`,
+        }))
+      : changed;
+  return JSON.stringify({ batch_id: requestPayload.batch_id, scenes: complete });
 }
 
 const success = (request, options = {}) => ({
@@ -112,6 +148,12 @@ const success = (request, options = {}) => ({
   costUsd: options.costUsd ?? 0.001,
   finishReason: options.finishReason ?? "stop",
   providerModel: options.providerModel ?? null,
+  ...(options.costBasis ? { costBasis: options.costBasis } : {}),
+  ...(options.estimatedCostMicroUsd !== undefined
+    ? { estimatedCostMicroUsd: options.estimatedCostMicroUsd }
+    : {}),
+  ...(options.responseId ? { responseId: options.responseId } : {}),
+  ...(options.wireHash ? { wireHash: options.wireHash } : {}),
 });
 
 class ScriptedTransport {
@@ -128,7 +170,7 @@ class ScriptedTransport {
   }
 }
 
-test("legacy v24/v25 request bytes and UUIDs stay pinned for both attempts", () => {
+test("legacy v24-v32 request bytes and UUIDs stay pinned", () => {
   const goldens = [
     [
       false,
@@ -200,6 +242,1382 @@ test("legacy v24/v25 request bytes and UUIDs stay pinned for both attempts", () 
       );
     }
   }
+  const batch = makeBatch(2);
+  const legacyGoldens = [
+    [
+      "legacy",
+      "runware-gemini-3.5-flash-prompt-request-v24",
+      "a3eef738-0ea8-40a4-8f2f-d6c6cac4a42b",
+      "sha256:e5bff7f222239c20723898b7c77b4e20672507ec94dd570b3a2638c92db19dea",
+    ],
+    [
+      "physical-placement-v1",
+      "runware-gemini-3.5-flash-prompt-request-v26",
+      "43e3ed9e-0d89-48a8-979b-ee2082ec77f5",
+      "sha256:a61ebfdaf636068e26c9354c635765d32e3cfb42f08f61149183ff4d89be5e8f",
+    ],
+    [
+      "physical-placement-v2",
+      "runware-gemini-3.5-flash-prompt-request-v27",
+      "2885353b-f0b4-4927-a5d5-3bbf3665507e",
+      "sha256:702e1e3617ee5bb792791e74034cc50c3202aa1fbc727cdfb39bd24d9042e7a6",
+    ],
+    [
+      "no-graphics-v1",
+      "runware-gemini-3.5-flash-prompt-request-v28",
+      "a10d3255-2e24-40bf-b85d-c7f424c2687f",
+      "sha256:9b92bfda031a02d95aebc5241a4c7031eedbf120440c7053f7f01dc4c11b7ef3",
+    ],
+    [
+      "no-graphics-v2",
+      "runware-gemini-3.5-flash-prompt-request-v29",
+      "b15bbd4e-7edd-48ed-99b0-f7add6cb973f",
+      "sha256:ed156166e611b930307b006a7487e69d2321ea6cfbfce2948a93194e623e76a2",
+    ],
+    [
+      "no-graphics-async-v1",
+      "runware-gemini-3.5-flash-prompt-request-v30",
+      "83f4c79c-f03a-406a-8f5b-43b4597b872e",
+      "sha256:f882a6c9a119ec1850d311be9d08c6ddb0dc8ff1a2c7b6be79ca5a3bf8e95083",
+    ],
+    [
+      "validated-scenes-v1",
+      "runware-gemini-3.5-flash-prompt-request-v31",
+      "4fbefd98-4bae-4c82-accd-0bce03531805",
+      "sha256:0de063a135255aa43e5093f8330b3b26a06dc9306f996a97adf8269e470d1c59",
+    ],
+    [
+      "grounded-scenes-v1",
+      "runware-gemini-3.5-flash-prompt-request-v32",
+      "97818803-df60-43fb-84e5-e1181443db4e",
+      "sha256:8fef433cfebfea85d2e7c336ff619d354dc1083fb31c2fd15307e3a20733e4f3",
+    ],
+  ];
+  for (const [policy, version, taskUUID, requestSha256] of legacyGoldens) {
+    const request = buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, policy);
+    assert.equal(request.requestVersion, version);
+    assert.equal(request.request.taskUUID, taskUUID);
+    assert.equal(request.requestSha256, requestSha256);
+  }
+});
+
+test("fresh Runware Luna request has its own strict schema, identity, and ten-scene token budget", () => {
+  const batch = { ...makeBatch(10), literalCharacterLimit: 168 };
+  const request = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v1",
+  );
+  const schema = request.request.jsonSchema.schema;
+  const sceneSchema = schema.properties.scenes.items;
+  assert.equal(request.request.model, RUNWARE_LUNA_PROMPT_MODEL);
+  assert.equal(request.requestVersion, RUNWARE_LUNA_PROMPT_REQUEST_VERSION);
+  assert.equal(request.request.settings.thinkingLevel, "low");
+  assert.equal("temperature" in request.request.settings, false);
+  assert.equal("topP" in request.request.settings, false);
+  assert.equal(request.request.settings.maxTokens, RUNWARE_LUNA_PROMPT_MAX_OUTPUT_TOKENS);
+  assert.equal(request.request.deliveryMethod, "async");
+  assert.match(request.request.settings.systemPrompt, /within 100 characters total/u);
+  assert.match(request.request.settings.systemPrompt, /2–4-word place/u);
+  assert.match(request.request.settings.systemPrompt, /connected arm\(s\) once/u);
+  assert.match(
+    request.request.settings.systemPrompt,
+    /Interpret each exact phrase with adjacent narration before selecting its visual anchor/u,
+  );
+  assert.match(
+    request.request.settings.systemPrompt,
+    /Within that scope, this interpretation overrides exact-phrase precedence and shot-role preference/u,
+  );
+  assert.doesNotMatch(
+    request.request.settings.systemPrompt,
+    /Local source precedence: exact_phrase > scene_phrase_context/u,
+  );
+  assert.equal(
+    batch.literalCharacterLimit,
+    168,
+    "the compiler-owned expanded limit stays unchanged",
+  );
+  assert.equal(schema.additionalProperties, false);
+  assert.deepEqual(schema.required, ["batch_id", "scenes"]);
+  assert.deepEqual(schema.properties.batch_id.enum, [batch.batchId]);
+  assert.deepEqual(sceneSchema.required, [
+    "scene_id",
+    "literal_subject",
+    "action",
+    "environment",
+    "in_image_shot_role",
+    "lighting_context",
+    "continuity_tags",
+    "prompt_core",
+  ]);
+  assert.deepEqual(
+    sceneSchema.properties.scene_id.enum,
+    batch.scenes.map((scene) => scene.sceneId),
+  );
+  assert.deepEqual(
+    Object.fromEntries(
+      ["literal_subject", "action", "environment"].map((field) => [
+        field,
+        {
+          minLength: sceneSchema.properties[field].minLength,
+          hasMaxLength: "maxLength" in sceneSchema.properties[field],
+        },
+      ]),
+    ),
+    {
+      literal_subject: { minLength: 1, hasMaxLength: false },
+      action: { minLength: 1, hasMaxLength: false },
+      environment: { minLength: 1, hasMaxLength: false },
+    },
+  );
+  assert.ok(request.request.settings.maxTokens > 0);
+  assert.equal("minItems" in schema.properties.scenes, false);
+  assert.equal("maxItems" in sceneSchema.properties.continuity_tags, false);
+  assert.equal(JSON.parse(request.requestBytes)[0].model, RUNWARE_LUNA_PROMPT_MODEL);
+  const legacy = buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "grounded-scenes-v1");
+  assert.equal(legacy.request.model, RUNWARE_PROMPT_MODEL);
+  assert.notEqual(request.request.taskUUID, legacy.request.taskUUID);
+  assert.match(request.request.settings.systemPrompt, /Never depict a picture, photo, portrait/u);
+  assert.match(
+    request.request.settings.systemPrompt,
+    /real person or portrait beside a product is allowed/u,
+  );
+});
+
+test("Luna projects generic store/name-brand categories only when no physical mark is requested", () => {
+  for (const [input, expected] of [
+    ["Store-brand barbecue sauce bottles", "unmarked barbecue sauce bottles"],
+    ["NAME BRAND sauce in a jar", "unmarked sauce in a jar"],
+    ["Unmarked store brand bottles", "unmarked bottles"],
+    ["Store-brand bottles with no printed name", "unmarked bottles"],
+    ["Store-brand bottles with no label", "unmarked bottles"],
+    ["Store-brand bottles with no logo", "unmarked bottles"],
+  ]) {
+    assert.equal(projectRunwareLunaPhysicalProductCategory(input), expected);
+  }
+  for (const input of [
+    "Store-brand bottles with a printed logo",
+    "Name-brand sauce jar marked with a logo",
+    "Store-brand sauce bottles bearing a quoted word",
+    "Store-brand jar reading 'Plain'",
+    "Store-brand bottles with branding",
+    "Store-brand bottles with a printed logo, but no later logo",
+    "Store-brand bottle with a blank label",
+    "Store-brand category is mentioned",
+  ]) {
+    assert.equal(projectRunwareLunaPhysicalProductCategory(input), input);
+  }
+  assert.equal(
+    projectRunwareLunaPhysicalProductCategory("Store-brand bottles with a printed name, no label"),
+    "Store-brand bottles with a printed name",
+  );
+  assert.match(RUNWARE_LUNA_UNMARKED_PRODUCT_INSTRUCTION, /even when narration describes it/u);
+});
+
+test("Luna accepts generic store-brand category without depicting a product mark", async () => {
+  const batch = withScenePhrase(
+    makeBatch(1),
+    "A shopper is holding a store-brand barbecue sauce bottle.",
+  );
+  const transport = new ScriptedTransport([
+    (request) =>
+      success(request, {
+        change: (rows) => [
+          {
+            ...rows[0],
+            literal_subject: "Store-brand barbecue sauce bottle",
+            action: "A shopper holds the sauce bottle",
+            environment: "Grocery aisle beside the sauce shelf",
+            prompt_core:
+              "A shopper holds an unmarked barbecue sauce bottle beside the grocery shelf.",
+          },
+        ],
+      }),
+  ]);
+  const writer = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v1",
+    transport,
+    evidenceSink: { record() {} },
+    maximumBatchCostUsd: 0.01,
+  });
+  const result = await writer.write(batch);
+  assert.equal(transport.requests.length, 1);
+  assert.equal(result.scenes[0].literal_subject, "unmarked barbecue sauce bottle.");
+});
+
+test("Luna rejects a bare state action that invents an unsupported same-container companion", async () => {
+  const phrase = "A plain, unmarked barbecue sauce bottle beside a grocery register.";
+  const batch = withScenePhrase(makeBatch(1), phrase);
+  const request = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v1",
+  );
+  const source = output(request, {
+    change: (rows) => [
+      {
+        ...rows[0],
+        literal_subject: phrase,
+        action: "Rests beside a barbecue sauce bottle.",
+        environment: "Grocery checkout counter.",
+        prompt_core: "A plain, unmarked barbecue sauce bottle rests beside a grocery register.",
+      },
+    ],
+  });
+  const correction = buildRunwarePromptCorrection(batch, source, "runware-luna-grounded-v1");
+  assert.deepEqual(correction.failedSceneIds, [batch.scenes[0].sceneId]);
+  assert.ok(
+    correction.failures.some(
+      (failure) =>
+        failure.sceneId === batch.scenes[0].sceneId &&
+        failure.field === "action" &&
+        failure.reason === "required_fact_invalid",
+    ),
+  );
+
+  const evidence = [];
+  const writer = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v1",
+    semanticQualityMode: "advisory",
+    transport: new ScriptedTransport([(attempt) => success(attempt, { outputText: source })]),
+    evidenceSink: {
+      record(value) {
+        evidence.push(value);
+      },
+    },
+    maximumBatchCostUsd: 0.01,
+  });
+  await expectInvalid(() => writer.write(batch));
+  assert.equal(evidence[0].validationDiagnostic.category, "scene_quality");
+});
+
+test("Luna rejects an explicit container actor beside an unsupported same-kind companion", () => {
+  const batch = withScenePhrase(
+    makeBatch(1),
+    "A plain, unmarked barbecue sauce bottle beside a grocery register.",
+  );
+  const request = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v1",
+  );
+  const source = output(request, {
+    change: (rows) => [
+      {
+        ...rows[0],
+        literal_subject: "A plain, unmarked barbecue sauce bottle beside the register.",
+        action: "The bottle rests beside another barbecue sauce bottle.",
+        environment: "Grocery checkout counter.",
+        prompt_core: "A plain, unmarked barbecue sauce bottle rests beside another bottle.",
+      },
+    ],
+  });
+  const correction = buildRunwarePromptCorrection(batch, source, "runware-luna-grounded-v1");
+  assert.deepEqual(correction.failedSceneIds, [batch.scenes[0].sceneId]);
+  assert.ok(
+    correction.failures.some(
+      (failure) => failure.field === "action" && failure.reason === "required_fact_invalid",
+    ),
+  );
+});
+
+test("Luna rejects an unsupported scanner companion without container-name special cases", () => {
+  const phrase = "An idle grocery checkout scanner beside the counter.";
+  const batch = withScenePhrase(makeBatch(1), phrase);
+  const request = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v1",
+  );
+  const source = output(request, {
+    change: (rows) => [
+      {
+        ...rows[0],
+        literal_subject: phrase,
+        action: "Rests beside the checkout scanner.",
+        environment: "Grocery checkout counter.",
+        prompt_core: "An idle grocery checkout scanner rests beside the checkout scanner.",
+      },
+    ],
+  });
+  const correction = buildRunwarePromptCorrection(batch, source, "runware-luna-grounded-v1");
+  assert.deepEqual(correction.failedSceneIds, [batch.scenes[0].sceneId]);
+  assert.ok(
+    correction.failures.some(
+      (failure) => failure.field === "action" && failure.reason === "required_fact_invalid",
+    ),
+  );
+});
+
+test("Luna still checks a scanner-led scene when a cashier is also present", () => {
+  const phrase = "An idle grocery checkout scanner beside the cashier.";
+  const batch = withScenePhrase(makeBatch(1), phrase);
+  const request = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v1",
+  );
+  const source = output(request, {
+    change: (rows) => [
+      {
+        ...rows[0],
+        literal_subject: phrase,
+        action: "Rests beside the checkout scanner.",
+        environment: "A cashier stands at the register.",
+        prompt_core: "An idle grocery checkout scanner rests beside the checkout scanner.",
+      },
+    ],
+  });
+  const correction = buildRunwarePromptCorrection(batch, source, "runware-luna-grounded-v1");
+  assert.deepEqual(correction.failedSceneIds, [batch.scenes[0].sceneId]);
+  assert.ok(
+    correction.failures.some(
+      (failure) => failure.field === "action" && failure.reason === "required_fact_invalid",
+    ),
+  );
+});
+
+test("Luna allows source-supported container pairs and real people beside one product", async () => {
+  const cases = [
+    {
+      phrase: "Two barbecue sauce bottles sit beside a grocery register.",
+      subject: "Two plain barbecue sauce bottles beside a grocery register.",
+      action: "Sits beside another barbecue sauce bottle.",
+      environment: "Grocery checkout counter.",
+      core: "Two plain barbecue sauce bottles rest beside a grocery register.",
+    },
+    {
+      phrase: "Two grocery checkout scanners sit beside the counter.",
+      subject: "Two idle grocery checkout scanners beside the counter.",
+      action: "One scanner sits beside another checkout scanner.",
+      environment: "Grocery checkout counter.",
+      core: "Two idle grocery checkout scanners sit beside the checkout counter.",
+    },
+    {
+      phrase: "A shopper stands beside a barbecue sauce bottle at checkout.",
+      subject: "A shopper beside a plain barbecue sauce bottle.",
+      action: "A shopper stands beside the sauce bottle.",
+      environment: "Grocery checkout counter.",
+      core: "A shopper stands beside a plain barbecue sauce bottle.",
+    },
+  ];
+  for (const item of cases) {
+    const batch = withScenePhrase(makeBatch(1), item.phrase);
+    const request = buildRunwarePromptRequest(
+      batch,
+      batch.scenes,
+      1,
+      null,
+      1,
+      "runware-luna-grounded-v1",
+    );
+    const candidate = output(request, {
+      change: (rows) => [
+        {
+          ...rows[0],
+          literal_subject: item.subject,
+          action: item.action,
+          environment: item.environment,
+          prompt_core: item.core,
+        },
+      ],
+    });
+    assert.equal(
+      buildRunwarePromptCorrection(batch, candidate, "runware-luna-grounded-v1"),
+      null,
+      `supported pair should not need correction: ${item.phrase}`,
+    );
+    const transport = new ScriptedTransport([
+      (request) => success(request, { outputText: candidate }),
+    ]);
+    const writer = new RunwarePromptWriter({
+      requestPolicy: "runware-luna-grounded-v1",
+      transport,
+      evidenceSink: { record() {} },
+      maximumBatchCostUsd: 0.01,
+    });
+    const result = await writer.write(batch);
+    assert.equal(transport.requests.length, 1);
+    assert.equal(result.scenes.length, 1);
+  }
+});
+
+test("Luna allows a register-led subject with one bottle in its adjacent relation", async () => {
+  const phrase = "A grocery register beside an unmarked sauce bottle.";
+  const batch = withScenePhrase(makeBatch(1), phrase);
+  const transport = new ScriptedTransport([
+    (request) =>
+      success(request, {
+        change: (rows) => [
+          {
+            ...rows[0],
+            literal_subject: phrase,
+            action: "The register rests beside a barbecue sauce bottle.",
+            environment: "Grocery checkout counter.",
+            prompt_core: "A grocery register beside an unmarked barbecue sauce bottle.",
+          },
+        ],
+      }),
+  ]);
+  const writer = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v1",
+    transport,
+    evidenceSink: { record() {} },
+    maximumBatchCostUsd: 0.01,
+  });
+  const result = await writer.write(batch);
+  assert.equal(transport.requests.length, 1);
+  assert.equal(result.scenes.length, 1);
+});
+
+test("Luna never lets later negation erase an earlier printed name, label, or logo request", () => {
+  const batch = withScenePhrase(
+    makeBatch(1),
+    "A shopper is holding a store-brand barbecue sauce bottle.",
+  );
+  const cases = [
+    "Store-brand barbecue sauce bottle with a printed name, no printed name",
+    "Name-brand barbecue sauce bottle with a logo, no logo",
+    "Store-brand barbecue sauce bottle with a label, no label",
+  ];
+  for (const literal_subject of cases) {
+    const request = buildRunwarePromptRequest(
+      batch,
+      batch.scenes,
+      1,
+      null,
+      1,
+      "runware-luna-grounded-v1",
+    );
+    const source = output(request, {
+      change: (rows) => [
+        {
+          ...rows[0],
+          literal_subject,
+          action: "A shopper holds the sauce bottle",
+          environment: "Grocery aisle beside the shelf",
+          prompt_core:
+            "A shopper holds an unmarked barbecue sauce bottle beside the grocery shelf.",
+        },
+      ],
+    });
+    const correction = buildRunwarePromptCorrection(batch, source, "runware-luna-grounded-v1");
+    assert.deepEqual(correction.failedSceneIds, [batch.scenes[0].sceneId]);
+    assert.ok(
+      correction.failures.some(
+        (failure) =>
+          failure.sceneId === batch.scenes[0].sceneId &&
+          failure.field === "literal_subject" &&
+          failure.reason === "hard_conflict",
+      ),
+    );
+  }
+});
+
+test("Luna rejects package imagery that conflicts with the unmarked-product policy", async () => {
+  const cases = [
+    {
+      phrase: "A golden honey barbecue bottle has a honeycomb picture on its front.",
+      subject: "Large golden barbecue sauce bottle",
+      action: "Bottle front shows honey-themed picture",
+      environment: "Grocery shelf with sauce bottles",
+      failingField: "action",
+    },
+    {
+      phrase: "A barbecue bottle has oversized honey imagery on the front.",
+      subject: "Golden barbecue sauce bottle on shelf",
+      action: "Bottle front has oversized honey imagery",
+      environment: "Grocery shelf beside other bottles",
+      failingField: "action",
+    },
+    {
+      phrase: "A honey barbecue sauce bottle shows a bee image on its front.",
+      subject: "Golden barbecue sauce bottle on shelf",
+      action: "Front shows a honeycomb picture",
+      environment: "Grocery shelf beside other bottles",
+      failingField: "action",
+    },
+    {
+      phrase: "Marlene examines sauce bottles bearing celebrity faces and imagery.",
+      subject: "Marlene chest-up examining sauce bottles with depicted celebrity faces",
+      action: "Marlene examines bottles with celebrity imagery",
+      environment: "Grocery aisle beside the sauce shelf",
+      failingField: "literal_subject",
+    },
+    {
+      phrase: "A sauce bottle has a picture on its front.",
+      subject: "Sauce bottle front",
+      action: "Shows honey-themed picture",
+      environment: "Grocery shelf beside other bottles",
+      failingField: "action",
+    },
+  ];
+  for (const item of cases) {
+    const batch = withScenePhrase(makeBatch(1), item.phrase);
+    const request = buildRunwarePromptRequest(
+      batch,
+      batch.scenes,
+      1,
+      null,
+      1,
+      "runware-luna-grounded-v1",
+    );
+    const source = output(request, {
+      change: (rows) => [
+        {
+          ...rows[0],
+          literal_subject: item.subject,
+          action: item.action,
+          environment: item.environment,
+          prompt_core: `${item.subject}; ${item.action}; ${item.environment}`,
+        },
+      ],
+    });
+    const correction = buildRunwarePromptCorrection(batch, source, "runware-luna-grounded-v1");
+    assert.deepEqual(correction.failedSceneIds, [batch.scenes[0].sceneId]);
+    assert.ok(
+      correction.failures.some(
+        (failure) =>
+          failure.sceneId === batch.scenes[0].sceneId &&
+          failure.field === item.failingField &&
+          failure.reason === "hard_conflict",
+      ),
+      `${item.failingField} should carry a hard-conflict diagnostic`,
+    );
+    const evidence = [];
+    const writer = new RunwarePromptWriter({
+      requestPolicy: "runware-luna-grounded-v1",
+      transport: new ScriptedTransport([(attempt) => success(attempt, { outputText: source })]),
+      evidenceSink: {
+        record(value) {
+          evidence.push(value);
+        },
+      },
+      maximumBatchCostUsd: 0.01,
+    });
+    await expectInvalid(() => writer.write(batch));
+    assert.equal(evidence[0].validationDiagnostic.category, "scene_quality");
+  }
+});
+
+test("Luna permits a real face and portrait beside products without surface imagery", async () => {
+  const batch = withScenePhrase(
+    makeBatch(1),
+    "Marlene is examining barbecue sauce bottles in the grocery aisle.",
+  );
+  const transport = new ScriptedTransport([
+    (request) =>
+      success(request, {
+        change: (rows) => [
+          {
+            ...rows[0],
+            literal_subject: "Documentary portrait of Marlene beside plain sauce bottles",
+            action: "Marlene examines the sauce bottles",
+            environment: "Grocery aisle beside the shelf",
+            prompt_core:
+              "A documentary portrait of Marlene as she examines plain barbecue sauce bottles.",
+          },
+        ],
+      }),
+  ]);
+  const writer = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v1",
+    semanticQualityMode: "advisory",
+    transport,
+    evidenceSink: { record() {} },
+    maximumBatchCostUsd: 0.01,
+  });
+  const result = await writer.write(batch);
+  assert.equal(
+    result.scenes[0].literal_subject,
+    "Documentary portrait of Marlene beside plain sauce bottles.",
+  );
+
+  const separatedPortraitBatch = withScenePhrase(
+    makeBatch(1),
+    "Marlene poses in a documentary portrait beside the barbecue sauce display.",
+  );
+  const separatedPortraitTransport = new ScriptedTransport([
+    (request) =>
+      success(request, {
+        change: (rows) => [
+          {
+            ...rows[0],
+            literal_subject: "Plain sauce bottles in front of Marlene",
+            action: "Marlene watches the grocery shelf",
+            environment: "Documentary portrait shows Marlene in the aisle",
+            prompt_core: "Marlene watches plain sauce bottles from the grocery aisle.",
+          },
+        ],
+      }),
+  ]);
+  const separatedPortraitWriter = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v1",
+    semanticQualityMode: "advisory",
+    transport: separatedPortraitTransport,
+    evidenceSink: { record() {} },
+    maximumBatchCostUsd: 0.01,
+  });
+  const separatedPortraitResult = await separatedPortraitWriter.write(separatedPortraitBatch);
+  assert.match(separatedPortraitResult.scenes[0].environment, /portrait shows Marlene/u);
+});
+
+test("Luna rejects picture-complement continuation transfer but allows an independent physical correction", async () => {
+  const base = withScenePhrase(
+    makeBatch(1),
+    "smoke curling up off a rack of ribs. You would think that sauce spent hours next to a fire somewhere in Texas.",
+  );
+  const batch = {
+    ...base,
+    scenes: Object.freeze(
+      base.scenes.map((scene) =>
+        Object.freeze({
+          ...scene,
+          priorContext:
+            "Pit smoked. There is a picture of a big black smoker, maybe a little wisp of",
+          nextContext: "Texas. Turn it around, read the ingredients and way down near the bottom",
+        }),
+      ),
+    ),
+  };
+  const request = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v1",
+  );
+  assert.match(
+    request.request.settings.systemPrompt,
+    /Omit the content of depictions and conjectural product claims entirely/u,
+  );
+  assert.match(
+    request.request.settings.systemPrompt,
+    /When an exact phrase completes an adjacent depiction, or states a denial or conjecture, the contextual interpretation outranks exact-phrase anchoring and shot-role preference/u,
+  );
+  assert.match(
+    request.request.settings.systemPrompt,
+    /A locally named real product\/object may be used when nearby narration establishes it as physical and scoped continuity resolves its identity/u,
+  );
+  const picturedOutput = output(request, {
+    change: (rows) => [
+      {
+        ...rows[0],
+        literal_subject: "Rack of ribs with a wisp of smoke",
+        action: "Smoke curls above ribs on a rack",
+        environment: "Ribs on a rack beside an outdoor fire",
+        prompt_core: "A small wisp of smoke curls above ribs on a rack beside an outdoor fire.",
+      },
+    ],
+  });
+  const correction = buildRunwarePromptCorrection(
+    batch,
+    picturedOutput,
+    "runware-luna-grounded-v1",
+  );
+  assert.deepEqual(correction.failedSceneIds, [batch.scenes[0].sceneId]);
+  assert.ok(
+    correction.failures.some(
+      (failure) => failure.field === "scene" && failure.reason === "depiction_transfer",
+    ),
+  );
+  const invalidWriter = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v1",
+    semanticQualityMode: "advisory",
+    transport: new ScriptedTransport([
+      (attempt) => success(attempt, { outputText: picturedOutput }),
+    ]),
+    evidenceSink: { record() {} },
+    maximumBatchCostUsd: 0.01,
+  });
+  await expectInvalid(() => invalidWriter.write(batch));
+
+  const absenceRequest = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v1",
+  );
+  const absenceOnlyOutput = output(absenceRequest, {
+    change: (rows) => [
+      {
+        ...rows[0],
+        literal_subject: "Plain barbecue sauce bottle without a smoker scene",
+        action: "No real ribs or fire are present",
+        environment: "The imagined smoker scene remains only a blank",
+        prompt_core: "A plain barbecue sauce bottle rests on a grocery shelf.",
+      },
+    ],
+  });
+  const absenceCorrection = buildRunwarePromptCorrection(
+    batch,
+    absenceOnlyOutput,
+    "runware-luna-grounded-v1",
+  );
+  assert.ok(absenceCorrection);
+  assert.ok(
+    absenceCorrection.failures.some(
+      (failure) => failure.field === "action" && failure.reason === "required_fact_invalid",
+    ),
+  );
+  assert.ok(
+    absenceCorrection.failures.some(
+      (failure) => failure.field === "environment" && failure.reason === "required_fact_invalid",
+    ),
+  );
+  assert.equal(
+    absenceCorrection.failures.some((failure) => failure.reason === "depiction_transfer"),
+    false,
+  );
+
+  const replacement = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    2,
+    request.requestSha256,
+    1,
+    "runware-luna-grounded-v1",
+    false,
+    correction,
+  );
+  assert.match(
+    replacement.request.settings.systemPrompt,
+    /For a depiction_transfer correction, do not reuse concepts from that pictured, denied or conjectural content as physical facts in any field/u,
+  );
+  assert.match(
+    replacement.request.settings.systemPrompt,
+    /replace the failed scene with an independently factual local or adjacent physical anchor/u,
+  );
+  const bottleImageOutput = output(replacement, {
+    change: (rows) => [
+      {
+        ...rows[0],
+        literal_subject: "A sauce bottle with depicted ribs and smoke",
+        action: "Smoke curls over a rack of ribs",
+        environment: "A bottle with an unmarked surface",
+        prompt_core: "A sauce bottle with depicted ribs and smoke sits on a shelf.",
+      },
+    ],
+  });
+  const bottleImageCorrection = buildRunwarePromptCorrection(
+    batch,
+    bottleImageOutput,
+    "runware-luna-grounded-v1",
+  );
+  assert.ok(bottleImageCorrection);
+  assert.ok(
+    bottleImageCorrection.failures.some(
+      (failure) => failure.field === "literal_subject" && failure.reason === "hard_conflict",
+    ),
+  );
+  const bottleCorrection = output(replacement, {
+    change: (rows) => [
+      {
+        ...rows[0],
+        literal_subject: "Unmarked barbecue sauce bottle",
+        action: "A shopper studies the sauce bottle",
+        environment: "Grocery aisle beside the sauce shelf",
+        prompt_core: "A shopper studies an unmarked barbecue sauce bottle in a grocery aisle.",
+      },
+    ],
+  });
+  const validCorrection = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v1",
+    semanticQualityMode: "advisory",
+    correction,
+    transport: new ScriptedTransport([
+      (attempt) => success(attempt, { outputText: bottleCorrection }),
+    ]),
+    evidenceSink: { record() {} },
+    maximumBatchCostUsd: 0.01,
+  });
+  const corrected = await validCorrection.write(batch, request.requestSha256);
+  assert.equal(corrected.scenes[0].literal_subject, "Unmarked barbecue sauce bottle.");
+});
+
+test("Luna keeps positively narrated cooking and fire physical when no depiction continuation exists", async () => {
+  const batch = withScenePhrase(
+    makeBatch(1),
+    "Ribs cook over an actual fire as smoke rises from the rack.",
+  );
+  const transport = new ScriptedTransport([
+    (request) =>
+      success(request, {
+        change: (rows) => [
+          {
+            ...rows[0],
+            literal_subject: "Ribs over an active cooking fire",
+            action: "Ribs cook over the open fire",
+            environment: "Outdoor grill beside a steady flame",
+            prompt_core: "Ribs cook over an open fire at an outdoor grill.",
+          },
+        ],
+      }),
+  ]);
+  const writer = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v1",
+    semanticQualityMode: "advisory",
+    transport,
+    evidenceSink: { record() {} },
+    maximumBatchCostUsd: 0.01,
+  });
+  const result = await writer.write(batch);
+  assert.match(result.scenes[0].action, /cook over the open fire/u);
+
+  const photographerBatch = withScenePhrase(
+    makeBatch(1),
+    "A photographer documents a cook tending ribs beside a sauce bottle.",
+  );
+  const photographerWriter = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v1",
+    semanticQualityMode: "advisory",
+    transport: new ScriptedTransport([
+      (request) =>
+        success(request, {
+          change: (rows) => [
+            {
+              ...rows[0],
+              literal_subject: "Photographer beside a cook and sauce bottle",
+              action: "Photographer documents the cook tending ribs",
+              environment: "Kitchen prep area beside the open grill",
+              prompt_core:
+                "A photographer documents a cook tending ribs beside a sauce bottle near an open grill.",
+            },
+          ],
+        }),
+    ]),
+    evidenceSink: { record() {} },
+    maximumBatchCostUsd: 0.01,
+  });
+  const photographerResult = await photographerWriter.write(photographerBatch);
+  assert.match(photographerResult.scenes[0].literal_subject, /Photographer/u);
+});
+
+test("Luna rejects incomplete capped fields and saved product, negation, and checkout misreads", async () => {
+  const schemaBatch = withScenePhrase(makeBatch(1), "A barbecue sauce bottle rests on a shelf.");
+  const request = buildRunwarePromptRequest(
+    schemaBatch,
+    schemaBatch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v1",
+  );
+  const rawRows = payload(request).scenes.map((scene) => ({
+    scene_id: scene.scene_id,
+    literal_subject: "A sauce bottle",
+    action: "Rests on a shelf",
+    environment: "Grocery aisle",
+    in_image_shot_role: scene.in_image_shot_role,
+    lighting_context: "daylight",
+    continuity_tags: [],
+    prompt_core: "A sauce bottle rests on a grocery shelf.",
+  }));
+  rawRows[0].literal_subject = "A large barbecue sauce bottle with a printed smoker illustration";
+  const capCut = JSON.stringify({ batch_id: schemaBatch.batchId, scenes: rawRows });
+  const correction = buildRunwarePromptCorrection(schemaBatch, capCut, "runware-luna-grounded-v1");
+  assert.ok(correction);
+  assert.ok(correction.failures.some((failure) => failure.reason === "hard_conflict"));
+
+  const incompleteRows = rawRows.map((row) => ({
+    ...row,
+    literal_subject: "A large barbecue sauce b",
+    action: "Rests on a shelf",
+    environment: "Grocery aisle",
+  }));
+  const incomplete = buildRunwarePromptCorrection(
+    schemaBatch,
+    JSON.stringify({ batch_id: schemaBatch.batchId, scenes: incompleteRows }),
+    "runware-luna-grounded-v1",
+  );
+  assert.ok(incomplete);
+  assert.ok(incomplete.failures.some((failure) => failure.field === "literal_subject"));
+
+  const negativeScene = withScenePhrase(
+    makeBatch(1),
+    "never saw smoke. Hickory smoked barbecue sauce carries the name itself.",
+  );
+  const negativeRequest = buildRunwarePromptRequest(
+    negativeScene,
+    negativeScene.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v1",
+  );
+  const promoted = output(negativeRequest, {
+    change: (rows) => [
+      {
+        ...rows[0],
+        literal_subject: "Rack of ribs over a grill",
+        action: "Ribs cook over the fire",
+        environment: "Outdoor cooking area",
+        prompt_core: "Ribs cook over a fire at an outdoor grill.",
+      },
+    ],
+  });
+  const promotedCorrection = buildRunwarePromptCorrection(
+    negativeScene,
+    promoted,
+    "runware-luna-grounded-v1",
+  );
+  assert.ok(
+    promotedCorrection?.failures.some((failure) => failure.reason === "depiction_transfer"),
+  );
+
+  const imageScene = withScenePhrase(makeBatch(1), "A plain sauce bottle stands on a table.");
+  const imageRequest = buildRunwarePromptRequest(
+    imageScene,
+    imageScene.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v1",
+  );
+  const bearsImage = output(imageRequest, {
+    change: (rows) => [
+      {
+        ...rows[0],
+        literal_subject: "Unmarked barbecue sauce bottle",
+        action: "A bottle bears a smoker illustration",
+        environment: "Close view of bottle surface",
+      },
+    ],
+  });
+  const imageCorrection = buildRunwarePromptCorrection(
+    imageScene,
+    bearsImage,
+    "runware-luna-grounded-v1",
+  );
+  assert.ok(imageCorrection?.failures.some((failure) => failure.reason === "hard_conflict"));
+
+  const checkout = withScenePhrase(
+    makeBatch(1),
+    "At checkout, I put my belt on the conveyor beside the sauce bottle.",
+  );
+  const checkoutRequest = buildRunwarePromptRequest(
+    checkout,
+    checkout.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v1",
+  );
+  const clothingBelt = output(checkoutRequest, {
+    change: (rows) => [
+      {
+        ...rows[0],
+        literal_subject: "A leather belt around a cashier's waist",
+        action: "The cashier wears a belt",
+        environment: "At a grocery checkout register",
+      },
+    ],
+  });
+  const beltCorrection = buildRunwarePromptCorrection(
+    checkout,
+    clothingBelt,
+    "runware-luna-grounded-v1",
+  );
+  assert.ok(beltCorrection?.failures.some((failure) => failure.reason === "required_fact_invalid"));
+});
+
+test("Luna completeness allows a finished phrasal verb but rejects an unfinished preposition", async () => {
+  const batch = withScenePhrase(makeBatch(1), "Marlene turns the sauce bottle around.");
+  const accepted = output(
+    buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "runware-luna-grounded-v1"),
+    {
+      change: (rows) => [
+        {
+          ...rows[0],
+          literal_subject: "Marlene beside the sauce bottle",
+          action: "Marlene turns the sauce bottle around",
+          environment: "A grocery aisle",
+          prompt_core: "Marlene turns the sauce bottle around in a grocery aisle.",
+        },
+      ],
+    },
+  );
+  const writer = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v1",
+    semanticQualityMode: "advisory",
+    transport: new ScriptedTransport([(request) => success(request, { outputText: accepted })]),
+    evidenceSink: { record() {} },
+    maximumBatchCostUsd: 0.01,
+  });
+  const result = await writer.write(batch);
+  assert.equal(result.scenes[0].action, "Marlene turns the sauce bottle around.");
+
+  const unfinishedRequest = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v1",
+  );
+  const unfinishedRows = payload(unfinishedRequest).scenes.map((scene) => ({
+    scene_id: scene.scene_id,
+    literal_subject: "A sauce bottle seen from",
+    action: "Rests on a shelf",
+    environment: "A grocery aisle",
+    in_image_shot_role: scene.in_image_shot_role,
+    lighting_context: "daylight",
+    continuity_tags: [],
+    prompt_core: "A sauce bottle rests on a grocery shelf.",
+  }));
+  const correction = buildRunwarePromptCorrection(
+    batch,
+    JSON.stringify({ batch_id: batch.batchId, scenes: unfinishedRows }),
+    "runware-luna-grounded-v1",
+  );
+  assert.ok(
+    correction?.failures.some(
+      (failure) =>
+        failure.field === "literal_subject" && failure.reason === "required_fact_invalid",
+    ),
+  );
+
+  for (const sample of [
+    {
+      phrase: "Marlene holds the sauce bottle before her at checkout.",
+      subject: "Marlene beside a sauce bottle",
+      action: "Marlene holds the sauce bottle before her",
+      environment: "Grocery checkout, viewed from beside her",
+    },
+    {
+      phrase: "Marlene says the bottle is his at checkout.",
+      subject: "Marlene beside a sauce bottle",
+      action: "The sauce bottle is his",
+      environment: "Grocery checkout interior",
+    },
+    {
+      phrase: "She turns the bottle over on the grocery counter.",
+      subject: "A shopper beside the bottle",
+      action: "She turns the bottle over",
+      environment: "Grocery counter",
+    },
+    {
+      phrase: "A shopper walks by the sauce bottles in the aisle.",
+      subject: "A shopper beside the sauce bottles",
+      action: "A shopper walks by",
+      environment: "Grocery aisle",
+    },
+    {
+      phrase: "The lamp is on above the grocery checkout.",
+      subject: "A lamp above the checkout",
+      action: "The lamp is on",
+      environment: "Grocery checkout interior",
+    },
+    {
+      phrase: "The bottle was taken from the cardboard box at checkout.",
+      subject: "A sauce bottle at checkout",
+      action: "The bottle rests on the counter",
+      environment: "The box the bottle was taken from",
+    },
+  ]) {
+    const pronounBatch = withScenePhrase(makeBatch(1), sample.phrase);
+    const pronounOutput = output(
+      buildRunwarePromptRequest(
+        pronounBatch,
+        pronounBatch.scenes,
+        1,
+        null,
+        1,
+        "runware-luna-grounded-v1",
+      ),
+      {
+        change: (rows) => [
+          {
+            ...rows[0],
+            literal_subject: sample.subject,
+            action: sample.action,
+            environment: sample.environment,
+            prompt_core: "Marlene holds the sauce bottle at the grocery checkout.",
+          },
+        ],
+      },
+    );
+    const pronounWriter = new RunwarePromptWriter({
+      requestPolicy: "runware-luna-grounded-v1",
+      semanticQualityMode: "advisory",
+      transport: new ScriptedTransport([
+        (request) => success(request, { outputText: pronounOutput }),
+      ]),
+      evidenceSink: { record() {} },
+      maximumBatchCostUsd: 0.01,
+    });
+    await pronounWriter.write(pronounBatch);
+  }
+});
+
+test("Luna accepts compact connected-person handling within the new raw target", async () => {
+  const batch = {
+    ...withScenePhrase(
+      makeBatch(1),
+      "Marlene slides a sauce bottle across the grocery checkout scanner.",
+    ),
+    literalCharacterLimit: 168,
+  };
+  const request = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v1",
+  );
+  const resultText = output(request, {
+    change: (rows) => [
+      {
+        ...rows[0],
+        literal_subject: "Marlene’s torso and connected arm.",
+        action: "Slides sauce bottle.",
+        environment: "Beside scanner, side view.",
+        prompt_core: "Marlene slides a sauce bottle across a checkout scanner.",
+      },
+    ],
+  });
+  const literalTotal = (() => {
+    const row = JSON.parse(resultText).scenes[0];
+    return row.literal_subject.length + row.action.length + row.environment.length;
+  })();
+  assert.ok(literalTotal <= Math.floor(batch.literalCharacterLimit * 0.6));
+  const writer = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v1",
+    semanticQualityMode: "advisory",
+    transport: new ScriptedTransport([(attempt) => success(attempt, { outputText: resultText })]),
+    evidenceSink: { record() {} },
+    maximumBatchCostUsd: 0.01,
+  });
+  const accepted = await writer.write(batch);
+  assert.equal(accepted.scenes[0].literal_subject, "Marlene’s torso and connected arm.");
+  assert.equal(accepted.scenes[0].environment, "Beside scanner, side view.");
+});
+
+test("Luna allows directly negated product imagery but never lets later negation erase a positive request", async () => {
+  const negativeBatch = withScenePhrase(
+    makeBatch(1),
+    "A shopper is holding a plain barbecue sauce bottle without a picture.",
+  );
+  const negativeTransport = new ScriptedTransport([
+    (request) =>
+      success(request, {
+        change: (rows) => [
+          {
+            ...rows[0],
+            literal_subject: "A plain barbecue sauce bottle without a picture",
+            action: "A shopper holds the bottle with no printed faces",
+            environment: "Grocery aisle beside the shelf",
+            prompt_core: "A shopper holds a plain unmarked sauce bottle in the grocery aisle.",
+          },
+        ],
+      }),
+  ]);
+  const negativeWriter = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v1",
+    semanticQualityMode: "advisory",
+    transport: negativeTransport,
+    evidenceSink: { record() {} },
+    maximumBatchCostUsd: 0.01,
+  });
+  const negativeResult = await negativeWriter.write(negativeBatch);
+  assert.equal(negativeResult.scenes[0].literal_subject, "A plain barbecue sauce bottle.");
+  assert.equal(negativeResult.scenes[0].action, "A shopper holds the bottle.");
+
+  const positiveBatch = withScenePhrase(
+    makeBatch(1),
+    "A sauce bottle shows a celebrity face on the front.",
+  );
+  const request = buildRunwarePromptRequest(
+    positiveBatch,
+    positiveBatch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v1",
+  );
+  const positiveOutput = output(request, {
+    change: (rows) => [
+      {
+        ...rows[0],
+        literal_subject: "A sauce bottle front with a celebrity face",
+        action: "Bottle shows a celebrity face, but no printed imagery",
+        environment: "Grocery shelf with sauce bottles",
+        prompt_core: "An unmarked sauce bottle sits on the grocery shelf.",
+      },
+    ],
+  });
+  const correction = buildRunwarePromptCorrection(
+    positiveBatch,
+    positiveOutput,
+    "runware-luna-grounded-v1",
+  );
+  assert.ok(correction.failedSceneIds.includes(positiveBatch.scenes[0].sceneId));
+  assert.ok(
+    correction.failures.some(
+      (failure) => failure.field === "literal_subject" && failure.reason === "hard_conflict",
+    ),
+  );
+});
+
+test("Luna enforces the combined natural-scene character budget and corrections isolate overages", async () => {
+  const base = makeBatch(2);
+  const style = {
+    positiveSuffix: "documentary photography",
+    negativeSuffix: "CGI",
+    fullImageGuidance: "16:9 center-safe",
+    splitImageGuidance: "8:9 center-safe right panel",
+  };
+  const batch = {
+    ...base,
+    styleProfileHash: NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH,
+    styleTreatment: {
+      ...base.styleTreatment,
+      style_profile_hash: NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH,
+    },
+    literalCharacterLimit: 180,
+  };
+  const overBudget = output(
+    buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "runware-luna-grounded-v1"),
+    {
+      change: (rows) =>
+        rows.map((row, index) =>
+          index === 1
+            ? {
+                ...row,
+                literal_subject: `${row.literal_subject} ${"ordinary jar surface ".repeat(3)}`,
+                action: `${row.action} ${"resting on wood ".repeat(2)}`,
+                environment: `${row.environment} ${"kitchen table nearby ".repeat(2)}`,
+              }
+            : row,
+        ),
+    },
+  );
+  const transport = new ScriptedTransport([
+    (request) => success(request, { outputText: overBudget }),
+  ]);
+  const evidence = [];
+  const writer = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v1",
+    transport,
+    evidenceSink: { record: (value) => evidence.push(value) },
+    maximumBatchCostUsd: 0.01,
+    semanticQualityMode: "advisory",
+  });
+  await expectInvalid(() => writer.write(batch));
+  assert.equal(evidence[0].validationDiagnostic.reason, "scene_quality");
+  const correction = buildRunwarePromptCorrection(batch, overBudget, "runware-luna-grounded-v1");
+  assert.deepEqual(correction.failedSceneIds, [batch.scenes[1].sceneId]);
+  assert.ok(
+    correction.failures.some(
+      (failure) =>
+        failure.sceneId === batch.scenes[1].sceneId && failure.reason === "literal_character_limit",
+    ),
+  );
+
+  const fitAround = (prefix, suffix, length) => {
+    const fill = "x ".repeat(Math.ceil((length - prefix.length - suffix.length) / 2));
+    return `${prefix}${fill.slice(0, length - prefix.length - suffix.length)}${suffix}`;
+  };
+  const geometryOutput = output(
+    buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "runware-luna-grounded-v1"),
+    {
+      change: (rows) =>
+        rows.map((row, index) =>
+          index === 1
+            ? {
+                ...row,
+                literal_subject: fitAround("Hands and irrigation valve ", "16:9", 72),
+                action: fitAround("demonstrating irrigation ", "16:9", 54),
+                environment: fitAround("farm irrigation pipe ", "16:9", 49),
+              }
+            : row,
+        ),
+    },
+  );
+  const geometryRow = JSON.parse(geometryOutput).scenes[1];
+  const rawLiteralChars = [
+    geometryRow.literal_subject,
+    geometryRow.action,
+    geometryRow.environment,
+  ].reduce((sum, value) => sum + value.length, 0);
+  const projectedLiteralChars = [
+    geometryRow.literal_subject,
+    geometryRow.action,
+    geometryRow.environment,
+  ].reduce((sum, value) => sum + plainGeometry(value).length, 0);
+  assert.ok(rawLiteralChars <= batch.literalCharacterLimit);
+  assert.ok(projectedLiteralChars > batch.literalCharacterLimit);
+  const geometryEvidence = [];
+  const geometryWriter = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v1",
+    transport: new ScriptedTransport([
+      (request) => success(request, { outputText: geometryOutput }),
+    ]),
+    evidenceSink: { record: (value) => geometryEvidence.push(value) },
+    maximumBatchCostUsd: 0.01,
+    semanticQualityMode: "advisory",
+  });
+  await expectInvalid(() => geometryWriter.write(batch));
+  assert.equal(geometryEvidence[0].validationDiagnostic.reason, "scene_quality");
+  const geometryCorrection = buildRunwarePromptCorrection(
+    batch,
+    geometryOutput,
+    "runware-luna-grounded-v1",
+  );
+  assert.deepEqual(geometryCorrection.failedSceneIds, [batch.scenes[1].sceneId]);
+  assert.ok(
+    geometryCorrection.failures.some((failure) => failure.reason === "literal_character_limit"),
+  );
+
+  const limit = naturalDocumentaryLiteralCharacterLimit({
+    styleProfileHash: NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH,
+    style,
+    extraPromptKeywords: null,
+    applyExtraPromptKeywords: false,
+    scenes: [batch.scenes[0]],
+  });
+  assert.ok(limit >= 90);
+  const subjectLimit = Math.floor(limit * 0.4);
+  const actionLimit = Math.floor(limit * 0.3);
+  const environmentLimit = limit - subjectLimit - actionLimit;
+  const pad = (value, length) =>
+    `${value}${" x".repeat(Math.ceil((length - value.length) / 2))}`.slice(0, length);
+  const compiled = compileImagePrompt({
+    expectedScene: batch.scenes[0],
+    writerOutput: {
+      scene_id: batch.scenes[0].sceneId,
+      literal_subject: pad("A glass jar", subjectLimit),
+      action: pad("Resting on table", actionLimit),
+      environment: pad("In a kitchen", environmentLimit),
+      in_image_shot_role: batch.scenes[0].inImageShotRole,
+      lighting_context: "available daylight",
+      continuity_tags: [],
+      prompt_core: "A jar rests on an ordinary kitchen table",
+    },
+    style,
+    extraPromptKeywords: null,
+    applyExtraPromptKeywords: false,
+  });
+  assert.ok(naturalDocumentaryRequiredPrompt(compiled.components).length <= 800);
 });
 
 test("new writer policy dispatches its exact selected request once", async () => {
@@ -221,6 +1639,89 @@ test("new writer policy dispatches its exact selected request once", async () =>
   assert.match(PHYSICAL_PLACEMENT_V2_WRITER_INSTRUCTION, /Exempt genuine HANDS_ACTION close-ups/u);
   assert.match(PHYSICAL_PLACEMENT_V2_WRITER_INSTRUCTION, /Preserve every narrated collaborator/u);
   assert.throws(() => buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "unknown"));
+});
+
+test("Luna result model identity and reasoning usage reach accepted evidence", async () => {
+  const batch = makeBatch(1);
+  let evidence;
+  const writer = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v1",
+    transport: new ScriptedTransport([
+      (request) =>
+        success(request, {
+          providerModel: RUNWARE_LUNA_PROMPT_MODEL,
+          costBasis: "PINNED_RATE_ESTIMATE",
+          estimatedCostMicroUsd: 123,
+          responseId: "resp_luna_test",
+          wireHash: `sha256:${"a".repeat(64)}`,
+          usage: {
+            inputTokens: 1_000,
+            outputTokens: 2_000,
+            totalTokens: 3_000,
+            cachedInputTokens: 100,
+            reasoningTokens: 250,
+            cacheWriteTokens: 75,
+          },
+        }),
+    ]),
+    evidenceSink: {
+      record(value) {
+        evidence = value;
+      },
+    },
+    maximumBatchCostUsd: 0.01,
+  });
+  await writer.write(batch);
+  assert.equal(evidence.model, RUNWARE_LUNA_PROMPT_MODEL);
+  assert.equal(evidence.requestVersion, RUNWARE_LUNA_PROMPT_REQUEST_VERSION);
+  assert.equal(evidence.usage.reasoningTokens, 250);
+  assert.equal(evidence.usage.cacheWriteTokens, 75);
+  assert.equal(evidence.costBasis, "PINNED_RATE_ESTIMATE");
+  assert.equal(evidence.estimatedCostMicroUsd, 123);
+  assert.equal(evidence.responseId, "resp_luna_test");
+  assert.match(evidence.wireHash, /^sha256:[a-f0-9]{64}$/u);
+
+  let mismatchEvidence;
+  const mismatch = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v1",
+    transport: new ScriptedTransport([
+      (request) => success(request, { providerModel: RUNWARE_PROMPT_MODEL }),
+    ]),
+    evidenceSink: {
+      record(value) {
+        mismatchEvidence = value;
+      },
+    },
+    maximumBatchCostUsd: 0.01,
+  });
+  await assert.rejects(() => mismatch.write(batch));
+  assert.equal(mismatchEvidence.validationDiagnostic.reason, "provider_model");
+
+  let invalidUsageEvidence;
+  const invalidCacheWrite = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v1",
+    transport: new ScriptedTransport([
+      (request) =>
+        success(request, {
+          providerModel: RUNWARE_LUNA_PROMPT_MODEL,
+          usage: {
+            inputTokens: 1_000,
+            outputTokens: 2_000,
+            totalTokens: 3_000,
+            cachedInputTokens: 900,
+            cacheWriteTokens: 101,
+          },
+        }),
+    ]),
+    evidenceSink: {
+      record(value) {
+        invalidUsageEvidence = value;
+      },
+    },
+    maximumBatchCostUsd: 0.01,
+  });
+  await assert.rejects(() => invalidCacheWrite.write(batch));
+  assert.equal(invalidUsageEvidence.validationDiagnostic.reason, "usage");
 });
 
 test("request construction revalidates the exact style-only v2 projection", () => {
@@ -2538,6 +4039,7 @@ test("physical surface projection preserves relationships and rejects text-beari
       "An unmarked paper shelf card attached to a metal shelf",
     ],
     ["Blank labels on the jars", "unmarked surfaces on the jars"],
+    ["staring closely at an unmarked bottle label", "staring closely at an unmarked bottle label"],
     [
       "A shopper beside a blank label on a bottle",
       "A shopper beside an unmarked surface on a bottle",
@@ -2556,6 +4058,16 @@ test("physical surface projection preserves relationships and rejects text-beari
     assert.equal(projectTextFreePhysicalSurfaces(source), expected);
     assert.equal(projectTextFreePhysicalSurfaces(expected), expected);
   }
+  assert.equal(
+    projectTextFreePhysicalSurfaces("staring closely at an unmarked bottle label"),
+    "staring closely at an unmarked bottle label",
+  );
+  assert.equal(
+    projectTextFreePhysicalSurfaces("staring closely at an unmarked bottle label", {
+      includeProductContainerModifiers: true,
+    }),
+    "staring closely at an unmarked bottle surface",
+  );
   for (const source of [
     "An unmarked white shelf tag with a yellow corner number",
     "A blank green and brown label with printed text",
@@ -2569,6 +4081,8 @@ test("physical surface projection preserves relationships and rejects text-beari
     "a photo of a chef on a blank label",
     "a blank label with a portrait",
     "a blank label reading Honey",
+    "reading a portrait printed on an unmarked bottle label",
+    "pointing at a printed label on a jar",
     "an unmarked shelf tag with a barcode",
     "Honey on an unmarked red-labeled bottle",
     "Honey on the small blank shelf tag",
@@ -2651,6 +4165,72 @@ test("v31 structured JSON and corrective subset preserve valid original scenes a
     `sha256:${createHash("sha256").update(output(transport.requests[0])).digest("hex")}`,
   );
   assert.equal(transport.requests.length, 1);
+});
+
+test("Luna correction keeps the original strict schema while requesting only failed scenes", async () => {
+  const batch = { ...makeBatch(3), literalCharacterLimit: 168 };
+  const original = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v1",
+  );
+  const source = output(original, {
+    change: (rows) => {
+      rows[1].literal_subject = "A portrait illustration on a bottle label";
+      return rows;
+    },
+  });
+  const correction = buildRunwarePromptCorrection(batch, source, "runware-luna-grounded-v1");
+  assert.ok(correction);
+  const replacement = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    2,
+    original.requestSha256,
+    1,
+    "runware-luna-grounded-v1",
+    false,
+    correction,
+  );
+  assert.deepEqual(replacement.request.jsonSchema, original.request.jsonSchema);
+  assert.deepEqual(
+    JSON.parse(replacement.request.messages[0].content).scenes.map((scene) => scene.scene_id),
+    correction.failedSceneIds,
+  );
+
+  const transport = new ScriptedTransport([
+    (request) =>
+      success(request, {
+        outputText: output(request, {
+          change: (rows) => [
+            ...rows,
+            {
+              ...rows[0],
+              scene_id: batch.scenes.find((scene) => scene.sceneId !== correction.failedSceneIds[0])
+                .sceneId,
+            },
+          ],
+        }),
+      }),
+  ]);
+  const writer = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v1",
+    correction,
+    transport,
+    evidenceSink: { record() {} },
+    maximumBatchCostUsd: 0.01,
+  });
+  await assert.rejects(() => writer.write(batch, original.requestSha256));
+  assert.deepEqual(transport.requests[0].request.jsonSchema, original.request.jsonSchema);
+  assert.deepEqual(
+    JSON.parse(transport.requests[0].request.messages[0].content).scenes.map(
+      (scene) => scene.scene_id,
+    ),
+    correction.failedSceneIds,
+  );
 });
 
 test("v31 correction refuses forged diagnostics, schema drift and oversized source before dispatch", async () => {
@@ -2835,6 +4415,28 @@ test("v32 rejects observed source contradictions while v31 stays reconstruction-
     assert.ok(
       correction.failures.some((f) => f.reason === reason),
       source,
+    );
+    const lunaCorrection = buildRunwarePromptCorrection(batch, raw, "runware-luna-grounded-v1");
+    assert.ok(lunaCorrection, source);
+    assert.ok(
+      lunaCorrection.failures.some((failure) => failure.reason === reason),
+      source,
+    );
+    const lunaReplacement = buildRunwarePromptRequest(
+      batch,
+      batch.scenes,
+      2,
+      `sha256:${createHash("sha256").update(raw).digest("hex")}`,
+      1,
+      "runware-luna-grounded-v1",
+      false,
+      lunaCorrection,
+    );
+    assert.equal(lunaReplacement.request.model, RUNWARE_LUNA_PROMPT_MODEL);
+    assert.equal(lunaReplacement.request.settings.thinkingLevel, "low");
+    assert.deepEqual(
+      JSON.parse(lunaReplacement.request.messages[0].content).correction.failed_scene_ids,
+      lunaCorrection.failedSceneIds,
     );
   }
 });

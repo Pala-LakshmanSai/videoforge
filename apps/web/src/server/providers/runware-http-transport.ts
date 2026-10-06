@@ -248,6 +248,17 @@ function textResult(item: NativeData): {
   const outputTokens = safeInteger(usage?.completionTokens);
   const totalTokens = safeInteger(usage?.totalTokens);
   const cachedInputTokens = safeInteger(usage?.cachedInputTokens ?? 0);
+  const completionDetails = record(usage?.completionTokensDetails);
+  const reasoningValues = [usage?.reasoningTokens, usage?.thinkingTokens, completionDetails?.reasoningTokens]
+    .filter((value) => value !== undefined);
+  const reasoningTokens = reasoningValues.length === 0 ? undefined : safeInteger(reasoningValues[0]);
+  const invalidReasoning =
+    reasoningValues.length > 0 &&
+    (reasoningTokens === null ||
+      reasoningTokens === undefined ||
+      outputTokens === null ||
+      reasoningTokens > outputTokens ||
+      reasoningValues.some((value) => safeInteger(value) !== reasoningTokens));
   const text = outputText(item.text);
   const costUsd = finiteNonnegative(item.cost);
   if (
@@ -257,13 +268,20 @@ function textResult(item: NativeData): {
     cachedInputTokens === null ||
     cachedInputTokens > inputTokens ||
     totalTokens < inputTokens + outputTokens ||
+    invalidReasoning ||
     text === null ||
     costUsd === null ||
     typeof item.finishReason !== "string"
   )
     throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
   return Object.freeze({
-    usage: Object.freeze({ inputTokens, outputTokens, totalTokens, cachedInputTokens }),
+    usage: Object.freeze({
+      inputTokens,
+      outputTokens,
+      totalTokens,
+      cachedInputTokens,
+      ...(reasoningTokens === undefined ? {} : { reasoningTokens }),
+    }),
     outputText: text,
     costUsd,
     finishReason: item.finishReason,

@@ -18,6 +18,15 @@ import {
 
 const DUE_QUERY = await continuationDueQuery();
 
+it("continues Luna prompt work only when the current unresolved batch has a saved receipt", () => {
+  expect(DUE_QUERY).toContain("prompt_profile_revision IS DISTINCT FROM 8");
+  expect(DUE_QUERY).toContain("prompt_current_claim_started_at IS NULL");
+  expect(DUE_QUERY).toContain("prompt_current_receipt_available");
+  expect(DUE_QUERY).toContain("videoforge_load_hosted_prompt_response(");
+  expect(DUE_QUERY).toContain("prompt_run_started_at < now() - make_interval");
+  expect(DUE_QUERY).toContain("WHEN prompt_state = 'UNKNOWN'");
+});
+
 it("restarts only completed saved regeneration workflows inside their tenant scope", async () => {
   const account = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   const workspace = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -145,16 +154,32 @@ async function seededDatabase(context: {
     CREATE TABLE public.timeline_plans (
       id uuid PRIMARY KEY, project_revision_id uuid NOT NULL
     );
+    CREATE TABLE public.execution_profiles (id uuid PRIMARY KEY, revision integer NOT NULL);
     CREATE TABLE public.hosted_prompt_runs (
       id uuid PRIMARY KEY, project_revision_id uuid NOT NULL, state text NOT NULL,
       acceptance_fingerprint_hash text, created_at timestamptz NOT NULL,
       -- The stale window follows the attempt's own start, which a redispatch refreshes.
       started_at timestamptz, problem_code text, redispatch_count integer,
-      planned_batch_count integer
+      planned_batch_count integer, execution_profile_id uuid
     );
     CREATE TABLE public.hosted_prompt_batch_claims (
-      id uuid PRIMARY KEY, run_id uuid NOT NULL, batch_ordinal integer NOT NULL DEFAULT 0
+      id uuid PRIMARY KEY, run_id uuid NOT NULL, batch_ordinal integer NOT NULL DEFAULT 0,
+      provider_task_uuid text NOT NULL DEFAULT 'chatcmpl-test',
+      request_hash text NOT NULL DEFAULT 'sha256:0000000000000000000000000000000000000000000000000000000000000000',
+      created_at timestamptz NOT NULL DEFAULT now()
     );
+    CREATE TABLE public.hosted_prompt_batch_replacements (
+      claim_id uuid PRIMARY KEY, provider_task_uuid text NOT NULL, request_hash text NOT NULL,
+      replacement_index integer NOT NULL DEFAULT 1, created_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE TABLE public.prompt_response_receipts (
+      provider_task_uuid text NOT NULL, request_hash text NOT NULL, result jsonb NOT NULL
+    );
+    CREATE FUNCTION public.videoforge_load_hosted_prompt_response(r uuid, t text, h text)
+    RETURNS jsonb LANGUAGE sql STABLE AS $$
+      SELECT result FROM public.prompt_response_receipts
+       WHERE provider_task_uuid=t AND request_hash=h LIMIT 1
+    $$;
     CREATE TABLE public.hosted_prompt_batch_progress (
       id uuid PRIMARY KEY, run_id uuid NOT NULL, batch_ordinal integer NOT NULL DEFAULT 0
     );
@@ -272,7 +297,7 @@ it("retries one queued or admitted API generation only before any span or provid
   try {
     await database.exec(`
       INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}');
-      INSERT INTO public.hosted_prompt_runs VALUES
+      INSERT INTO public.hosted_prompt_runs (id,project_revision_id,state,acceptance_fingerprint_hash,created_at,started_at,problem_code,redispatch_count,planned_batch_count) VALUES
         ('55555555-5555-4555-8555-555555555555','${revisionId}','SUCCEEDED','accepted',
          now(),now(),NULL,0,1);
     `);
@@ -314,7 +339,7 @@ it("resumes capacity-waiting saved media but excludes ambiguous, failed and canc
   try {
     await database.exec(`
       INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}');
-      INSERT INTO public.hosted_prompt_runs VALUES
+      INSERT INTO public.hosted_prompt_runs (id,project_revision_id,state,acceptance_fingerprint_hash,created_at,started_at,problem_code,redispatch_count,planned_batch_count) VALUES
         ('55555555-5555-4555-8555-555555555555','${revisionId}','SUCCEEDED','accepted',now(),now(),NULL,0,1);
       INSERT INTO public.generation_requests VALUES
         ('66666666-6666-4666-8666-666666666666','${revisionId}','ACTIVE');
@@ -352,7 +377,7 @@ it("recovers unfinished saved footage after all image/avatar jobs finish, withou
   try {
     await database.exec(`
       INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}');
-      INSERT INTO public.hosted_prompt_runs VALUES
+      INSERT INTO public.hosted_prompt_runs (id,project_revision_id,state,acceptance_fingerprint_hash,created_at,started_at,problem_code,redispatch_count,planned_batch_count) VALUES
         ('55555555-5555-4555-8555-555555555555','${revisionId}','SUCCEEDED','accepted',now(),now(),NULL,0,1);
       INSERT INTO public.generation_requests VALUES
         ('66666666-6666-4666-8666-666666666666','${revisionId}','ACTIVE');
@@ -407,7 +432,7 @@ it.each([false, true])(
     try {
       await database.exec(`
       INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}');
-      INSERT INTO public.hosted_prompt_runs VALUES
+      INSERT INTO public.hosted_prompt_runs (id,project_revision_id,state,acceptance_fingerprint_hash,created_at,started_at,problem_code,redispatch_count,planned_batch_count) VALUES
         ('55555555-5555-4555-8555-555555555555','${revisionId}','SUCCEEDED','accepted',now(),now(),NULL,0,1);
       INSERT INTO public.generation_requests VALUES
         ('66666666-6666-4666-8666-666666666666','${revisionId}','ACTIVE');
@@ -676,18 +701,18 @@ describe("hosted continuation sweep stage-3 recovery", () => {
     try {
       await database.exec(`
         INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}');
-        INSERT INTO public.hosted_prompt_runs VALUES
+        INSERT INTO public.hosted_prompt_runs (id,project_revision_id,state,acceptance_fingerprint_hash,created_at,started_at,problem_code,redispatch_count,planned_batch_count) VALUES
           ('55555555-5555-4555-8555-555555555555','${revisionId}','DISPATCHING',NULL,
            now(),now(),NULL,0,3);
-        INSERT INTO public.hosted_prompt_batch_claims VALUES
-          ('66666666-6666-4666-8666-666666666666','55555555-5555-4555-8555-555555555555');
+        INSERT INTO public.hosted_prompt_batch_claims (id,run_id,batch_ordinal) VALUES
+          ('66666666-6666-4666-8666-666666666666','55555555-5555-4555-8555-555555555555',0);
       `);
       expect(await nextSteps(database)).toEqual([]);
       await database.exec(`INSERT INTO public.hosted_prompt_batch_progress VALUES
         ('77777777-7777-4777-8777-777777777777','55555555-5555-4555-8555-555555555555')`);
       expect(await nextSteps(database)).toEqual(["prompts"]);
-      await database.exec(`INSERT INTO public.hosted_prompt_batch_claims VALUES
-        ('88888888-8888-4888-8888-888888888888','55555555-5555-4555-8555-555555555555')`);
+      await database.exec(`INSERT INTO public.hosted_prompt_batch_claims (id,run_id,batch_ordinal) VALUES
+        ('88888888-8888-4888-8888-888888888888','55555555-5555-4555-8555-555555555555',1)`);
       expect(await nextSteps(database)).toEqual([]);
       // The targeted Workflow may inspect this exact claim through retrieval-only recovery.
       expect(
@@ -715,10 +740,10 @@ describe("hosted continuation sweep stage-3 recovery", () => {
     try {
       await database.exec(`
         INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}');
-        INSERT INTO public.hosted_prompt_runs VALUES
+        INSERT INTO public.hosted_prompt_runs (id,project_revision_id,state,acceptance_fingerprint_hash,created_at,started_at,problem_code,redispatch_count,planned_batch_count) VALUES
           ('55555555-5555-4555-8555-555555555555','${revisionId}','UNKNOWN',NULL,
            now(),now(),'HOSTED_PROMPT_DISPATCH_TIMEOUT',0,2);
-        INSERT INTO public.hosted_prompt_batch_claims VALUES
+        INSERT INTO public.hosted_prompt_batch_claims (id,run_id,batch_ordinal) VALUES
           ('66666666-6666-4666-8666-666666666666','55555555-5555-4555-8555-555555555555',0),
           ('88888888-8888-4888-8888-888888888888','55555555-5555-4555-8555-555555555555',1);
         INSERT INTO public.hosted_prompt_batch_progress VALUES
@@ -769,4 +794,99 @@ describe("hosted continuation sweep stage-3 recovery", () => {
     });
     await expect(nextSteps(database)).resolves.toEqual(["plan"]);
   });
+});
+
+it.each([
+  { name: "legacy Gemini", profileRevision: 7, receipt: false, expected: ["prompts"] },
+  { name: "Luna with receipt", profileRevision: 8, receipt: true, expected: ["prompts"] },
+  { name: "Luna without receipt", profileRevision: 8, receipt: false, expected: [] },
+  {
+    name: "Luna with an original receipt but missing latest correction receipt",
+    profileRevision: 8,
+    receipt: true,
+    replacement: true,
+    expected: [],
+  },
+])("gates UNKNOWN prompt continuation by recoverable receipt: $name", async (testCase) => {
+  const database = await seededDatabase({
+    state: "SUCCEEDED",
+    hash: "accepted-context",
+    problemCode: null,
+    redispatchCount: 0,
+  });
+  try {
+    const runId = "55555555-5555-4555-8555-555555555555";
+    const taskUuid = "chatcmpl-test";
+    const requestHash = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+    await database.exec(`
+      INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444','${revisionId}');
+      INSERT INTO public.execution_profiles VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',${testCase.profileRevision});
+      INSERT INTO public.hosted_prompt_runs
+        (id,project_revision_id,state,acceptance_fingerprint_hash,created_at,started_at,problem_code,redispatch_count,planned_batch_count,execution_profile_id)
+      VALUES ('${runId}','${revisionId}','UNKNOWN',NULL,now(),now(),
+        'HOSTED_PROMPT_EXECUTION_UNKNOWN',0,1,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+      INSERT INTO public.hosted_prompt_batch_claims
+        (id,run_id,batch_ordinal,provider_task_uuid,request_hash)
+      VALUES ('66666666-6666-4666-8666-666666666666','${runId}',0,'${taskUuid}','${requestHash}');
+      ${testCase.replacement ? `INSERT INTO public.hosted_prompt_batch_replacements (claim_id,provider_task_uuid,request_hash,replacement_index) VALUES ('66666666-6666-4666-8666-666666666666','chatcmpl-correction','sha256:1111111111111111111111111111111111111111111111111111111111111111',1);` : ""}
+      INSERT INTO public.generation_requests VALUES
+        ('77777777-7777-4777-8777-777777777777','${revisionId}','ACTIVE');
+      ${testCase.receipt ? `INSERT INTO public.prompt_response_receipts VALUES ('${taskUuid}','${requestHash}','{}'::jsonb);` : ""}
+    `);
+    expect(await nextSteps(database)).toEqual(testCase.expected);
+  } finally {
+    await database.close();
+  }
+});
+
+it("keeps a fresh current Luna claim in flight even when the run itself is old", async () => {
+  const database = await seededDatabase({
+    state: "SUCCEEDED",
+    hash: "accepted-context",
+    problemCode: null,
+    redispatchCount: 0,
+  });
+  try {
+    const runId = "55555555-5555-4555-8555-555555555555";
+    await database.exec(`
+      INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444','${revisionId}');
+      INSERT INTO public.execution_profiles VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',8);
+      INSERT INTO public.hosted_prompt_runs
+        (id,project_revision_id,state,acceptance_fingerprint_hash,created_at,started_at,problem_code,redispatch_count,planned_batch_count,execution_profile_id)
+      VALUES ('${runId}','${revisionId}','DISPATCHING',NULL,now(),now()-interval '1 hour',NULL,0,1,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+      INSERT INTO public.hosted_prompt_batch_claims
+        (id,run_id,batch_ordinal,created_at)
+      VALUES ('66666666-6666-4666-8666-666666666666','${runId}',0,now());
+    `);
+    expect(await nextSteps(database)).toEqual([]);
+  } finally {
+    await database.close();
+  }
+});
+
+it("does not borrow an older run's missing-receipt claim when the latest run has no claim", async () => {
+  const database = await seededDatabase({
+    state: "SUCCEEDED",
+    hash: "accepted-context",
+    problemCode: null,
+    redispatchCount: 0,
+  });
+  try {
+    await database.exec(`
+      INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444','${revisionId}');
+      INSERT INTO public.execution_profiles VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',8);
+      INSERT INTO public.hosted_prompt_runs
+        (id,project_revision_id,state,acceptance_fingerprint_hash,created_at,started_at,problem_code,redispatch_count,planned_batch_count,execution_profile_id)
+      VALUES
+        ('55555555-5555-4555-8555-555555555555','${revisionId}','UNKNOWN',NULL,now()-interval '2 hours',now()-interval '2 hours','HOSTED_PROMPT_EXECUTION_UNKNOWN',0,1,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+        ('99999999-9999-4999-8999-999999999999','${revisionId}','UNKNOWN',NULL,now(),now(),'HOSTED_PROMPT_EXECUTION_UNKNOWN',0,1,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+      INSERT INTO public.hosted_prompt_batch_claims (id,run_id,batch_ordinal)
+      VALUES ('66666666-6666-4666-8666-666666666666','55555555-5555-4555-8555-555555555555',0);
+      INSERT INTO public.generation_requests VALUES
+        ('77777777-7777-4777-8777-777777777777','${revisionId}','ACTIVE');
+    `);
+    expect(await nextSteps(database)).toEqual(["prompts"]);
+  } finally {
+    await database.close();
+  }
 });

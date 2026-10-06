@@ -5065,15 +5065,20 @@ export function hostedPromptProgressForCapacityHold(
   progress: Record<string, unknown> | null,
 ): Record<string, unknown> | null {
   if (!progress) return null;
+  const recovery = hostedPromptRecoveryDisposition({
+    state: progress.state,
+    problemCode: progress.problem_code,
+    profileRevision: progress.profile_revision,
+    hasCurrentClaim: progress.current_batch_claim_available === true,
+    hasCurrentReceipt: progress.current_batch_receipt_available === true,
+    automaticRecoveryPending: progress.automatic_recovery_pending === true,
+    staleDispatch: progress.stale_dispatch === true,
+    capacityHeld: progress.capacity_hold === true,
+  });
   const projected = {
     ...progress,
-    automatic_recovery_pending:
-      progress.state === "UNKNOWN" &&
-      ["HOSTED_PROMPT_EXECUTION_UNKNOWN", "HOSTED_PROMPT_DISPATCH_TIMEOUT"].includes(
-        String(progress.problem_code),
-      ) &&
-      progress.capacity_hold !== true &&
-      progress.automatic_recovery_pending === true,
+    automatic_recovery_pending: recovery === "automatic",
+    recovery_requires_attention: recovery === "attention",
   };
   if (progress.state === "SUCCEEDED" || progress.capacity_hold !== true) return projected;
   return {
@@ -5086,6 +5091,33 @@ export function hostedPromptProgressForCapacityHold(
   };
 }
 
+export function hostedPromptRecoveryDisposition(input: {
+  readonly state: unknown;
+  readonly problemCode?: unknown;
+  readonly profileRevision?: unknown;
+  readonly hasCurrentClaim?: boolean;
+  readonly hasCurrentReceipt?: boolean;
+  readonly automaticRecoveryPending?: boolean;
+  readonly staleDispatch?: boolean;
+  readonly capacityHeld?: boolean;
+}): "automatic" | "attention" | "none" {
+  if (input.capacityHeld) return "none";
+  const recoverable = [
+    "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+    "HOSTED_PROMPT_DISPATCH_TIMEOUT",
+  ].includes(String(input.problemCode ?? ""));
+  const unresolved = input.state === "UNKNOWN" && recoverable;
+  const staleDispatch = input.state === "DISPATCHING" && input.staleDispatch === true;
+  if (!unresolved && !staleDispatch) return "none";
+  if (
+    Number(input.profileRevision) === 8 &&
+    input.hasCurrentClaim === true &&
+    input.hasCurrentReceipt !== true
+  )
+    return "attention";
+  return input.automaticRecoveryPending === true ? "automatic" : "none";
+}
+
 export function hostedPromptWritingState(
   promptTaskState: unknown,
   planExists: boolean,
@@ -5095,6 +5127,7 @@ export function hostedPromptWritingState(
     readonly problemCode?: unknown;
     readonly runState?: unknown;
     readonly automaticRecoveryPending?: boolean;
+    readonly manualReviewRequired?: boolean;
   },
 ): {
   readonly status:
@@ -5127,6 +5160,16 @@ export function hostedPromptWritingState(
           ? Math.min(99, Math.floor((progress.acceptedScenes / progress.totalScenes) * 100))
           : 0,
       detail: `Prompt writing is paused while provider credits are unavailable. ${progress.acceptedScenes} saved prompts remain intact.`,
+    };
+  }
+  if (progress?.manualReviewRequired === true) {
+    return {
+      status: "ACTION_REQUIRED",
+      progressPercent:
+        progress.totalScenes > 0
+          ? Math.min(99, Math.floor((progress.acceptedScenes / progress.totalScenes) * 100))
+          : 0,
+      detail: `Prompt writing stopped before a result could be saved. ${progress.acceptedScenes} saved prompts remain intact. Contact support to review this request; it will not be sent again automatically.`,
     };
   }
   if (
@@ -7890,14 +7933,38 @@ async function projectDetail(
       const promptProgress = await transaction.query(
         `SELECT run.state, run.problem_code, run.started_at, run.finished_at,
                 public.videoforge_hosted_prompt_capacity_held(run.id) AS capacity_hold,
+                (SELECT profile.revision FROM execution_profiles profile
+                  WHERE profile.id=run.execution_profile_id) AS profile_revision,
+                (run.state='DISPATCHING' AND current_claim.claimed_at < now()-interval '15 minutes')
+                  AS stale_dispatch,
+                (current_claim.id IS NOT NULL) AS current_batch_claim_available,
+                (current_claim.recorded_result IS NOT NULL) AS current_batch_receipt_available,
+                coalesce(run.execution_profile_id IS NOT NULL
+                  AND (SELECT profile.revision FROM execution_profiles profile
+                    WHERE profile.id=run.execution_profile_id)=8
+                  AND (run.state='UNKNOWN' AND run.problem_code IN
+                    ('HOSTED_PROMPT_EXECUTION_UNKNOWN','HOSTED_PROMPT_DISPATCH_TIMEOUT')
+                    OR run.state='DISPATCHING' AND current_claim.claimed_at < now()-interval '15 minutes')
+                  AND public.videoforge_hosted_prompt_capacity_held(run.id) IS NOT TRUE
+                  AND current_claim.id IS NOT NULL
+                  AND current_claim.recorded_result IS NULL,false)
+                  AS recovery_requires_attention,
                 coalesce(run.state='DISPATCHING'
                   AND (SELECT count(*) FROM generation_requests request
                     WHERE request.account_id=run.account_id AND request.workspace_id=run.workspace_id
                       AND request.project_revision_id=run.project_revision_id
-                      AND request.state='ACTIVE')=1,false) AS continuation_driver_eligible,
+                      AND request.state='ACTIVE')=1
+                  AND (current_claim.id IS NULL
+                    OR (SELECT profile.revision FROM execution_profiles profile
+                      WHERE profile.id=run.execution_profile_id) IS DISTINCT FROM 8
+                    OR current_claim.recorded_result IS NOT NULL),false)
+                  AS continuation_driver_eligible,
                 coalesce(run.state='UNKNOWN'
                   AND run.problem_code IN ('HOSTED_PROMPT_EXECUTION_UNKNOWN','HOSTED_PROMPT_DISPATCH_TIMEOUT')
                   AND run.provider_may_have_charged IS TRUE
+                  AND ((SELECT profile.revision FROM execution_profiles profile
+                    WHERE profile.id=run.execution_profile_id) IS DISTINCT FROM 8
+                    OR current_claim.id IS NULL OR current_claim.recorded_result IS NOT NULL)
                   AND run.acceptance_fingerprint_hash IS NULL
                   AND EXISTS (SELECT 1 FROM projects project
                     WHERE project.id=run.project_id AND project.status='ACTIVE')
@@ -7924,6 +7991,20 @@ async function projectDetail(
                   ELSE NULL
                 END AS active_batch_ordinal
            FROM hosted_prompt_runs AS run
+           LEFT JOIN LATERAL (
+             SELECT claim.id,
+                    coalesce(replacement.created_at,claim.created_at) AS claimed_at,
+                    public.videoforge_load_hosted_prompt_response(run.id,
+                      coalesce(replacement.provider_task_uuid,claim.provider_task_uuid),
+                      coalesce(replacement.request_hash,claim.request_hash)) AS recorded_result
+               FROM hosted_prompt_batch_claims claim
+               LEFT JOIN LATERAL (SELECT candidate.* FROM hosted_prompt_batch_replacements candidate
+                 WHERE candidate.claim_id=claim.id ORDER BY candidate.replacement_index DESC LIMIT 1)
+                 replacement ON true
+              WHERE claim.run_id=run.id AND claim.batch_ordinal=(
+                SELECT count(*) FROM hosted_prompt_batch_progress WHERE run_id=run.id)
+              LIMIT 1
+           ) AS current_claim ON true
            LEFT JOIN hosted_prompt_scene_progress AS scene
              ON scene.account_id=run.account_id AND scene.workspace_id=run.workspace_id
             AND scene.run_id=run.id
@@ -7944,6 +8025,7 @@ async function projectDetail(
             AND run.timeline_plan_id=$5
           GROUP BY run.id, run.state, run.problem_code, run.planned_scene_count, run.planned_batch_count,
                    expected.scene_count, run.created_at, run.started_at, run.finished_at
+                   ,current_claim.id,current_claim.claimed_at,current_claim.recorded_result
           ORDER BY run.created_at DESC LIMIT 1`,
         [scope.account_id, scope.workspace_id, projectId, currentRevisionId, currentTimelineId],
       );
@@ -8778,6 +8860,7 @@ async function projectDetail(
         problemCode: promptProgress?.problem_code,
         runState: promptProgress?.state,
         automaticRecoveryPending: promptProgress?.automatic_recovery_pending === true,
+        manualReviewRequired: promptProgress?.recovery_requires_attention === true,
       },
     );
     const storedVoiceoverContext = detail.voiceoverContext as Record<string, unknown> | null;

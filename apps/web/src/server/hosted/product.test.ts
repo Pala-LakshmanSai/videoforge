@@ -437,6 +437,7 @@ import {
   hostedProjectConflictProblem,
   hostedPromptWritingState,
   hostedPromptProgressForCapacityHold,
+  hostedPromptRecoveryDisposition,
   hostedStyleConflictProblem,
   HOSTED_LEGACY_QUALIFIED_SOULX_SYSTEM_PROFILE_ID,
   recentFullRenderDurationMs,
@@ -2855,7 +2856,100 @@ describe("hosted product route contract", () => {
     expect(hostedPromptProgressForCapacityHold(null)).toBeNull();
     expect(
       hostedPromptProgressForCapacityHold({ state: "SUCCEEDED", capacity_hold: true }),
-    ).toEqual({ state: "SUCCEEDED", capacity_hold: true, automatic_recovery_pending: false });
+    ).toEqual({
+      state: "SUCCEEDED",
+      capacity_hold: true,
+      automatic_recovery_pending: false,
+      recovery_requires_attention: false,
+    });
+  });
+
+  it.each([
+    {
+      name: "legacy Gemini unknown keeps retrieval recovery",
+      state: "UNKNOWN",
+      problemCode: "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+      profileRevision: 7,
+      hasCurrentClaim: true,
+      automaticRecoveryPending: true,
+      expected: "automatic",
+    },
+    {
+      name: "Luna unknown without a saved receipt needs attention",
+      state: "UNKNOWN",
+      problemCode: "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+      profileRevision: 8,
+      hasCurrentClaim: true,
+      automaticRecoveryPending: true,
+      expected: "attention",
+    },
+    {
+      name: "Luna unknown with its saved receipt remains recoverable",
+      state: "UNKNOWN",
+      problemCode: "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+      profileRevision: 8,
+      hasCurrentClaim: true,
+      hasCurrentReceipt: true,
+      automaticRecoveryPending: true,
+      expected: "automatic",
+    },
+    {
+      name: "stale Luna dispatch without a receipt needs attention",
+      state: "DISPATCHING",
+      profileRevision: 8,
+      staleDispatch: true,
+      hasCurrentClaim: true,
+      expected: "attention",
+    },
+    {
+      name: "capacity hold retains its explicit hold path",
+      state: "UNKNOWN",
+      problemCode: "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+      profileRevision: 8,
+      hasCurrentClaim: true,
+      capacityHeld: true,
+      automaticRecoveryPending: true,
+      expected: "none",
+    },
+    {
+      name: "credit pause with no current claim stays on its resume path",
+      state: "UNKNOWN",
+      problemCode: "HOSTED_PROMPT_PROVIDER_CREDITS_LOW",
+      profileRevision: 8,
+      hasCurrentClaim: false,
+      expected: "none",
+    },
+  ])("classifies hosted prompt recovery safely: $name", ({ expected, ...input }) => {
+    expect(hostedPromptRecoveryDisposition(input)).toBe(expected);
+  });
+
+  it("shows Luna UNKNOWN without a receipt as manual review, never automatic recovery", () => {
+    const projected = hostedPromptProgressForCapacityHold({
+      state: "UNKNOWN",
+      problem_code: "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+      profile_revision: 8,
+      current_batch_claim_available: true,
+      current_batch_receipt_available: false,
+      automatic_recovery_pending: true,
+      capacity_hold: false,
+      accepted_scenes: 4,
+      total_scenes: 10,
+    });
+    expect(projected).toMatchObject({
+      automatic_recovery_pending: false,
+      recovery_requires_attention: true,
+    });
+    expect(
+      hostedPromptWritingState("FAILED", true, {
+        acceptedScenes: 4,
+        totalScenes: 10,
+        runState: "UNKNOWN",
+        manualReviewRequired: projected?.recovery_requires_attention === true,
+      }),
+    ).toMatchObject({
+      status: "ACTION_REQUIRED",
+      detail: expect.stringContaining("will not be sent again automatically"),
+    });
   });
 
   it.each([

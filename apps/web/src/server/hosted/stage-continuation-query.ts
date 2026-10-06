@@ -66,6 +66,36 @@ WITH revision AS (
     (SELECT run.planned_batch_count FROM public.hosted_prompt_runs run
       WHERE run.project_revision_id = revision.revision_id
       ORDER BY run.created_at DESC LIMIT 1) AS prompt_planned_batches,
+    (SELECT profile.revision FROM public.hosted_prompt_runs run
+      JOIN public.execution_profiles profile ON profile.id=run.execution_profile_id
+      WHERE run.project_revision_id = revision.revision_id
+      ORDER BY run.created_at DESC LIMIT 1) AS prompt_profile_revision,
+    (SELECT coalesce(replacement.created_at,claim_row.created_at)
+       FROM public.hosted_prompt_runs run
+      JOIN public.hosted_prompt_batch_claims claim_row ON claim_row.run_id=run.id
+       LEFT JOIN LATERAL (SELECT candidate.* FROM public.hosted_prompt_batch_replacements candidate
+         WHERE candidate.claim_id=claim_row.id ORDER BY candidate.replacement_index DESC LIMIT 1)
+         replacement ON true
+      WHERE run.id=(SELECT latest.id FROM public.hosted_prompt_runs latest
+        WHERE latest.project_revision_id=revision.revision_id
+        ORDER BY latest.created_at DESC LIMIT 1)
+        AND claim_row.batch_ordinal=(SELECT count(*) FROM public.hosted_prompt_batch_progress
+                                    WHERE run_id=run.id)
+      ORDER BY run.created_at DESC LIMIT 1) AS prompt_current_claim_started_at,
+    coalesce((SELECT public.videoforge_load_hosted_prompt_response(run.id,
+        coalesce(replacement.provider_task_uuid,claim_row.provider_task_uuid),
+        coalesce(replacement.request_hash,claim_row.request_hash)) IS NOT NULL
+       FROM public.hosted_prompt_runs run
+      JOIN public.hosted_prompt_batch_claims claim_row ON claim_row.run_id=run.id
+       LEFT JOIN LATERAL (SELECT candidate.* FROM public.hosted_prompt_batch_replacements candidate
+         WHERE candidate.claim_id=claim_row.id ORDER BY candidate.replacement_index DESC LIMIT 1)
+         replacement ON true
+      WHERE run.id=(SELECT latest.id FROM public.hosted_prompt_runs latest
+        WHERE latest.project_revision_id=revision.revision_id
+        ORDER BY latest.created_at DESC LIMIT 1)
+        AND claim_row.batch_ordinal=(SELECT count(*) FROM public.hosted_prompt_batch_progress
+                                    WHERE run_id=run.id)
+      ORDER BY run.created_at DESC LIMIT 1),false) AS prompt_current_receipt_available,
     (SELECT count(*) FROM public.hosted_cpu_job_attempts attempt
       WHERE attempt.project_revision_id = revision.revision_id AND attempt.kind = 'SPAN_AUDIO') AS span_jobs,
     (SELECT count(*) FROM public.generation_requests request
@@ -109,9 +139,15 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
              WHEN prompt_state = 'DISPATCHING' AND prompt_accepted_set IS NULL
                AND prompt_run_started_at IS NOT NULL
                AND prompt_run_started_at < now() - make_interval(secs => ${PROMPT_STALE_RUN_SECONDS})
+               AND (prompt_profile_revision IS DISTINCT FROM 8
+                 OR prompt_current_claim_started_at IS NULL
+                 OR prompt_current_receipt_available)
                THEN 'prompts'
              WHEN prompt_state = 'UNKNOWN' AND prompt_accepted_set IS NULL
                AND prompt_problem_code IN ('HOSTED_PROMPT_EXECUTION_UNKNOWN','HOSTED_PROMPT_DISPATCH_TIMEOUT','HOSTED_PROMPT_PROVIDER_CREDITS_LOW')
+               AND (prompt_profile_revision IS DISTINCT FROM 8
+                 OR prompt_current_claim_started_at IS NULL
+                 OR prompt_current_receipt_available)
                AND (
                  ((active_generation_requests=1 OR $2::uuid IS NOT NULL) AND EXISTS (
                    SELECT 1 FROM public.hosted_prompt_batch_claims claim_row
@@ -125,6 +161,9 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
                THEN 'prompts'
              WHEN prompt_state IN ('FAILED', 'UNKNOWN') AND prompt_accepted_set IS NULL
                AND prompt_problem_code = ANY(${PROMPT_REDISPATCHABLE_PROBLEM_CODES_SQL})
+               AND (prompt_profile_revision IS DISTINCT FROM 8
+                 OR prompt_current_claim_started_at IS NULL
+                 OR prompt_current_receipt_available)
                AND COALESCE(prompt_redispatch_count, 0) < 28
                AND NOT EXISTS (SELECT 1 FROM public.hosted_prompt_batch_progress progress
                                 WHERE progress.run_id = prompt_run_id)

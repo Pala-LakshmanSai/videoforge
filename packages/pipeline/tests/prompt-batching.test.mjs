@@ -6,6 +6,7 @@ import {
   PipelineDomainError,
   DEFAULT_PROMPT_BATCH_MAX_OUTPUT_TOKENS,
   RUNWARE_PROMPT_MAX_OUTPUT_TOKENS,
+  RUNWARE_PROMPT_MAX_INPUT_TOKENS,
   RUNWARE_PROMPT_OUTPUT_FIXED_TOKENS,
   RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM,
   RUNWARE_PROMPT_OUTPUT_TOKENS_PER_SCENE,
@@ -347,6 +348,68 @@ test("planner treats the aggregate local-context ceiling as a batch boundary", (
   assert.deepEqual(
     result.batches.flatMap((entry) => entry.sceneIds),
     verboseScenes.map((scene) => scene.sceneId),
+  );
+});
+
+test("Luna planner must reserve the transport UTF-8 input-bound overhead for CJK context", () => {
+  const unicodeScenes = scenes(10).map((scene) => ({
+    ...scene,
+    phrase: "界".repeat(740),
+    sentenceContext: "界".repeat(740),
+    priorContext: null,
+    nextContext: null,
+  }));
+  const unboundedBatch = buildPromptBatch({
+    ...planningInput(10),
+    batchId: "task_prompt:001",
+    scenes: unicodeScenes,
+  });
+  const encoder = new TextEncoder();
+  const unboundedRequest = buildRunwarePromptRequest(
+    unboundedBatch,
+    unboundedBatch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v1",
+  );
+  const unboundedEstimator = Math.ceil(
+    encoder.encode(unboundedRequest.requestBytes).byteLength / 2,
+  );
+  const unboundedTransportBound =
+    encoder.encode(
+      unboundedRequest.request.settings.systemPrompt + unboundedRequest.request.messages[0].content,
+    ).byteLength + 6_144;
+  assert.ok(unboundedEstimator <= RUNWARE_PROMPT_MAX_INPUT_TOKENS);
+  assert.ok(unboundedTransportBound > RUNWARE_PROMPT_MAX_INPUT_TOKENS);
+
+  const plan = planPromptBatches({
+    ...planningInput(10),
+    scenes: unicodeScenes,
+    options: { requestPolicy: "runware-luna-grounded-v1", maxOutputTokens: 6_144 },
+  });
+  assert.ok(plan.batchCount > 1);
+  for (const entry of plan.batches) {
+    const request = buildRunwarePromptRequest(
+      entry.batch,
+      entry.batch.scenes,
+      1,
+      null,
+      1,
+      "runware-luna-grounded-v1",
+    );
+    const transportInputTokenBound =
+      encoder.encode(request.request.settings.systemPrompt + request.request.messages[0].content)
+        .byteLength + 6_144;
+    assert.ok(entry.estimatedInputTokens <= plan.maxInputTokens);
+    assert.ok(
+      transportInputTokenBound <= 48_000,
+      `batch ${entry.ordinal} input bound ${transportInputTokenBound} exceeds Luna's 48000-token pre-POST cap`,
+    );
+  }
+  assert.deepEqual(
+    plan.batches.flatMap((entry) => entry.sceneIds),
+    unicodeScenes.map((scene) => scene.sceneId),
   );
 });
 

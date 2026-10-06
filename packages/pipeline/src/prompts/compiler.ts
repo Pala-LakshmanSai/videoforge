@@ -142,7 +142,7 @@ const normalize = (
  * continuity tags like "satisfied" or "failed-regrowth" painted over the scene. The compiled prompt
  * keeps the meaning and drops every token that reads as marking.
  */
-const plainGeometry = (value: string): string =>
+export const plainGeometry = (value: string): string =>
   value
     .replaceAll("16:10", "wide horizontal")
     .replaceAll("16:9", "wide horizontal")

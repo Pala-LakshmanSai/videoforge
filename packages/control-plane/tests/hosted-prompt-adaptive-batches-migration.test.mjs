@@ -370,7 +370,7 @@ export async function seedAdaptivePromptRun(
   };
 }
 
-async function seedSucceededVoiceoverContext(executor, base) {
+export async function seedSucceededVoiceoverContext(executor, base) {
   const asrAttemptId = id(base + 1);
   const artifactPrefix =
     `tenant/${IDS.accountA}/workspace/${IDS.workspaceA}/project/${IDS.projectA}` +
@@ -983,4 +983,212 @@ test("0071 failure settlement sums accepted batches and preserves historical 007
       [{ state: "FAILED", reported_cost_micro_usd: 432 }],
     );
   });
+});
+
+test("0283 prepares a separate Runware Luna profile and binds only its claims to the pinned model", async () => {
+  for (const requestPolicy of [null, "runware-luna-grounded-v1"]) {
+    await withPgcryptoMigratedDatabase(async ({ executor }) => {
+      const authority = await seedAdaptivePromptRun(executor, {
+        sceneCount: 2,
+        plannedBatchCount: 1,
+        materializeRun: false,
+        reservedMicroUsd: 250_000,
+      });
+      await seedSucceededVoiceoverContext(executor, 2_830_000);
+      const supplied = {
+        account_id: IDS.accountA,
+        workspace_id: IDS.workspaceA,
+        user_id: IDS.userA,
+        project_id: IDS.projectA,
+        revision_id: IDS.revisionA,
+        timeline_id: authority.timelineId,
+        task_id: authority.taskId,
+        attempt_id: authority.attemptId,
+        outbox_id: authority.outboxId,
+        execution_profile_id: authority.profileId,
+        reservation_cost_event_id: id(2_830_011),
+        run_id: authority.runId,
+        input_hash: authority.inputHash,
+        claim_token_hash: authority.claimHash,
+        timeline_hash: authority.timelineHash,
+        batch_plan_hash: authority.batchPlanHash,
+        reserved_cost_micro_usd: 250_000,
+        planned_batch_count: 1,
+        planned_scene_count: 2,
+        ...(requestPolicy ? { request_policy: requestPolicy } : {}),
+      };
+      await executor.query("SELECT videoforge_prepare_hosted_prompt_run($1::jsonb)", [
+        JSON.stringify(supplied),
+      ]);
+      const row = (
+        await executor.query(
+          `SELECT profile.name,profile.revision,profile.dispatch_target,profile.configuration,
+                  profile.maximum_rate_micro_usd,profile.configuration_hash,
+                  attempt.provider_details->>'model' AS attempt_model,
+                  reservation.details->>'model' AS reservation_model
+             FROM hosted_prompt_runs run
+             JOIN execution_profiles profile ON profile.id=run.execution_profile_id
+             JOIN attempts attempt ON attempt.id=run.attempt_id
+             JOIN cost_events reservation ON reservation.task_id=run.task_id
+              AND reservation.attempt_id=run.attempt_id AND reservation.event_type='RESERVED'
+            WHERE run.id=$1`,
+          [authority.runId],
+        )
+      ).rows[0];
+      if (requestPolicy) {
+        assert.equal(row.name, "Hosted Runware GPT-6 Luna scene prompts");
+        assert.equal(row.revision, 8);
+        assert.equal(row.dispatch_target, "RUNWARE");
+        assert.deepEqual(row.configuration, {
+          model: "openai:gpt@6-luna",
+          operation: "scene-prompt-writer-v2",
+          provider: "runware",
+          request_policy: "runware-luna-grounded-v1",
+          reasoning_effort: "low",
+          request_version: "runware-gpt-6-luna-prompt-request-v38",
+          transport: "runware_openai_chat_completions",
+          pricing: {
+            input_micro_usd_per_million: 100_000,
+            cached_input_micro_usd_per_million: 10_000,
+            cache_write_micro_usd_per_million: 125_000,
+            output_micro_usd_per_million: 500_000,
+          },
+        });
+        assert.equal(row.maximum_rate_micro_usd, 8_000_000);
+        assert.equal(row.attempt_model, "openai:gpt@6-luna");
+        assert.equal(row.reservation_model, "openai:gpt@6-luna");
+        assert.equal(
+          (
+            await executor.query(
+              "SELECT max_inflight,min_start_interval_ms FROM provider_api_policies WHERE provider='RUNWARE_TEXT:openai:gpt@6-luna'",
+            )
+          ).rows[0].max_inflight,
+          null,
+        );
+        assert.equal(
+          (
+            await executor.query(
+              "SELECT min_start_interval_ms FROM provider_api_policies WHERE provider='RUNWARE_TEXT:openai:gpt@6-luna'",
+            )
+          ).rows[0].min_start_interval_ms,
+          0,
+        );
+        const wrongModel = JSON.stringify([
+          { taskType: "textInference", taskUUID: id(2_830_021), model: "google:gemini@3.5-flash" },
+        ]);
+        await assert.rejects(
+          executor.query("SELECT videoforge_claim_hosted_prompt_batch($1,0,$2,$3,$4)", [
+            authority.runId,
+            id(2_830_021),
+            wrongModel,
+            sha256(wrongModel),
+          ]),
+          /request model differs from pinned profile/u,
+        );
+        const correctModel = JSON.stringify([
+          { taskType: "textInference", taskUUID: id(2_830_022), model: "openai:gpt@6-luna" },
+        ]);
+        assert.equal(
+          (
+            await executor.query(
+              "SELECT videoforge_claim_next_hosted_prompt_batch($1,0,$2,$3,$4) AS claimed",
+              [authority.runId, id(2_830_022), correctModel, sha256(correctModel)],
+            )
+          ).rows[0].claimed,
+          true,
+        );
+        const requestHash = sha256(correctModel);
+        const wireHash = sha256("canonical Runware chat-completions request");
+        const result = {
+          status: "succeeded",
+          outputText: "{}",
+          usage: {
+            inputTokens: 2,
+            outputTokens: 2,
+            totalTokens: 4,
+            cachedInputTokens: 0,
+            cacheWriteTokens: 1,
+            reasoningTokens: 1,
+          },
+          costUsd: 0.000002,
+          estimatedCostMicroUsd: 2,
+          costBasis: "PINNED_RATE_ESTIMATE",
+          responseId: "chatcmpl-283-test",
+          wireHash,
+          providerModel: "openai:gpt@6-luna",
+          finishReason: "stop",
+          latencyMs: 1,
+        };
+        await assert.rejects(
+          executor.query("SELECT videoforge_record_hosted_prompt_response($1,$2,$3,$4::jsonb)", [
+            authority.runId,
+            id(2_830_022),
+            requestHash,
+            JSON.stringify({ ...result, providerModel: "AIR" }),
+          ]),
+          /result identity or usage is invalid/u,
+        );
+        await assert.rejects(
+          executor.query("SELECT videoforge_record_hosted_prompt_response($1,$2,$3,$4::jsonb)", [
+            authority.runId,
+            id(2_830_022),
+            requestHash,
+            JSON.stringify({ ...result, usage: { ...result.usage, totalTokens: 5 } }),
+          ]),
+          /result identity or usage is invalid/u,
+        );
+        await assert.rejects(
+          executor.query("SELECT videoforge_record_hosted_prompt_response($1,$2,$3,$4::jsonb)", [
+            authority.runId,
+            id(2_830_022),
+            requestHash,
+            JSON.stringify({ ...result, costUsd: 0.000003, estimatedCostMicroUsd: 3 }),
+          ]),
+          /estimate differs from pinned rates/u,
+        );
+        assert.equal(
+          (
+            await executor.query(
+              "SELECT videoforge_record_hosted_prompt_response($1,$2,$3,$4::jsonb) AS recorded",
+              [authority.runId, id(2_830_022), requestHash, JSON.stringify(result)],
+            )
+          ).rows[0].recorded,
+          true,
+        );
+        await executor.query(
+          "INSERT INTO cost_events (id,account_id,workspace_id,owner_type,owner_id,task_id,attempt_id,sequence,event_type,amount_micro_usd,idempotency_key,details,occurred_at,created_at) VALUES ($1,$2,$3,'PROJECT_REVISION',$4,$5,$6,(SELECT coalesce(max(sequence),0)+1 FROM cost_events WHERE workspace_id=$3 AND owner_type='PROJECT_REVISION' AND owner_id=$4),'REPORTED',2,'runware-luna-estimated-cost','{}'::jsonb,clock_timestamp(),clock_timestamp())",
+          [
+            id(2_830_099),
+            IDS.accountA,
+            IDS.workspaceA,
+            IDS.revisionA,
+            authority.taskId,
+            authority.attemptId,
+          ],
+        );
+        assert.deepEqual(
+          (await executor.query("SELECT details FROM cost_events WHERE id=$1", [id(2_830_099)]))
+            .rows[0].details,
+          {
+            provider: "RUNWARE",
+            cost_basis: "PINNED_RATE_ESTIMATE",
+            rate_version: "runware-air-gpt-6-luna-standard-2026-10-06",
+            invoice_verified: false,
+          },
+        );
+      } else {
+        assert.equal(row.name, "Hosted Runware scene prompts");
+        assert.equal(row.revision, 7);
+        assert.equal(row.dispatch_target, "RUNWARE");
+        assert.deepEqual(row.configuration, {
+          model: "google:gemini@3.5-flash",
+          operation: "scene-prompt-writer-v2",
+          provider: "runware",
+        });
+        assert.equal(row.maximum_rate_micro_usd, 8_000_000);
+        assert.equal(row.attempt_model, "google:gemini@3.5-flash");
+        assert.equal(row.reservation_model, "google:gemini@3.5-flash");
+      }
+    });
+  }
 });

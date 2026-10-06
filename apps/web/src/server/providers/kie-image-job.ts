@@ -1,137 +1,15 @@
-import { naturalDocumentaryRequiredPrompt } from "@videoforge/pipeline/prompts";
 import type { HostedR2BucketBinding } from "../hosted/configuration";
 import { sha256Bytes } from "../hosted/crypto";
 import { KieZImageClient, KieZImageError, type KieAspectRatio } from "./kie-z-image";
-import type { CompiledImagePrompt } from "@videoforge/pipeline";
+export { buildKieScenePrompt, KIE_HAND_ANATOMY_GUIDANCE } from "./kie-image-prompt";
 
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
-const MAX_KIE_PROMPT_LENGTH = 800;
-const KIE_PROMPT_TARGET_LENGTH = 640;
-// Fits the canonical 49-character HANDS_ACTION role slot without reducing
-// the immutable style/scene/keyword allowance. Required only for new bindings.
-export const KIE_HAND_ANATOMY_GUIDANCE = "Per person: two hands max, own wrists; simple grip.";
 const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
 const PNG_CRC_TABLE = Uint32Array.from({ length: 256 }, (_, index) => {
   let crc = index;
   for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
   return crc >>> 0;
 });
-const KIE_PERMANENT_EXCLUSIONS =
-  "No visible text/pseudo-text, labels, logos, watermarks, captions, overlays, graphics, borders or motion graphics; unmarked surfaces";
-const DEFAULT_STYLE_POSITIVE =
-  "authentic observational documentary photography, candid and unposed, filmed on location, available practical light, true-to-life colors, soft contrast, realistic skin and material textures, naturally imperfect clothing, tools and environment, ordinary consumer-camera framing, photojournalistic, genuine frame from real stock or documentary footage, believable everyday life, no glossy commercial polish, absolutely photorealistic, no AI look";
-const DEFAULT_STYLE_NEGATIVE =
-  "illustration, cartoon, anime, CGI, 3D render, digital painting, fantasy, surrealism, plastic skin, waxy face, perfect symmetry, excessive HDR, glamour lighting, studio advertising, staged pose, impossible anatomy, duplicate people, duplicate limbs, malformed hands, unrealistic perfection";
-const COMPACT_DEFAULT_STYLE_POSITIVE =
-  "authentic documentary photo, candid and unposed, on location, practical light, true-to-life color, soft contrast, realistic skin/material textures, natural imperfections, consumer framing, photojournalistic, everyday life, photorealistic, no glossy or AI look";
-const COMPACT_DEFAULT_STYLE_NEGATIVE =
-  "illustration/CGI, fantasy/surrealism, plastic/waxy skin, HDR, glamour/studio lighting, staged pose, bad anatomy, duplicate subjects, unrealistic perfection";
-const KIE_DEFAULT_STYLE_POSITIVE =
-  "Authentic candid documentary photo, available light, true-to-life color, realistic textures and natural imperfections, unposed everyday life, photorealistic, no AI look";
-const KIE_DEFAULT_STYLE_NEGATIVE =
-  "illustration, CGI, fantasy, waxy skin, HDR, glamour or studio lighting, staged poses, impossible anatomy, duplicate subjects or limbs";
-const PROVIDER_EXCLUSION_TERM =
-  /\b(?:text|pseudo[- ]?text|letters?|numbers?|labels?|signs?|logos?|brands?|branding|watermarks?|captions?|overlays?|ui|charts?|diagrams?|borders?|motion(?:\s+graphics?)?|decorative transitions?)\b/iu;
-
-function compactContinuity(value: string): string {
-  return value
-    .replace(
-      /keep one consistent subject, setting and physical state across the video,?\s*/gi,
-      "Same subject, setting, state; ",
-    )
-    .replace(/required viewpoint:/gi, "viewpoint:")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function distinctStyleNegatives(value: string): string[] {
-  const seen = new Set<string>();
-  return value
-    .split(/[,;]+/u)
-    .map((term) => term.trim())
-    .filter(Boolean)
-    .filter((term) => !PROVIDER_EXCLUSION_TERM.test(term))
-    .filter((term) => {
-      const key = term.toLocaleLowerCase("en-US");
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-}
-
-/** Map compiled prompt parts into Kie's medium target without cutting scene or style text. */
-export function buildKieScenePrompt(
-  compiled: CompiledImagePrompt,
-  options: { readonly handAnatomy?: boolean } = {},
-): string {
-  const c = compiled.components;
-  const handAnatomy =
-    options.handAnatomy === true && /\bviewpoint:\s*hands action\b/iu.test(c.continuityAndShotRole);
-  if (["prompt-compiler-v4", "prompt-compiler-v5"].includes(compiled.promptCompilerVersion)) {
-    try {
-      let prompt = naturalDocumentaryRequiredPrompt(
-        handAnatomy ? { ...c, continuityAndShotRole: KIE_HAND_ANATOMY_GUIDANCE } : c,
-      );
-      let addedNegative = false;
-      for (const term of distinctStyleNegatives(c.styleNegativeSuffix)) {
-        const next = `${prompt}${addedNegative ? ", " : ". Avoid: "}${term}`;
-        if (next.length > KIE_PROMPT_TARGET_LENGTH) break;
-        prompt = next;
-        addedNegative = true;
-      }
-      return prompt;
-    } catch {
-      throw new KieZImageError("INPUT_INVALID");
-    }
-  }
-  const positiveStyle =
-    c.stylePositiveSuffix === DEFAULT_STYLE_POSITIVE ||
-    c.stylePositiveSuffix === COMPACT_DEFAULT_STYLE_POSITIVE
-      ? KIE_DEFAULT_STYLE_POSITIVE
-      : c.stylePositiveSuffix;
-  const negativeStyle =
-    c.styleNegativeSuffix === DEFAULT_STYLE_NEGATIVE ||
-    c.styleNegativeSuffix === COMPACT_DEFAULT_STYLE_NEGATIVE
-      ? KIE_DEFAULT_STYLE_NEGATIVE
-      : c.styleNegativeSuffix;
-  const literal = c.literalContent.trim();
-  if (!literal) throw new KieZImageError("INPUT_INVALID");
-  let result = literal;
-  const add = (value: string, maxLength: number): boolean => {
-    const part = value.trim();
-    if (!part) return true;
-    const separator = /[.!?;:]$/u.test(result) ? " " : ". ";
-    const next = `${result}${separator}${part}`;
-    if (next.length > maxLength) return false;
-    result = next;
-    return true;
-  };
-
-  // Scene, framing and style positives are core: reject if they cannot fit intact.
-  if (
-    (handAnatomy && !add(KIE_HAND_ANATOMY_GUIDANCE, MAX_KIE_PROMPT_LENGTH)) ||
-    !add(c.cropGuidance, MAX_KIE_PROMPT_LENGTH) ||
-    !add(positiveStyle, MAX_KIE_PROMPT_LENGTH) ||
-    !add(KIE_PERMANENT_EXCLUSIONS, MAX_KIE_PROMPT_LENGTH)
-  )
-    throw new KieZImageError("INPUT_INVALID");
-
-  // Keep continuity within the medium target. User-selected keywords remain available through
-  // Kie's hard bound when a long scene/style core leaves no room in the medium target.
-  if (!handAnatomy) add(compactContinuity(c.continuityAndShotRole), KIE_PROMPT_TARGET_LENGTH);
-  add(c.extraPromptKeywords ?? "", MAX_KIE_PROMPT_LENGTH);
-  const exclusions = distinctStyleNegatives(negativeStyle);
-  let addedNegative = false;
-  for (const term of exclusions) {
-    const next = `${result}${addedNegative ? ", " : ". Avoid: "}${term}`;
-    if (next.length > KIE_PROMPT_TARGET_LENGTH) break;
-    result = next;
-    addedNegative = true;
-  }
-  const prompt = result;
-  if (prompt.length > MAX_KIE_PROMPT_LENGTH) throw new KieZImageError("INPUT_INVALID");
-  return prompt;
-}
 
 export interface KieImageManifest {
   readonly prompt: string;

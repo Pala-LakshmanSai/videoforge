@@ -5,6 +5,7 @@ import {
   type PromptRequestPolicy,
   estimatePromptWriterOutputTokens,
   estimateRunwarePromptRequestInputTokens,
+  RUNWARE_PROMPT_ESTIMATED_BYTES_PER_TOKEN,
   RUNWARE_PROMPT_MAX_INPUT_TOKENS,
   RUNWARE_PROMPT_MAX_OUTPUT_TOKENS,
   RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM,
@@ -24,6 +25,10 @@ export const DEFAULT_PROMPT_BATCH_MAX_INPUT_TOKENS = RUNWARE_PROMPT_MAX_INPUT_TO
 export const DEFAULT_PROMPT_BATCH_MAX_OUTPUT_TOKENS = 16_384 as const;
 /** Scene distance from the balanced target within which a sentence boundary wins. */
 export const DEFAULT_PROMPT_BATCH_BOUNDARY_LOOKBACK = 4 as const;
+// The Luna transport reserves 6144 tokens beyond UTF-8 system/user bytes.
+// The canonical request estimator counts all request bytes at two bytes/token;
+// this tighter budget guarantees its full request estimate leaves that reserve.
+const LUNA_TRANSPORT_INPUT_OVERHEAD_TOKENS = 6_144;
 
 export interface PromptBatchPlanningOptions {
   readonly requestPolicy?: PromptRequestPolicy;
@@ -204,7 +209,8 @@ const candidateFor = (
   const estimatedOutputTokens = estimatePromptWriterOutputTokens(batch.batchId, batch.scenes);
   const requestedOutputTokens = Math.max(
     2_048,
-    estimatedOutputTokens + RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM,
+    estimatedOutputTokens +
+      (requestPolicy === "runware-luna-grounded-v1" ? 0 : RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM),
   );
   if (requestedOutputTokens > maxOutputTokens) return null;
   // Build the exact request once for this candidate so planning accounts for
@@ -229,11 +235,27 @@ const candidateFor = (
  * imposes a script-level scene limit or changes scene order/content.
  */
 export function planPromptBatches(input: PromptBatchPlanningInput): PromptBatchPlan {
-  const maxInputTokens = finitePositiveInteger(
+  const requestedMaxInputTokens = finitePositiveInteger(
     input.options?.maxInputTokens,
     DEFAULT_PROMPT_BATCH_MAX_INPUT_TOKENS,
     "maxInputTokens",
   );
+  const requestPolicy = input.options?.requestPolicy ?? "legacy";
+  if (requestedMaxInputTokens > RUNWARE_PROMPT_MAX_INPUT_TOKENS)
+    fail(`maxInputTokens cannot exceed ${RUNWARE_PROMPT_MAX_INPUT_TOKENS}.`, [
+      "options",
+      "maxInputTokens",
+    ]);
+  const maxInputTokens =
+    requestPolicy === "runware-luna-grounded-v1"
+      ? Math.min(
+          requestedMaxInputTokens,
+          Math.floor(
+            (RUNWARE_PROMPT_MAX_INPUT_TOKENS - LUNA_TRANSPORT_INPUT_OVERHEAD_TOKENS) /
+              RUNWARE_PROMPT_ESTIMATED_BYTES_PER_TOKEN,
+          ),
+        )
+      : requestedMaxInputTokens;
   const maxOutputTokens = finitePositiveInteger(
     input.options?.maxOutputTokens,
     DEFAULT_PROMPT_BATCH_MAX_OUTPUT_TOKENS,
@@ -244,11 +266,6 @@ export function planPromptBatches(input: PromptBatchPlanningInput): PromptBatchP
     DEFAULT_PROMPT_BATCH_BOUNDARY_LOOKBACK,
     "naturalBoundaryLookback",
   );
-  if (maxInputTokens > RUNWARE_PROMPT_MAX_INPUT_TOKENS)
-    fail(`maxInputTokens cannot exceed ${RUNWARE_PROMPT_MAX_INPUT_TOKENS}.`, [
-      "options",
-      "maxInputTokens",
-    ]);
   if (maxOutputTokens > RUNWARE_PROMPT_MAX_OUTPUT_TOKENS)
     fail(`maxOutputTokens cannot exceed ${RUNWARE_PROMPT_MAX_OUTPUT_TOKENS}.`, [
       "options",

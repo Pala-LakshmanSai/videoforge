@@ -1470,6 +1470,12 @@
       "name": "hosted_prompt_validated_scene_correction",
       "filename": "0282_hosted_prompt_validated_scene_correction.sql",
       "sha256": "sha256:6b119238e2855a26f438da8850bdeace37d6e653e507bfd4b3ebd9ec6f3ff578"
+    },
+    {
+      "version": 283,
+      "name": "runware_luna_prompt_writer",
+      "filename": "0283_runware_luna_prompt_writer.sql",
+      "sha256": "sha256:6dd011d42eba4fd9d015404e745b43904d6bcfabda99a2637f81a895487af3b1"
     }
   ]
 }

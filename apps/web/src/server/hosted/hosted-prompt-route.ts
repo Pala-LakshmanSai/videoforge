@@ -39,6 +39,7 @@ import {
 import { canonicalJson } from "./submission";
 import { readRunwareCreditBalance } from "../providers/runware-http-transport";
 import type { RunwareCapacityRefusal } from "../providers/runware-http-transport";
+import { RunwareLunaRejectedError } from "../providers/runware-luna-prompt-transport";
 
 async function pausePromptCapacity(
   pool: ReturnType<typeof createNeonPool>,
@@ -718,7 +719,7 @@ export async function writeProjectPrompts(
               contentRepair: "no-text-v2",
               correction:
                 error instanceof HostedPromptArchivedOutputInvalidError &&
-                ["validated-scenes-v1", "grounded-scenes-v1"].includes(
+                ["validated-scenes-v1", "grounded-scenes-v1", "runware-luna-grounded-v1"].includes(
                   batchPlan.requestPolicy ?? "legacy",
                 )
                   ? (error.correction ?? undefined)
@@ -812,7 +813,11 @@ export async function writeProjectPrompts(
                   ? original.claim?.provider_task_uuid
                   : undefined,
               ),
-            batchPlan.requestPolicy === "grounded-scenes-v1" ? "local-evidence-v1" : undefined,
+            ["grounded-scenes-v1", "runware-luna-grounded-v1"].includes(
+              batchPlan.requestPolicy ?? "legacy",
+            )
+              ? "local-evidence-v1"
+              : undefined,
           );
         if (acceptedBatch && saved.accepted_batch_count + 1 === saved.planned_batch_count)
           return await completeAcceptedRun();
@@ -871,7 +876,58 @@ export async function writeProjectPrompts(
       reservedCostMicroUsd: HOSTED_PROMPT_RESERVATION_MICRO_USD,
       redispatchApproved,
     });
-    const batchPlan = hostedPromptBatchPlan(ceilingAuthority);
+    // A provider-free redispatch retains its original immutable request policy/profile.
+    let requestPolicy: Parameters<typeof hostedPromptBatchPlan>[1];
+    if (redispatchApproved) {
+      const pinned = await createNeonExecutor(pool).transaction(async (transaction) => {
+        await transaction.query("SELECT set_config($1,$2,true)", [
+          "videoforge.account_id",
+          scope.account_id,
+        ]);
+        const rows = await transaction.query<{
+          identity: HostedPromptIdentity;
+          reserved_cost_micro_usd: number;
+          planned_batch_count: number;
+          planned_scene_count: number;
+          batch_plan_hash: HostedPromptBatchPlanBinding["batchPlanHash"];
+        }>(
+          `SELECT jsonb_build_object('runId',run.id,'taskId',run.task_id,
+                    'attemptId',run.attempt_id,'outboxId',run.outbox_id,
+                    'executionProfileId',run.execution_profile_id,
+                    'reservationCostEventId',run.id,'claimTokenHash',run.claim_token_hash) AS identity,
+                  run.reserved_cost_micro_usd::integer AS reserved_cost_micro_usd,
+                  run.planned_batch_count,run.planned_scene_count,run.batch_plan_hash
+             FROM public.hosted_prompt_runs run
+            WHERE run.account_id=$1 AND run.workspace_id=$2 AND run.project_id=$3
+              AND run.project_revision_id=$4 AND run.state=$5 LIMIT 1`,
+          [
+            scope.account_id,
+            scope.workspace_id,
+            projectId,
+            ceilingAuthority.revisionId,
+            typeof existingState === "string" ? existingState : null,
+          ],
+        );
+        return rows.rows[0];
+      });
+      if (!pinned)
+        throw new HostedPromptExecutionError("HOSTED_PROMPT_INPUT_INVALID", "FAILED", false, null);
+      const pinnedAuthority = hostedPromptAuthority({
+        plan: planRecord,
+        identity: pinned.identity,
+        reservedCostMicroUsd: pinned.reserved_cost_micro_usd,
+        redispatchApproved: true,
+      });
+      requestPolicy =
+        (
+          await recoverHostedPromptBatchPlan(pinnedAuthority, {
+            plannedBatchCount: pinned.planned_batch_count,
+            plannedSceneCount: pinned.planned_scene_count,
+            batchPlanHash: pinned.batch_plan_hash,
+          })
+        ).requestPolicy ?? "legacy";
+    }
+    const batchPlan = hostedPromptBatchPlan(ceilingAuthority, requestPolicy);
     if (redispatchApproved && plan.runReservedCostMicroUsd === null)
       throw new HostedPromptExecutionError("HOSTED_PROMPT_INPUT_INVALID", "FAILED", false, null);
     const reservedCostMicroUsd = hostedPromptReservationMicroUsd(
@@ -908,6 +964,9 @@ export async function writeProjectPrompts(
             input_hash: authority.recordedInputHash,
             claim_token_hash: identity.claimTokenHash,
             reserved_cost_micro_usd: reservedCostMicroUsd,
+            ...(batchPlan.requestPolicy === "runware-luna-grounded-v1"
+              ? { request_policy: batchPlan.requestPolicy }
+              : {}),
             planned_batch_count: batchPlan.batchCount,
             planned_scene_count: batchPlan.totalScenes,
             batch_plan_hash: batchPlanHash,
@@ -971,7 +1030,11 @@ export async function writeProjectPrompts(
         authority,
         firstBatch,
         (batch) => recordHostedPromptBatch(pool, scope.account_id, persistedRunId, batch),
-        batchPlan.requestPolicy === "grounded-scenes-v1" ? "local-evidence-v1" : undefined,
+        ["grounded-scenes-v1", "runware-luna-grounded-v1"].includes(
+          batchPlan.requestPolicy ?? "legacy",
+        )
+          ? "local-evidence-v1"
+          : undefined,
       );
     return response(
       {
@@ -1003,7 +1066,19 @@ export async function writeProjectPrompts(
     const promptFailure =
       error instanceof HostedPromptExecutionError
         ? error
-        : new HostedPromptExecutionError("HOSTED_PROMPT_EXECUTION_UNKNOWN", "UNKNOWN", true, null);
+        : error instanceof RunwareLunaRejectedError
+          ? new HostedPromptExecutionError("HOSTED_PROMPT_PROVIDER_REJECTED", "FAILED", false, {
+              stage: "http",
+              httpStatus: error.httpStatus,
+              providerCode: error.providerCode,
+              providerParameter: null,
+            })
+          : new HostedPromptExecutionError(
+              "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+              "UNKNOWN",
+              true,
+              null,
+            );
     // A non-typed throw here (a TypeError from plan validation, a SQLSTATE from the claim function)
     // is collapsed into HOSTED_PROMPT_EXECUTION_UNKNOWN for the caller, which hides the cause in
     // production. Record it once so the blocker is identifiable without reproducing locally.
