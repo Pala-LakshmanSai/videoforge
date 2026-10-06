@@ -1,4 +1,7 @@
 import { betterAuth } from "better-auth";
+import { APIError, createAuthMiddleware } from "better-auth/api";
+import { multiSession } from "better-auth/plugins";
+import { expireCookie, parseCookies } from "better-auth/cookies";
 
 import type { HostedNeonPool, HostedRuntimeConfiguration } from "./configuration";
 
@@ -20,6 +23,59 @@ export function createHostedAuth(input: {
     database: pool,
     trustedOrigins: [config.publicOrigin],
     emailAndPassword: { enabled: false },
+    plugins: [
+      multiSession(),
+      {
+        id: "remember-existing-browser-session",
+        hooks: {
+          before: [
+            {
+              matcher: (context) =>
+                !!context.request &&
+                ["/multi-session/set-active", "/multi-session/revoke"].includes(context.path ?? ""),
+              handler: createAuthMiddleware(async (context) => {
+                if (context.headers?.get("origin") !== new URL(config.publicOrigin).origin) {
+                  throw new APIError("FORBIDDEN", {
+                    message: "Account changes require the VideoForge origin.",
+                  });
+                }
+              }),
+            },
+          ],
+          after: [
+            {
+              matcher: (context) => context.path === "/get-session" && !!context.request,
+              handler: createAuthMiddleware(async (context) => {
+                // Adopt pre-release sessions without signing out or creating a new session.
+                const active = context.context.session;
+                if (!active || active.session.expiresAt <= new Date()) return;
+                const cookie = context.context.authCookies.sessionToken;
+                // Expired/revoked cookies must not consume the native five-session limit.
+                for (const name of parseCookies(context.headers?.get("cookie") ?? "").keys()) {
+                  if (!name.startsWith(`${cookie.name}_multi-`)) continue;
+                  const token = await context.getSignedCookie(name, context.context.secret);
+                  const saved = token
+                    ? await context.context.internalAdapter.findSession(token)
+                    : null;
+                  if (!saved || saved.session.expiresAt <= new Date()) {
+                    expireCookie(context, { name, attributes: cookie.attributes });
+                  }
+                }
+                await context.setSignedCookie(
+                  `${cookie.name}_multi-${active.session.token.toLowerCase()}`,
+                  active.session.token,
+                  context.context.secret,
+                  {
+                    ...cookie.attributes,
+                    maxAge: Math.floor((active.session.expiresAt.getTime() - Date.now()) / 1000),
+                  },
+                );
+              }),
+            },
+          ],
+        },
+      },
+    ],
     socialProviders: {
       google: {
         clientId: config.auth.googleClientId,

@@ -1,6 +1,9 @@
 import { HostedCreateDraftProvider } from "./HostedCreateDraft";
 import { HostedIdentityContext } from "./HostedIdentity";
-import { createAuthClient } from "better-auth/react";
+import { authClient } from "./auth-client";
+import { QueryClientContext } from "@tanstack/react-query";
+import { useContext } from "react";
+import { AccountSwitcher } from "./AccountSwitcher";
 import { useCallback, useEffect, useRef, useState, type PropsWithChildren } from "react";
 
 interface Tenant {
@@ -25,8 +28,6 @@ type HostedAccess =
   | { readonly state: "SIGNED_OUT" }
   | { readonly state: "INVITE_REQUIRED" }
   | { readonly state: "ADMITTED"; readonly tenant: Tenant };
-
-const authClient = createAuthClient({ baseURL: window.location.origin, basePath: "/api/auth" });
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -71,7 +72,16 @@ async function tenantAccess(): Promise<HostedAccess> {
   return { state: "ADMITTED", tenant: parseTenant(await response.json()) };
 }
 
+function notifyAccountChange() {
+  if (typeof BroadcastChannel === "undefined") return;
+  const channel = new BroadcastChannel("videoforge-account");
+  channel.postMessage("changed");
+  channel.close();
+}
+
 export function HostedStagingApp({ children }: PropsWithChildren) {
+  const queryClient = useContext(QueryClientContext);
+  const admittedIdentity = useRef<string | null>(null);
   const [access, setAccess] = useState<HostedAccess | null>(null);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
@@ -82,27 +92,43 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
   const [status, setStatus] = useState<HostedStatus | null>(null);
   const refreshRequest = useRef(0);
 
-  const refresh = useCallback(async (preserveAdmittedView = false) => {
-    const requestId = ++refreshRequest.current;
-    if (!preserveAdmittedView) {
-      setLoading(true);
-      setAccess(null);
-    }
-    try {
-      const nextAccess = await tenantAccess();
-      if (requestId === refreshRequest.current) setAccess(nextAccess);
-    } catch {
-      if (requestId === refreshRequest.current) {
+  const refresh = useCallback(
+    async (preserveAdmittedView = false) => {
+      const requestId = ++refreshRequest.current;
+      if (!preserveAdmittedView) {
+        setLoading(true);
         setAccess(null);
-        setMessage("Hosted staging is unavailable. No local fallback was used.");
+        queryClient?.clear();
       }
-    } finally {
-      if (requestId === refreshRequest.current && !preserveAdmittedView) setLoading(false);
-    }
-  }, []);
+      try {
+        const nextAccess = await tenantAccess();
+        if (requestId === refreshRequest.current) {
+          const identity =
+            nextAccess.state === "ADMITTED"
+              ? `${nextAccess.tenant.account_id}:${nextAccess.tenant.workspace_id}`
+              : null;
+          if (identity !== admittedIdentity.current) queryClient?.clear();
+          admittedIdentity.current = identity;
+          setAccess(nextAccess);
+        }
+      } catch {
+        if (requestId === refreshRequest.current) {
+          setAccess(null);
+          setMessage("Hosted staging is unavailable. No local fallback was used.");
+        }
+      } finally {
+        if (requestId === refreshRequest.current && !preserveAdmittedView) setLoading(false);
+      }
+    },
+    [queryClient],
+  );
 
   useEffect(() => {
     void refresh();
+    if (window.location.hash === "#account-added") {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      notifyAccountChange();
+    }
     void fetch("/api/v2/hosted/status", { headers: { accept: "application/json" } })
       .then((response) => {
         if (!response.ok) throw new Error("Hosted status failed.");
@@ -125,6 +151,33 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
       document.removeEventListener("visibilitychange", revalidate);
     };
   }, [access?.state, refresh]);
+
+  useEffect(() => {
+    if (typeof BroadcastChannel === "undefined") return;
+    const channel = new BroadcastChannel("videoforge-account");
+    channel.onmessage = () => void refresh();
+    return () => channel.close();
+  }, [refresh]);
+
+  async function switchAccount(sessionToken: string) {
+    refreshRequest.current += 1;
+    setAccess(null);
+    setLoading(true);
+    queryClient?.clear();
+    try {
+      const result = await authClient.multiSession.setActive({ sessionToken });
+      if (result.error)
+        throw new Error("This account session expired or was removed. Sign in again.");
+      notifyAccountChange();
+      // Recreate the router and all private UI state under the new session.
+      window.location.assign("/");
+    } catch (error) {
+      await refresh();
+      setMessage(
+        error instanceof Error ? error.message : "Account switching failed. Please try again.",
+      );
+    }
+  }
 
   async function signIn() {
     setMessage(null);
@@ -168,6 +221,7 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
         setLoading(false);
         return;
       }
+      notifyAccountChange();
       await refresh();
     } catch {
       setMessage("Sign-out failed. Please try again.");
@@ -177,33 +231,18 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
 
   async function startGoogleSignIn() {
     setMessage(null);
-    refreshRequest.current += 1;
-    setAccess(null);
-    setLoading(true);
-
-    try {
-      const signOutResult = await authClient.signOut();
-      if (signOutResult.error) {
-        setMessage("Could not clear the previous session. Please try again.");
-        setLoading(false);
-        return;
-      }
-    } catch {
-      setMessage("Could not clear the previous session. Please try again.");
-      setLoading(false);
-      return;
-    }
+    // Remember the active session before OAuth replaces the primary cookie.
+    const current = await authClient.getSession();
+    if (current.error) throw new Error("Could not keep your current account. Please try again.");
 
     try {
       const result = await authClient.signIn.social({
         provider: "google",
-        callbackURL: window.location.origin,
+        callbackURL: `${window.location.origin}/#account-added`,
       });
-      if (result.error) setMessage(result.error.message ?? "Google sign-in failed.");
+      if (result.error) throw new Error(result.error.message ?? "Google sign-in failed.");
     } catch {
-      setMessage("Google sign-in failed. Please try again.");
-    } finally {
-      setLoading(false);
+      throw new Error("Google sign-in failed. Please try again.");
     }
   }
 
@@ -268,11 +307,18 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
           canManageTeam: access.tenant.can_manage_team === true,
           canViewCentralizedLibrary: access.tenant.can_view_centralized_library === true,
           signOut,
+          switchAccount,
+          addAccount: startGoogleSignIn,
         }}
       >
         <HostedCreateDraftProvider
           key={`${access.tenant.account_id}:${access.tenant.workspace_id}`}
         >
+          {message ? (
+            <p role="status" className="account-notice">
+              {message}
+            </p>
+          ) : null}
           {children}
         </HostedCreateDraftProvider>
       </HostedIdentityContext.Provider>
@@ -309,6 +355,7 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
               Sign out
             </button>
           </div>
+          <AccountSwitcher onSwitch={switchAccount} onAdd={startGoogleSignIn} />
           {message ? <p role="status">{message}</p> : null}
         </section>
       </main>
@@ -321,7 +368,12 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
         <h1>Enter VideoForge</h1>
         <p>Only pre-invited, verified accounts are admitted.</p>
         <div>
-          <button type="button" onClick={() => void startGoogleSignIn()}>
+          <button
+            type="button"
+            onClick={() =>
+              void startGoogleSignIn().catch((error: Error) => setMessage(error.message))
+            }
+          >
             Continue with Google
           </button>
         </div>
@@ -358,6 +410,7 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
             </div>
           </>
         ) : null}
+        <AccountSwitcher onSwitch={switchAccount} onAdd={startGoogleSignIn} />
         {message ? <p role="status">{message}</p> : null}
       </section>
     </main>

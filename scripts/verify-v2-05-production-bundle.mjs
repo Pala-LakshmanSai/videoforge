@@ -95,9 +95,12 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // The owner-only query and video serving remain dynamically loaded; all quarantine checks stay.
 // Additive276 manifest adds precisely116 bytes per closure; one-byte overflow checks stay.
 // Completed-video metadata plus additive277 adds2342 measured bytes per closure; same quarantine.
+// Browser account switching adds the installed Better Auth multi-session plugin and explicit
+// origin/cookie-lifecycle guards: measured +13,623 production / +13,596 staging bytes.
+// No dependency, provider/fixture/native quarantine or CPU-bound exception is introduced.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_833_230,
-  "wrangler.staging.jsonc": 2_835_149,
+  "wrangler.production.jsonc": 2_846_853,
+  "wrangler.staging.jsonc": 2_848_745,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",

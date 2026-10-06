@@ -1,4 +1,4 @@
-import { createAuthClient } from "better-auth/react";
+import { useHostedIdentity } from "../hosted/HostedIdentity";
 import { useQuery } from "@tanstack/react-query";
 import { MediaWorkerSetup } from "../hosted/MediaWorkerSetup";
 import { isHostedProviderMode } from "../hosted/provider-mode";
@@ -7,17 +7,13 @@ import { Badge, Button, Disclosure, Panel } from "../components/ui";
 import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
 
-const hostedAuthClient = createAuthClient({
-  baseURL: window.location.origin,
-  basePath: "/api/auth",
-});
-
 interface HostedTenant {
   readonly workspace_name: string;
   readonly user: { readonly email: string; readonly name: string };
 }
 
 function HostedSettingsScreen() {
+  const identity = useHostedIdentity();
   const tenant = useQuery({
     queryKey: ["hosted-tenant"],
     queryFn: async () => {
@@ -58,11 +54,8 @@ function HostedSettingsScreen() {
               </span>
             </div>
           </Disclosure>
-          <Button
-            variant="secondary"
-            onClick={() => void hostedAuthClient.signOut().then(() => window.location.assign("/"))}
-          >
-            Sign out
+          <Button variant="secondary" onClick={() => void identity?.signOut()}>
+            Sign out all accounts
           </Button>
         </Panel>
         <MediaWorkerSetup />

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, LogOut, UserRound, UsersRound } from "lucide-react";
+import { AccountSwitcher } from "./AccountSwitcher";
 import { useHostedIdentity } from "./HostedIdentity";
 import { Disclosure } from "../components/ui";
 export function AccountMenu() {
@@ -49,9 +50,12 @@ export function AccountMenu() {
             <ArrowUpRight size={16} aria-hidden="true" />
           </Link>
         )}
+        {identity.switchAccount && identity.addAccount ? (
+          <AccountSwitcher onSwitch={identity.switchAccount} onAdd={identity.addAccount} />
+        ) : null}
         <button type="button" className="account-signout" onClick={() => void identity.signOut()}>
           <LogOut size={16} aria-hidden="true" />
-          Sign out
+          Sign out all accounts
         </button>
       </Disclosure>
     </div>

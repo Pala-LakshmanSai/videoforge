@@ -414,3 +414,7 @@ The Hub combines gender, catalog age labels, explicit accent, language/region, s
 Centralized Library per-video Delete uses a creator/title confirmation, pending/error states and
 verified attempt-artifact cleanup. Project/source media remain. Search and creator fields use one
 container focus highlight; hero totals stack at1100px to retain space in narrower panels.
+
+## Browser account switching — 6 October 2026
+
+Account menu includes Switch account, a list with current-account indicator, Add another account through the existing Google chooser, and browser-session removal. Sign out all accounts is explicit in both Account and Settings. Session actions show loading/errors and prevent repeated clicks. Five-account limit, expiry, invitation admission and private workspace boundaries remain. Switching clears unsaved project inputs; existing saved projects and background jobs remain intact. See DEC_AUTH_002 and the browser-account-switching contract.

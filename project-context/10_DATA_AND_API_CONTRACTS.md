@@ -119,6 +119,8 @@ Invite-only authentication remains. A unique single-use invite is bound to the i
 email and redeemed atomically. Authentication is not sufficient by itself: every read, write,
 signed-URL issue, queue mutation, callback acceptance, and download also passes ownership checks.
 
+`DEC_AUTH_002`.
+
 ### Team access administration
 
 `DEC_TEAM_ACCESS_001` adds `GET/POST /api/v2/team-access`. Only admitted, verified Google identities

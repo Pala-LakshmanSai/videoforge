@@ -4,6 +4,8 @@ export interface HostedIdentity {
   readonly canManageTeam: boolean;
   readonly canViewCentralizedLibrary?: boolean;
   signOut(): Promise<void>;
+  switchAccount?(sessionToken: string): Promise<void>;
+  addAccount?(): Promise<void>;
 }
 export const HostedIdentityContext = createContext<HostedIdentity | null>(null);
 export const useHostedIdentity = () => useContext(HostedIdentityContext);

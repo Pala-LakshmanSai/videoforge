@@ -4,8 +4,8 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-10-06"
 source_of_truth: project-context
 
-current_selected_profile: v2_09_assembly_webp_recovery
-current_selected_brief: evidence/acceptance/VF-10-09/2026-10-06-assembly-webp-recovery.md
+current_selected_profile: v2_09_account_switching
+current_selected_brief: evidence/acceptance/VF-10-09/2026-10-06-account-switching.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -25,6 +25,11 @@ conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
 target_profile_word_budget: 15000
 
 read_profiles:
+  v2_09_account_switching:
+    - evidence/acceptance/VF-10-09/2026-10-06-account-switching.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - 06_SYSTEM_ARCHITECTURE.md
+    - 10_DATA_AND_API_CONTRACTS.md
   v2_09_assembly_webp_recovery:
     - evidence/acceptance/VF-10-09/2026-10-06-assembly-webp-recovery.md
     - 19_IMPLEMENTATION_PLAYBOOK.md
@@ -344,6 +349,7 @@ approved_decisions:
   DEC_VOICEOVER_001: audio_upload_or_explicit_J1TTS_script_generation_private_Hub_saved_starred_and_no_replay
   DEC_CLOUD_BILLING_001: ordinary_Cloud_follows_current_and_future_VideoForge_admission_no_separate_account_allowlist_pay_per_use_cost_accounting_and_finite_machine_shutdown_preserved
   DEC_CLOUD_CLEANUP_ISOLATION_001: fenced_terminal_early_failure_allows_Local_and_Cloud_VIDEO_unknown_cleanup_and_global_resource_capacity_retained
+  DEC_AUTH_002: browser_multi_session_switching_secure_cookies_private_state_reset
   DEC_AUTH_001: invite_only_google_verified_email_identity_no_email_provider
   DEC_TEAM_ACCESS_001: exact_two_owner_accounts_manage_private_studio_admission
   DEC_AVATAR_004: one_native_clip_two_layouts

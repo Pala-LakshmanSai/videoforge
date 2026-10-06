@@ -1552,6 +1552,7 @@ export async function handleHostedRequest(
     const pool = createNeonPool(config.neon.databaseUrl);
     try {
       const result = await createHostedAuth({ config, pool, executionContext }).handler(request);
+      result.headers.set("cache-control", "no-store");
       if (result.status < 500) return result;
       return json(
         {

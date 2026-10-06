@@ -618,8 +618,8 @@ test("bundle firewall caps the Stage 5 incremental closure at 256 KiB", async ()
 test("bundle firewall rejects one byte of static Worker-entry growth above each target baseline", async () => {
   const workerSource = "const worker = true;\n";
   for (const { wranglerConfig, acceptedStaticBytes } of [
-    { wranglerConfig: "wrangler.production.jsonc", acceptedStaticBytes: 2_833_230 },
-    { wranglerConfig: "wrangler.staging.jsonc", acceptedStaticBytes: 2_835_149 },
+    { wranglerConfig: "wrangler.production.jsonc", acceptedStaticBytes: 2_846_853 },
+    { wranglerConfig: "wrangler.staging.jsonc", acceptedStaticBytes: 2_848_745 },
   ]) {
     const directory = await productionBundle(workerSource, "const client = true;\n", {
       wranglerConfig,

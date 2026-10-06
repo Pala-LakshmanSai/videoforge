@@ -345,3 +345,91 @@
     white-space: nowrap;
   }
 }
+
+.account-switch-list {
+  margin-top: 6px;
+  border-top: 1px solid var(--border, #34343d);
+  padding-top: 8px;
+  max-height: min(420px, 65vh);
+  overflow-y: auto;
+}
+.account-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.account-switch-choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 12px 8px;
+  border: 0;
+  border-radius: 10px;
+  text-align: left;
+  background: transparent;
+  color: var(--text, #eee);
+}
+.account-switch-choice > span:first-child {
+  min-width: 0;
+}
+.account-switch-choice strong,
+.account-switch-choice small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.account-switch-choice strong {
+  font-size: 13px;
+}
+.account-switch-choice small,
+.account-switch-help {
+  font-size: 12px;
+  color: var(--text-muted, #a1a1af);
+}
+.account-switch-choice:disabled {
+  opacity: 1;
+}
+.account-current {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: #96d9ba;
+}
+.account-remove {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+}
+.account-switch-choice:not(:disabled):hover,
+.account-remove:hover,
+.account-signout:hover {
+  background: #ffffff0a;
+}
+.account-switch-help {
+  margin: 8px 4px 0;
+  line-height: 1.5;
+}
+.account-switch-error {
+  font-size: 12px;
+  color: #ffa5af;
+  margin: 8px 4px;
+}
+.account-notice {
+  position: fixed;
+  top: 92px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  padding: 12px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}

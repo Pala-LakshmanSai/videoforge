@@ -1,16 +1,26 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const auth = vi.hoisted(() => ({
   signIn: { email: vi.fn(), social: vi.fn() },
   signUp: { email: vi.fn() },
   requestPasswordReset: vi.fn(),
   signOut: vi.fn(),
+  getSession: vi.fn(),
+  multiSession: { listDeviceSessions: vi.fn(), setActive: vi.fn(), revoke: vi.fn() },
 }));
 
 vi.mock("better-auth/react", () => ({ createAuthClient: () => auth }));
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useHostedIdentity } from "./HostedIdentity";
+import { useHostedCreateDraftState } from "./HostedCreateDraft";
 import { HostedStagingApp } from "./HostedStagingApp";
+
+beforeEach(() => {
+  auth.getSession.mockResolvedValue({ data: null, error: null });
+  auth.multiSession.listDeviceSessions.mockResolvedValue({ data: [], error: null });
+});
 
 afterEach(() => {
   cleanup();
@@ -397,7 +407,7 @@ describe("hosted staging access boundary", () => {
     expect(screen.getByRole("heading", { name: "Enter VideoForge" })).toBeInTheDocument();
   });
 
-  it("clears a prior session before starting Google OAuth", async () => {
+  it("starts Google OAuth without revoking remembered accounts", async () => {
     const events: string[] = [];
     auth.signOut.mockImplementationOnce(async () => {
       events.push("sign-out");
@@ -426,10 +436,102 @@ describe("hosted staging access boundary", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Continue with Google" }));
 
     await waitFor(() => expect(auth.signIn.social).toHaveBeenCalledTimes(1));
-    expect(events).toEqual(["sign-out", "google"]);
+    expect(events).toEqual(["google"]);
+    expect(auth.signOut).not.toHaveBeenCalled();
+    expect(auth.getSession).toHaveBeenCalled();
     expect(auth.signIn.social).toHaveBeenCalledWith({
       provider: "google",
-      callbackURL: window.location.origin,
+      callbackURL: `${window.location.origin}/#account-added`,
     });
   });
+});
+
+function PrivateProbe() {
+  const identity = useHostedIdentity();
+  const [draft, setDraft] = useHostedCreateDraftState("title", "");
+  return (
+    <>
+      <p>{identity?.email}</p>
+      <input
+        aria-label="Private draft"
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+      />
+      <button onClick={() => void identity?.switchAccount?.("expired-session")}>
+        Switch saved account
+      </button>
+    </>
+  );
+}
+
+it("discards queries and drafts when another tab changes account, but preserves them for same-account focus", async () => {
+  let second = false;
+  const client = new QueryClient();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input) =>
+      String(input) === "/api/v2/tenant"
+        ? Response.json({
+            schema_version: "videoforge-hosted-tenant/v1",
+            account_id: second ? "other" : "owner",
+            workspace_id: second ? "other-workspace" : "owner-workspace",
+            workspace_name: "Private",
+            user: {
+              id: second ? "other" : "owner",
+              email: second ? "other@example.test" : "owner@example.test",
+              name: "User",
+            },
+          })
+        : Response.json({ authentication: ["GOOGLE"] }),
+    ),
+  );
+  render(
+    <QueryClientProvider client={client}>
+      <HostedStagingApp>
+        <PrivateProbe />
+      </HostedStagingApp>
+    </QueryClientProvider>,
+  );
+  await screen.findByText("owner@example.test");
+  client.setQueryData(["private-library"], { private: "owner-only" });
+  fireEvent.change(screen.getByLabelText("Private draft"), { target: { value: "owner draft" } });
+  fireEvent.focus(window);
+  await waitFor(() =>
+    expect(client.getQueryData(["private-library"])).toEqual({ private: "owner-only" }),
+  );
+  expect(screen.getByLabelText("Private draft")).toHaveValue("owner draft");
+  second = true;
+  fireEvent.focus(window);
+  await screen.findByText("other@example.test");
+  expect(client.getQueryData(["private-library"])).toBeUndefined();
+  expect(screen.getByLabelText("Private draft")).toHaveValue("");
+  expect(screen.queryByText("owner@example.test")).not.toBeInTheDocument();
+});
+
+it("recovers the admitted account after a failed switch and exposes the failure", async () => {
+  auth.multiSession.setActive.mockResolvedValueOnce({ error: { message: "Expired" } });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input) =>
+      String(input) === "/api/v2/tenant"
+        ? Response.json({
+            schema_version: "videoforge-hosted-tenant/v1",
+            account_id: "owner",
+            workspace_id: "workspace",
+            workspace_name: "Private",
+            user: { id: "owner", email: "owner@example.test", name: "Owner" },
+          })
+        : Response.json({ authentication: ["GOOGLE"] }),
+    ),
+  );
+  render(
+    <HostedStagingApp>
+      <PrivateProbe />
+    </HostedStagingApp>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "Switch saved account" }));
+  expect(
+    await screen.findByText("This account session expired or was removed. Sign in again."),
+  ).toBeInTheDocument();
+  expect(screen.getByText("owner@example.test")).toBeInTheDocument();
 });
