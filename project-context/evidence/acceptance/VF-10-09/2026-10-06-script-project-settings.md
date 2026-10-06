@@ -37,7 +37,26 @@ Postgres READ ONLY transactions with the same presets, Cloud authority, and comp
 Native 0279 rollback passes with unchanged function grants. All five database tests,
 web types, touched-file lint, and both web/Cloudflare builds pass. Canonical verification
 retains inherited failures: 127 formatting warnings and missing local uv 0.8.13.
-Browser acceptance and production publication remain pending at this implementation checkpoint.
+
+Production publication is verified at executable `f98c59331dcf016a15af8a116cca16a66dffcdef`,
+Worker `40cc0991-de69-44b7-b0dd-3bad8fb4175e` at 100%, native migration 279. Native
+readback confirms exactly the expected function-definition change and identical grants.
+All 36 public assets match local byte counts/SHA-256; the two dotfiles are ignored build
+metadata. Installed Chrome verifies Create, enabled script voice selection, catalog HTTP
+200, all available avatar readiness flags, and Cloud ready with no console errors. The
+browser is signed into a different admitted workspace from the incident; the incident
+account's exact presets are independently proven by native read-only validation.
+No production Create POST or paid provider canary is sent for acceptance.
+
+The existing native ledger retains historical migrations no longer present in the active
+repository manifest. Do not assume a contiguous chain or rerun old migrations. Publication
+checks the known latest 278 entry, exact existing function bytes, and locked ledger count,
+then atomically appends 279. Previous rows remain untouched.
+
+The isolated branch is pushed. Both preceding ASR and prompt repairs are ancestors.
+Guarded Worker publication preserves all 55 bindings, 27 secrets, six resource bindings,
+three Workflow identities, Desktop 0.1.52, qualified Cloud runtime pins, and current jobs.
+Remaining inherited CI, provider/full-film, editorial, and invoice gates are separate.
 
 ## Provider and shutdown state
 
