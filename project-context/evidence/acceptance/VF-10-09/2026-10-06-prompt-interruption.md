@@ -1,0 +1,11 @@
+# Stage 5 blank-surface interruption — 2026-10-06
+
+Checkpoint V2-09 / VF-10-09. Base `f107e2c316761e0bd630ea19660c3ce39b0d715f`.
+
+The original ACTIVE generation stopped with 10/158 image prompts accepted. Its exact saved original second-batch response failed one required action describing a blank back label. The already-paid replacement failed three required facts describing blank labels. Both were valid JSON with all ten scene identities. Strict positive-label matching rejected physical surfaces that explicitly contain no writing. A terminal retry conflict then displayed `HOSTED_PROMPT_EXECUTION_ALREADY_CLAIMED` over the authoritative `HOSTED_PROMPT_OUTPUT_INVALID`.
+
+Repair only hosted advisory acceptance: canonicalize a trailing explicitly blank label to an unmarked physical surface, retaining modifiers and all other facts. Printed labels, logos, barcodes, following text, forbidden graphics and meaningless placeholders still fail. The independent compiler guard is unchanged. Immutable raw provider responses and request identities remain authoritative. Terminal route/UI errors report the durable actual cause without allowing redispatch.
+
+All three saved ten-scene responses pass provider-free writer and compiler replay. The original accepted first ten compiled prompts remain byte-identical. The recovery transaction reuses the exact settled replacement UUID, raw response, request bytes/hash and cost; it records those ten accepted scenes through the native recorder and restores the original task under its cumulative USD4 prompt ceiling. A transaction-local adaptation of the existing operator recovery function retains tenant, claim, terminal-receipt, cost, cancellation and spend checks. No persistent native grant/schema change, extra replacement, inference call or cost reset. Rollback proof passes with 20 accepted scenes and unchanged claims, replacements, known cost USD0.193398, discarded cost USD0.070868 and first-ten progress rows.
+
+User authorized diagnosing, fixing and continuing this original project, including the production fix. No new project/canary or expanded spend is authorized. Publication and current Brave recovery proof pending. Broader full-film, provider availability, anatomy/editorial, invoice and inherited broad-CI gates remain separate; this repair does not guarantee that external providers never fail.

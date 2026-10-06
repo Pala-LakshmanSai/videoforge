@@ -701,7 +701,7 @@ Older attempts below are historical and non-reusable.
   guard `c651ad767d74010717936abe7d31a4667911d325`, advances request v17 and makes
   provider formatting defects non-terminal in hosted Stage 5. It bounds and repairs blank,
   oversized, or controlled text; drops blank, duplicate, or forbidden continuity tags; repairs
-  forbidden compiled fields with neutral narration-derived fallbacks; and leaves the compatibility-
+  harmless formatting only (required forbidden facts now fail under the current policy); and leaves the compatibility-
   only `prompt_core` unable to fail or affect image generation. Semantic relevance and duplicate-
   prose checks remain advisory.
 - Deterministic JSON decoding, schema and scene identity, requested-scene completeness, provider

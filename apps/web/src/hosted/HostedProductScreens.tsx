@@ -6748,8 +6748,9 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     ...(failedStageIds.has("voiceover-context") && contextExtraction.isError
       ? { "voiceover-context": contextExtraction.error.message }
       : {}),
-    ...(failedStageIds.has("prompt-writing") && promptWriting.isError
-      ? { "prompt-writing": promptWriting.error.message }
+    ...(failedStageIds.has("prompt-writing") &&
+    (promptProgress?.problem_code || promptWriting.isError)
+      ? { "prompt-writing": promptProgress?.problem_code ?? promptWriting.error?.message }
       : {}),
     ...((failedStageIds.has("image-generation") || failedStageIds.has("avatar-generation")) &&
     gpuDispatch.isError

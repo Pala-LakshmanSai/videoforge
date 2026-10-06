@@ -811,6 +811,71 @@ test("advisory hosted output repairs harmless field and continuity formatting de
   );
 });
 
+test("advisory canonicalizes text-free blank bottle labels without accepting printed labels", async () => {
+  for (const [description, expected] of [
+    [
+      "holding a bottle to show its blank back label",
+      "holding a bottle to show its unmarked back surface",
+    ],
+    ["bottles with blank labels", "bottles with unmarked surfaces"],
+    ["showing a blank white label with no text", "showing an unmarked white surface with no text"],
+  ]) {
+    const setup = writer(
+      [
+        (request) =>
+          success(request, {
+            change: (rows) => {
+              rows[0].action = description;
+              return rows;
+            },
+          }),
+      ],
+      0.01,
+      "advisory",
+    );
+    const result = await setup.value.write(makeBatch(1));
+    assert.equal(result.scenes[0].action, expected);
+    assert.equal(setup.transport.requests.length, 1);
+    assert.equal(setup.evidence[0].validationDisposition, "accepted");
+    const compiled = compileImagePrompt({
+      expectedScene: makeBatch(1).scenes[0],
+      writerOutput: result.scenes[0],
+      style: {
+        positiveSuffix: "documentary photo",
+        negativeSuffix: "CGI",
+        fullImageGuidance: "16:9 center-safe",
+        splitImageGuidance: "8:9 center-safe right panel",
+      },
+      extraPromptKeywords: "",
+      applyExtraPromptKeywords: false,
+    });
+    assert.doesNotMatch(compiled.components.literalContent, /\blabels?\b/iu);
+  }
+  for (const description of [
+    "holding a bottle with a printed label",
+    "holding a bottle with a blank label reading Honey",
+    "holding a bottle with a blank label and a logo",
+    "holding a bottle with a blank label; showing its ingredient list",
+    "holding a bottle with a blank label, barcode",
+  ]) {
+    const setup = writer(
+      [
+        (request) =>
+          success(request, {
+            change: (rows) => {
+              rows[0].action = description;
+              return rows;
+            },
+          }),
+      ],
+      0.01,
+      "advisory",
+    );
+    await expectInvalid(() => setup.value.write(makeBatch(1)));
+    assert.equal(setup.transport.requests.length, 1);
+  }
+});
+
 test("advisory mode preserves compatibility-only prose but rejects forbidden required facts", async () => {
   const coreOnly = writer(
     [

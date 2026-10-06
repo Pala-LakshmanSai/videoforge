@@ -53,3 +53,49 @@ it("honors the durable preparation-only hold before any provider read, paid clai
     vi.unstubAllGlobals();
   }
 });
+
+it("returns the settled prompt failure instead of masking it with already claimed", async () => {
+  database.query.mockImplementation(async (sql: string) =>
+    sql.includes("videoforge_load_hosted_prompt_plan")
+      ? {
+          rows: [
+            {
+              plan: {
+                existing_run_state: "FAILED",
+                existing_run_problem_code: "HOSTED_PROMPT_OUTPUT_INVALID",
+              },
+            },
+          ],
+        }
+      : { rows: [] },
+  );
+  const outbound = vi.fn(() => {
+    throw new Error("no provider access is authorized");
+  });
+  vi.stubGlobal("fetch", outbound);
+  try {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const result = await writeProjectPrompts(
+      new Request(`https://videoforge.buzz/api/v2/hosted/projects/${projectId}/prompts`, {
+        method: "POST",
+        headers: { origin: "https://videoforge.buzz", "content-type": "application/json" },
+        body: JSON.stringify({
+          maximum_prompt_spend_micro_usd: HOSTED_PROMPT_RESERVATION_MICRO_USD,
+        }),
+      }),
+      projectId,
+      {
+        publicOrigin: "https://videoforge.buzz",
+        neon: { databaseUrl: "unused" },
+        styleAnalysis: { apiKey: "fixture" },
+      } as HostedRuntimeConfiguration,
+      { waitUntil: vi.fn() },
+      { account_id: "account", workspace_id: "workspace", user_id: "owner" },
+    );
+    expect(result.status).toBe(409);
+    expect(await result.json()).toMatchObject({ error: { code: "HOSTED_PROMPT_OUTPUT_INVALID" } });
+    expect(outbound).not.toHaveBeenCalled();
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});

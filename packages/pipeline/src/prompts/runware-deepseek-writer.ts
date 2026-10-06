@@ -917,8 +917,31 @@ const singleSceneValidation = (
   candidate: JsonValue,
   semanticQualityMode: "advisory" | "enforce",
 ): PromptWriterSceneOutput | null => {
-  const row = asRecord(candidate);
+  let row = asRecord(candidate);
   if (!row || !hasSceneOutputShape(candidate)) return null;
+  if (semanticQualityMode === "advisory") {
+    // Blank physical surfaces carry no writing. Canonicalize only a trailing, explicitly blank
+    // label; descriptions of printing, branding or any following content still fail the hard gate.
+    const unmarked = (value: JsonValue): JsonValue =>
+      typeof value === "string"
+        ? value.replace(
+            /\b(a\s+)?blank(?:\s+(back|front|white))?\s+label(s)?(?=\s*(?:with\s+no\s+(?:text|writing)\s*)?[.!?]?\s*$)/giu,
+            (
+              _match,
+              article: string | undefined,
+              modifier: string | undefined,
+              plural: string | undefined,
+            ) =>
+              `${article ? "an " : ""}unmarked${modifier ? ` ${modifier}` : ""} surface${plural ? "s" : ""}`,
+          )
+        : value;
+    row = {
+      ...row,
+      literal_subject: unmarked(row.literal_subject!),
+      action: unmarked(row.action!),
+      environment: unmarked(row.environment!),
+    };
+  }
   for (const field of ["literal_subject", "action", "environment"] as const) {
     const source = row[field] as string;
     const normalized = stripProviderControls(source.normalize("NFKC")).replace(/\s+/gu, " ").trim();
@@ -933,7 +956,7 @@ const singleSceneValidation = (
     )
       return null;
   }
-  if (semanticQualityMode === "advisory") return normalizeReturnedScene(batch, expected, candidate);
+  if (semanticQualityMode === "advisory") return normalizeReturnedScene(batch, expected, row);
   try {
     const validated = validatePromptWriterOutput(
       Object.freeze({ ...batch, scenes: Object.freeze([expected]) }),

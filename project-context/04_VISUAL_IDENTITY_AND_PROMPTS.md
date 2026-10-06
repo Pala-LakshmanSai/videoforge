@@ -134,9 +134,12 @@ prompt tells the writer to begin with the exact phrase's visible action and not 
 actions. Hosted acceptance does not use lexical or action-equivalence heuristics as a terminal gate:
 subject, action, context, and duplicate-prose checks are advisory because natural paraphrases cannot
 be classified reliably by a bounded word matcher. Hosted acceptance also repairs harmless provider
-formatting defects before strict persistence: it bounds or fills blank, oversized, or control-
-containing text; normalizes and deduplicates continuity tags; and replaces forbidden compiled fields
-with neutral narration-derived fallbacks rather than wasting the whole batch. Forbidden continuity
+formatting defects before strict persistence: it bounds harmless oversized or control-containing
+text and normalizes and deduplicates continuity tags. Required subject, action and environment
+facts remain mandatory; empty, forbidden or placeholder facts fail rather than becoming filler.
+A trailing explicitly blank label in those fields is canonicalized to an unmarked physical surface
+in hosted advisory acceptance. Printing, branding, barcodes and following content still fail;
+the independent compiler guard and immutable raw provider/request bytes remain unchanged. Forbidden continuity
 tags are dropped; text-bearing price tags and receipts are explicitly excluded. The compiler still
 derives final literal image content from the repaired structured
 fields and independently rejects forbidden compiled content, so `prompt_core` cannot change the

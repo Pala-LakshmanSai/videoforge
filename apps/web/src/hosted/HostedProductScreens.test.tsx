@@ -6202,10 +6202,15 @@ describe("hosted product journey", () => {
         expect(screen.getAllByText(/contact support/iu).length).toBeGreaterThan(0);
         expect(screen.queryByText("Writing image prompts…")).not.toBeInTheDocument();
       }
-      if (problemCode === "HOSTED_PROMPT_OUTPUT_INVALID")
+      if (problemCode === "HOSTED_PROMPT_OUTPUT_INVALID") {
+        expect(within(stageRow("Write image prompts")).getByText(problemCode)).toBeInTheDocument();
+        expect(
+          screen.queryByText("HOSTED_PROMPT_EXECUTION_ALREADY_CLAIMED"),
+        ).not.toBeInTheDocument();
         expect(screen.getAllByText(/original provider result was invalid/u).length).toBeGreaterThan(
           0,
         );
+      }
       expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(
         false,
       );

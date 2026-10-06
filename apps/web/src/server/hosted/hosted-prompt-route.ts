@@ -39,12 +39,20 @@ import { canonicalJson } from "./submission";
 import { readRunwareCreditBalance } from "../providers/runware-http-transport";
 import type { RunwareCapacityRefusal } from "../providers/runware-http-transport";
 
-async function pausePromptCapacity(pool: ReturnType<typeof createNeonPool>, accountId: string,
-  runId: string, value: RunwareCapacityRefusal): Promise<void> {
+async function pausePromptCapacity(
+  pool: ReturnType<typeof createNeonPool>,
+  accountId: string,
+  runId: string,
+  value: RunwareCapacityRefusal,
+): Promise<void> {
   await createNeonExecutor(pool).transaction(async (transaction) => {
     await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", accountId]);
-    await transaction.query("SELECT public.videoforge_pause_hosted_prompt_capacity($1,$2,$3,$4)",
-      [runId, value.taskUUID, value.responseHash, value.retryAfterMs]);
+    await transaction.query("SELECT public.videoforge_pause_hosted_prompt_capacity($1,$2,$3,$4)", [
+      runId,
+      value.taskUUID,
+      value.responseHash,
+      value.retryAfterMs,
+    ]);
   });
 }
 
@@ -670,7 +678,8 @@ export async function writeProjectPrompts(
                     saved.discarded_cost_micro_usd,
                   claim: (claim) =>
                     claimHostedPromptBatch(pool, scope.account_id, saved.id, claim, promptApiKey),
-                  onCapacityRefused: (value) => pausePromptCapacity(pool, scope.account_id, saved.id, value),
+                  onCapacityRefused: (value) =>
+                    pausePromptCapacity(pool, scope.account_id, saved.id, value),
                   recordResult: (value) =>
                     recordPromptResponse(pool, scope.account_id, saved.id, value),
                 })
@@ -702,7 +711,8 @@ export async function writeProjectPrompts(
                 error.knownCostMicroUsd,
               retryOfRequestHash:
                 invalidClaim.request_hash as HostedRecoveredPromptBatch["requestHash"],
-              onCapacityRefused: (value) => pausePromptCapacity(pool, scope.account_id, saved.id, value),
+              onCapacityRefused: (value) =>
+                pausePromptCapacity(pool, scope.account_id, saved.id, value),
               recordResult: (value) =>
                 recordPromptResponse(pool, scope.account_id, saved.id, value),
               claim: async (replacement) => {
@@ -797,7 +807,10 @@ export async function writeProjectPrompts(
       return response(
         {
           error: {
-            code: "HOSTED_PROMPT_EXECUTION_ALREADY_CLAIMED",
+            code:
+              existingState === "FAILED" && typeof planRecord.existing_run_problem_code === "string"
+                ? planRecord.existing_run_problem_code
+                : "HOSTED_PROMPT_EXECUTION_ALREADY_CLAIMED",
             message:
               "The prompt request already has a durable terminal or in-flight claim and cannot be redispatched.",
           },
@@ -910,7 +923,8 @@ export async function writeProjectPrompts(
       remainingReservationMicroUsd: reservedCostMicroUsd,
       claim: (claim) =>
         claimHostedPromptBatch(pool, scope.account_id, persistedRunId, claim, promptApiKey),
-      onCapacityRefused: (value) => pausePromptCapacity(pool, scope.account_id, persistedRunId, value),
+      onCapacityRefused: (value) =>
+        pausePromptCapacity(pool, scope.account_id, persistedRunId, value),
       recordResult: (value) => recordPromptResponse(pool, scope.account_id, persistedRunId, value),
     });
     if (firstBatch)
@@ -932,10 +946,17 @@ export async function writeProjectPrompts(
     if (error instanceof HostedPromptCapacityPausedError) {
       if (runId && settleScope && !(settleScope instanceof Response))
         await pausePromptCapacity(pool, settleScope.account_id, runId, error.refusal);
-      return response({ schema_version: "videoforge-hosted-prompt-response/v1",
-        state: "WAITING", problem_code: "HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT",
-        provider_task_uuid: error.refusal.taskUUID, retry_after_ms: error.refusal.retryAfterMs,
-        action_required: true }, 202);
+      return response(
+        {
+          schema_version: "videoforge-hosted-prompt-response/v1",
+          state: "WAITING",
+          problem_code: "HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT",
+          provider_task_uuid: error.refusal.taskUUID,
+          retry_after_ms: error.refusal.retryAfterMs,
+          action_required: true,
+        },
+        202,
+      );
     }
     const promptFailure =
       error instanceof HostedPromptExecutionError
