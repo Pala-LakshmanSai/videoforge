@@ -118,7 +118,7 @@ function avatarRuntimeSourceQualified(row: AvatarRuntimeSourceRow | undefined): 
 function avatarRuntimeSourceReadyForApi(row: AvatarRuntimeSourceRow | undefined): boolean {
   return (
     (row?.source_state === "VERIFIED" || row?.source_state === "ACCEPTED") &&
-    (row.source_content_type === "image/png" || row.source_content_type === "image/jpeg") &&
+    IMAGE_TYPES.has(row.source_content_type ?? "") &&
     typeof row.object_key === "string" &&
     /^tenant\/[^/]+\/workspace\/[^/]+\/avatar-profile\/[^/]+\/version\/[^/]+\/(?:original|canonical)\/[^/]+$/u.test(
       row.object_key,

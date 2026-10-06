@@ -7,6 +7,8 @@ const fixture = vi.hoisted(() => ({
   avatarVersionId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
   styleVersionId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
   saved: null as Record<string, unknown> | null,
+  sourceContentType: "image/png",
+  sourceState: "VERIFIED",
   voices: vi.fn(),
   voicePost: vi.fn(),
   workflowCreate: vi.fn(),
@@ -34,8 +36,8 @@ const query = vi.hoisted(() =>
       return {
         rows: [
           {
-            source_state: "VERIFIED",
-            source_content_type: "image/png",
+            source_state: fixture.sourceState,
+            source_content_type: fixture.sourceContentType,
             object_key: `tenant/${fixture.accountId}/workspace/${fixture.workspaceId}/avatar-profile/avatar/version/${fixture.avatarVersionId}/canonical/avatar.png`,
           },
         ],
@@ -151,10 +153,39 @@ function expectNoWrites() {
 }
 beforeEach(() => {
   fixture.saved = null;
+  fixture.sourceContentType = "image/png";
+  fixture.sourceState = "VERIFIED";
   vi.clearAllMocks();
   fixture.voices.mockResolvedValue([{ voice_id: "alice", name: "Alice", imported: false }]);
   fixture.voicePost.mockRejectedValue(new Error("Intake must never submit voice generation"));
   fixture.workflowCreate.mockResolvedValue({ id: "fixture-continuation" });
+});
+
+it.each(["image/png", "image/jpeg", "image/webp"])(
+  "accepts a verified %s avatar without submitting narration during intake",
+  async (contentType) => {
+    fixture.sourceContentType = contentType;
+    expect((await intake(body())).status).toBe(202);
+    expectNoVoiceSpend();
+  },
+);
+
+it.each([
+  ["image/webp", "UPLOADED"],
+  ["image/svg+xml", "VERIFIED"],
+])("rejects an unready avatar %s/%s with an actionable reason", async (contentType, state) => {
+  fixture.sourceContentType = contentType;
+  fixture.sourceState = state;
+  const result = await intake(body());
+  expect(result.status).toBe(409);
+  expect(await result.json()).toMatchObject({
+    error: {
+      code: "AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED",
+      message: "Choose a ready Avatar Hub version with a verified image source.",
+    },
+  });
+  expectNoWrites();
+  expectNoVoiceSpend();
 });
 
 it.each([

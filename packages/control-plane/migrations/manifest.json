@@ -1446,6 +1446,12 @@
       "name": "hosted_prompt_content_correction",
       "filename": "0278_hosted_prompt_content_correction.sql",
       "sha256": "sha256:f6cba6628c011246ae655eb348674f23f887e1d359131763a5b79e844276c474"
+    },
+    {
+      "version": 279,
+      "name": "hosted_api_avatar_webp",
+      "filename": "0279_hosted_api_avatar_webp.sql",
+      "sha256": "sha256:a3d128ab773f84b974cdfbd988612a0b46890f59e23bcb302c8bacd382e27671"
     }
   ]
 }

@@ -487,13 +487,22 @@ test("0188 API jobs materialize, claim once, accept outputs, and reach render", 
     await executor.execute("ALTER TABLE assets DISABLE TRIGGER USER");
     await executor.query(`UPDATE assets SET metadata=jsonb_set(metadata,'{channels}','1'::jsonb)
       WHERE id=$1`,[firstSpanAssetId]);
+    await executor.query(`UPDATE assets SET content_type='image/webp' WHERE id=$1`,
+      [IDS.avatarRuntimeA]);
     await executor.execute("ALTER TABLE assets ENABLE TRIGGER USER");
+    await expectDatabaseError(() => executor.query(`SELECT public.videoforge_materialize_hosted_api_jobs(
+      $1::uuid,$2::uuid,$3::uuid,$4::uuid)`,
+      [IDS.accountA,IDS.workspaceA,IDS.userA,IDS.projectA]),'23514');
+    const webpMigration = (await loadMigrationSources()).find(({ version }) => version === 279);
+    await executor.execute(webpMigration.sql);
     const materialized = await executor.query(`SELECT public.videoforge_materialize_hosted_api_jobs(
       $1::uuid,$2::uuid,$3::uuid,$4::uuid) AS result`,
       [IDS.accountA,IDS.workspaceA,IDS.userA,IDS.projectA]);
     const jobs = materialized.rows[0].result.jobs;
     assert.equal(jobs.length,3);
     assert.equal(jobs.filter(job=>job.lane==='IMAGE').length,1);
+    assert.ok(jobs.filter(job=>job.lane==='AVATAR').every(
+      job=>job.inputManifest.avatarSourceContentType==='image/webp'));
     const rollbackProbe = new Error('rollback failure settlement probe');
     await assert.rejects(executor.transaction(async (tx) => {
       const [failedJob, pendingJob] = jobs;

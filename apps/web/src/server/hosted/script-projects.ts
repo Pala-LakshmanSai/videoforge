@@ -266,25 +266,26 @@ export async function createScriptProject(
     return response({ project_id: result.project_id, state: result.state }, 202);
   } catch (error) {
     const code = error instanceof Error ? error.message : "SCRIPT_PROJECT_UNAVAILABLE";
-    if (
-      [
-        "PROJECT_IDEMPOTENCY_CONFLICT",
-        "VOICE_NOT_FOUND",
-        "PROJECT_PRESET_NOT_READY",
-        "AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED",
-        "CLOUD_MEDIA_UNAVAILABLE",
-        "CLOUD_MEDIA_NOT_READY",
-        "SCENE_VIDEO_UNAVAILABLE",
-      ].includes(code)
-    )
+    const messages: Record<string, string> = {
+      PROJECT_IDEMPOTENCY_CONFLICT:
+        "This request already belongs to different inputs. Check Queue before starting again.",
+      VOICE_NOT_FOUND: "This voice is no longer available. Choose another voice.",
+      PROJECT_PRESET_NOT_READY: "Choose a ready avatar and a published image style.",
+      AVATAR_RUNTIME_SOURCE_NOT_QUALIFIED: config.apiGeneration
+        ? "Choose a ready Avatar Hub version with a verified image source."
+        : "Choose an Avatar Hub version qualified for avatar video in this release.",
+      CLOUD_MEDIA_UNAVAILABLE: "Cloud media execution is not enabled for this release.",
+      CLOUD_MEDIA_NOT_READY:
+        "Cloud execution is currently unavailable. Try again after availability is restored.",
+      SCENE_VIDEO_UNAVAILABLE:
+        "Scene video generation is unavailable. Turn off the opening and choose Off coverage, or try again later.",
+    };
+    if (Object.hasOwn(messages, code))
       return response(
         {
           error: {
             code,
-            message:
-              code === "VOICE_NOT_FOUND"
-                ? "This voice is no longer available. Choose another voice."
-                : "Project settings are unavailable. Refresh and try again.",
+            message: messages[code],
           },
         },
         code === "VOICE_NOT_FOUND" ? 400 : 409,
