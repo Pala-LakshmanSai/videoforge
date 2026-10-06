@@ -69,6 +69,7 @@ it("filters explicit catalog age descriptions without guessing from names or ton
   expect(voiceTraits(base).age).toEqual([]);
   for (const [description, age] of [
     ["Young American Male", "young"],
+    ["Youth, Friendly, Natural", "young"],
     ["Middle-aged adult", "middle-aged"],
     ["Mature", "mature"],
     ["Elderly woman", "elderly"],

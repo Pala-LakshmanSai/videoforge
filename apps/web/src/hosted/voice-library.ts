@@ -76,7 +76,7 @@ const accentPatterns: [string, RegExp][] = [
 const agePatterns: [string, RegExp][] = [
   ["child", /\b(child|kid|baby|little (boy|girl))\b/u],
   ["teen", /\b(teen|teenage|teenager|adolescent)\b/u],
-  ["young", /\b(young|youthful)\b/u],
+  ["young", /\b(young|youth|youthful)\b/u],
   ["middle-aged", /\bmiddle[ -]aged?\b/u],
   ["mature", /\bmature\b/u],
   ["elderly", /\b(elderly|senior|aged|old (man|woman|male|female))\b/u],
