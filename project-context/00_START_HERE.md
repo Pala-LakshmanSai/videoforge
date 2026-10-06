@@ -1,3 +1,5 @@
+Account-menu helper copy removal is published at executable69175135/Worker453a1c95 at100%. Read `account_menu_copy_2026_10_06` and the account-switching evidence follow-up.
+
 Preloaded Account menu is production verified for V2-09/VF-10-09. Read `account_menu_preload_2026_10_06` and the follow-up section in the account-switching evidence brief. Executable aa47e419/Worker41f06ba8 at100%; zero menu auth requests, in-app switching and independent Chrome/Brave session removal pass. Native282 and latest additions preserved; no new paid provider or compute work.
 
 Browser account switching is production verified for V2-09/VF-10-09. Read `account_switching_2026_10_06` in CURRENT_STATE.yaml and its narrow evidence brief. Executable d9f80122 / Workerbd07a14b is live at100%; real Google add, two-way switching, private account data and other-tab identity pass. Latest prompt and assembly recovery additions remain; subsequent work starts provider-free.

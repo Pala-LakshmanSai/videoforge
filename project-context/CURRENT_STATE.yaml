@@ -1,10 +1,13 @@
 account_menu_copy_2026_10_06:
   checkpoint: V2-09
   selected_task: VF-10-09
-  status: LOCAL_VALIDATED_PUBLICATION_PENDING
+  status: PRODUCTION_PUBLISHED_CHROME_VERIFIED
   user_authority: Remove_screenshot_account_menu_helper_text;prior_production_publication_authority_persists.
+  executable: 69175135c0402ce0fdcbfdbbf12abf5d60c06628
+  worker_version: 453a1c95-b248-44a0-8f1a-eccebf7ec3f3
+  traffic_percent: 100
   predecessor_source: aa47e419656f1c5d6a74acde625f2abcdfa6b471
-  validations: AccountSwitcher_HostedStagingApp22of22_lint_production_build_quarantine_PASS
+  validations: AccountSwitcher_HostedStagingApp22of22_lint_production_build_quarantine_context_secrets35public_asset_hashes_PASS;real_Chrome_helper_text_absent_account_controls_retained
   provider_spend: USD0_new_generation_compute_resources
   paid_compute_shutdown: No_compute_started_stopped_or_reinventoried
   evidence: evidence/acceptance/VF-10-09/2026-10-06-account-switching.md
@@ -7681,10 +7684,10 @@ repository:
   branch: codex/account-switching
   branch_upstream: origin/codex/account-switching
   branch_published: true
-  current_source_head: "aa47e419656f1c5d6a74acde625f2abcdfa6b471"
+  current_source_head: "69175135c0402ce0fdcbfdbbf12abf5d60c06628"
   current_source_head_semantics: executable_release_identity_recorded_after_publication_evidence_commits_follow
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Executable aa47e419 / Worker41f06ba8 at100%, native282 unchanged. All browser-profile accounts preload before admission UI; zero menu auth requests, one set-active POST and zero document requests. Common navigation caches warm after admission; cookie expiry checks batch native token lookups. Real Chrome/Brave switch and inactive removal prove independent sessions, not owner/IP linkage. Original Chrome owner restored, Brave owner-only; latest prompt/assembly and qualified Cloud/Desktop0.1.52 pins preserved."
+  current_source_head_note: "Executable69175135 / Worker453a1c95 at100%, native282 unchanged; account-menu helper text removed, auth behavior retained. All browser-profile accounts preload before admission UI; zero menu auth requests, one set-active POST and zero document requests. Common navigation caches warm after admission; cookie expiry checks batch native token lookups. Real Chrome/Brave switch and inactive removal prove independent sessions, not owner/IP linkage. Original Chrome owner restored, Brave owner-only; latest prompt/assembly and qualified Cloud/Desktop0.1.52 pins preserved."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
