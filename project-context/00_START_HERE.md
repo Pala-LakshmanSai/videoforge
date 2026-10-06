@@ -1,3 +1,5 @@
+Current prompt shelf-surface repair: read `prompt_shelf_surfaces_2026_10_06` in CURRENT_STATE.yaml and `2026-10-06-prompt-shelf-surfaces.md` in evidence/acceptance/VF-10-09.
+
 Completed-video Avatar/Voiceover/Image style details are published in both libraries under DEC_LIBRARY_002. Read library_video_details_2026_10_05 in CURRENT_STATE.yaml and LIBRARY_VIDEO_DETAILS_PLAN.md. Ordinary privacy and designated-owner Centralized Library access remain.
 
 Current user task2026-10-05: matching Scene videos progress graphic (V2-09/VF-10-09,

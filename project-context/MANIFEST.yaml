@@ -4,8 +4,8 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-10-06"
 source_of_truth: project-context
 
-current_selected_profile: v2_09_prompt_interruption
-current_selected_brief: evidence/acceptance/VF-10-09/2026-10-06-prompt-interruption.md
+current_selected_profile: v2_09_prompt_shelf_surfaces
+current_selected_brief: evidence/acceptance/VF-10-09/2026-10-06-prompt-shelf-surfaces.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -25,6 +25,10 @@ conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
 target_profile_word_budget: 15000
 
 read_profiles:
+  v2_09_prompt_shelf_surfaces:
+    - evidence/acceptance/VF-10-09/2026-10-06-prompt-shelf-surfaces.md
+    - 04_VISUAL_IDENTITY_AND_PROMPTS.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
   v2_09_prompt_recovery_progress:
     - evidence/acceptance/VF-10-09/2026-10-06-prompt-recovery-progress.md
     - 05_UI_UX_SPEC.md

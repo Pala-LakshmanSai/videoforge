@@ -811,39 +811,15 @@ test("advisory hosted output repairs harmless field and continuity formatting de
   );
 });
 
-test("advisory canonicalizes text-free blank bottle labels without accepting printed labels", async () => {
-  for (const [description, expected] of [
-    [
-      "holding a bottle to show its blank back label",
-      "holding a bottle to show its unmarked back surface",
-    ],
-    ["bottles with blank labels", "bottles with unmarked surfaces"],
-    ["a bottle with a blank green label.", "a bottle with an unmarked green surface."],
-    ["a bottle with a blank brown label.", "a bottle with an unmarked brown surface."],
-    ["pointing at a blank white back label.", "pointing at an unmarked white back surface."],
-    ["showing a blank back white paper label", "showing an unmarked back white paper surface"],
-    ["showing a blank white label with no text", "showing an unmarked white surface with no text"],
-    ["Pointing to a blank label on a bottle.", "Pointing to an unmarked surface on a bottle."],
-    ["displaying a blank, unmarked white label area", "displaying an unmarked white surface area"],
-    [
-      "Reaching for an unmarked yellow-labeled bottle",
-      "Reaching for an unmarked bottle with a yellow surface",
-    ],
-    [
-      "showing a blank unmarked white label area on a bottle.",
-      "showing an unmarked white surface area on a bottle.",
-    ],
-    [
-      "showing blank white back labels of the jar",
-      "showing unmarked white back surfaces of the jar",
-    ],
-  ]) {
+test("blank shelf evidence preserves all required facts and compiles in every field", async () => {
+  for (const field of ["literal_subject", "action", "environment"]) {
     const setup = writer(
       [
         (request) =>
           success(request, {
             change: (rows) => {
-              rows[0].action = description;
+              rows[0][field] = "A finger pointing to the corner of a blank shelf tag.";
+              rows[1][field] = "A shopper's face and hand close to a blank shelf tag.";
               return rows;
             },
           }),
@@ -851,61 +827,171 @@ test("advisory canonicalizes text-free blank bottle labels without accepting pri
       0.01,
       "advisory",
     );
-    const result = await setup.value.write(makeBatch(1));
-    assert.equal(result.scenes[0].action, expected);
+    const batch = makeBatch(10);
+    const result = await setup.value.write(batch);
+    assert.equal(result.scenes.length, 10);
     assert.equal(setup.transport.requests.length, 1);
-    assert.equal(setup.evidence[0].validationDisposition, "accepted");
-    const compiled = compileImagePrompt({
-      expectedScene: makeBatch(1).scenes[0],
-      writerOutput: result.scenes[0],
-      style: {
-        positiveSuffix: "documentary photo",
-        negativeSuffix: "CGI",
-        fullImageGuidance: "16:9 center-safe",
-        splitImageGuidance: "8:9 center-safe right panel",
-      },
-      extraPromptKeywords: "",
-      applyExtraPromptKeywords: false,
-    });
-    assert.doesNotMatch(compiled.components.literalContent, /\blabels?\b/iu);
+    for (const [index, scene] of result.scenes.entries()) {
+      const compiled = compileImagePrompt({
+        expectedScene: batch.scenes[index],
+        writerOutput: scene,
+        style: {
+          positiveSuffix: "documentary photo",
+          negativeSuffix: "CGI",
+          fullImageGuidance: "16:9 center-safe",
+          splitImageGuidance: "8:9 center-safe right panel",
+        },
+        extraPromptKeywords: "",
+        applyExtraPromptKeywords: false,
+      });
+      assert.doesNotMatch(compiled.components.literalContent, /\b(?:shelf|price)[- ]tags?\b/iu);
+    }
+    assert.equal(
+      result.scenes[0][field],
+      "A finger pointing to the corner of an unmarked shelf card.",
+    );
+    assert.equal(
+      result.scenes[1][field],
+      "A shopper's face and hand close to an unmarked shelf card.",
+    );
   }
-  for (const description of [
-    "holding a bottle with a printed label",
-    "holding a bottle with a blank printed label",
-    "holding a bottle with a blank, unmarked printed label area",
-    "holding an unmarked bottle with a gold-trimmed label",
-    "holding a yellow-labeled bottle",
-    "holding an unmarked yellow-labeled Honey bottle",
-    "holding an unmarked yellow-labeled bottle with printed writing",
-    "holding a printed unmarked red-labeled bottle",
-    "reading Honey from an unmarked red-labeled bottle",
-    "holding a numbered unmarked red-labeled bottle",
-    "holding an inscribed unmarked red-labeled bottle",
-    "holding a printed bottle with a blank label",
-    "holding a bottle with a blank Honey label",
-    "holding a bottle with a blank label reading Honey",
-    "holding a bottle with a blank unmarked white label area reading Honey",
-    "holding a bottle with a blank label and a logo",
-    "holding a bottle with a blank label; showing its ingredient list",
-    "holding a bottle with a blank label, barcode",
-    "pointing to a blank label on a bottle reading Honey",
-    "pointing to a blank label on a bottle and a logo",
-  ]) {
-    const setup = writer(
+});
+
+test("advisory canonicalizes blank packaging and shelf surfaces without accepting text or graphics", async () => {
+  for (const field of ["literal_subject", "action", "environment"]) {
+    for (const [description, expected] of [
       [
-        (request) =>
-          success(request, {
-            change: (rows) => {
-              rows[0].action = description;
-              return rows;
-            },
-          }),
+        "holding a bottle to show its blank back label",
+        "holding a bottle to show its unmarked back surface",
       ],
-      0.01,
-      "advisory",
-    );
-    await expectInvalid(() => setup.value.write(makeBatch(1)));
-    assert.equal(setup.transport.requests.length, 1);
+      ["bottles with blank labels", "bottles with unmarked surfaces"],
+      ["A bottle with a blank LABEL.", "A bottle with an unmarked surface."],
+      ["A shelf with blank SHELF-TAGS.", "A shelf with unmarked shelf cards."],
+      [
+        "A finger pointing to the corner of a blank shelf tag.",
+        "A finger pointing to the corner of an unmarked shelf card.",
+      ],
+      [
+        "A shopper's face and hand close to a blank shelf tag.",
+        "A shopper's face and hand close to an unmarked shelf card.",
+      ],
+      [
+        "Leaning in to inspect a blank, unmarked paper shelf tag.",
+        "Leaning in to inspect an unmarked paper shelf card.",
+      ],
+      [
+        "A grocery store shelf with blank price tags.",
+        "A grocery store shelf with unmarked cards.",
+      ],
+      ["Pointing at a blank price-tag.", "Pointing at an unmarked card."],
+      ["a bottle with a blank green label.", "a bottle with an unmarked green surface."],
+      ["a bottle with a blank brown label.", "a bottle with an unmarked brown surface."],
+      ["pointing at a blank white back label.", "pointing at an unmarked white back surface."],
+      ["showing a blank back white paper label", "showing an unmarked back white paper surface"],
+      [
+        "showing a blank white label with no text",
+        "showing an unmarked white surface with no text",
+      ],
+      ["Pointing to a blank label on a bottle.", "Pointing to an unmarked surface on a bottle."],
+      [
+        "displaying a blank, unmarked white label area",
+        "displaying an unmarked white surface area",
+      ],
+      [
+        "Reaching for an unmarked yellow-labeled bottle",
+        "Reaching for an unmarked bottle with a yellow surface",
+      ],
+      [
+        "showing a blank unmarked white label area on a bottle.",
+        "showing an unmarked white surface area on a bottle.",
+      ],
+      [
+        "showing blank white back labels of the jar",
+        "showing unmarked white back surfaces of the jar",
+      ],
+    ]) {
+      const setup = writer(
+        [
+          (request) =>
+            success(request, {
+              change: (rows) => {
+                rows[0][field] = description;
+                return rows;
+              },
+            }),
+        ],
+        0.01,
+        "advisory",
+      );
+      const result = await setup.value.write(makeBatch(1));
+      assert.equal(result.scenes[0][field], expected);
+      assert.equal(setup.transport.requests.length, 1);
+      assert.equal(setup.evidence[0].validationDisposition, "accepted");
+      const compiled = compileImagePrompt({
+        expectedScene: makeBatch(1).scenes[0],
+        writerOutput: result.scenes[0],
+        style: {
+          positiveSuffix: "documentary photo",
+          negativeSuffix: "CGI",
+          fullImageGuidance: "16:9 center-safe",
+          splitImageGuidance: "8:9 center-safe right panel",
+        },
+        extraPromptKeywords: "",
+        applyExtraPromptKeywords: false,
+      });
+      assert.doesNotMatch(compiled.components.literalContent, /\blabels?\b/iu);
+    }
+    for (const description of [
+      "Honey on a blank shelf tag.",
+      "Honey on the blank, unmarked paper shelf tag.",
+      "5 on a blank shelf tag.",
+      "Honey onto a blank price tag.",
+      "A portrait across the blank shelf tag.",
+      "A finger pointing to a shelf tag.",
+      "A finger pointing to a blank printed shelf tag.",
+      "reading Honey from a blank shelf tag",
+      "A blank shelf tag with a price of $5",
+      "A blank shelf tag with printed text",
+      "A blank shelf tag and a logo",
+      "A portrait illustration on a blank shelf tag.",
+      "A bottle of sauce with a stylized, unmarked portrait illustration on its label.",
+      "holding a bottle with a printed label",
+      "holding a bottle with a blank printed label",
+      "holding a bottle with a blank, unmarked printed label area",
+      "holding an unmarked bottle with a gold-trimmed label",
+      "holding a yellow-labeled bottle",
+      "holding an unmarked yellow-labeled Honey bottle",
+      "holding an unmarked yellow-labeled bottle with printed writing",
+      "holding a printed unmarked red-labeled bottle",
+      "reading Honey from an unmarked red-labeled bottle",
+      "holding a numbered unmarked red-labeled bottle",
+      "holding an inscribed unmarked red-labeled bottle",
+      "holding a printed bottle with a blank label",
+      "holding a bottle with a blank Honey label",
+      "holding a bottle with a blank label reading Honey",
+      "holding a bottle with a blank unmarked white label area reading Honey",
+      "holding a bottle with a blank label and a logo",
+      "holding a bottle with a blank label; showing its ingredient list",
+      "holding a bottle with a blank label, barcode",
+      "pointing to a blank label on a bottle reading Honey",
+      "pointing to a blank label on a bottle and a logo",
+    ]) {
+      const setup = writer(
+        [
+          (request) =>
+            success(request, {
+              change: (rows) => {
+                rows[0][field] = description;
+                return rows;
+              },
+            }),
+        ],
+        0.01,
+        "advisory",
+      );
+      await expectInvalid(() => setup.value.write(makeBatch(1)));
+      assert.equal(setup.transport.requests.length, 1);
+    }
   }
 });
 

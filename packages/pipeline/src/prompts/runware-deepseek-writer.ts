@@ -953,10 +953,11 @@ const singleSceneValidation = (
   if (!row || !hasSceneOutputShape(candidate)) return null;
   if (semanticQualityMode === "advisory") {
     // Blank physical surfaces carry no writing. Canonicalize an explicitly blank trailing label
-    // or its ordinary container attachment; printing, branding or following content still fail.
+    // or shelf/price tag into a physical surface/card; printing, graphics or following content fail.
     const unmarked = (value: JsonValue): JsonValue =>
       typeof value === "string" &&
-      !/\b(?:print(?:s|ed|ing)?|writ(?:e|es|ten|ing)|read(?:s|ing)?|word(?:s|ed|ing)?|letter(?:s|ed|ing)?|number(?:s|ed|ing)?|logos?|brand(?:s|ed|ing)?|barcod(?:e|es|ed|ing)|text(?:s|ual)?|inscri(?:be|bes|bed|bing|ption|ptions)|engrav(?:e|es|ed|ing)|etch(?:es|ed|ing)?|spell(?:s|ed|ing)?|marked|drawn|drawing)\b/iu.test(
+      !/\b(?:on|onto|across)\s+(?:(?:a|an|the|its)\s+)?blank\b/iu.test(value) &&
+      !/\b(?:print(?:s|ed|ing)?|writ(?:e|es|ten|ing)|read(?:s|ing)?|word(?:s|ed|ing)?|letter(?:s|ed|ing)?|number(?:s|ed|ing)?|logos?|brand(?:s|ed|ing)?|barcod(?:e|es|ed|ing)|text(?:s|ual)?|inscri(?:be|bes|bed|bing|ption|ptions)|engrav(?:e|es|ed|ing)|etch(?:es|ed|ing)?|spell(?:s|ed|ing)?|marked|drawn|drawing|illustrat(?:e|es|ed|ing|ion|ions)|portraits?)\b/iu.test(
         value.replace(/\bwith\s+no\s+(?:text|writing)\s*[.!?]?\s*$/iu, ""),
       )
         ? value
@@ -965,14 +966,15 @@ const singleSceneValidation = (
               "unmarked $2 with a $1 surface",
             )
             .replace(
-              /\b(a\s+)?blank(?:\s*,)?\s+(?:unmarked\s+)?((?:(?:back|front|white|black|green|brown|red|blue|yellow|orange|purple|pink|grey|gray|beige|cream|tan|gold|silver|plain|paper)\s+){0,3})label(s)?(?=\s*(?:\s+area)?(?:\s+(?:on|of)\s+(?:a|an|the)\s+(?:bottle|jar|container|package|carton|can|box))?\s*(?:with\s+no\s+(?:text|writing)\s*)?[.!?]?\s*$)/giu,
+              /\b(a\s+)?blank(?:\s*,)?\s+(?:unmarked\s+)?((?:(?:back|front|white|black|green|brown|red|blue|yellow|orange|purple|pink|grey|gray|beige|cream|tan|gold|silver|plain|paper)\s+){0,3})(label|(?:shelf|price)[- ]tag)(s)?(?=\s*(?:\s+area)?(?:\s+(?:on|of)\s+(?:a|an|the)\s+(?:bottle|jar|container|package|carton|can|box))?\s*(?:with\s+no\s+(?:text|writing)\s*)?[.!?]?\s*$)/giu,
               (
                 _match,
                 article: string | undefined,
                 modifier: string | undefined,
+                noun: string,
                 plural: string | undefined,
               ) =>
-                `${article ? "an " : ""}unmarked${modifier?.trim() ? ` ${modifier.trim()}` : ""} surface${plural ? "s" : ""}`,
+                `${article ? "an " : ""}unmarked${modifier?.trim() ? ` ${modifier.trim()}` : ""} ${/^label$/iu.test(noun) ? "surface" : /^shelf/iu.test(noun) ? "shelf card" : "card"}${plural ? "s" : ""}`,
             )
         : value;
     row = {
