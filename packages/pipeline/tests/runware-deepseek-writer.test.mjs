@@ -823,6 +823,11 @@ test("advisory canonicalizes text-free blank bottle labels without accepting pri
     ["pointing at a blank white back label.", "pointing at an unmarked white back surface."],
     ["showing a blank back white paper label", "showing an unmarked back white paper surface"],
     ["showing a blank white label with no text", "showing an unmarked white surface with no text"],
+    ["Pointing to a blank label on a bottle.", "Pointing to an unmarked surface on a bottle."],
+    [
+      "showing blank white back labels of the jar",
+      "showing unmarked white back surfaces of the jar",
+    ],
   ]) {
     const setup = writer(
       [
@@ -863,6 +868,8 @@ test("advisory canonicalizes text-free blank bottle labels without accepting pri
     "holding a bottle with a blank label and a logo",
     "holding a bottle with a blank label; showing its ingredient list",
     "holding a bottle with a blank label, barcode",
+    "pointing to a blank label on a bottle reading Honey",
+    "pointing to a blank label on a bottle and a logo",
   ]) {
     const setup = writer(
       [

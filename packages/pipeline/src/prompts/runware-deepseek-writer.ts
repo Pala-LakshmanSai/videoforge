@@ -943,12 +943,12 @@ const singleSceneValidation = (
   let row = asRecord(candidate);
   if (!row || !hasSceneOutputShape(candidate)) return null;
   if (semanticQualityMode === "advisory") {
-    // Blank physical surfaces carry no writing. Canonicalize only a trailing, explicitly blank
-    // label; descriptions of printing, branding or any following content still fail the hard gate.
+    // Blank physical surfaces carry no writing. Canonicalize an explicitly blank trailing label
+    // or its ordinary container attachment; printing, branding or following content still fail.
     const unmarked = (value: JsonValue): JsonValue =>
       typeof value === "string"
         ? value.replace(
-            /\b(a\s+)?blank\s+((?:(?:back|front|white|black|green|brown|red|blue|yellow|orange|purple|pink|grey|gray|beige|cream|tan|gold|silver|plain|paper)\s+){0,3})label(s)?(?=\s*(?:with\s+no\s+(?:text|writing)\s*)?[.!?]?\s*$)/giu,
+            /\b(a\s+)?blank\s+((?:(?:back|front|white|black|green|brown|red|blue|yellow|orange|purple|pink|grey|gray|beige|cream|tan|gold|silver|plain|paper)\s+){0,3})label(s)?(?=\s*(?:\s+(?:on|of)\s+(?:a|an|the)\s+(?:bottle|jar|container|package|carton|can|box))?\s*(?:with\s+no\s+(?:text|writing)\s*)?[.!?]?\s*$)/giu,
             (
               _match,
               article: string | undefined,

@@ -137,8 +137,9 @@ be classified reliably by a bounded word matcher. Hosted acceptance also repairs
 formatting defects before strict persistence: it bounds harmless oversized or control-containing
 text and normalizes and deduplicates continuity tags. Required subject, action and environment
 facts remain mandatory; empty, forbidden or placeholder facts fail rather than becoming filler.
-A trailing explicitly blank label in those fields is canonicalized to an unmarked physical surface
-in hosted advisory acceptance. Printing, branding, barcodes and following content still fail;
+A trailing explicitly blank label in those fields, optionally attached on/of an ordinary container,
+is canonicalized to an unmarked physical surface in hosted advisory acceptance. Printing, branding,
+barcodes and arbitrary following content still fail;
 the independent compiler guard and immutable raw provider/request bytes remain unchanged. Forbidden continuity
 tags are dropped; text-bearing price tags and receipts are explicitly excluded. The compiler still
 derives final literal image content from the repaired structured
@@ -390,4 +391,4 @@ Empty, forbidden or generic-placeholder subject/action/environment fields must f
 
 Fresh physical-placement writer policy v27 requires visible torso/connected arms and a useful person/object/camera relationship for whole-person handling actions. Genuine HANDS_ACTION closeups and narrated collaborators remain valid. Legacy v24/v25 request construction stays exact; saved plans select their sealed policy before recovery. v26 is retained only as an experimental compatibility identity. The 80-image investigation still contains a v27 three-hand jar failure; these input rules do not replace output review or guarantee anatomy. See IMAGE_QUALITY_PLAN.md.
 
-Fresh hosted writer requests use immutable v29 (`no-graphics-v2`): narration about writing, label reading, prices, lists and calculations must use the supported physical subject or consequence without depicted writing or marked paper. Existing v24–v28 requests retain exact bytes. Bounded corrective replacements add only the exact versioned no-text instruction with a distinct request identity; native0280 preserves all other request fields, cost/count/tenant fences. A trailing explicitly blank label, including bounded ordinary color/orientation/paper qualifiers preserved in their original order, can become an unmarked physical surface in hosted advisory validation; actual writing, printed markings and arbitrary required-fact substitutions still fail. Provider output remains probabilistic and must pass the independent compiler.
+Fresh hosted writer requests use immutable v29 (`no-graphics-v2`): narration about writing, label reading, prices, lists and calculations must use the supported physical subject or consequence without depicted writing or marked paper. Existing v24–v28 requests retain exact bytes. Bounded corrective replacements add only the exact versioned no-text instruction with a distinct request identity; native0280 preserves all other request fields, cost/count/tenant fences. A trailing explicitly blank label, including bounded ordinary color/orientation/paper qualifiers and an optional on/of ordinary-container attachment, can become an unmarked physical surface in hosted advisory validation. Preserve the physical qualifiers and attachment; actual writing, printed markings, arbitrary following content and required-fact substitutions still fail. Provider output remains probabilistic and must pass the independent compiler.
