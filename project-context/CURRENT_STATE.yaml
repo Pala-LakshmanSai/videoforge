@@ -2,16 +2,21 @@ prompt_interruption_2026_10_06:
   checkpoint: V2-09
   selected_task: VF-10-09
   read_profile: v2_09_prompt_interruption
-  status: V29_LOCAL_VERIFIED_CURRENT_PROJECT_OPERATOR_EXCEPTION_PENDING
+  status: PRODUCTION_PREVENTION_VERIFIED_ORIGINAL_PROJECT_CONTINUING
   branch: codex/prompt-interruption-fix
   base: f107e2c316761e0bd630ea19660c3ce39b0d715f
   cause: Required_fact_blank_label_false_positive_and_masked_error;later_actual_writing_on_paper_remains_invalid.
-  fix: Blank_surface_acceptance_and_durable_errors_published;immutable_v29_no_text_actions_and_native0280_exact_suffixes_prepared.
+  fix: Published_blank_surface_acceptance_durable_errors_immutable_v29_no_text_actions_and_native0280_exact_suffixes.
+  executable_source: bebd84708cfd43e089d858aeb068b302aa449e8c
+  production_worker: 25997e15-f677-4c26-b80a-781120956c0c
+  native_migration: 280
+  traffic_percent: 100
+  current_project_recovery: Explicit_USD0.25_exact_extra_correction_APPROVED_and_accepted8_at_USD0.046463;50prefix_byte_identical;58of158_RUNNING;native_global_operator_counter1_unchanged.
   validations: Pipeline288_web325_native22_affected_types_lint_two_builds_firewall_PASS;native0280_and_exact_exception_rollback_PASS;50saved_rows_preserved.
   user_authority: Diagnose_fix_publish_and_continue_original_ACTIVE_generation_preserving_request_identity_and_original_spend_ceiling.
   provider_spend: Recovery_reuses_settled_replacement;no_new_inference_for_restoration;ordinary_original_generation_remains_under_its_existing_authority.
   paid_compute_shutdown: No_new_compute_started_for_diagnosis;original_ASR_rental_was_released;live_final_cleanup_pending.
-  remaining_gates: V29_publication_pending;explicit_extra_USD0.25_operator_exception_approval;fullfilm_cleanup_and_inherited126format_missing_uv0.8.13.
+  remaining_gates: Latest_singleton_adoption_when_idle;full_prompt_set_fullfilm_cleanup_and_inherited126format_missing_uv0.8.13.
   evidence: evidence/acceptance/VF-10-09/2026-10-06-prompt-interruption.md
 
 voice_age_star_2026_10_06:
@@ -7539,11 +7544,11 @@ repository:
   published: true
   branch: codex/prompt-interruption-fix
   branch_upstream: origin/codex/prompt-interruption-fix
-  branch_published: false
-  current_source_head: "7907823162501931cb5ca989fa070d7b66c0b2d8"
+  branch_published: true
+  current_source_head: "bebd84708cfd43e089d858aeb068b302aa449e8c"
   current_source_head_semantics: executable_release_identity_recorded_after_publication_evidence_commits_follow
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Resolve Git HEAD; executable79078231 / Workereb899b68 at100%, native279 unchanged; age facet/card labels and one-star collection control verified; Create draft survives dock routes within admission. Includes prior WebP/ASR/prompt fixes. Cloud pins and Desktop0.1.52 unchanged; evidence commits follow; dirty primary checkout preserved."
+  current_source_head_note: "Resolve Git HEAD; executablebebd8470 / Worker25997e15 at100%, native280; global blank-surface/error and immutablev29 no-text action correction verified; original generation continues with saved prefix preserved. Qualified pins, Desktop0.1.52 and prior UI/WebP/ASR fixes retained; singleton latest-adoption/fullfilm pending; dirty primary checkout preserved."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
