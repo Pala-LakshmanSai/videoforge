@@ -3,7 +3,11 @@ account_menu_preload_2026_10_06:
   selected_task: VF-10-09
   read_profile: v2_09_account_switching
   branch: codex/account-switching
-  status: LOCAL_VALIDATED_PUBLICATION_PENDING
+  status: PRODUCTION_PUBLISHED_PRELOADED_MENU_AND_CROSS_BROWSER_ISOLATION_VERIFIED
+  executable: aa47e419656f1c5d6a74acde625f2abcdfa6b471
+  worker_version: 41f06ba8-7b36-40e1-a067-1ee1491d2e08
+  traffic_percent: 100
+  production_native_schema: 282
   validations: Focused338_config19_types_lint_two_builds_quarantines_context_secrets_PASS;installed_Chrome_visible_preloaded_accounts_zero_menu_auth_requests_one_switch_POST_zero_document_requests_removal_and_signout_PASS;separate_same_user_same_IP_browser_cannot_inherit_other_sessions.
   predecessor_source: d9f80122267f6969993dbe0b3c239b51fd9fa5fa
   user_authority: Show_all_saved_accounts_preloaded_no_menu_wait_make_navigation_snappy_and_push_production;explain_browser_not_owner_or_IP_scope.
@@ -13,7 +17,7 @@ account_menu_preload_2026_10_06:
   release_authority: Explicit_user_web_release_only;preserve_exact_existing_bindings_secrets_resources_Workflow_definitions_and_runtime_pins;zero_paid_provider_actions.
   provider_spend: USD0_new_inference_compute_or_resources;existing_jobs_and_lifecycle_preserved.
   paid_compute_shutdown: No_compute_started_stopped_or_reaudited;no_fresh_inventory_claim.
-  remaining_gates: Local_and_production_Chrome_exact_asset_configuration_acceptance_pending;inherited_fullCI_provider_editorial_invoice_separate.
+  remaining_gates: No_account_menu_or_profile_isolation_gate;inherited_fullCI_provider_editorial_invoice_separate.
   evidence: evidence/acceptance/VF-10-09/2026-10-06-account-switching.md
 
 account_switching_2026_10_06:
@@ -7666,10 +7670,10 @@ repository:
   branch: codex/account-switching
   branch_upstream: origin/codex/account-switching
   branch_published: true
-  current_source_head: "d9f80122267f6969993dbe0b3c239b51fd9fa5fa"
+  current_source_head: "aa47e419656f1c5d6a74acde625f2abcdfa6b471"
   current_source_head_semantics: executable_release_identity_recorded_after_publication_evidence_commits_follow
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Executable d9f80122 / Workerbd07a14b at100%, native282 unchanged. Browser account switching reuses native Better Auth signed HttpOnly sessions with adoption, expiry/revocation, origin guards and private cache/draft isolation. Real Google add, two-way switching, separate saved voices/projects and cross-tab identity pass. Latest prompt, WebP assembly recovery and qualified Cloud/Desktop0.1.52 pins preserved; resolve Git HEAD for later evidence commits."
+  current_source_head_note: "Executable aa47e419 / Worker41f06ba8 at100%, native282 unchanged. All browser-profile accounts preload before admission UI; zero menu auth requests, one set-active POST and zero document requests. Common navigation caches warm after admission; cookie expiry checks batch native token lookups. Real Chrome/Brave switch and inactive removal prove independent sessions, not owner/IP linkage. Original Chrome owner restored, Brave owner-only; latest prompt/assembly and qualified Cloud/Desktop0.1.52 pins preserved."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
@@ -10019,10 +10023,10 @@ recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
   milestone: Preloaded_account_menu
-  status: IN_PROGRESS
-  dependency_status: Productiond9f80122_native282_account_switching_verified_latest_assembly_and_prompt_fixes_preserved
+  status: COMPLETE
+  dependency_status: Productionaa47e419_native282_preloaded_menu_and_independent_browser_sessions_verified_prior_fixes_preserved
   authorization_status: Explicit_user_add_switching_validate_and_push_production_no_new_paid_generation
-  task_stage: provider_free_validation
+  task_stage: production_acceptance_complete
   provider_authority: *v2_09_provider_authority_current
   read_profile: v2_09_account_switching
   task_brief: evidence/acceptance/VF-10-09/2026-10-06-account-switching.md
