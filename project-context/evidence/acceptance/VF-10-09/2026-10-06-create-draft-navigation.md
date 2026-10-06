@@ -33,7 +33,22 @@ Image Styles, Library and Settings at the stable localhost URL. Settings prepare
 connect commands; no project/provider/media action is submitted. Production Progress will be
 included in signed-in final acceptance because the local fixture has no Progress dock entry.
 
-Production publication, exact public assets and live acceptance are pending.
+Production is verified at executable `e294ed16f3f1fa970d945641e0e8dd5f7a5cdb97` /
+Worker `bdbd7395-f420-4f2c-b3a6-a92b68f43f72`, 100% traffic. All 36 public asset sizes/hashes
+match; anonymous private catalog remains 401. All 55 bindings, 27 secrets, six resources,
+three Workflow identities, crons, domain, Desktop 0.1.52 and qualified Cloud pins are preserved.
+OAuth expired during read-only publication preflight; the existing Wrangler authentication
+refresh succeeded before publication. No upload/deploy action was retried.
+
+Signed-in native Chrome verifies all eight dock destinations, including the running project's
+Progress and owner-only Centralized Library. Title, selected synthetic local WAV, Cloud, Avatar
+Off, custom 1.5-minute opening and 25% coverage remain exact after every return. Optional image
+keywords and seed remain; script text and selected voice survive Manage voices and return.
+No console errors and no Create click. Source-mode switching retains its existing explicit audio
+reset behavior; the requested dock retention is independently proven. Private screenshot and
+interaction evidence: `.videoforge/create-draft-20261006/production-draft-retained.png` and
+`browser-proof.json`. Context and tracked secret scan pass. The branch is pushed; production
+server/schema/worker images are unchanged.
 
 ## Provider and shutdown state
 
