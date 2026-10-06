@@ -6,7 +6,7 @@ The new ordinary project uses exact immutablev29 sealed request bytes and produc
 The first original batch contains a positive gold-trimmed label and correctly fails the hard
 compiler. The second uses `displaying a blank, unmarked white label area` and falsely fails the
 bounded blank-surface canonicalizer. Both ordinary automatic replacements pass unchanged writer
-and compiler; ten plus seven saved scenes remain accepted. No request was sent for this diagnosis.
+and compiler; ten plus seven saved scenes remain accepted. No inference request was sent for this diagnosis.
 
 The persistent underlying UNKNOWN has an exact provider cause: ordinal2's immutablev29 synchronous
 request timed out after121447ms against a120000ms default. Runware confirms the exact UUID/model
@@ -84,3 +84,26 @@ FAILED, polls to RUNNING then COMPLETE, and still shows terminal OUTPUT_INVALID 
 Browser test makes zero prompt POSTs. Full focused web checks and publication are recorded below
 after completion; broader full-film/provider/editorial/invoice and inherited formatting/tooling gates
 remain separate. No new project/provider call, retry-counter reset, compute or resource was started.
+
+Production publication: executable `2c1cb9a429831c1e5706183d4288b3af64fe2a48` / Worker
+`afe5cfd0-3bbb-4293-b251-a06069e2f60c` at 100%, native281. All 36 public assets checksum-match;
+anonymous catalog401, all 55 bindings/27 secrets/resources/three Workflow identities and qualified
+Desktop0.1.52/Cloud pins preserved. Immediate post-publication asset read briefly returned the SPA
+fallback during edge propagation; fresh no-cache read and complete hash recheck pass, no republication.
+Brave reload verifies voiceover/transcription complete, seventeen saved prompts and the accurate
+terminal stop with no enabled retry or paid replay. Installed Chrome fixture verifies1440/390 recovery
+through writing/completion and genuine failure; this is not a fresh provider full-film canary.
+
+Three matching Workflow registrations preserve route/domain/cron identity. Exact maintenance guards
+prove globalDUE0 across nine admitted accounts, no current CPU/API/waiters/providerdispatch, one unchanged
+terminal-held admission lease,24inert archived PREPARED APIjobs andeleven archived unresolved historical
+prompt preimages. Current seventeen accepted rows, requests/replacements/counters/costs and historical
+liabilities remain byte-exact. Only the terminal singleton coordinator restarts onto registration
+`2d11f03e-2c8a-4916-845e-9152bb1191b8`; original params remain unchanged.
+Readback confirms RUNNING, error=null and a successful post-restart continuation tick with the exact
+new registration; the guard rechecks all current and quarantined native preimages after the tick.
+No provider Workflow restart,
+new project, inference request, GPU/CPU rental or resource is created by this repair. One historical
+STOPPING/UNKNOWN Cloud liability remains unchanged; this is not global billing or shutdown proof.
+Fresh full-film/external async delivery/editorial/invoice and inherited broader formatting/tooling CI
+gates remain separate. The saved replacement passes locally but the stopped project is not revived.
