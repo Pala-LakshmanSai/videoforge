@@ -83,10 +83,9 @@ export function AccountSwitcher({
         <Plus size={16} aria-hidden="true" />
         Add another account
       </button>
-      <p className="account-switch-help">
-        {accounts.length >= 5 ? "Remove an account to add another. " : ""}Accounts saved in this
-        browser profile. Switching clears unsaved project inputs.
-      </p>
+      {accounts.length >= 5 ? (
+        <p className="account-switch-help">Remove an account to add another.</p>
+      ) : null}
       {error || browserAccounts.error ? (
         <div role="alert" className="account-switch-error">
           {error ?? browserAccounts.error}

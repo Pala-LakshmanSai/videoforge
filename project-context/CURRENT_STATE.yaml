@@ -1,3 +1,14 @@
+account_menu_copy_2026_10_06:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  status: LOCAL_VALIDATED_PUBLICATION_PENDING
+  user_authority: Remove_screenshot_account_menu_helper_text;prior_production_publication_authority_persists.
+  predecessor_source: aa47e419656f1c5d6a74acde625f2abcdfa6b471
+  validations: AccountSwitcher_HostedStagingApp22of22_lint_production_build_quarantine_PASS
+  provider_spend: USD0_new_generation_compute_resources
+  paid_compute_shutdown: No_compute_started_stopped_or_reinventoried
+  evidence: evidence/acceptance/VF-10-09/2026-10-06-account-switching.md
+
 account_menu_preload_2026_10_06:
   checkpoint: V2-09
   selected_task: VF-10-09
