@@ -1,10 +1,13 @@
+// @vitest-environment node
 import { canonicalizeJson, sha256CanonicalJson } from "@videoforge/contracts";
 import { describe, expect, it, vi } from "vitest";
+import { PGlite } from "@electric-sql/pglite";
 
 import {
   handleHostedV209ProjectDispatch,
   materializeHostedV209OrdinaryDispatchCandidate,
   resumeHostedV209ProjectDispatch,
+  defaults,
 } from "./hosted-v209-project-dispatch";
 import { assertV209OrdinaryCandidate } from "../runtime/v209-ordinary-live-cost";
 import { buildKieScenePrompt } from "../providers/kie-image-job";
@@ -241,6 +244,49 @@ function dependencies(
 }
 
 describe("API prompt binding before scheduling", () => {
+  it("recovers the existing tenant API generation after its admission lease ends", async () => {
+    const db = new PGlite();
+    try {
+      await db.exec(`CREATE TABLE generation_requests (id uuid,account_id uuid,workspace_id uuid,
+        project_id uuid,project_revision_id uuid,state text,created_at timestamptz DEFAULT now());
+        CREATE TABLE projects (id uuid,account_id uuid,workspace_id uuid,generation_provider text,status text);
+        CREATE TABLE hosted_api_generation_jobs (generation_request_id uuid,account_id uuid,
+          workspace_id uuid,project_id uuid,project_revision_id uuid);
+        CREATE FUNCTION videoforge_load_hosted_pair_workflow_schedule(uuid,uuid,uuid)
+          RETURNS TABLE(existing_pair boolean) LANGUAGE sql AS 'SELECT false';`);
+      const args = [id("a"), scope.account_id, scope.workspace_id, projectId, id("b")];
+      await db.query("INSERT INTO generation_requests VALUES($1,$2,$3,$4,$5,'ACTIVE',now())", args);
+      await db.query("INSERT INTO projects VALUES($1,$2,$3,'KIE_FAL','ACTIVE')", [
+        projectId,
+        scope.account_id,
+        scope.workspace_id,
+      ]);
+      await db.query("INSERT INTO hosted_api_generation_jobs VALUES($1,$2,$3,$4,$5)", args);
+      const database = { transaction: async (work: (tx: unknown) => unknown) => work(db) } as never;
+      const identity = {
+        accountId: scope.account_id,
+        workspaceId: scope.workspace_id,
+        userId: scope.user_id,
+        projectId,
+      };
+      expect(await defaults.findExistingGeneration!(database, identity)).toBe(id("a"));
+      expect(
+        await defaults.findExistingGeneration!(database, { ...identity, accountId: id("f") }),
+      ).toBeNull();
+      await db.exec(
+        "UPDATE hosted_api_generation_jobs SET project_revision_id='ffffffff-ffff-4fff-8fff-ffffffffffff'",
+      );
+      expect(await defaults.findExistingGeneration!(database, identity)).toBeNull();
+      await db.query("UPDATE hosted_api_generation_jobs SET project_revision_id=$1", [id("b")]);
+      await db.exec("UPDATE projects SET status='ARCHIVED'");
+      expect(await defaults.findExistingGeneration!(database, identity)).toBeNull();
+      await db.exec("UPDATE projects SET status='ACTIVE'");
+      await db.exec("UPDATE generation_requests SET state='CANCELLED'");
+      expect(await defaults.findExistingGeneration!(database, identity)).toBeNull();
+    } finally {
+      await db.close();
+    }
+  });
   async function fixture(failure?: "compile" | "bind") {
     const prepared = await candidate();
     const deps = dependencies(prepared);

@@ -1,3 +1,18 @@
+assembly_webp_recovery_2026_10_06:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  read_profile: v2_09_assembly_webp_recovery
+  status: LOCAL_VALIDATION_AND_PRODUCTION_RECOVERY_PENDING
+  branch: codex/assembly-webp-recovery
+  base: 02ffd974bf8b9b291f6135c4fb16e2961b12a611
+  cause: Verified_WebP_avatar_rejected_by_final_source_snapshot_and_extension;API_resume_reentered_expired_generation_admission_lease.
+  fix: Three_supported_avatar_formats_and_exact_existing_ACTIVE_API_identity_recovery;source_hash_tenant_revision_cancel_no_replay_fences_retained.
+  user_authority: Fix_durable_prevention_recover_current_video_and_publish_production;no_new_paid_test_generation.
+  provider_spend: No_new_paid_provider_replay_or_qualification;existing_ordinary_Cloud_video_remains_under_original_lifecycle.
+  paid_compute_shutdown: Original13rentals_CLEAN_at_diagnosis;no_new_compute_started_by_diagnosis_or_local_checks.
+  remaining_gates: Production_publication_recovery_final_artifact_and_cleanup_pending;inherited_fullCI_editorial_concurrency_invoice_external_availability_separate.
+  evidence: evidence/acceptance/VF-10-09/2026-10-06-assembly-webp-recovery.md
+
 prompt_flow_audit_2026_10_06:
   checkpoint: V2-09
   selected_task: VF-10-09
@@ -3043,11 +3058,11 @@ updated_at: "2026-10-05T20:20:00Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: Prompt_flow_reliability_audit
+current_milestone: Final_assembly_WebP_and_recovery
 current_task: VF-10-09
-current_wave: v2_09_prompt_flow_audit
+current_wave: v2_09_assembly_webp_recovery
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: provider_qualification_and_quality_review
+task_stage: production_bug_repair_and_existing_job_recovery
 application_code_changes_authorized: true
 provider_calls_authorized: true
 read_only_provider_calls_authorized: false
@@ -7604,8 +7619,8 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/prompt-interruption-fix
-  branch_upstream: origin/codex/prompt-interruption-fix
+  branch: codex/assembly-webp-recovery
+  branch_upstream: origin/codex/assembly-webp-recovery
   branch_published: true
   current_source_head: "23066dbdd8c89d04b8213bb57182964db2eb55a0"
   current_source_head_semantics: executable_release_identity_recorded_after_publication_evidence_commits_follow
@@ -9967,14 +9982,14 @@ provider_authority: &v2_09_provider_authority_current
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: Prompt_flow_reliability_audit
+  milestone: Final_assembly_WebP_and_recovery
   status: IMPLEMENTATION_AND_LIVE_QUALIFICATION
-  dependency_status: Production7e2bd59e_native281_verified;v31_pipeline295_PASS_native282_rollback_PASS;live152scene_gate_in_progress
-  authorization_status: Explicit_user_full_audit_fix_deploy_and_additional_USD2_cumulative_provider_qualification
+  dependency_status: Production187f07b8_native282_verified
+  authorization_status: Explicit_user_fix_prevention_recovery_and_production_publication_no_new_paid_test
   task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current
-  read_profile: v2_09_prompt_flow_audit
-  task_brief: evidence/acceptance/VF-10-09/2026-10-06-prompt-flow-audit.md
+  read_profile: v2_09_assembly_webp_recovery
+  task_brief: evidence/acceptance/VF-10-09/2026-10-06-assembly-webp-recovery.md
   goal: Durable_scene_targeted_correction_preserving_valid_scenes;complete152scene_stage_proof
   provider_mode: production
   provider_calls_authorized: true

@@ -116,7 +116,7 @@ export async function ensureHostedV209ExactManifestObject(
   }
 }
 
-async function materializeFalWideSourceSnapshot(input: {
+export async function materializeFalWideSourceSnapshot(input: {
   database: TransactionalSqlExecutor;
   bucket: HostedR2BucketBinding;
   accountId: string;
@@ -145,7 +145,7 @@ async function materializeFalWideSourceSnapshot(input: {
           AND asset.id=$5::uuid AND asset.binary_sha256=$6
           AND asset.state IN ('VERIFIED','ACCEPTED')
           AND asset.kind IN ('AVATAR_ORIGINAL','AVATAR_RUNTIME')
-          AND asset.content_type IN ('image/png','image/jpeg')`,
+          AND asset.content_type IN ('image/png','image/jpeg','image/webp')`,
       [
         input.accountId,
         input.workspaceId,
@@ -167,7 +167,7 @@ async function materializeFalWideSourceSnapshot(input: {
     source.sha256 !== input.sourceSha256 ||
     !Number.isSafeInteger(length) ||
     length < 1 ||
-    !["image/png", "image/jpeg"].includes(contentType)
+    !["image/png", "image/jpeg", "image/webp"].includes(contentType)
   )
     throw new Error("HOSTED_V209_RENDER_SOURCE_DRIFT");
   const original = await input.bucket.get(originalKey);

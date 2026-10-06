@@ -326,10 +326,17 @@ export const defaults: HostedV209ProjectDispatchDependencies = Object.freeze({
       ]);
       const result = await transaction.query<{ generation_request_id: string }>(
         `SELECT g.id AS generation_request_id FROM generation_requests g
-        CROSS JOIN LATERAL public.videoforge_load_hosted_pair_workflow_schedule(
-          g.account_id,g.workspace_id,g.id) p
         WHERE g.account_id=$1 AND g.workspace_id=$2 AND g.project_id=$3
-          AND g.state='ACTIVE' AND p.existing_pair
+          AND g.state='ACTIVE' AND (
+            EXISTS (SELECT 1 FROM public.hosted_api_generation_jobs job
+              JOIN public.projects project ON project.account_id=job.account_id
+                AND project.workspace_id=job.workspace_id AND project.id=job.project_id
+              WHERE project.status='ACTIVE' AND project.generation_provider='KIE_FAL'
+                AND job.account_id=g.account_id AND job.workspace_id=g.workspace_id
+                AND job.project_id=g.project_id AND job.project_revision_id=g.project_revision_id
+                AND job.generation_request_id=g.id)
+            OR EXISTS (SELECT 1 FROM public.videoforge_load_hosted_pair_workflow_schedule(
+              g.account_id,g.workspace_id,g.id) p WHERE p.existing_pair))
         ORDER BY g.created_at DESC LIMIT 1`,
         [identity.accountId, identity.workspaceId, identity.projectId],
       );

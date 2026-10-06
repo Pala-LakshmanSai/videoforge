@@ -158,6 +158,7 @@ function extension(contentType: string): string {
     "audio/wav": "wav",
     "image/jpeg": "jpg",
     "image/png": "png",
+    "image/webp": "webp",
     "video/mp4": "mp4",
   };
   return value[contentType] ?? reject("HOSTED_RENDER_ARTIFACT_CONTENT_TYPE_UNSUPPORTED");

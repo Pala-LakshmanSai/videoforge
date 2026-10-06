@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { HostedR2BucketBinding } from "./configuration";
-import { ensureHostedV209ExactManifestObject, loadHostedCloudRecoveryVoiceoverOrigin } from "./hosted-v209-render-handoff";
+import { ensureHostedV209ExactManifestObject, loadHostedCloudRecoveryVoiceoverOrigin, materializeFalWideSourceSnapshot } from "./hosted-v209-render-handoff";
 import { readHostedV209TimingDocument } from "./hosted-v209-render-handoff";
 import { canonicalizeJson } from "@videoforge/contracts";
 import transcriptFixture from "../../../../../packages/contracts/generated/fixtures/transcript_timing.valid.json";
@@ -53,6 +53,84 @@ function bucket(initial?: ArrayBuffer): HostedR2BucketBinding & { put: ReturnTyp
 }
 
 describe("hosted V2-09 render manifest R2 handoff", () => {
+  it.each(["image/jpeg", "image/png", "image/webp"])(
+    "snapshots a verified %s avatar once with exact source lineage",
+    async (contentType) => {
+      const bytes = buffer("verified avatar bytes");
+      const hash = await digest(bytes);
+      const source = {
+        assetId: "66666666-6666-4666-8666-666666666666",
+        sha256: hash,
+        objectKey: "tenant/original/source",
+        contentType,
+        contentLength: bytes.byteLength,
+      };
+      const objects = new Map([[source.objectKey, bytes]]);
+      const put = vi.fn(async (key: string, value: ArrayBuffer) => {
+        objects.set(key, value);
+      });
+      const target = {
+        put,
+        head: async (key: string) =>
+          objects.has(key)
+            ? { size: objects.get(key)!.byteLength, httpMetadata: { contentType } }
+            : null,
+        get: async (key: string) =>
+          objects.has(key)
+            ? {
+                size: objects.get(key)!.byteLength,
+                httpMetadata: { contentType },
+                arrayBuffer: async () => objects.get(key)!.slice(0),
+              }
+            : null,
+      } as unknown as HostedR2BucketBinding;
+      const query = vi.fn(async (sql: string, args: readonly unknown[] = []) => {
+        if (sql.includes("FROM public.avatar_profile_versions")) {
+          expect(sql).toContain("'image/webp'");
+          return { rows: [{ source }] };
+        }
+        if (sql.includes("FROM public.artifact_reservations"))
+          return {
+            rows: [
+              {
+                source: {
+                  ...source,
+                  objectKey: args[5],
+                  receiptId: "77777777-7777-4777-8777-777777777777",
+                },
+              },
+            ],
+          };
+        return { rows: [] };
+      });
+      const database = {
+        transaction: async (work: (tx: unknown) => unknown) => work({ query }),
+      } as never;
+      const input = {
+        database,
+        bucket: target,
+        accountId: "11111111-1111-4111-8111-111111111111",
+        workspaceId: "22222222-2222-4222-8222-222222222222",
+        projectId: "33333333-3333-4333-8333-333333333333",
+        revisionId: "44444444-4444-4444-8444-444444444444",
+        avatarProfileVersionId: "55555555-5555-4555-8555-555555555555",
+        avatarProfileHash: hash,
+        sourceAssetId: source.assetId,
+        sourceSha256: hash,
+      };
+      expect(await materializeFalWideSourceSnapshot(input)).toMatchObject({
+        contentType,
+        sha256: hash,
+      });
+      await materializeFalWideSourceSnapshot(input);
+      expect(put).toHaveBeenCalledTimes(1);
+      objects.set(source.objectKey, buffer("drifted"));
+      await expect(materializeFalWideSourceSnapshot(input)).rejects.toThrow(
+        "HOSTED_V209_RENDER_SOURCE_DRIFT",
+      );
+      expect(put).toHaveBeenCalledTimes(1);
+    },
+  );
   it("loads the canonical transcript instead of validating its relational projection", async () => {
     const bytes = buffer(canonicalizeJson(transcriptFixture));
     const hash = await digest(bytes);
