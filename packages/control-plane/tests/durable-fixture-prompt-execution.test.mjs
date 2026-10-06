@@ -6,6 +6,7 @@ import test from "node:test";
 
 import { PGlite } from "@electric-sql/pglite";
 import { canonicalizeJson } from "@videoforge/contracts";
+import { NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH } from "@videoforge/pipeline";
 
 import {
   DurableFixturePromptWriter,
@@ -308,10 +309,7 @@ test("fixture execution persists exact canonical hashes and correlated zero-cost
     assert.match(result.accepted.compiledPrompts[0].positivePrompt, /natural imperfection/u);
     // 61d36493 split the guards: the positive prompt states the no-marking contract, and the negative
     // prompt lists the literal tokens the model must avoid.
-    assert.match(
-      result.accepted.compiledPrompts[0].positivePrompt,
-      /No text or pseudo-text/u,
-    );
+    assert.match(result.accepted.compiledPrompts[0].positivePrompt, /No text or pseudo-text/u);
     assert.match(result.accepted.compiledPrompts[0].negativePrompt, /pseudo-text/u);
     assert.equal(outboundCalls, 0);
     assert.deepEqual(
@@ -718,4 +716,40 @@ test("conflicting replay bytes fail closed without invoking writer", async () =>
   );
   assert.equal(first.replayed, false);
   assert.equal(calls, 0);
+});
+
+test("sealed fresh compiler policy propagates without altering default acceptance bytes", async () => {
+  const base = authority({
+    styleProfileHash: NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH,
+    scenes: scenes(2),
+    extraPromptKeywords: null,
+    applyExtraPromptKeywords: false,
+  });
+  const old = await new DurablePromptExecutionService(
+    new MemoryStore(base),
+    new DurableFixturePromptWriter(),
+    { record() {} },
+    new Clock(),
+  ).execute(scope, command());
+  const freshAuthority = authority({ ...base, compilerPolicy: "local-evidence-v1" });
+  assert.equal(freshAuthority.recordedInputHash, base.recordedInputHash);
+  const fresh = await new DurablePromptExecutionService(
+    new MemoryStore(freshAuthority),
+    new DurableFixturePromptWriter(),
+    { record() {} },
+    new Clock(),
+  ).execute(scope, command());
+  assert.equal(old.accepted.compiledPrompts[1].promptCompilerVersion, "prompt-compiler-v4");
+  assert.equal(fresh.accepted.compiledPrompts[1].promptCompilerVersion, "prompt-compiler-v5");
+  assert.doesNotMatch(
+    fresh.accepted.compiledPrompts[1].components.continuityAndShotRole,
+    /\b(?:head|face|chest)\b/,
+  );
+  const repeated = await new DurablePromptExecutionService(
+    new MemoryStore(base),
+    new DurableFixturePromptWriter(),
+    { record() {} },
+    new Clock(),
+  ).execute(scope, command());
+  assert.deepEqual(repeated.accepted, old.accepted);
 });

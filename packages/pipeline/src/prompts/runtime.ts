@@ -7,3 +7,5 @@ export * from "./types.js";
 export * from "./natural-documentary-prompt-policy.js";
 
 export { PipelineDomainError } from "../errors.js";
+
+export * from "./physical-surface.js";

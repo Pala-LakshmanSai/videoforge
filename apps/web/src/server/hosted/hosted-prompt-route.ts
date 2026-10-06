@@ -479,6 +479,9 @@ export async function writeProjectPrompts(
           request_hash: string;
           retry_of_request_hash: string | null;
           recorded_result: Parameters<typeof recoverClaimedHostedPromptBatch>[0]["recordedResult"];
+          source_recorded_result: Parameters<
+            typeof recoverClaimedHostedPromptBatch
+          >[0]["recordedResult"];
         }>(
           `SELECT claim.batch_ordinal,
                   coalesce(replacement.created_at,claim.created_at)::text AS claimed_at,
@@ -489,7 +492,9 @@ export async function writeProjectPrompts(
                     AS retry_of_request_hash,
                   public.videoforge_load_hosted_prompt_response(claim.run_id,
                     coalesce(replacement.provider_task_uuid,claim.provider_task_uuid),
-                    coalesce(replacement.request_hash,claim.request_hash)) AS recorded_result
+                    coalesce(replacement.request_hash,claim.request_hash)) AS recorded_result,
+                  public.videoforge_load_hosted_prompt_response(claim.run_id,
+                    claim.provider_task_uuid,claim.request_hash) AS source_recorded_result
              FROM public.hosted_prompt_batch_claims claim
              LEFT JOIN LATERAL (SELECT * FROM public.hosted_prompt_batch_replacements candidate
                WHERE candidate.claim_id=claim.id ORDER BY candidate.replacement_index DESC LIMIT 1) replacement ON true
@@ -665,6 +670,9 @@ export async function writeProjectPrompts(
                   | HostedRecoveredPromptBatch["requestHash"]
                   | null,
                 recordedResult: original.claim.recorded_result,
+                sourceRecordedResult: original.claim.source_recorded_result,
+                recordResult: (value) =>
+                  recordPromptResponse(pool, scope.account_id, saved.id, value),
               })
             : (existingState === "DISPATCHING" || existingState === "UNKNOWN") &&
                 saved.accepted_batch_count < saved.planned_batch_count
@@ -708,6 +716,13 @@ export async function writeProjectPrompts(
             // Keep every accepted batch and original claim; an uncertain task grants no authority.
             acceptedBatch = await dispatchOneHostedPromptBatch({
               contentRepair: "no-text-v2",
+              correction:
+                error instanceof HostedPromptArchivedOutputInvalidError &&
+                ["validated-scenes-v1", "grounded-scenes-v1"].includes(
+                  batchPlan.requestPolicy ?? "legacy",
+                )
+                  ? (error.correction ?? undefined)
+                  : undefined,
               apiKey: promptApiKey,
               plan: batchPlan,
               persistedBinding: binding,
@@ -784,16 +799,20 @@ export async function writeProjectPrompts(
           }
         }
         if (acceptedBatch)
-          await compileAndPersistHostedPromptBatch(authority, acceptedBatch, (batch) =>
-            recordHostedPromptBatch(
-              pool,
-              scope.account_id,
-              saved.id,
-              batch,
-              existingState === "UNKNOWN" && !replacementDispatched
-                ? original.claim?.provider_task_uuid
-                : undefined,
-            ),
+          await compileAndPersistHostedPromptBatch(
+            authority,
+            acceptedBatch,
+            (batch) =>
+              recordHostedPromptBatch(
+                pool,
+                scope.account_id,
+                saved.id,
+                batch,
+                existingState === "UNKNOWN" && !replacementDispatched
+                  ? original.claim?.provider_task_uuid
+                  : undefined,
+              ),
+            batchPlan.requestPolicy === "grounded-scenes-v1" ? "local-evidence-v1" : undefined,
           );
         if (acceptedBatch && saved.accepted_batch_count + 1 === saved.planned_batch_count)
           return await completeAcceptedRun();
@@ -948,8 +967,11 @@ export async function writeProjectPrompts(
       recordResult: (value) => recordPromptResponse(pool, scope.account_id, persistedRunId, value),
     });
     if (firstBatch)
-      await compileAndPersistHostedPromptBatch(authority, firstBatch, (batch) =>
-        recordHostedPromptBatch(pool, scope.account_id, persistedRunId, batch),
+      await compileAndPersistHostedPromptBatch(
+        authority,
+        firstBatch,
+        (batch) => recordHostedPromptBatch(pool, scope.account_id, persistedRunId, batch),
+        batchPlan.requestPolicy === "grounded-scenes-v1" ? "local-evidence-v1" : undefined,
       );
     return response(
       {

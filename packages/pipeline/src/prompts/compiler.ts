@@ -3,6 +3,7 @@ import {
   naturalDocumentaryRequiredPrompt,
   naturalDocumentaryCropGuidance,
   naturalDocumentaryShotRoleGuidance,
+  groundedShotRoleGuidance,
 } from "./natural-documentary-prompt-policy.js";
 import { createHash } from "node:crypto";
 
@@ -11,7 +12,10 @@ import type { Sha256Digest } from "@videoforge/contracts";
 import { PipelineDomainError } from "../errors.js";
 import { SCENE_PROMPT_WRITER_VERSION } from "./types.js";
 import type {
-  CompilePromptRequest, CompiledImagePrompt, PromptStyleComponents, PromptSceneInput,
+  CompilePromptRequest,
+  CompiledImagePrompt,
+  PromptStyleComponents,
+  PromptSceneInput,
 } from "./types.js";
 
 export const PERMANENT_POSITIVE_GUARDRAIL =
@@ -332,12 +336,32 @@ const compactBuiltInStyleNegative = (value: string): string => {
   // synonym list. Retain their photographic exclusions and any custom terms.
   if (!/^(?:avoid:\s*)?blurry,\s*soft focus,\s*low resolution,/iu.test(value)) return value;
   const covered = new Set([
-    "text", "pseudo-text", "gibberish lettering", "words", "letters", "numbers",
-    "typography", "labels", "signage", "packaging text", "printed markings",
-    "branded packaging", "brand names", "product names", "ingredient lists",
-    "watermark", "watermarks", "captions", "logos", "overlays", "motion graphics",
+    "text",
+    "pseudo-text",
+    "gibberish lettering",
+    "words",
+    "letters",
+    "numbers",
+    "typography",
+    "labels",
+    "signage",
+    "packaging text",
+    "printed markings",
+    "branded packaging",
+    "brand names",
+    "product names",
+    "ingredient lists",
+    "watermark",
+    "watermarks",
+    "captions",
+    "logos",
+    "overlays",
+    "motion graphics",
   ]);
-  const terms = value.split(/[,;]/u).map((term) => term.trim()).filter(Boolean);
+  const terms = value
+    .split(/[,;]/u)
+    .map((term) => term.trim())
+    .filter(Boolean);
   return terms.filter((term) => !covered.has(term.toLowerCase())).join(", ");
 };
 
@@ -457,9 +481,11 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
   const components = Object.freeze({
     literalContent: plainGeometry(literalContent),
     continuityAndShotRole:
-      request.styleProfileHash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH
-        ? naturalDocumentaryShotRoleGuidance(expected.inImageShotRole)
-        : plainGeometry(continuityAndShotRole),
+      request.compilerPolicy === "local-evidence-v1"
+        ? groundedShotRoleGuidance(expected.inImageShotRole)
+        : request.styleProfileHash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH
+          ? naturalDocumentaryShotRoleGuidance(expected.inImageShotRole)
+          : plainGeometry(continuityAndShotRole),
     cropGuidance:
       request.styleProfileHash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH
         ? naturalDocumentaryCropGuidance(expected.layout)
@@ -499,7 +525,11 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
     }
   }
   return Object.freeze({
-    promptCompilerVersion: natural ? "prompt-compiler-v4" : "prompt-compiler-v3",
+    promptCompilerVersion: natural
+      ? request.compilerPolicy === "local-evidence-v1"
+        ? "prompt-compiler-v5"
+        : "prompt-compiler-v4"
+      : "prompt-compiler-v3",
     scenePromptWriterVersion: SCENE_PROMPT_WRITER_VERSION,
     sceneId: expected.sceneId,
     components,
@@ -550,10 +580,10 @@ export function naturalDocumentaryLiteralCharacterLimit(input: {
   readonly applyExtraPromptKeywords: boolean;
   readonly scenes: readonly PromptSceneInput[];
 }): number | undefined {
-  if (input.styleProfileHash !== NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH) return undefined;
   const normalizedExtra = normalizeExtra(input.extraPromptKeywords, input.applyExtraPromptKeywords);
   const extra = normalizedExtra === null ? null : plainGeometry(normalizedExtra);
   const style = validatePromptStyleComponents(input.style);
+  if (input.styleProfileHash !== NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH) return undefined;
   const limits = input.scenes.map((scene) => {
     const fixed = naturalDocumentaryRequiredPrompt({
       literalContent: "x",

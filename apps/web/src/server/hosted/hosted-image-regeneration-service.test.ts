@@ -226,8 +226,9 @@ const args = {
 
 describe("hosted image regeneration service", () => {
   it("keeps unknown paid submissions distinct from retryable failures", () => {
-    expect(regenerationStatus({ id: requestId, attempt_id: attemptId,
-      state: "UNKNOWN_NO_RETRY" })).toEqual({
+    expect(
+      regenerationStatus({ id: requestId, attempt_id: attemptId, state: "UNKNOWN_NO_RETRY" }),
+    ).toEqual({
       request_id: requestId,
       attempt_id: attemptId,
       state: "ACTION_REQUIRED",
@@ -238,46 +239,81 @@ describe("hosted image regeneration service", () => {
     const test = harness({ historicalApiConfiguration: true });
     await expect(test.service.create(args)).resolves.toMatchObject({ request_id: requestId });
     expect(test.prepared).toBeDefined();
-    expect(test.calls.some(({ sql }) => sql.includes("videoforge_create_hosted_api_image_regeneration"))).toBe(false);
-    expect(test.calls.some(({ sql }) => sql.includes("videoforge_create_hosted_image_regeneration"))).toBe(true);
+    expect(
+      test.calls.some(({ sql }) => sql.includes("videoforge_create_hosted_api_image_regeneration")),
+    ).toBe(false);
+    expect(
+      test.calls.some(({ sql }) => sql.includes("videoforge_create_hosted_image_regeneration")),
+    ).toBe(true);
   });
-  it.each([["KIE_FAL", "prompt-compiler-v3"], ["KIE_FAL", "prompt-compiler-v4"], ["RUNPOD", "prompt-compiler-v3"]])("creates API regeneration from %s/%s pinned style without GPU bindings", async (provider, promptCompilerVersion) => {
-    const previousGuard = "Legacy original still; no text or branding";
-    const queries: Array<{ sql: string; values: readonly SqlPrimitive[] }> = [];
-    const query = vi.fn(async (sql: string, values: readonly SqlPrimitive[] = []) => {
-      queries.push({ sql, values });
-      if (sql.includes("set_config")) return { rows: [{ value: true }] };
-      if (sql.includes("SELECT generation_provider")) return { rows: [{ value: provider }] };
-      if (sql.includes("SELECT EXISTS")) return { rows: [{ value: false }] };
-      if (sql.includes("videoforge_read_hosted_api_image_regeneration_source"))
-        return { rows: [{ value: { sourceInputManifest: { compiledPrompt: {
-          promptCompilerVersion,
-          components: { literalContent: originalPrompt, continuityAndShotRole: "original role",
-            cropGuidance: "original crop", stylePositiveSuffix: "original style",
-            styleNegativeSuffix: "CGI, fake lettering", extraPromptKeywords: null,
-            permanentPositiveGuardrail: previousGuard },
-        } } } }] };
-      if (sql.includes("videoforge_create_hosted_api_image_regeneration"))
-        return { rows: [{ value: { id: requestId, state: "PREPARED" } }] };
-      throw new Error(`unexpected API regeneration SQL: ${sql}`);
-    });
-    const database = { transaction: async <T>(run: (tx: { query: typeof query }) => Promise<T>) =>
-      run({ query }) } as unknown as TransactionalSqlExecutor;
-    const workflow = { create: vi.fn(async ({ id }: { id: string }) => ({ id })),
-      get: vi.fn() };
-    const service = createHostedImageRegenerationService({ database,
-      config: { ...configuration(), apiGeneration: { kieApiKey: "test-key", falApiKey: "test-key" } },
-      environment: { HOSTED_PAIR_WORKFLOW: workflow, PRIVATE_ARTIFACTS: {} } as never });
-    await expect(service.create({ ...args, prompt: `${editedPrompt}, ${previousGuard}` })).resolves.toMatchObject({ request_id: requestId,
-      state: "QUEUED" });
-    const creation = queries.find(({ sql }) => sql.includes("videoforge_create_hosted_api_image_regeneration"));
-    expect(creation?.values[5]).toContain(editedPrompt);
-    expect(creation?.values[5]).not.toContain(previousGuard);
-    expect(creation?.values[5]).toContain("No visible text");
-    expect(creation?.values[5]).toContain("CGI, fake lettering");
-    expect(creation?.values[5]).not.toContain("original role");
-    expect(workflow.create).toHaveBeenCalledOnce();
-  });
+  it.each([
+    ["KIE_FAL", "prompt-compiler-v3"],
+    ["KIE_FAL", "prompt-compiler-v4"],
+    ["KIE_FAL", "prompt-compiler-v5"],
+    ["RUNPOD", "prompt-compiler-v3"],
+  ])(
+    "creates API regeneration from %s/%s pinned style without GPU bindings",
+    async (provider, promptCompilerVersion) => {
+      const previousGuard = "Legacy original still; no text or branding";
+      const queries: Array<{ sql: string; values: readonly SqlPrimitive[] }> = [];
+      const query = vi.fn(async (sql: string, values: readonly SqlPrimitive[] = []) => {
+        queries.push({ sql, values });
+        if (sql.includes("set_config")) return { rows: [{ value: true }] };
+        if (sql.includes("SELECT generation_provider")) return { rows: [{ value: provider }] };
+        if (sql.includes("SELECT EXISTS")) return { rows: [{ value: false }] };
+        if (sql.includes("videoforge_read_hosted_api_image_regeneration_source"))
+          return {
+            rows: [
+              {
+                value: {
+                  sourceInputManifest: {
+                    compiledPrompt: {
+                      promptCompilerVersion,
+                      components: {
+                        literalContent: originalPrompt,
+                        continuityAndShotRole: "original role",
+                        cropGuidance: "original crop",
+                        stylePositiveSuffix: "original style",
+                        styleNegativeSuffix: "CGI, fake lettering",
+                        extraPromptKeywords: null,
+                        permanentPositiveGuardrail: previousGuard,
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+          };
+        if (sql.includes("videoforge_create_hosted_api_image_regeneration"))
+          return { rows: [{ value: { id: requestId, state: "PREPARED" } }] };
+        throw new Error(`unexpected API regeneration SQL: ${sql}`);
+      });
+      const database = {
+        transaction: async <T>(run: (tx: { query: typeof query }) => Promise<T>) => run({ query }),
+      } as unknown as TransactionalSqlExecutor;
+      const workflow = { create: vi.fn(async ({ id }: { id: string }) => ({ id })), get: vi.fn() };
+      const service = createHostedImageRegenerationService({
+        database,
+        config: {
+          ...configuration(),
+          apiGeneration: { kieApiKey: "test-key", falApiKey: "test-key" },
+        },
+        environment: { HOSTED_PAIR_WORKFLOW: workflow, PRIVATE_ARTIFACTS: {} } as never,
+      });
+      await expect(
+        service.create({ ...args, prompt: `${editedPrompt}, ${previousGuard}` }),
+      ).resolves.toMatchObject({ request_id: requestId, state: "QUEUED" });
+      const creation = queries.find(({ sql }) =>
+        sql.includes("videoforge_create_hosted_api_image_regeneration"),
+      );
+      expect(creation?.values[5]).toContain(editedPrompt);
+      expect(creation?.values[5]).not.toContain(previousGuard);
+      expect(creation?.values[5]).toContain("No visible text");
+      expect(creation?.values[5]).toContain("CGI, fake lettering");
+      expect(creation?.values[5]).not.toContain("original role");
+      expect(workflow.create).toHaveBeenCalledOnce();
+    },
+  );
   it("prepares one exact source scene with the edited prompt, fresh seed, and fresh output authority", async () => {
     const randomValues = vi
       .spyOn(webcrypto, "getRandomValues")

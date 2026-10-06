@@ -350,7 +350,7 @@ export const HOSTED_PROMPT_BATCH_MAX_OUTPUT_TOKENS = 14_336 as const;
  */
 export function hostedPromptBatchPlan(
   authority: PromptExecutionAuthority,
-  requestPolicy: PromptRequestPolicy = "no-graphics-async-v1",
+  requestPolicy: PromptRequestPolicy = "grounded-scenes-v1",
 ): PromptBatchPlan {
   let literalCharacterLimit: number | undefined;
   try {
@@ -380,6 +380,8 @@ export async function recoverHostedPromptBatchPlan(
   binding: HostedPromptBatchPlanBinding,
 ): Promise<PromptBatchPlan> {
   for (const policy of [
+    "grounded-scenes-v1",
+    "validated-scenes-v1",
     "no-graphics-async-v1",
     "no-graphics-v2",
     "no-graphics-v1",
@@ -506,11 +508,18 @@ export async function runHostedPromptExecution(input: {
   // that binding through this orchestration boundary.
   if (input.persistedBatchPlanBinding === undefined)
     throw new HostedPromptExecutionError("HOSTED_PROMPT_INPUT_INVALID", "FAILED", false, null);
+  const authority = {
+    ...input.authority,
+    compilerPolicy:
+      input.batchPlan.requestPolicy === "grounded-scenes-v1"
+        ? ("local-evidence-v1" as const)
+        : undefined,
+  };
   const persistBatch = async (accepted: HostedAcceptedPromptBatch) => {
-    await compileAndPersistHostedPromptBatch(input.authority, accepted, input.persistBatch);
+    await compileAndPersistHostedPromptBatch(authority, accepted, input.persistBatch);
   };
   const result = await new DurablePromptExecutionService(
-    new HostedPromptStore(input.authority, input.persist),
+    new HostedPromptStore(authority, input.persist),
     new HostedRunwarePromptWriter(
       input.apiKey,
       input.batchPlan,
@@ -533,6 +542,7 @@ export async function compileAndPersistHostedPromptBatch(
   persistBatch:
     | NonNullable<Parameters<typeof runHostedPromptExecution>[0]["persistBatch"]>
     | undefined,
+  compilerPolicy: PromptExecutionAuthority["compilerPolicy"] = authority.compilerPolicy,
 ): Promise<void> {
   if (accepted.firstSceneOrdinal !== accepted.scenes[0]?.sceneOrdinal)
     throw new Error("HOSTED_PROMPT_BATCH_ORDER_INVALID");
@@ -545,6 +555,7 @@ export async function compileAndPersistHostedPromptBatch(
     )
       throw new Error("HOSTED_PROMPT_SCENE_ORDER_INVALID");
     const compiledPrompt = compileImagePrompt({
+      compilerPolicy,
       writerOutput: scene.writerOutput,
       expectedScene,
       style: authority.style,

@@ -10,6 +10,7 @@ import {
   PROMPT_CONTENT_REPAIR_INSTRUCTION,
   NO_GRAPHICS_V2_WRITER_INSTRUCTION,
   buildRunwarePromptRequest,
+  buildRunwarePromptCorrection,
   planPromptBatches,
   runwarePromptValidationDiagnostic,
   validatePromptWriterOutput,
@@ -19,6 +20,7 @@ import {
   type PromptWriterSceneOutput,
   type RunwarePromptAttemptEvidence,
   type RunwarePromptValidationDiagnostic,
+  type RunwarePromptCorrection,
   type RunwarePromptTransport,
   type RunwarePromptTransportRequest,
   type RunwarePromptTransportResult,
@@ -80,6 +82,7 @@ export class HostedPromptArchivedOutputInvalidError extends Error {
     public readonly responseHash: Sha256Digest,
     public readonly knownCostMicroUsd: number,
     public readonly validationDiagnostic: RunwarePromptValidationDiagnostic | null,
+    public readonly correction: RunwarePromptCorrection | null = null,
   ) {
     super("Archived prompt output failed strict validation.");
   }
@@ -117,6 +120,15 @@ export async function recoverClaimedHostedPromptBatch(input: {
   readonly retryOfRequestHash?: Sha256Digest | null;
   /** Exact private response recorded before local validation or compilation. */
   readonly recordedResult?: Extract<RunwarePromptTransportResult, { status: "succeeded" }> | null;
+  readonly sourceRecordedResult?: Extract<
+    RunwarePromptTransportResult,
+    { status: "succeeded" }
+  > | null;
+  readonly recordResult?: (result: {
+    taskUUID: string;
+    requestHash: Sha256Digest;
+    result: Extract<RunwarePromptTransportResult, { status: "succeeded" }>;
+  }) => Promise<void>;
   readonly fetcher?: typeof fetch;
 }): Promise<HostedAcceptedPromptBatch> {
   const entry = input.plan.batches[input.batchOrdinal];
@@ -126,6 +138,12 @@ export async function recoverClaimedHostedPromptBatch(input: {
     input.plan,
     input.persistedBinding,
   );
+  const correction = sealedCorrection(
+    entry.batch,
+    input.plan,
+    input.requestBytes,
+    input.sourceRecordedResult,
+  );
   const expected = buildRunwarePromptRequest(
     entry.batch,
     entry.batch.scenes,
@@ -134,6 +152,7 @@ export async function recoverClaimedHostedPromptBatch(input: {
     1,
     input.plan.requestPolicy ?? "legacy",
     usesContentRepair(input.requestBytes, input.retryOfRequestHash),
+    correction ?? undefined,
   );
   if (
     expected.request.taskUUID !== input.taskUUID ||
@@ -167,6 +186,12 @@ export async function recoverClaimedHostedPromptBatch(input: {
       });
     throw error;
   }
+  if (!input.recordedResult)
+    await input.recordResult?.({
+      taskUUID: input.taskUUID,
+      requestHash: input.requestHash,
+      result: { ...recovered, status: "succeeded", latencyMs: 0 },
+    });
   const recoveredText = recovered.outputText.trim();
   let nativeJsonValid = false;
   try {
@@ -187,6 +212,7 @@ export async function recoverClaimedHostedPromptBatch(input: {
   });
   let evidence: RunwarePromptAttemptEvidence | null = null;
   const writer = new RunwarePromptWriter({
+    correction: correction ?? undefined,
     contentRepair: usesContentRepair(input.requestBytes, input.retryOfRequestHash),
     requestPolicy: input.plan.requestPolicy ?? "legacy",
     transport: {
@@ -212,7 +238,7 @@ export async function recoverClaimedHostedPromptBatch(input: {
         evidence = value;
       },
     },
-    maximumBatchCostUsd: input.reservationMicroUsd / 1_000_000,
+    maximumBatchCostUsd: Math.min(250_000, input.reservationMicroUsd) / 1_000_000,
     semanticQualityMode: "advisory",
     allowPartialRetry: false,
     minimumBatchScenes: 1,
@@ -232,15 +258,18 @@ export async function recoverClaimedHostedPromptBatch(input: {
       await sha256Utf8(recovered.outputText),
       knownCostMicroUsd,
       diagnostic,
+      ["validated-scenes-v1", "grounded-scenes-v1"].includes(
+        input.plan.requestPolicy ?? "legacy",
+      ) && !correction
+        ? buildRunwarePromptCorrection(entry.batch, recovered.outputText, input.plan.requestPolicy)
+        : null,
     );
   }
   const acceptedEvidence = evidence as RunwarePromptAttemptEvidence | null;
   const responseHash = await sha256Utf8(recovered.outputText);
   if (
     acceptedEvidence?.responseSha256 !== responseHash ||
-    acceptedEvidence?.acceptedSceneIds.length !== entry.sceneIds.length ||
-    acceptedEvidence.acceptedSceneIds.some((sceneId, index) => sceneId !== entry.sceneIds[index]) ||
-    acceptedEvidence.unresolvedSceneIds.length !== 0
+    !acceptedEvidenceMatches(acceptedEvidence, entry.sceneIds, correction)
   )
     throw new Error("PROMPT_BATCH_EVIDENCE_MISMATCH");
   return Object.freeze({
@@ -268,6 +297,7 @@ export async function recoverClaimedHostedPromptBatch(input: {
 /** Claim then submit exactly one new ordinal. A duplicate claim never reaches inference. */
 export async function dispatchOneHostedPromptBatch(input: {
   readonly contentRepair?: boolean | "no-text-v2";
+  readonly correction?: RunwarePromptCorrection;
   readonly apiKey: string;
   readonly plan: PromptBatchPlan;
   readonly persistedBinding: HostedPromptBatchPlanBinding;
@@ -308,6 +338,7 @@ export async function dispatchOneHostedPromptBatch(input: {
     1,
     input.plan.requestPolicy ?? "legacy",
     input.contentRepair ?? false,
+    input.correction,
   );
   const claimed = await input.claim({
     batchOrdinal: input.batchOrdinal,
@@ -321,7 +352,7 @@ export async function dispatchOneHostedPromptBatch(input: {
   const transport = new RunwarePromptHttpTransport({
     apiKey: input.apiKey,
     ledger,
-    maximumRequestCostUsd: input.remainingReservationMicroUsd / 1_000_000,
+    maximumRequestCostUsd: Math.min(250_000, input.remainingReservationMicroUsd) / 1_000_000,
     // Historical sealed sync requests need enough time to retain their full result before timeout.
     timeoutMs: 300_000,
     fetch: input.fetcher,
@@ -333,6 +364,7 @@ export async function dispatchOneHostedPromptBatch(input: {
   let result: RunwarePromptTransportResult | null = null;
   let evidence: RunwarePromptAttemptEvidence | null = null;
   const writer = new RunwarePromptWriter({
+    correction: input.correction,
     contentRepair: input.contentRepair ?? false,
     requestPolicy: input.plan.requestPolicy ?? "legacy",
     transport: {
@@ -357,7 +389,7 @@ export async function dispatchOneHostedPromptBatch(input: {
         evidence = value;
       },
     },
-    maximumBatchCostUsd: input.remainingReservationMicroUsd / 1_000_000,
+    maximumBatchCostUsd: Math.min(250_000, input.remainingReservationMicroUsd) / 1_000_000,
     semanticQualityMode: "advisory",
     allowPartialRetry: false,
     minimumBatchScenes: 1,
@@ -378,9 +410,7 @@ export async function dispatchOneHostedPromptBatch(input: {
     !acceptedResult ||
     acceptedResult.status !== "succeeded" ||
     !acceptedEvidence ||
-    acceptedEvidence.acceptedSceneIds.length !== entry.sceneIds.length ||
-    acceptedEvidence.acceptedSceneIds.some((sceneId, index) => sceneId !== entry.sceneIds[index]) ||
-    acceptedEvidence.unresolvedSceneIds.length !== 0
+    !acceptedEvidenceMatches(acceptedEvidence, entry.sceneIds, input.correction ?? null)
   )
     throw new Error("PROMPT_BATCH_EVIDENCE_MISMATCH");
   const responseHash = await sha256Utf8(acceptedResult.outputText);
@@ -409,6 +439,55 @@ export async function dispatchOneHostedPromptBatch(input: {
       input.remainingReservationMicroUsd,
     ),
   });
+}
+
+/** Rebuild sealed correction through the same validator before any recovery transport. */
+function sealedCorrection(
+  batch: PromptBatch,
+  plan: PromptBatchPlan,
+  requestBytes: string,
+  sourceResult: Extract<RunwarePromptTransportResult, { status: "succeeded" }> | null | undefined,
+): RunwarePromptCorrection | null {
+  const body = JSON.parse(requestBytes) as { messages?: { role: string; content: string }[] }[];
+  if (!Array.isArray(body) || body.length !== 1) throw invalidPlanBinding();
+  const user = body[0]?.messages?.find((message) => message.role === "user");
+  if (!user) throw invalidPlanBinding();
+  const payload = JSON.parse(user.content) as { correction?: { source_output_text?: unknown } };
+  if (!payload.correction) return null;
+  if (
+    !["validated-scenes-v1", "grounded-scenes-v1"].includes(plan.requestPolicy ?? "legacy") ||
+    typeof payload.correction.source_output_text !== "string"
+  )
+    throw invalidPlanBinding();
+  if (sourceResult && sourceResult.outputText !== payload.correction.source_output_text)
+    throw invalidPlanBinding();
+  const correction = buildRunwarePromptCorrection(
+    batch,
+    payload.correction.source_output_text,
+    plan.requestPolicy,
+  );
+  if (!correction) throw invalidPlanBinding();
+  // The builder rederives every field and exact request-byte comparison checks the sealed envelope.
+  return correction;
+}
+
+function acceptedEvidenceMatches(
+  evidence: RunwarePromptAttemptEvidence | null,
+  sceneIds: readonly string[],
+  correction: RunwarePromptCorrection | null,
+): boolean {
+  if (!evidence || evidence.unresolvedSceneIds.length !== 0) return false;
+  const accepted = correction?.failedSceneIds ?? sceneIds;
+  const reused = correction ? sceneIds.filter((id) => !correction.failedSceneIds.includes(id)) : [];
+  return (
+    evidence.acceptedSceneIds.length === accepted.length &&
+    evidence.acceptedSceneIds.every((id, index) => id === accepted[index]) &&
+    (evidence.reusedSceneIds ?? []).length === reused.length &&
+    (evidence.reusedSceneIds ?? []).every((id, index) => id === reused[index]) &&
+    (correction
+      ? evidence.sourceResponseSha256 === correction.sourceResponseSha256
+      : !evidence.sourceResponseSha256)
+  );
 }
 
 type CapturedAttempt = {
@@ -732,6 +811,7 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
           1,
           this.plan.requestPolicy ?? "legacy",
           usesContentRepair(saved.requestBytes, saved.retryOfRequestHash),
+          sealedCorrection(entry.batch, this.plan, saved.requestBytes, null) ?? undefined,
         );
         if (
           saved.requestHash !== request.requestSha256 ||
@@ -762,7 +842,7 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
         const base = new RunwarePromptHttpTransport({
           apiKey: this.apiKey,
           ledger,
-          maximumRequestCostUsd: remainingReservationUsd,
+          maximumRequestCostUsd: Math.min(0.25, remainingReservationUsd),
           fetch: this.fetcher,
           onDiagnostic(diagnostic) {
             diagnosticState.current = diagnostic;
@@ -801,7 +881,7 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
               row.evidence = evidence;
             },
           },
-          maximumBatchCostUsd: remainingReservationUsd,
+          maximumBatchCostUsd: Math.min(0.25, remainingReservationUsd),
           semanticQualityMode: "advisory",
           allowPartialRetry: false,
           minimumBatchScenes: 1,

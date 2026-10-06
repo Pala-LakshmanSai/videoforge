@@ -14,6 +14,13 @@ export function naturalDocumentaryShotRoleGuidance(
     : `same subject/setting/state, viewpoint: ${role.toLowerCase().replaceAll("_", " ")}`;
 }
 
+/** Fresh framing never promotes a role into a new person or object. */
+export function groundedShotRoleGuidance(role: PromptSceneInput["inImageShotRole"]): string {
+  return role === "HUMAN_MEDIUM"
+    ? "same subject/setting/state, viewpoint: medium view of complete stated subject"
+    : naturalDocumentaryShotRoleGuidance(role);
+}
+
 export const NATURAL_DOCUMENTARY_PERMANENT_EXCLUSIONS =
   "No visible text/pseudo-text, labels, logos, watermarks, captions, overlays, graphics, borders or motion graphics; unmarked surfaces";
 

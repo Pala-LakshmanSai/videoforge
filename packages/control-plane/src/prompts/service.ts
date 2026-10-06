@@ -387,6 +387,7 @@ export class DurablePromptExecutionService {
           if (expectedScene === undefined)
             return fail("OUTPUT_INVALID", "Prompt output scene ordering is incomplete.");
           const compiled = compileImagePrompt({
+            ...(authority.compilerPolicy ? { compilerPolicy: authority.compilerPolicy } : {}),
             writerOutput: writerOutputRow,
             expectedScene,
             style: authority.style,
@@ -402,7 +403,8 @@ export class DurablePromptExecutionService {
             previous.sceneId !== expectedScene.sceneId ||
             previous.scenePromptWriterVersion !== compiled.scenePromptWriterVersion ||
             previous.components.literalContent !== compiled.components.literalContent ||
-            previous.components.continuityAndShotRole !== compiled.components.continuityAndShotRole ||
+            previous.components.continuityAndShotRole !==
+              compiled.components.continuityAndShotRole ||
             previous.components.cropGuidance !== compiled.components.cropGuidance ||
             previous.components.stylePositiveSuffix !== compiled.components.stylePositiveSuffix ||
             previous.components.extraPromptKeywords !== compiled.components.extraPromptKeywords ||

@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { promptExecutionInputHash } from "@videoforge/control-plane/prompts";
 import { NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH } from "@videoforge/pipeline";
 import { promptStyleTreatmentPositiveSuffix } from "@videoforge/pipeline/prompts";
 import * as promptRuntime from "@videoforge/pipeline/prompts";
@@ -14,6 +15,7 @@ import {
 
 import {
   hostedPromptAuthority,
+  compileAndPersistHostedPromptBatch,
   hostedPromptBatchPlan,
   recoverHostedPromptBatchPlan,
   hostedPromptBatchPlanDocument,
@@ -24,6 +26,7 @@ import {
   hostedPromptReservationMicroUsd,
   HostedPromptExecutionError,
   HostedPromptArchivedOutputUnavailableError,
+  HostedPromptCapacityPausedError,
   HostedRunwarePromptWriter,
   recoverClaimedHostedPromptBatch,
   dispatchOneHostedPromptBatch,
@@ -315,6 +318,8 @@ describe("versioned prompt request recovery", () => {
       // Exercises an actual planner budget rejection, not an invented provider error.
       expect(await recoverHostedPromptBatchPlan(authority, binding)).toEqual(legacy);
       expect(seen).toEqual([
+        "grounded-scenes-v1",
+        "validated-scenes-v1",
         "no-graphics-async-v1",
         "no-graphics-v2",
         "no-graphics-v1",
@@ -482,6 +487,363 @@ describe("versioned prompt request recovery", () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
+  it("passes an exact HTTP400 credit reservation refusal to the recoverable capacity route boundary", async () => {
+    const planned = hostedPromptBatchPlan(authorityFor(false), "validated-scenes-v1");
+    const onCapacityRefused = vi.fn(async () => {}),
+      recordResult = vi.fn(async () => {});
+    const fetcher = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      const [task] = JSON.parse(String(init?.body));
+      return Response.json(
+        {
+          data: [],
+          errors: [
+            {
+              taskType: "textInference",
+              taskUUID: task.taskUUID,
+              code: "concurrentRequestLimitExceeded",
+              message:
+                "Insufficient available balance. Some of your credits are currently reserved for requests in progress. Please wait...",
+            },
+          ],
+        },
+        { status: 400 },
+      );
+    });
+    const operation = dispatchOneHostedPromptBatch({
+      apiKey: "configured-test-key-value",
+      plan: planned,
+      persistedBinding: {
+        plannedBatchCount: planned.batchCount,
+        plannedSceneCount: planned.totalScenes,
+        batchPlanHash: await hostedPromptBatchPlanHash(planned),
+      },
+      batchOrdinal: 0,
+      remainingReservationMicroUsd: 2_000_000,
+      claim: async () => true,
+      onCapacityRefused,
+      recordResult,
+      fetcher,
+    });
+    await expect(operation).rejects.toBeInstanceOf(HostedPromptCapacityPausedError);
+    await expect(operation).rejects.toMatchObject({
+      message: "HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT",
+      refusal: {
+        taskUUID: expect.any(String),
+        responseHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/u),
+      },
+    });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(onCapacityRefused).toHaveBeenCalledTimes(1);
+    expect(recordResult).not.toHaveBeenCalled();
+  });
+
+  it.each(["validated-scenes-v1", "grounded-scenes-v1"] as const)(
+    "finalizes and recompiles a recovered %s Natural prefix through the durable service without HTTP or compiler drift",
+    async (policy) => {
+      const base = authorityFor(true),
+        authority = { ...base, recordedInputHash: promptExecutionInputHash(base) };
+      const batchPlan = hostedPromptBatchPlan(authority, policy);
+      const persistedBatchPlanBinding = {
+        plannedBatchCount: batchPlan.batchCount,
+        plannedSceneCount: batchPlan.totalScenes,
+        batchPlanHash: await hostedPromptBatchPlanHash(batchPlan),
+      };
+      const command = {
+        projectId: authority.projectId,
+        revisionId: authority.revisionId,
+        timelineId: authority.timelineId,
+        taskId: authority.taskId,
+        attemptId: authority.attemptId,
+        outboxId: authority.outboxId,
+        presentedClaimTokenHash: authority.claimTokenHash,
+      };
+      const batches: Parameters<
+        NonNullable<Parameters<typeof runHostedPromptExecution>[0]["persistBatch"]>
+      >[0][] = [];
+      const providerFixture = successfulPromptFetcher();
+      const boundedFixture: typeof fetch = async (url, init) => {
+        const response = await providerFixture(url, init),
+          envelope = (await response.json()) as { data: [{ text: string }] };
+        const task = JSON.parse(String(init?.body))[0],
+          payload = JSON.parse(task.messages[0].content);
+        const document = JSON.parse(envelope.data[0].text);
+        document.scenes = document.scenes.map((row: { scene_id: string }) => ({
+          ...row,
+          literal_subject: payload.scenes.find(
+            (scene: PromptFixtureScene) => scene.scene_id === row.scene_id,
+          ).exact_phrase,
+          action: "At rest",
+          environment: "An ordinary room",
+        }));
+        envelope.data[0].text = JSON.stringify(document);
+        return Response.json(envelope);
+      };
+      const first = await runHostedPromptExecution({
+        scope: { workspaceId: authority.workspaceId, actorUserId: ids.workspace },
+        authority,
+        batchPlan,
+        persistedBatchPlanBinding,
+        command,
+        apiKey: "configured-test-key-value",
+        persist: async () => undefined,
+        persistBatch: async (batch) => {
+          batches.push(batch);
+        },
+        fetcher: boundedFixture,
+      });
+      const version = policy === "grounded-scenes-v1" ? "prompt-compiler-v5" : "prompt-compiler-v4";
+      expect(
+        first.compiledPrompts.every((prompt) => prompt.promptCompilerVersion === version),
+      ).toBe(true);
+      expect(
+        batches
+          .flatMap((batch) => batch.scenes)
+          .every((scene) => scene.compiledPrompt.promptCompilerVersion === version),
+      ).toBe(true);
+      const recovered = await recoverHostedPromptBatchPlan(authority, persistedBatchPlanBinding);
+      const noSubmit = vi.fn(async () => {
+        throw new Error("Accepted prefix cannot submit");
+      });
+      const resumed = await runHostedPromptExecution({
+        scope: { workspaceId: authority.workspaceId, actorUserId: ids.workspace },
+        authority: { ...authority, compilerPolicy: "local-evidence-v1" },
+        batchPlan: recovered,
+        persistedBatchPlanBinding,
+        command,
+        apiKey: "configured-test-key-value",
+        persist: async () => undefined,
+        fetcher: noSubmit,
+        acceptedCompiledPrompts: new Map(
+          first.compiledPrompts.map((prompt) => [prompt.sceneId, prompt]),
+        ),
+        continuation: {
+          reservationMicroUsd: authority.reservedCostMicroUsd,
+          beforeBatchSubmit: noSubmit,
+          acceptedBatches: batches.map((batch) => ({
+            ...batch,
+            scenes: batch.scenes.map(({ sceneOrdinal, sceneId, writerOutput }) => ({
+              sceneOrdinal,
+              sceneId,
+              writerOutput,
+            })),
+          })),
+        },
+      });
+      expect(resumed.compiledPrompts).toEqual(first.compiledPrompts);
+      expect(noSubmit).not.toHaveBeenCalled();
+    },
+  );
+
+  it("compiles fresh v32 Natural batches with v5 while legacy compilation stays v4", async () => {
+    const authority = authorityFor(true),
+      planned = hostedPromptBatchPlan(authority, "grounded-scenes-v1");
+    const accepted = await dispatchOneHostedPromptBatch({
+      apiKey: "configured-test-key-value",
+      plan: planned,
+      persistedBinding: {
+        plannedBatchCount: planned.batchCount,
+        plannedSceneCount: planned.totalScenes,
+        batchPlanHash: await hostedPromptBatchPlanHash(planned),
+      },
+      batchOrdinal: 0,
+      remainingReservationMicroUsd: 2_000_000,
+      claim: async () => true,
+      fetcher: successfulPromptFetcher(),
+    });
+    expect(accepted).not.toBeNull();
+    const captured: NonNullable<Parameters<typeof compileAndPersistHostedPromptBatch>[2]> = vi.fn(
+      async () => {},
+    );
+    await compileAndPersistHostedPromptBatch(authority, accepted!, captured, "local-evidence-v1");
+    await compileAndPersistHostedPromptBatch(authority, accepted!, captured);
+    const fresh = vi.mocked(captured).mock.calls[0]![0],
+      legacy = vi.mocked(captured).mock.calls[1]![0];
+    expect(
+      fresh.scenes.every(
+        (scene) => scene.compiledPrompt.promptCompilerVersion === "prompt-compiler-v5",
+      ),
+    ).toBe(true);
+    expect(
+      legacy.scenes.every(
+        (scene) => scene.compiledPrompt.promptCompilerVersion === "prompt-compiler-v4",
+      ),
+    ).toBe(true);
+    expect(fresh.scenes.map((scene) => scene.writerOutput)).toEqual(
+      legacy.scenes.map((scene) => scene.writerOutput),
+    );
+    expect(fresh.requestHash).toBe(legacy.requestHash);
+    expect(fresh.responseHash).toBe(legacy.responseHash);
+    expect(authority.compilerPolicy).toBeUndefined();
+  });
+
+  it("v31 repairs only rejected scenes, preserves good rows, and recovers sealed correction without HTTP", async () => {
+    const authority = authorityFor(false);
+    const preservedSemanticScene = {
+      ...authority.scenes[1]!,
+      phrase: "A chef is not stirring soup in a kitchen.",
+      sentenceContext: "A chef is not stirring soup in a kitchen.",
+      priorContext: null,
+      nextContext: null,
+    };
+    const planned = hostedPromptBatchPlan(
+      {
+        ...authority,
+        scenes: authority.scenes.map((scene, index) =>
+          index === 1 ? preservedSemanticScene : scene,
+        ),
+      },
+      "validated-scenes-v1",
+    );
+    const entry = planned.batches[0]!;
+    const binding = {
+      plannedBatchCount: planned.batchCount,
+      plannedSceneCount: planned.totalScenes,
+      batchPlanHash: await hostedPromptBatchPlanHash(planned),
+    };
+    const original = promptRuntime.buildRunwarePromptRequest(
+      entry.batch,
+      entry.batch.scenes,
+      1,
+      null,
+      1,
+      "validated-scenes-v1",
+    );
+    const payload = JSON.parse(original.request.messages[0]!.content);
+    const rows = payload.scenes.map((scene: PromptFixtureScene) =>
+      groundedPromptFixtureScene(scene, {}, payload.story_context),
+    );
+    rows[0].action = "Reading a printed label on a bottle.";
+    rows[1] = {
+      ...rows[1],
+      literal_subject: "A chef",
+      action: "Stirring soup",
+      environment: "A kitchen",
+    };
+    const source = {
+      status: "succeeded" as const,
+      outputText: JSON.stringify({ batch_id: entry.batch.batchId, scenes: rows }),
+      usage: { inputTokens: 100, outputTokens: 200, totalTokens: 300, cachedInputTokens: 0 },
+      costUsd: 0.01,
+      finishReason: "stop",
+      providerModel: "google:gemini@3.5-flash",
+      latencyMs: 0,
+    };
+    const correction = promptRuntime.buildRunwarePromptCorrection(entry.batch, source.outputText)!;
+    expect(correction.failedSceneIds).toEqual([entry.sceneIds[0]]);
+    const freshCorrection = promptRuntime.buildRunwarePromptCorrection(
+      entry.batch,
+      source.outputText,
+      "grounded-scenes-v1",
+    )!;
+    expect(freshCorrection.failedSceneIds).toEqual(
+      expect.arrayContaining([entry.sceneIds[0], entry.sceneIds[1]]),
+    );
+    expect(freshCorrection.failures).toContainEqual({
+      sceneId: entry.sceneIds[1],
+      field: "action",
+      reason: "explicit_negation_conflict",
+    });
+    const noHttp = vi.fn(async () => {
+      throw new Error("Recovery must not use HTTP");
+    });
+    await expect(
+      recoverClaimedHostedPromptBatch({
+        apiKey: "configured-test-key-value",
+        plan: planned,
+        persistedBinding: binding,
+        batchOrdinal: 0,
+        taskUUID: original.request.taskUUID,
+        requestBytes: original.requestBytes,
+        requestHash: original.requestSha256,
+        reservationMicroUsd: 2_000_000,
+        recordedResult: source,
+        fetcher: noHttp,
+      }),
+    ).rejects.toMatchObject({ correction });
+    const results: Parameters<
+      NonNullable<Parameters<typeof dispatchOneHostedPromptBatch>[0]["recordResult"]>
+    >[0][] = [];
+    const fetcher = successfulPromptFetcher();
+    const accepted = (await dispatchOneHostedPromptBatch({
+      apiKey: "configured-test-key-value",
+      plan: planned,
+      persistedBinding: binding,
+      batchOrdinal: 0,
+      remainingReservationMicroUsd: 2_000_000,
+      retryOfRequestHash: original.requestSha256,
+      correction,
+      contentRepair: "no-text-v2",
+      claim: async () => true,
+      recordResult: async (result) => {
+        results.push(result);
+      },
+      fetcher,
+    }))!;
+    const sealed = JSON.parse(accepted.requestBytes)[0];
+    const repairedPayload = JSON.parse(sealed.messages[0].content);
+    expect(repairedPayload.scenes.map((scene: PromptFixtureScene) => scene.scene_id)).toEqual(
+      correction.failedSceneIds,
+    );
+    expect(accepted.scenes).toHaveLength(entry.sceneIds.length);
+    expect(JSON.parse(accepted.responseBytes).scenes).toHaveLength(1);
+    const recovered = await recoverClaimedHostedPromptBatch({
+      apiKey: "configured-test-key-value",
+      plan: planned,
+      persistedBinding: binding,
+      batchOrdinal: 0,
+      taskUUID: sealed.taskUUID,
+      requestBytes: accepted.requestBytes,
+      requestHash: accepted.requestHash,
+      reservationMicroUsd: 2_000_000,
+      retryOfRequestHash: original.requestSha256,
+      recordedResult: results[0]!.result,
+      sourceRecordedResult: source,
+      fetcher: noHttp,
+    });
+    expect(recovered.scenes).toEqual(accepted.scenes);
+    await expect(
+      recoverClaimedHostedPromptBatch({
+        apiKey: "configured-test-key-value",
+        plan: planned,
+        persistedBinding: binding,
+        batchOrdinal: 0,
+        taskUUID: sealed.taskUUID,
+        requestBytes: accepted.requestBytes,
+        requestHash: accepted.requestHash,
+        reservationMicroUsd: 2_000_000,
+        retryOfRequestHash: original.requestSha256,
+        recordedResult: results[0]!.result,
+        sourceRecordedResult: { ...source, outputText: "changed" },
+        fetcher: noHttp,
+      }),
+    ).rejects.toThrow();
+    const continued = await new HostedRunwarePromptWriter(
+      "configured-test-key-value",
+      planned,
+      fetcher,
+      undefined,
+      binding,
+      {
+        beforeBatchSubmit: async () => {},
+        acceptedBatches: [
+          {
+            ...accepted,
+            retryOfRequestHash: original.requestSha256,
+            scenes: accepted.scenes.map((scene) => ({
+              sceneOrdinal: scene.sceneOrdinal,
+              sceneId: scene.scene.sceneId,
+              writerOutput: scene.writerOutput,
+            })),
+          },
+        ],
+      },
+    ).write({ ...entry.batch, scenes: planned.batches.flatMap((part) => part.batch.scenes) });
+    expect(continued.output.scenes.slice(0, entry.sceneIds.length)).toEqual(
+      accepted.scenes.map((scene) => scene.writerOutput),
+    );
+    expect(noHttp).not.toHaveBeenCalled();
+  });
+
   for (const natural of [false, true]) {
     it.each([
       "legacy",
@@ -490,6 +852,8 @@ describe("versioned prompt request recovery", () => {
       "no-graphics-v1",
       "no-graphics-v2",
       "no-graphics-async-v1",
+      "validated-scenes-v1",
+      "grounded-scenes-v1",
     ] as const)(
       `selects sealed %s policy, recovers without inference, and resumes unchanged (natural=${natural})`,
       async (policy) => {
@@ -502,7 +866,7 @@ describe("versioned prompt request recovery", () => {
         };
         const recoveredPlan = await recoverHostedPromptBatchPlan(authority, binding);
         expect(recoveredPlan).toEqual(planned);
-        expect(hostedPromptBatchPlan(authority).requestPolicy).toBe("no-graphics-async-v1");
+        expect(hostedPromptBatchPlan(authority).requestPolicy).toBe("grounded-scenes-v1");
         const fetcher = successfulPromptFetcher();
         const results: Parameters<
           NonNullable<Parameters<typeof dispatchOneHostedPromptBatch>[0]["recordResult"]>
@@ -606,7 +970,9 @@ describe("versioned prompt request recovery", () => {
         expect(replacementTask.settings.systemPrompt).toBe(
           policy === "no-graphics-v1" ||
             policy === "no-graphics-v2" ||
-            policy === "no-graphics-async-v1"
+            policy === "no-graphics-async-v1" ||
+            policy === "validated-scenes-v1" ||
+            policy === "grounded-scenes-v1"
             ? task.settings.systemPrompt
             : `${task.settings.systemPrompt}\n${promptRuntime.PROMPT_CONTENT_REPAIR_INSTRUCTION}`,
         );

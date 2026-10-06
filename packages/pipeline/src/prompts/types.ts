@@ -226,8 +226,7 @@ export function promptStyleTreatmentPositiveSuffix(treatment: PromptStyleTreatme
     key(treatment.realism) === "photorealistic, high-fidelity" &&
     key(viewpoint) ===
       "wide field of view, deep focus, steady unobstructed or aerial perspective" &&
-    key(treatment.lighting) ===
-      "direct, high-noon sunlight or golden hour, high-contrast shadows"
+    key(treatment.lighting) === "direct, high-noon sunlight or golden hour, high-contrast shadows"
   )
     return "photorealistic digital landscape photo; wide deep-focus unobstructed or aerial view; high-noon or golden-hour sun, strong shadows";
   // Per-field compaction prevents a long early trait from deleting a later
@@ -314,6 +313,7 @@ export interface PromptStyleComponents {
 }
 
 export interface CompilePromptRequest {
+  readonly compilerPolicy?: "local-evidence-v1";
   readonly styleProfileHash?: Sha256Digest;
   readonly writerOutput: PromptWriterSceneOutput;
   readonly expectedScene: PromptSceneInput;
@@ -324,8 +324,11 @@ export interface CompilePromptRequest {
 
 export interface CompiledImagePrompt {
   readonly promptCompilerVersion:
-    | "prompt-compiler-v1" | "prompt-compiler-v2" | "prompt-compiler-v3"
-    | "prompt-compiler-v4";
+    | "prompt-compiler-v1"
+    | "prompt-compiler-v2"
+    | "prompt-compiler-v3"
+    | "prompt-compiler-v4"
+    | "prompt-compiler-v5";
   readonly scenePromptWriterVersion: typeof SCENE_PROMPT_WRITER_VERSION;
   readonly sceneId: string;
   readonly components: {

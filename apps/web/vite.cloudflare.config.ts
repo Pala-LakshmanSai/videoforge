@@ -2,7 +2,35 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig, transformWithEsbuild, type Plugin } from "vite";
+
+/** Reduce parse bytes only; identifiers, syntax and request-string contents stay intact. */
+export function minifyHostedPromptRouteChunk(code: string, name: string, fileName: string) {
+  if (name !== "hosted-prompt-route") return null;
+  return transformWithEsbuild(code, fileName, {
+    target: "esnext",
+    minifyWhitespace: true,
+    minifyIdentifiers: false,
+    minifySyntax: false,
+    legalComments: "inline",
+  });
+}
+
+function hostedPromptWhitespacePlugin(): Plugin {
+  return {
+    name: "hosted-prompt-route-whitespace",
+    apply: "build",
+    renderChunk: {
+      order: "post",
+      async handler(code, chunk) {
+        const transformed = await minifyHostedPromptRouteChunk(code, chunk.name, chunk.fileName);
+        return transformed
+          ? { code: transformed.code, map: JSON.stringify(transformed.map) }
+          : null;
+      },
+    },
+  };
+}
 
 export default defineConfig(({ command }) => {
   const requestedMode = process.env.VITE_VIDEOFORGE_PROVIDER_MODE;
@@ -42,6 +70,7 @@ export default defineConfig(({ command }) => {
       tanstackRouter({ target: "react", autoCodeSplitting: true }),
       react(),
       cloudflare({ configPath }),
+      ...(providerMode === "fixture" ? [] : [hostedPromptWhitespacePlugin()]),
     ],
     server: {
       host: "127.0.0.1",

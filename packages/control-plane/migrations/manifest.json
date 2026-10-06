@@ -1464,6 +1464,12 @@
       "name": "hosted_prompt_unavailable_archive",
       "filename": "0281_hosted_prompt_unavailable_archive.sql",
       "sha256": "sha256:03ccb42c0e399d38708bb9510d081413058a1b746a914020a0be627d873ed116"
+    },
+    {
+      "version": 282,
+      "name": "hosted_prompt_validated_scene_correction",
+      "filename": "0282_hosted_prompt_validated_scene_correction.sql",
+      "sha256": "sha256:6b119238e2855a26f438da8850bdeace37d6e653e507bfd4b3ebd9ec6f3ff578"
     }
   ]
 }

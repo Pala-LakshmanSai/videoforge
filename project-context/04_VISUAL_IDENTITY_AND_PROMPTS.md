@@ -139,13 +139,12 @@ be classified reliably by a bounded word matcher. Hosted acceptance also repairs
 formatting defects before strict persistence: it bounds harmless oversized or control-containing
 text and normalizes and deduplicates continuity tags. Required subject, action and environment
 facts remain mandatory; empty, forbidden or placeholder facts fail rather than becoming filler.
-A trailing explicitly blank label, label area or shelf/price tag in those fields, including an optional comma and
-explicit unmarked qualifier or on/of ordinary-container attachment, is canonicalized to an unmarked
-physical surface in hosted advisory acceptance. Preserve color/orientation, area and attachment.
-An explicitly unmarked trailing color-labeled ordinary container likewise becomes that container
-with the stated color surface; qualifiers requesting printing, branding or following content remain invalid.
-Printing, branding, barcodes and arbitrary preceding or following text-bearing content still fail;
-the independent compiler guard and immutable raw provider/request bytes remain unchanged. Forbidden continuity
+An explicitly blank or unmarked label, label area or shelf/price tag in those fields is projected
+through shared physical-surface handling to an unmarked surface or card. Preserve supported color,
+orientation, size and spatial relationships, including attachment to an ordinary container or shelf.
+An explicitly unmarked color-labeled ordinary container becomes that container with the stated color
+surface. Positive printing, branding, graphics, content on a blank surface and ambiguous content-bearing
+tails remain invalid; the independent compiler guard and immutable raw provider/request bytes remain unchanged. Forbidden continuity
 tags are dropped; text-bearing price tags and receipts are explicitly excluded. The compiler still
 derives final literal image content from the repaired structured
 fields and independently rejects forbidden compiled content, so `prompt_core` cannot change the
@@ -396,4 +395,41 @@ Empty, forbidden or generic-placeholder subject/action/environment fields must f
 
 Fresh physical-placement writer policy v27 requires visible torso/connected arms and a useful person/object/camera relationship for whole-person handling actions. Genuine HANDS_ACTION closeups and narrated collaborators remain valid. Legacy v24/v25 request construction stays exact; saved plans select their sealed policy before recovery. v26 is retained only as an experimental compatibility identity. The 80-image investigation still contains a v27 three-hand jar failure; these input rules do not replace output review or guarantee anatomy. See IMAGE_QUALITY_PLAN.md.
 
-Fresh hosted writer requests use immutable v30 (`no-graphics-async-v1`), preserving v29 content instructions while changing deliveryMethod to async and request identity. Narration about writing, label reading, prices, lists and calculations uses the supported physical subject or consequence without depicted writing or marked paper. Existing v24–v29 requests retain exact bytes and sealed-plan reconstruction. Submit once, then retrieve only that task's getResponse; a polling failure never replays inference. Exact terminal archive redaction is ARCHIVE_UNAVAILABLE, distinct from generated OUTPUT_INVALID. The existing one replacement/cost rules apply; exhausted archive loss settles once through native0281 with unchanged guards and an independent receipt. Bounded corrective replacements preserve native0280 field/cost/count/tenant fences. Explicitly blank or unmarked physical surfaces are canonicalized without accepting printed markings or arbitrary following content. Explicitly blank shelf/price tags become unmarked physical cards, retaining shelf placement and the surrounding scene facts; content placed on/onto/across a blank surface and positive illustrations or portraits refuse this normalization. Provider output remains probabilistic and must pass the independent compiler.
+Fresh hosted writer requests select immutable v32 (`grounded-scenes-v1`): asynchronous delivery,
+provider structured JSON and independent local validation. Existing v24–v31 requests retain exact
+bytes and sealed-plan reconstruction. V31 remains an immutable qualification predecessor; its
+partial live run did not establish full-stage or semantic quality. Production activation requires
+completion of `evidence/acceptance/VF-10-09/2026-10-06-prompt-flow-audit.md`.
+
+V32 treats shot roles as framing guidance, never permission to invent a person or action. Local
+scene narration and adjacent fragments own the depicted event; global continuity/reference facts
+resolve identities but unrelated global visual actions are not sent as depiction candidates. Only
+bounded, high-confidence grounding contradictions are eligible for typed correction: explicit
+negation reversal, copying an unrelated global topic, or converting a depicted person into a real
+actor. Broad lexical paraphrase checks remain advisory. The fresh `local-evidence-v1` compiler
+policy uses v5 Natural Documentary framing; it preserves the stated subject instead of injecting a
+human into an object scene. Existing v3/v4 compiled prompts, bytes and hashes remain unchanged.
+
+A known completed v31/v32 result with repairable invalid scene fields can use the existing one
+bounded automatic replacement. Revalidate the immutable original response under its exact request
+policy, retain all valid scenes, and send only failed scene inputs with sealed raw-source hash and
+field-specific diagnostics. Code merges the correction and retained originals into the canonical
+full batch atomically. The receipt hash always identifies the actual provider response, never a
+synthesized merged answer. Native 282 binds correction to the original recorded receipt and
+unchanged input subset, preserving tenant, compare-and-set, cost and replacement-count guards.
+Each request is capped at USD 0.25 within the cumulative project ceiling; both original and
+corrective costs count.
+
+Submit once, then retrieve only that task's result; polling failure never replays inference. Exact
+terminal archive redaction remains ARCHIVE_UNAVAILABLE, distinct from generated OUTPUT_INVALID.
+Native 281 settlement and legacy native 280 correction rules remain intact. Exact task-scoped
+Runware HTTP 400/429 capacity refusals with absent or empty-array data and no cost enter the existing
+capacity hold; charged, nonempty or malformed responses cannot establish uncharged rejection.
+
+Explicitly blank physical surfaces are handled conservatively; positive text or graphics still
+fail the independent compiler. Provider output remains probabilistic: malformed metadata,
+uncertain outcomes, exhausted bounds or failed correction stop safely with retained checkpoints
+rather than replaying ambiguous paid work. Funding was restored and all 152 scenes completed, but
+independent content review found a remaining depicted-actor transfer. Final validation refinements
+and their fresh full-stage qualification remain release gates; execution completion alone does
+not establish source fidelity or visual quality.

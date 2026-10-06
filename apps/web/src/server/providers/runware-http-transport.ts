@@ -151,7 +151,13 @@ export interface RunwareCapacityRefusal {
 /** Unscoped or malformed 429 responses never establish that inference did not run. */
 export function exactRunwareCapacityRefusal(value: unknown, taskUUID: string): boolean {
   const body = record(value);
-  if (!body || "data" in body || "response" in body || "cost" in body) return false;
+  if (
+    !body ||
+    "response" in body ||
+    "cost" in body ||
+    ("data" in body && (!Array.isArray(body.data) || body.data.length !== 0))
+  )
+    return false;
   const errors = Array.isArray(body.errors) ? body.errors : [];
   if (errors.length !== 1) return false;
   const error = record(errors[0]);
@@ -459,23 +465,11 @@ export async function retrieveRunwareTextTaskDetails(
     throw new RunwareTransportError("RUNWARE_IDEMPOTENCY_CONFLICT");
 
   const originalResponse = record(details.response);
-  const admissionErrors = Array.isArray(originalResponse?.errors)
-    ? originalResponse.errors.map(record)
-    : [];
-  const admissionError = admissionErrors[0];
-  if (
-    originalResponse &&
-    admissionErrors.length === 1 &&
-    !("data" in originalResponse) &&
-    !("response" in originalResponse) &&
-    admissionError?.taskUUID === options.originalTaskUUID &&
-    admissionError.taskType === "textInference" &&
-    admissionError.code === "concurrentRequestLimitExceeded"
-  ) {
+  if (exactRunwareCapacityRefusal(originalResponse, options.originalTaskUUID)) {
     options.onDiagnostic?.({
       stage: "response",
       httpStatus: 200,
-      providerCode: admissionError.code,
+      providerCode: "concurrentRequestLimitExceeded",
       providerParameter: null,
     });
     throw new RunwareArchivedTaskRejectedError(
@@ -656,7 +650,10 @@ class RunwareHttpClient {
         providerCode,
         providerParameter,
       });
-      if (response.status === 429) {
+      if (
+        response.status === 429 ||
+        (response.status === 400 && providerCode === "concurrentRequestLimitExceeded")
+      ) {
         if (exactRunwareCapacityRefusal(errorBody, taskUUID)) {
           this.options.ledger.release(reservationUsd);
           await this.options.onCapacityRefused?.({

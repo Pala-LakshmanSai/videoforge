@@ -9,8 +9,7 @@ const MAX_KIE_PROMPT_LENGTH = 800;
 const KIE_PROMPT_TARGET_LENGTH = 640;
 // Fits the canonical 49-character HANDS_ACTION role slot without reducing
 // the immutable style/scene/keyword allowance. Required only for new bindings.
-export const KIE_HAND_ANATOMY_GUIDANCE =
-  "Per person: two hands max, own wrists; simple grip.";
+export const KIE_HAND_ANATOMY_GUIDANCE = "Per person: two hands max, own wrists; simple grip.";
 const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
 const PNG_CRC_TABLE = Uint32Array.from({ length: 256 }, (_, index) => {
   let crc = index;
@@ -66,12 +65,13 @@ export function buildKieScenePrompt(
   options: { readonly handAnatomy?: boolean } = {},
 ): string {
   const c = compiled.components;
-  const handAnatomy = options.handAnatomy === true &&
-    /\bviewpoint:\s*hands action\b/iu.test(c.continuityAndShotRole);
-  if (compiled.promptCompilerVersion === "prompt-compiler-v4") {
+  const handAnatomy =
+    options.handAnatomy === true && /\bviewpoint:\s*hands action\b/iu.test(c.continuityAndShotRole);
+  if (["prompt-compiler-v4", "prompt-compiler-v5"].includes(compiled.promptCompilerVersion)) {
     try {
-      let prompt = naturalDocumentaryRequiredPrompt(handAnatomy
-        ? { ...c, continuityAndShotRole: KIE_HAND_ANATOMY_GUIDANCE } : c);
+      let prompt = naturalDocumentaryRequiredPrompt(
+        handAnatomy ? { ...c, continuityAndShotRole: KIE_HAND_ANATOMY_GUIDANCE } : c,
+      );
       let addedNegative = false;
       for (const term of distinctStyleNegatives(c.styleNegativeSuffix)) {
         const next = `${prompt}${addedNegative ? ", " : ". Avoid: "}${term}`;

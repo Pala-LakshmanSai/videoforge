@@ -314,7 +314,7 @@ describe("Runware server HTTP transport", () => {
     ).rejects.toMatchObject({ code: "RUNWARE_IDEMPOTENCY_CONFLICT" });
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
-  it.each([200, 429])(
+  it.each([200, 400, 429])(
     "retains uncertain HTTP %s capacity identity and persists cooldown only for an exact uncharged refusal",
     async (status) => {
       const request = promptRequest();
@@ -322,14 +322,19 @@ describe("Runware server HTTP transport", () => {
         code: "concurrentRequestLimitExceeded",
         taskType: "textInference",
         taskUUID: request.request.taskUUID,
+        message:
+          "Insufficient available balance. Some of your credits are currently reserved for requests in progress. Please wait...",
       };
       for (const [body, confirmed] of [
         [{ errors: [rejection] }, true],
         [{ errors: [{ ...rejection, taskUUID: crypto.randomUUID() }] }, false],
-        [{ errors: [rejection], data: [] }, false],
+        [{ errors: [rejection], data: [] }, true],
+        [{ errors: [rejection], data: [{}] }, false],
+        [{ errors: [rejection], data: null }, false],
+        [{ errors: [rejection], data: {} }, false],
         [{ errors: [{ ...rejection, cost: 0.001 }] }, false],
         [{ errors: [rejection, rejection] }, false],
-        [{ error: "busy" }, false],
+        [{ errors: [{ ...rejection, taskType: "imageInference" }] }, false],
       ] as const) {
         const ledger = new RunwareSpendLedger(0.2);
         const onCapacityRefused = vi.fn(async () => {});
@@ -393,7 +398,13 @@ describe("Runware server HTTP transport", () => {
       [{ errors: [{ ...rejection, taskUUID: crypto.randomUUID() }] }, false],
       [{ errors: [{ ...rejection, taskType: "imageInference" }] }, false],
       [{ errors: [rejection, rejection] }, false],
-      [{ errors: [rejection], data: [] }, false],
+      [{ errors: [rejection], data: [] }, true],
+      [{ errors: [rejection], data: [{}] }, false],
+      [{ errors: [rejection], data: null }, false],
+      [{ errors: [rejection], data: {} }, false],
+      [{ errors: [rejection], cost: 0.01 }, false],
+      [{ errors: [{ ...rejection, cost: 0.01 }] }, false],
+      [{ errors: [{ ...rejection, cost: 0 }] }, false],
       [{ status: "processing" }, false],
     ] as const) {
       const fetcher = vi.fn(async () =>
@@ -407,7 +418,10 @@ describe("Runware server HTTP transport", () => {
         fetch: fetcher,
       });
       if (rejected) await expect(result).rejects.toBeInstanceOf(RunwareArchivedTaskRejectedError);
-      else await expect(result).rejects.not.toBeInstanceOf(RunwareArchivedTaskRejectedError);
+      else {
+        await expect(result).rejects.not.toBeInstanceOf(RunwareArchivedTaskRejectedError);
+        await expect(result).rejects.toBeInstanceOf(RunwareTransportError);
+      }
       expect(fetcher).toHaveBeenCalledTimes(1);
     }
     await expect(

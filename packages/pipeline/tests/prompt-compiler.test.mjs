@@ -12,6 +12,9 @@ import {
   PipelineDomainError,
   buildPromptBatch,
   compileImagePrompt,
+  naturalDocumentaryLiteralCharacterLimit,
+  NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH,
+  naturalDocumentaryRequiredPrompt,
   promptStyleTreatmentPositiveSuffix,
   SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
   validatePromptWriterOutput,
@@ -796,5 +799,87 @@ test("verification rejects prompt, component, byte-count, and hash tampering", a
     { ...compiled, components: { ...compiled.components, cropGuidance: "tampered" } },
   ]) {
     expectCode("PROMPT_HASH_MISMATCH", () => verifyCompiledImagePrompt(changed));
+  }
+});
+
+test("all image styles reject impossible compiler inputs before writer spending", () => {
+  const request = {
+    styleProfileHash: digest,
+    style: style(),
+    extraPromptKeywords: null,
+    applyExtraPromptKeywords: false,
+    scenes: scenes(1),
+  };
+  assert.equal(naturalDocumentaryLiteralCharacterLimit(request), undefined);
+  assert.throws(
+    () =>
+      naturalDocumentaryLiteralCharacterLimit({
+        ...request,
+        extraPromptKeywords: "add a visible logo",
+        applyExtraPromptKeywords: true,
+      }),
+    PipelineDomainError,
+  );
+  assert.throws(
+    () =>
+      naturalDocumentaryLiteralCharacterLimit({
+        ...request,
+        style: style("photo with a visible caption"),
+      }),
+    PipelineDomainError,
+  );
+  assert.throws(
+    () =>
+      naturalDocumentaryLiteralCharacterLimit({
+        ...request,
+        style: { ...style(), splitImageGuidance: "image on left" },
+      }),
+    PipelineDomainError,
+  );
+});
+
+test("fresh grounded medium framing preserves objects and legacy compiled prompts", () => {
+  for (const subject of [
+    "A plain unmarked bottle",
+    "Hands holding an unmarked bottle",
+    "A woman with her complete head and face visible",
+  ]) {
+    const expected = { ...scenes(1)[0], inImageShotRole: "HUMAN_MEDIUM" },
+      output = {
+        scene_id: expected.sceneId,
+        literal_subject: subject,
+        action: "resting at a grocery counter",
+        environment: "A grocery store",
+        in_image_shot_role: expected.inImageShotRole,
+        lighting_context: "daylight",
+        continuity_tags: [],
+        prompt_core: `${subject} at a grocery store`,
+      };
+    const input = {
+      expectedScene: expected,
+      writerOutput: output,
+      style: style(),
+      styleProfileHash: NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH,
+      extraPromptKeywords: null,
+      applyExtraPromptKeywords: false,
+    };
+    const old = compileImagePrompt(input),
+      fresh = compileImagePrompt({ ...input, compilerPolicy: "local-evidence-v1" });
+    assert.equal(old.promptCompilerVersion, "prompt-compiler-v4");
+    assert.equal(fresh.promptCompilerVersion, "prompt-compiler-v5");
+    assert.doesNotMatch(fresh.components.continuityAndShotRole, /\b(?:head|face|chest)\b/);
+    assert.equal(fresh.components.literalContent, old.components.literalContent);
+    assert.ok(
+      naturalDocumentaryRequiredPrompt(fresh.components).length <=
+        naturalDocumentaryRequiredPrompt(old.components).length,
+    );
+    if (!subject.includes("woman"))
+      assert.doesNotMatch(
+        naturalDocumentaryRequiredPrompt(fresh.components),
+        /\b(?:head|face|chest)\b/,
+      );
+    verifyCompiledImagePrompt(old);
+    verifyCompiledImagePrompt(fresh);
+    assert.deepEqual(compileImagePrompt(input), old);
   }
 });

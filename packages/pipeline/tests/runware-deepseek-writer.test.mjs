@@ -19,6 +19,8 @@ import {
   SCENE_PROMPT_WRITER_SYSTEM_PROMPT,
   buildPromptBatch,
   buildRunwarePromptRequest,
+  buildRunwarePromptCorrection,
+  projectTextFreePhysicalSurfaces,
   compileImagePrompt,
 } from "../dist/src/index.js";
 
@@ -2505,5 +2507,555 @@ test("bounded v2 repairs use distinct identities and preserve v1 request bytes",
         .requestBytes,
       v1.requestBytes,
     );
+  }
+});
+
+test("physical surface projection preserves relationships and rejects text-bearing ambiguity", () => {
+  for (const [source, expected] of [
+    [
+      "An unmarked white shelf tag with a blank yellow corner",
+      "An unmarked white shelf card with a blank yellow corner",
+    ],
+    [
+      "Two unmarked white shelf tags side by side on a metal shelf edge",
+      "Two unmarked white shelf cards side by side on a metal shelf edge",
+    ],
+    [
+      "a bottle with a blank green and brown label",
+      "a bottle with an unmarked green and brown surface",
+    ],
+    [
+      "an unmarked price tag holder on a metal shelf edge",
+      "an unmarked card holder on a metal shelf edge",
+    ],
+    ["A blank, unmarked price tag on a grocery shelf", "an unmarked card on a grocery shelf"],
+    [
+      "A finger pointing at a small blank white price tag",
+      "A finger pointing at a small unmarked white card",
+    ],
+    [
+      "An unmarked paper shelf tag attached to a metal shelf",
+      "An unmarked paper shelf card attached to a metal shelf",
+    ],
+    ["Blank labels on the jars", "unmarked surfaces on the jars"],
+    [
+      "A shopper beside a blank label on a bottle",
+      "A shopper beside an unmarked surface on a bottle",
+    ],
+    ["A blank label on an unmarked bottle", "an unmarked surface on an unmarked bottle"],
+    ["A blank shelf tag on an unmarked shelf", "an unmarked shelf card on an unmarked shelf"],
+    [
+      "Two small, blank, unmarked white shelf tags side-by-side.",
+      "Two small, unmarked white shelf cards side-by-side.",
+    ],
+    [
+      "Two blank price cards side by side on the grocery shelf.",
+      "Two unmarked cards side by side on the grocery shelf.",
+    ],
+  ]) {
+    assert.equal(projectTextFreePhysicalSurfaces(source), expected);
+    assert.equal(projectTextFreePhysicalSurfaces(expected), expected);
+  }
+  for (const source of [
+    "An unmarked white shelf tag with a yellow corner number",
+    "A blank green and brown label with printed text",
+    "A blank shelf tag with a price in its corner",
+    "A blank label on a shelf edge with a portrait",
+    "Honey on a blank shelf tag",
+    "5 on a blank label",
+    "a blank label Honey",
+    "a blank label with printed text",
+    "a blank price tag on a branded shelf",
+    "a photo of a chef on a blank label",
+    "a blank label with a portrait",
+    "a blank label reading Honey",
+    "an unmarked shelf tag with a barcode",
+    "Honey on an unmarked red-labeled bottle",
+    "Honey on the small blank shelf tag",
+    "rea\u0000ding Honey from a blank label",
+  ]) {
+    assert.equal(projectTextFreePhysicalSurfaces(source), source);
+  }
+});
+
+test("v31 structured JSON and corrective subset preserve valid original scenes and provenance", async () => {
+  const batch = makeBatch(3);
+  const original = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "validated-scenes-v1",
+  );
+  const source = output(original, {
+    change: (rows) => {
+      rows[1].literal_subject = "A portrait illustration on a bottle label";
+      return rows;
+    },
+  });
+  const correction = buildRunwarePromptCorrection(batch, source);
+  assert.ok(correction);
+  assert.deepEqual(correction.failedSceneIds, [batch.scenes[1].sceneId]);
+  assert.deepEqual(correction.failures, [
+    { sceneId: batch.scenes[1].sceneId, field: "literal_subject", reason: "hard_conflict" },
+  ]);
+  const repair = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    2,
+    original.requestSha256,
+    1,
+    "validated-scenes-v1",
+    "no-text-v2",
+    correction,
+  );
+  assert.equal(original.requestVersion, "runware-gemini-3.5-flash-prompt-request-v31");
+  assert.equal(original.request.outputFormat, "JSON");
+  assert.deepEqual(original.request.jsonSchema, repair.request.jsonSchema);
+  assert.deepEqual(original.request.settings, repair.request.settings);
+  assert.deepEqual(
+    payload(repair).scenes.map((s) => s.scene_id),
+    correction.failedSceneIds,
+  );
+  assert.equal(payload(repair).correction.source_output_text, source);
+  assert.notEqual(repair.request.taskUUID, original.request.taskUUID);
+  const transport = new ScriptedTransport([(request) => success(request)]),
+    evidence = [];
+  const writer = new RunwarePromptWriter({
+    transport,
+    evidenceSink: {
+      record(value) {
+        evidence.push(value);
+      },
+    },
+    maximumBatchCostUsd: 0.25,
+    requestPolicy: "validated-scenes-v1",
+    semanticQualityMode: "advisory",
+    contentRepair: "no-text-v2",
+    correction,
+  });
+  const result = await writer.write(batch, original.requestSha256);
+  const originalRows = JSON.parse(source).scenes;
+  assert.deepEqual(
+    result.scenes.map((s) => s.scene_id),
+    batch.scenes.map((s) => s.sceneId),
+  );
+  assert.deepEqual(result.scenes[0], originalRows[0]);
+  assert.deepEqual(result.scenes[2], originalRows[2]);
+  assert.deepEqual(evidence[0].acceptedSceneIds, correction.failedSceneIds);
+  assert.deepEqual(evidence[0].reusedSceneIds, [batch.scenes[0].sceneId, batch.scenes[2].sceneId]);
+  assert.equal(evidence[0].sourceResponseSha256, correction.sourceResponseSha256);
+  assert.equal(
+    evidence[0].responseSha256,
+    `sha256:${createHash("sha256").update(output(transport.requests[0])).digest("hex")}`,
+  );
+  assert.equal(transport.requests.length, 1);
+});
+
+test("v31 correction refuses forged diagnostics, schema drift and oversized source before dispatch", async () => {
+  const batch = makeBatch(2),
+    original = buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "validated-scenes-v1");
+  const source = output(original, {
+    change: (rows) => {
+      rows[0].action = "Writing a price on a label";
+      return rows;
+    },
+  });
+  const correction = buildRunwarePromptCorrection(batch, source);
+  assert.ok(correction);
+  for (const changed of [
+    { ...correction, sourceResponseSha256: `sha256:${"0".repeat(64)}` },
+    { ...correction, failedSceneIds: [batch.scenes[1].sceneId] },
+    { ...correction, failures: [] },
+  ]) {
+    const transport = new ScriptedTransport([]);
+    const writer = new RunwarePromptWriter({
+      transport,
+      evidenceSink: { record() {} },
+      maximumBatchCostUsd: 0.25,
+      requestPolicy: "validated-scenes-v1",
+      semanticQualityMode: "advisory",
+      correction: changed,
+    });
+    await assert.rejects(() => writer.write(batch, original.requestSha256));
+    assert.equal(transport.requests.length, 0);
+  }
+  for (const changed of [
+    "{",
+    JSON.stringify({ ...JSON.parse(source), batch_id: "other" }),
+    JSON.stringify({ ...JSON.parse(source), scenes: JSON.parse(source).scenes.slice(1) }),
+  ])
+    assert.equal(buildRunwarePromptCorrection(batch, changed), null);
+  assert.equal(buildRunwarePromptCorrection(batch, output(original)), null);
+  const oversized = output(original, {
+    change: (rows) => {
+      rows[0].action = "Writing on a label";
+      rows[1].prompt_core = "physical evidence ".repeat(10000);
+      return rows;
+    },
+  });
+  const largeCorrection = buildRunwarePromptCorrection(batch, oversized);
+  assert.ok(largeCorrection);
+  const transport = new ScriptedTransport([]),
+    writer = new RunwarePromptWriter({
+      transport,
+      evidenceSink: { record() {} },
+      maximumBatchCostUsd: 0.25,
+      requestPolicy: "validated-scenes-v1",
+      semanticQualityMode: "advisory",
+      correction: largeCorrection,
+    });
+  await assert.rejects(() => writer.write(batch, original.requestSha256), /input budget/);
+  assert.equal(transport.requests.length, 0);
+});
+
+test("v31 correction rejects extra or forbidden repaired scenes without another dispatch", async () => {
+  const batch = makeBatch(2),
+    original = buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "validated-scenes-v1");
+  const correction = buildRunwarePromptCorrection(
+    batch,
+    output(original, {
+      change: (rows) => {
+        rows[1].action = "Writing on a label";
+        return rows;
+      },
+    }),
+  );
+  for (const step of [
+    (request) =>
+      success(request, {
+        change: (rows) => {
+          rows[0].action = "Drawing a diagram";
+          return rows;
+        },
+      }),
+    (request) =>
+      success(request, {
+        change: (rows) => [...rows, { ...rows[0], scene_id: batch.scenes[0].sceneId }],
+      }),
+  ]) {
+    const transport = new ScriptedTransport([step]),
+      writer = new RunwarePromptWriter({
+        transport,
+        evidenceSink: { record() {} },
+        maximumBatchCostUsd: 0.25,
+        requestPolicy: "validated-scenes-v1",
+        semanticQualityMode: "advisory",
+        correction,
+      });
+    await assert.rejects(() => writer.write(batch, original.requestSha256));
+    assert.equal(transport.requests.length, 1);
+  }
+});
+
+function groundingCase(source, subject, action, environment, options = {}) {
+  const base = makeBatch(1),
+    batch = {
+      ...base,
+      storyContext:
+        options.storyContext ??
+        "Subject: barbecue sauce | Visual facts: ribs being brushed with sauce; grocery store aisles | Continuity: Mira, a retired grocery cashier | Resolve: she = Mira",
+      scenes: [
+        {
+          ...base.scenes[0],
+          phrase: source,
+          sentenceContext: source,
+          priorContext: options.prior ?? null,
+          nextContext: options.next ?? null,
+        },
+      ],
+    };
+  const original = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "validated-scenes-v1",
+  );
+  const raw = output(original, {
+    change: (rows) => {
+      Object.assign(rows[0], { literal_subject: subject, action, environment });
+      return rows;
+    },
+  });
+  return { batch, raw };
+}
+
+test("v32 rejects observed source contradictions while v31 stays reconstruction-compatible", () => {
+  for (const [source, subject, action, environment, reason] of [
+    [
+      "A person is not in a kitchen stirring sauce.",
+      "A chef",
+      "stirring a large pot",
+      "A commercial kitchen",
+      "explicit_negation_conflict",
+    ],
+    [
+      "The worker does not pour water into the jar.",
+      "A worker",
+      "pouring water into a jar",
+      "A workshop",
+      "explicit_negation_conflict",
+    ],
+    [
+      "At the grocery register, I am retired and free to share my opinions.",
+      "A hand holding a basting brush",
+      "coating ribs with sauce",
+      "An outdoor grill",
+      "global_topic_substitution",
+    ],
+    [
+      "This hardly has any honey. That is the familiar option.",
+      "A basting brush",
+      "spreading sauce onto ribs",
+      "A grill",
+      "global_topic_substitution",
+    ],
+    [
+      "The famous chef smiling from the label is a portrait.",
+      "A chef",
+      "smiles warmly",
+      "A kitchen",
+      "depiction_transfer",
+    ],
+    [
+      "A chef holds a photo of a farmer.",
+      "A farmer",
+      "standing beside a field",
+      "A rural farm",
+      "depiction_transfer",
+    ],
+  ]) {
+    const { batch, raw } = groundingCase(source, subject, action, environment);
+    assert.equal(buildRunwarePromptCorrection(batch, raw), null);
+    const correction = buildRunwarePromptCorrection(batch, raw, "grounded-scenes-v1");
+    assert.ok(correction, source);
+    assert.ok(
+      correction.failures.some((f) => f.reason === reason),
+      source,
+    );
+  }
+});
+
+test("v32 keeps legitimate negation, paraphrase, actors and local visual evidence", () => {
+  for (const [source, subject, action, environment, options] of [
+    [
+      "The chef is not only stirring but tasting the sauce.",
+      "A chef",
+      "stirring sauce in a pot",
+      "A kitchen",
+    ],
+    ["Do not forget to stir the sauce.", "A chef", "stirring sauce in a pot", "A kitchen"],
+    ["The chef cannot stop stirring.", "A chef", "stirring sauce in a pot", "A kitchen"],
+    [
+      "The chef is not stirring; the assistant is stirring.",
+      "An assistant",
+      "stirring sauce in a pot",
+      "A kitchen",
+    ],
+    [
+      "The chef waits nearby. He is not stirring the sauce. The assistant stirs it.",
+      "An assistant",
+      "stirring sauce in a pot",
+      "A kitchen",
+    ],
+    ["The chef is stirring the sauce.", "A chef", "stirring sauce in a pot", "A kitchen"],
+    [
+      "The chef is not in the kitchen stirring; he is stirring outside.",
+      "A chef",
+      "stirring sauce in a pot",
+      "An outdoor courtyard",
+    ],
+    ["A chef smiles beside a portrait.", "A chef with a visible torso", "smiling", "A kitchen"],
+    ["A chef holds a photo of a farmer.", "A chef", "holding an unmarked card", "A kitchen"],
+    [
+      "A chef stands beside a portrait of a chef.",
+      "A chef",
+      "standing beside an unmarked wall",
+      "A kitchen",
+    ],
+    [
+      "A chef poses beside a portrait of the chef.",
+      "A chef",
+      "posing beside an unmarked wall",
+      "A kitchen",
+    ],
+    [
+      "A smiling chef is on the bottle label.",
+      "A shopper",
+      "inspecting an unmarked bottle",
+      "A grocery store",
+    ],
+    [
+      "She pauses at the checkout.",
+      "Mira, a retired cashier",
+      "pausing at the grocery counter",
+      "A supermarket",
+      { prior: "Mira, the retired cashier, is shopping" },
+    ],
+    ["A cyclist services a bicycle.", "A rider and bike", "repairing the cycle", "A workshop"],
+    [
+      "A hand holds a basting brush near the ribs.",
+      "A hand holding a basting brush",
+      "coating ribs with sauce",
+      "An outdoor grill",
+    ],
+    [
+      "Look closely at this.",
+      "A basting brush",
+      "coating ribs with sauce",
+      "An outdoor grill",
+      { prior: "Ribs are being brushed with sauce" },
+    ],
+    [
+      "Una persona está pincelando costillas con salsa.",
+      "A basting brush",
+      "coating ribs with sauce",
+      "An outdoor grill",
+    ],
+    [
+      "Un cocinero cubre costillas con salsa.",
+      "A basting brush",
+      "coating ribs with sauce",
+      "An outdoor grill",
+    ],
+    ["She is there.", "Mira", "standing at the counter", "A grocery store"],
+  ]) {
+    const { batch, raw } = groundingCase(source, subject, action, environment, options);
+    assert.equal(buildRunwarePromptCorrection(batch, raw, "grounded-scenes-v1"), null, source);
+  }
+});
+
+test("v32 context scopes identity and seals new request bytes without changing v31", () => {
+  const { batch } = groundingCase(
+    "She looks at the unmarked bottle",
+    "Mira",
+    "inspecting the bottle",
+    "A grocery aisle",
+  );
+  const old = buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "validated-scenes-v1"),
+    fresh = buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "grounded-scenes-v1");
+  assert.equal(fresh.requestVersion, "runware-gemini-3.5-flash-prompt-request-v32");
+  assert.notEqual(old.requestSha256, fresh.requestSha256);
+  assert.equal(payload(old).story_context, batch.storyContext);
+  assert.doesNotMatch(payload(fresh).story_context, /Subject:|Visual facts:|ribs/);
+  assert.match(payload(fresh).story_context, /Mira/);
+  assert.deepEqual(old.request.jsonSchema, fresh.request.jsonSchema);
+  assert.deepEqual(
+    buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "validated-scenes-v1"),
+    old,
+  );
+});
+
+test("v32 scopes a denied action to its object and preserves denied kitchen actions", () => {
+  const differentObject = groundingCase(
+    "Shoppers never look at the corner of a tag. They notice a large bottle.",
+    "A shopper",
+    "looking at a large unmarked bottle on a shelf",
+    "A grocery store aisle",
+  );
+  assert.equal(
+    buildRunwarePromptCorrection(differentObject.batch, differentObject.raw, "grounded-scenes-v1"),
+    null,
+  );
+  for (const [source, subject, action, environment] of [
+    [
+      "People never look at that bottle. They look at the aisle.",
+      "A shopper",
+      "looking at the bottle",
+      "A grocery store aisle",
+    ],
+    [
+      "A chef is not in the kitchen stirring; he is stirring outside.",
+      "A chef",
+      "stirring a large pot",
+      "A kitchen",
+    ],
+    [
+      "A person is not in a kitchen stirring sauce.",
+      "A chef",
+      "stirring a large pot",
+      "A commercial kitchen",
+    ],
+  ]) {
+    const { batch, raw } = groundingCase(source, subject, action, environment);
+    const correction = buildRunwarePromptCorrection(batch, raw, "grounded-scenes-v1");
+    assert.ok(
+      correction?.failures.some((failure) => failure.reason === "explicit_negation_conflict"),
+      source,
+    );
+    assert.equal(buildRunwarePromptCorrection(batch, raw, "validated-scenes-v1"), null);
+  }
+});
+
+test("v32 catches an imagined packaging actor made real in any scene field", () => {
+  const source = "A jar has painted packaging that wants you to picture an old man tending a fire.";
+  for (const [subject, action, environment, field] of [
+    ["An older man", "tending a smoking grill", "A backyard patio", "literal_subject"],
+    ["An unmarked bottle", "being held by an older man", "A backyard patio", "action"],
+    [
+      "An unmarked glass bottle of barbecue sauce",
+      "resting on a wooden outdoor table",
+      "A backyard patio with an older man tending a smoking grill in the blurred background",
+      "environment",
+    ],
+  ]) {
+    const { batch, raw } = groundingCase(source, subject, action, environment, {
+      next: "That package image suggests an imagined scene.",
+    });
+    const correction = buildRunwarePromptCorrection(batch, raw, "grounded-scenes-v1");
+    assert.ok(
+      correction?.failures.some(
+        (failure) => failure.field === field && failure.reason === "depiction_transfer",
+      ),
+      field,
+    );
+    assert.equal(buildRunwarePromptCorrection(batch, raw, "validated-scenes-v1"), null);
+  }
+  for (const [source, subject, action, environment] of [
+    [
+      "There is a picture on the wall while a man stands by a table.",
+      "A man",
+      "standing by a table",
+      "A room with an unmarked wall",
+    ],
+    [
+      "A picture of the city is nearby while a man stands by a table.",
+      "A man",
+      "standing by a table",
+      "A room with an unmarked wall",
+    ],
+    ["A chef holds a photo of a farmer.", "A chef", "holding an unmarked card", "A kitchen"],
+    [
+      "A man stands beside a picture of an old man.",
+      "A man",
+      "standing beside an unmarked wall",
+      "A room",
+    ],
+    ["Imagine a chef stirring soup.", "A chef", "stirring soup", "A kitchen"],
+    ["Picture an old man tending a fire.", "An older man", "tending a fire", "A backyard"],
+    [
+      "A chef dances beside a photo of the chef.",
+      "A chef",
+      "dancing beside an unmarked wall",
+      "A kitchen",
+    ],
+    [
+      "A chef waves beside a photo of the chef.",
+      "A chef",
+      "waving beside an unmarked wall",
+      "A kitchen",
+    ],
+    [
+      "A chef holds a bottle with a farmer smiling at you from the label.",
+      "A chef",
+      "holding an unmarked bottle",
+      "A kitchen",
+    ],
+  ]) {
+    const { batch, raw } = groundingCase(source, subject, action, environment);
+    assert.equal(buildRunwarePromptCorrection(batch, raw, "grounded-scenes-v1"), null, source);
   }
 });
