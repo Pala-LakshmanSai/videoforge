@@ -1,10 +1,10 @@
 # Prompt flow audit and repair — 2026-10-06
 
-Checkpoint V2-09 / VF-10-09. In progress; predecessor executable `7e2bd59ecb15a4b3886a9ce5e7ee2ef7f65d2a71`, native schema 281.
+Checkpoint V2-09 / VF-10-09. Production prompt-stage release verified at executable `187f07b89d1919143599bfcbf158bc4d848ba142`, native schema 282. Predecessor `7e2bd59ecb15a4b3886a9ce5e7ee2ef7f65d2a71` remains historical evidence.
 
 ## Authority and bounds
 
-The user explicitly requests a complete multi-agent audit, durable repair, verification and production publication after repeated fresh-project prompt failures. Additional paid verification is capped at **USD 2 cumulative**, including corrective requests and unresolved liabilities. No new GPU, avatar, image or full-film generation is part of this cap. Stop dispatch on uncertain provider outcome or insufficient remaining liability reserve. Existing production projects and their accepted prefixes, identities, costs and cleanup obligations remain preserved.
+The user explicitly requests a complete multi-agent audit, durable repair, verification and production publication after repeated fresh-project prompt failures. Additional paid verification was initially capped at USD 2; the user explicitly raised it to **USD 4 cumulative**, including corrective requests and unresolved liabilities. No new GPU, avatar, image or full-film generation is part of this cap. Stop dispatch on uncertain provider outcome or insufficient remaining liability reserve. Existing production projects and their accepted prefixes, identities, costs and cleanup obligations remain preserved.
 
 ## Confirmed cause
 
@@ -47,9 +47,9 @@ This run passed execution but exposed further validation precision defects. Safe
 The production build also found that the expanded prompt-stage closure exceeded its existing 256 KiB CPU-safety bound. Whitespace-only transformation of the dedicated hosted prompt route, using installed Vite/esbuild with syntax and identifier minification disabled, preserves request strings and the unchanged size bound. Final build proof remains required after the final validation edits.
 
 
-## Publication hold
+## Historical publication hold, subsequently closed
 
-The user has been asked to raise the total verification cap from USD 2 to USD 4, allowing one fresh complete 152-scene run after the final validation refinements. Approval is pending; replenishing provider credit did not itself raise the authorized spend cap. No further inference has been submitted. Production is still the predecessor executable; native 282 has passed a rollback-only live compatibility check and has not been applied.
+The user has been asked to raise the total verification cap from USD 2 to USD 4, allowing one fresh complete 152-scene run after the final validation refinements. At that checkpoint approval was pending; replenishing provider credit did not itself raise the authorized cap. No further inference was submitted until the user explicitly approved the USD 4 total cap. The final qualification and publication below supersede this historical hold.
 
 
 ## Final local freeze
@@ -57,3 +57,22 @@ The user has been asked to raise the total verification cap from USD 2 to USD 4,
 The final shared validator rejects only the confirmed actor-transfer environment among the 152 previously accepted scenes; the four earlier semantic defects are also rejected. All 16 original v32 request bytes/hashes remain exact. Generic imagination, real people beside pictured people, object-scoped negation and unsupported-language ambiguity remain admissible; only evidence-backed contradictions hard-fail.
 
 Provider-free gates passed: 301 pipeline tests, 21 control-plane prompt/service/store tests, 120 hosted/provider web tests, 23 native lifecycle/compatibility tests, two whitespace-minifier semantic tests, affected types/lint, secret scan, current vNext firewall and context validation. Native 282 live qualification remains rollback-only. The executable commit and its final production bundles will be recorded before publication.
+
+
+## Final full-stage qualification and production acceptance
+
+The user approved USD 4 cumulative. The final shared code completed the same immutable 152-scene plan, all 16 batches, through 20 asynchronous requests for USD 1.163418. Total task inference spend is USD 2.968969, with zero unresolved reservations and no further media/GPU generation. Native per-response microUSD ceilings are one microUSD higher than rounding the final provider sum; both representations remain recorded, without changing production cost semantics.
+
+Four corrections replaced only four failed rows; all 35 retained normalized originals remain identical. The previously missed imagined package actor appeared in a real provider result, was rejected with typed scene feedback, and was corrected while the other nine batch rows remained preserved. Independent review covered all 152 accepted scenes, finding zero definite source contradictions. Every correction binds the actual immutable original response text/SHA, precise input subset and returned IDs. All 152 Kie prompts preserve the exact compiled literal prefix and permanent exclusions, at 652–791 characters. Soft scene associations, age/material continuity and output-image anatomy remain editorial/visual concerns; this is prompt-stage evidence, not full-film or image-quality acceptance.
+
+Actual durable service replay recovered every recorded original/correction, compiled and persisted all 152 in exact order, and restored the completed prefix twice with zero HTTP, submission, native writes or paid calls. Source manifest `sha256:6c5b5a3af32e4e0157900eab3625d3b5f8121a89305a8796d051332818666226` binds 437 files. Compiled bytes hash: `sha256:c55e339cb385daf3e2cf3fae18b49be06e8072dbe1b01cf8132d0b13995745b8`. Qualification capture hashed UTF-8 file representations; publication separately verified tracked binary bytes against the exact commit. Prepared bundle hash: `sha256:c7913b1f2559d90387c2912da0ba41c33b211c5a2aa48964bfc052f840ab9249`.
+
+Provider-free checks passed: pipeline301, control-plane21, hosted/provider web120, native lifecycle/compatibility23 and minifier2; types, affected lint, secrets, current vNext firewall, context and both builds. Whitespace-only prompt-route transformation keeps the unchanged CPU guard: 243,440 of 262,144 bytes (18,704 bytes headroom). Request string identities and prior v24–v31 wire reconstruction remain exact.
+
+Production executable `187f07b89d1919143599bfcbf158bc4d848ba142` was pushed and deployed as Worker `79001b7e-1997-43e5-be83-6263bc6900aa` at 100% traffic. Native282 was applied after exact rollback/preimage qualification; legacy recording functions, ACLs, claims, the original 32/152 prefix and costs stayed unchanged. All 36 public asset hashes, anonymous private-catalog401, 55 bindings, 27 secrets, three Workflow identities and qualified Cloud/Desktop0.1.52 pins passed. CPU fallback remains disabled. No project/provider task was created by publication.
+
+The old continuation step ended with a confirmed finished `WorkflowInternalError`; the exact pending await and internal platform cause are unproven. It was not interrupted. A guarded stable-ID restart followed exact terminal-step and native no-DUE/prefix/cost/lease/quarantine checks. New registration `e40cb7f3-93d0-42c0-865f-6a4465ee46bf` runs with original parameters, error-null and a successful post-restart tick. Routes/domains/crons/traffic, archived unknown liabilities and the historical Cloud reservation stayed preserved. Existing watchdogs restart known terminal singleton failures on eligible project polling, admission or desktop claim triggers; cron-only recovery remains unqualified.
+
+Fresh Brave navigation verified private admission, Queue, the original FAILED32/152 checkpoint with disabled paid retry and stopped rental clocks, and New Project's voiceover/script, exact avatar/style and Local/Cloud controls without submission. An earlier unavailable-page message did not recur on fresh same-browser navigation. The historical failed project stays unchanged for user removal; new plans select the verified v32/v5 flow. Inherited broad-CI, invoice, concurrent long-form throughput, external availability and full-film/visual acceptance remain separate gates.
+
+Private proof directory: ignored `.videoforge/prompt-flow-audit-20261006/qualification-final/` and `release/`. Key receipts: final independent review, durable service replay, qualification-to-publication binding, native282 commit, deployed configuration, public assets, Brave acceptance and matching-runtime observation. No secrets or customer payloads are in this public record.

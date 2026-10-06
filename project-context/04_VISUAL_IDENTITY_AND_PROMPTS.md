@@ -398,8 +398,9 @@ Fresh physical-placement writer policy v27 requires visible torso/connected arms
 Fresh hosted writer requests select immutable v32 (`grounded-scenes-v1`): asynchronous delivery,
 provider structured JSON and independent local validation. Existing v24–v31 requests retain exact
 bytes and sealed-plan reconstruction. V31 remains an immutable qualification predecessor; its
-partial live run did not establish full-stage or semantic quality. Production activation requires
-completion of `evidence/acceptance/VF-10-09/2026-10-06-prompt-flow-audit.md`.
+partial live run did not establish full-stage or semantic quality. Final v32/v5 full-stage and
+production qualification passed at executable `187f07b8`, native282; see
+`evidence/acceptance/VF-10-09/2026-10-06-prompt-flow-audit.md`.
 
 V32 treats shot roles as framing guidance, never permission to invent a person or action. Local
 scene narration and adjacent fragments own the depicted event; global continuity/reference facts
@@ -429,7 +430,8 @@ capacity hold; charged, nonempty or malformed responses cannot establish uncharg
 Explicitly blank physical surfaces are handled conservatively; positive text or graphics still
 fail the independent compiler. Provider output remains probabilistic: malformed metadata,
 uncertain outcomes, exhausted bounds or failed correction stop safely with retained checkpoints
-rather than replaying ambiguous paid work. Funding was restored and all 152 scenes completed, but
-independent content review found a remaining depicted-actor transfer. Final validation refinements
-and their fresh full-stage qualification remain release gates; execution completion alone does
-not establish source fidelity or visual quality.
+rather than replaying ambiguous paid work. A predecessor full-stage run exposed a depicted-actor
+transfer; the refined validator caught and repaired that same class in fresh live qualification.
+All 152 final prompts passed independent content and durable service recovery review; four repairs
+preserved 35 valid originals. Visual/editorial quality and external provider availability remain
+separate from this verified prompt-stage execution and source-fidelity gate.
