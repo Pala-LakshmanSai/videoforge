@@ -3,13 +3,18 @@ account_switching_2026_10_06:
   selected_task: VF-10-09
   read_profile: v2_09_account_switching
   branch: codex/account-switching
-  status: LOCAL_VALIDATED_PUBLICATION_PENDING
+  status: PRODUCTION_PUBLISHED_REAL_GOOGLE_AND_CHROME_VERIFIED
+  executable: d9f80122267f6969993dbe0b3c239b51fd9fa5fa
+  worker_version: bd07a14b-f166-43be-80df-db0c04fcb38d
+  traffic_percent: 100
+  production_native_schema: 282
+  validations: Focused334_config19_types_lint_builds_quarantines_context_secrets_PASS;35public_asset_hashes_private401_origin_guards_no_store_55bindings27secrets_threeWorkflowIDs_preserved;real_Google_add_two_way_switch_distinct_saved_voices_projects_other_tab_identity_owner_controls_keyboard_390px_PASS.
   predecessor_source: ef1df2351c74bdfd062cb52c5ca283500e626d81
   user_authority: Add_account_switching_validate_functionality_and_push_production;fresh_current_status_requested.
   decision: DEC_AUTH_002
   provider_spend: USD0_new_inference_compute_or_resources;existing_jobs_and_lifecycle_preserved.
   paid_compute_shutdown: No_compute_started_stopped_or_reaudited;no_fresh_inventory_claim.
-  remaining_gates: Exact_publication_configuration_asset_and_real_Chrome_acceptance_pending;inherited_fullCI_editorial_provider_invoice_gates_separate.
+  remaining_gates: No_account_switching_gate;inherited_fullCI_editorial_provider_invoice_gates_separate.
   evidence: evidence/acceptance/VF-10-09/2026-10-06-account-switching.md
 
 assembly_webp_recovery_2026_10_06:
@@ -7613,7 +7618,7 @@ historical_v2_06_final_live_closure_authority:
   actual_spend_usd: 0
   new_recurring_resources_created: 0
 
-credential_value_read_authorized: true
+credential_value_read_authorized: false
 model_downloads_authorized: false
 worker_image_publication_authorized: false
 sample_output_publication_authorized: false
@@ -7643,14 +7648,14 @@ repository:
   branch: codex/account-switching
   branch_upstream: origin/codex/account-switching
   branch_published: true
-  current_source_head: "ef1df2351c74bdfd062cb52c5ca283500e626d81"
+  current_source_head: "d9f80122267f6969993dbe0b3c239b51fd9fa5fa"
   current_source_head_semantics: executable_release_identity_recorded_after_publication_evidence_commits_follow
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Executable ef1df235 / Worker1533a90f at100%, native282 unchanged. Final WebP source intake/URI and existing ACTIVE API recovery repaired; exact original render resumed automatically at12:24 UTC without replay of198 accepted API jobs. Qualified Cloud/Desktop0.1.52 and latest prompt/UI fixes preserved; resolve Git HEAD for later evidence commits."
+  current_source_head_note: "Executable d9f80122 / Workerbd07a14b at100%, native282 unchanged. Browser account switching reuses native Better Auth signed HttpOnly sessions with adoption, expiry/revocation, origin guards and private cache/draft isolation. Real Google add, two-way switching, separate saved voices/projects and cross-tab identity pass. Latest prompt, WebP assembly recovery and qualified Cloud/Desktop0.1.52 pins preserved; resolve Git HEAD for later evidence commits."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
-  working_tree_expected: clean_isolated_assembly_webp_recovery_after_handoff_commit;primary_unrelated_changes_preserved
+  working_tree_expected: clean_isolated_account_switching_after_handoff_commit;primary_unrelated_changes_preserved
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
 
 live_development:
@@ -9996,10 +10001,10 @@ recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
   milestone: Browser_account_switching
-  status: IN_PROGRESS
-  dependency_status: Productionef1df235_native282_original_video_COMPLETE_all14rentals_CLEAN
+  status: COMPLETE
+  dependency_status: Productiond9f80122_native282_account_switching_verified_latest_assembly_and_prompt_fixes_preserved
   authorization_status: Explicit_user_add_switching_validate_and_push_production_no_new_paid_generation
-  task_stage: provider_free_validation
+  task_stage: production_acceptance_complete
   provider_authority: *v2_09_provider_authority_current
   read_profile: v2_09_account_switching
   task_brief: evidence/acceptance/VF-10-09/2026-10-06-account-switching.md
@@ -10008,9 +10013,9 @@ recommended_next_task:
   provider_calls_authorized: false
   read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 0
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
-  credential_value_read_authorized: true
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
+  credential_value_read_authorized: false
   model_downloads_authorized: false
   sample_output_publication_authorized: false
   worker_image_publication_authorized: false
