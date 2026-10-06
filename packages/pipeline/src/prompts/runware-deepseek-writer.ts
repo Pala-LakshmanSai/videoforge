@@ -948,14 +948,14 @@ const singleSceneValidation = (
     const unmarked = (value: JsonValue): JsonValue =>
       typeof value === "string"
         ? value.replace(
-            /\b(a\s+)?blank(?:\s+(back|front|white))?\s+label(s)?(?=\s*(?:with\s+no\s+(?:text|writing)\s*)?[.!?]?\s*$)/giu,
+            /\b(a\s+)?blank\s+((?:(?:back|front|white|black|green|brown|red|blue|yellow|orange|purple|pink|grey|gray|beige|cream|tan|gold|silver|plain|paper)\s+){0,3})label(s)?(?=\s*(?:with\s+no\s+(?:text|writing)\s*)?[.!?]?\s*$)/giu,
             (
               _match,
               article: string | undefined,
               modifier: string | undefined,
               plural: string | undefined,
             ) =>
-              `${article ? "an " : ""}unmarked${modifier ? ` ${modifier}` : ""} surface${plural ? "s" : ""}`,
+              `${article ? "an " : ""}unmarked${modifier?.trim() ? ` ${modifier.trim()}` : ""} surface${plural ? "s" : ""}`,
           )
         : value;
     row = {
