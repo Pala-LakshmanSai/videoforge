@@ -65,28 +65,48 @@ it("keeps a queued narration locked and observes it without creating another req
     ),
   );
 });
-it("shows one Saved tab and saves a star through authenticated API", async () => {
+it("uses only the star to add and remove saved voices, including existing unstarred saves", async () => {
+  const items = [{ ...voices[0]!, starred: false }, { ...voices[1]! }];
   const fetcher = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
-    if (init?.method === "POST") return Response.json({ saved: true, starred: true });
-    return Response.json({ voices });
+    if (init?.method === "POST") {
+      const change = JSON.parse(init.body as string) as { saved: boolean; starred: boolean };
+      Object.assign(items.find((v) => String(url).endsWith(v.voice_id))!, change);
+      return Response.json(change);
+    }
+    return Response.json({ voices: items });
   });
   vi.stubGlobal("fetch", fetcher);
   wrap(<VoiceoverHub />);
   await screen.findByRole("heading", { name: "Alice" });
-  expect(screen.queryByRole("button", { name: /^Starred/ })).not.toBeInTheDocument();
-  expect(screen.queryByRole("heading", { name: "Bob" })).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: /^All voices/ }));
-  await screen.findByRole("heading", { name: "Bob" });
-  fireEvent.click(screen.getByRole("button", { name: "Star Bob" }));
-  await waitFor(() =>
-    expect(fetcher).toHaveBeenCalledWith(
-      "/api/v2/voiceovers/voices/bob",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ saved: true, starred: true }),
-      }),
-    ),
+  expect(screen.queryByRole("button", { name: /^Starred/ })).toBeNull();
+  expect(screen.queryByRole("button", { name: /^(Save|Remove) (Alice|Bob)$/ })).toBeNull();
+  expect(screen.getByRole("button", { name: "Unstar Alice" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
   );
+  fireEvent.click(screen.getByRole("button", { name: "Unstar Alice" }));
+  await waitFor(() => expect(screen.queryByRole("heading", { name: "Alice" })).toBeNull());
+  expect(fetcher).toHaveBeenCalledWith(
+    "/api/v2/voiceovers/voices/alice",
+    expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ saved: false, starred: false }),
+    }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: /^All voices/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Star Bob" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Unstar Bob" })).toBeEnabled());
+  expect(fetcher).toHaveBeenCalledWith(
+    "/api/v2/voiceovers/voices/bob",
+    expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ saved: true, starred: true }),
+    }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: /^Saved/ }));
+  expect(screen.getByRole("heading", { name: "Bob" })).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Unstar Bob" }));
+  await waitFor(() => expect(screen.queryByRole("heading", { name: "Bob" })).toBeNull());
 });
 it("defaults to starred voice and never synthesizes on selection or typing", async () => {
   const fetcher = vi.fn(async (url: RequestInfo | URL, _init?: RequestInit) =>
@@ -517,11 +537,16 @@ it("combines counted voice filters with search, library tabs, sorting and resets
   const items = [
     {
       ...voices[0],
-      tags: "Female, Calm, Narrative Story",
       name: "Alice - British",
+      tags: "Female, Calm, Narrative Story, Mature",
       languages: "gb,us",
     },
-    { ...voices[1], tags: "Male, Calm, Conversational", name: "Bob - American", languages: "us" },
+    {
+      ...voices[1],
+      tags: "Male, Calm, Conversational",
+      name: "Bob - Young American",
+      languages: "us",
+    },
     {
       ...voices[1],
       voice_id: "bea",
@@ -539,8 +564,28 @@ it("combines counted voice filters with search, library tabs, sorting and resets
   wrap(<VoiceoverHub />);
   await screen.findByRole("heading", { name: "Alice - British" });
   fireEvent.click(screen.getByRole("button", { name: /^All voices/ }));
+  expect(
+    within(screen.getByRole("heading", { name: "Alice - British" }).closest("article")!).getByText(
+      "Age: Mature",
+    ),
+  ).toBeVisible();
+  expect(
+    within(screen.getByRole("heading", { name: "Zoe" }).closest("article")!).getByText(
+      "Age: Not specified",
+    ),
+  ).toBeVisible();
+  chooseFilter("Gender", "Male");
+  chooseFilter("Age", "Young");
+  expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
+    "Bob - Young American",
+  ]);
+  fireEvent.click(screen.getByRole("button", { name: "Remove Age filter" }));
+  fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+  chooseFilter("Age", "Not specified");
+  expect(screen.queryByRole("heading", { name: "Alice - British" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
   chooseFilter("Gender", "Female");
-  expect(screen.queryByRole("heading", { name: "Bob - American" })).toBeNull();
+  expect(screen.queryByRole("heading", { name: "Bob - Young American" })).toBeNull();
   fireEvent.click(screen.getByRole("combobox", { name: "Accent" }));
   expect(screen.getByRole("option", { name: "American 0" })).toHaveAttribute(
     "aria-disabled",
@@ -560,7 +605,7 @@ it("combines counted voice filters with search, library tabs, sorting and resets
   expect(screen.getByRole("heading", { name: "Alice - British" })).toBeVisible();
   fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
   fireEvent.click(screen.getByLabelText("Has audio preview"));
-  expect(screen.queryByRole("heading", { name: "Bob - American" })).toBeNull();
+  expect(screen.queryByRole("heading", { name: "Bob - Young American" })).toBeNull();
   chooseFilter("Sort", "Name Z–A");
   expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
     "Bea - Indian",

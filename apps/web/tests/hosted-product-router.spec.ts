@@ -782,7 +782,7 @@ for (const width of [1280, 390]) {
       {
         voice_id: "alice",
         name: "Alice - British",
-        tags: "Female, Calm, Narrative Story",
+        tags: "Female, Calm, Narrative Story, Mature",
         languages: "gb,us",
         saved: false,
         starred: false,
@@ -791,7 +791,7 @@ for (const width of [1280, 390]) {
       {
         voice_id: "bob",
         name: "Bob - American",
-        tags: "Male, Deep, Conversational",
+        tags: "Male, Deep, Conversational, Young",
         languages: "us",
         saved: false,
         starred: false,
@@ -836,6 +836,10 @@ for (const width of [1280, 390]) {
     await gender.click();
     await page.getByRole("option", { name: /^Female(?: |$)/ }).click();
     await expect(page.getByRole("heading", { name: "Bob - American" })).toHaveCount(0);
+    await page.getByRole("combobox", { name: "Age", exact: true }).click();
+    await page.getByRole("option", { name: /^Mature(?: |$)/ }).click();
+    await expect(page.getByRole("article").getByText("Age: Mature", { exact: true })).toBeVisible();
+    await expect(page.locator(".voice-save")).toHaveCount(0);
     await page.getByRole("combobox", { name: "Accent", exact: true }).click();
     await page.getByRole("option", { name: /^British(?: |$)/ }).click();
     await page.getByRole("combobox", { name: "Language / region", exact: true }).click();

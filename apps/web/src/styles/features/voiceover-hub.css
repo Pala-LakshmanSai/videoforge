@@ -242,8 +242,7 @@
   padding-top: 16px;
   border-top: 1px solid #ffffff09;
 }
-.voice-listen,
-.voice-save {
+.voice-listen {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -272,19 +271,6 @@
 .voice-listen.is-playing > span {
   background: #e8a0b529;
   color: #ffe1eb;
-}
-.voice-save {
-  border: 1px solid #ffffff18;
-  padding: 0 10px;
-}
-.voice-save:hover {
-  border-color: #d488a37a;
-  background: #d488a314;
-}
-.voice-save.is-saved {
-  color: #bfceca;
-  background: #86c4b70c;
-  border-color: #86c4b726;
 }
 .voiceover-hub button:disabled {
   opacity: 0.45;
@@ -745,8 +731,13 @@
 
 .voice-facet-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
+}
+.voice-card-age {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
 }
 .voice-filter-select {
   position: relative;

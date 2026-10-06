@@ -28,6 +28,7 @@ export function compareVoices(a: Voice, b: Voice): number {
 export const voiceFilterLabels = {
   gender: "Gender",
   accent: "Accent",
+  age: "Age",
   region: "Language / region",
   style: "Style / tone",
   useCase: "Use case",
@@ -37,6 +38,7 @@ export type VoiceFilters = Record<VoiceFacet, string>;
 export const emptyVoiceFilters: VoiceFilters = {
   gender: "",
   accent: "",
+  age: "",
   region: "",
   style: "",
   useCase: "",
@@ -70,6 +72,16 @@ const accentPatterns: [string, RegExp][] = [
   ["Southern American", /\b(southern american|american southern)\b/u],
   ["Seoul", /\bseoul\b/u],
 ];
+// Voice age labels describe the catalog voice, never a measured or inferred human age.
+const agePatterns: [string, RegExp][] = [
+  ["child", /\b(child|kid|baby|little (boy|girl))\b/u],
+  ["teen", /\b(teen|teenage|teenager|adolescent)\b/u],
+  ["young", /\b(young|youthful)\b/u],
+  ["middle-aged", /\bmiddle[ -]aged?\b/u],
+  ["mature", /\bmature\b/u],
+  ["elderly", /\b(elderly|senior|aged|old (man|woman|male|female))\b/u],
+  ["adult", /\badult\b/u],
+];
 const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
 export function voiceTraits(voice: Voice): VoiceTraits {
   const tags = [...new Set(voice.tags.split(",").map(normalizeVoiceName).filter(Boolean))];
@@ -84,7 +96,17 @@ export function voiceTraits(voice: Voice): VoiceTraits {
     .filter(([, pattern]) => pattern.test(accentText))
     .map(([label]) => label);
   if (accents.includes("Latin American")) accents.splice(accents.indexOf("American"), 1);
+  const ages = agePatterns
+    .filter(([, pattern]) => pattern.test(accentText))
+    .map(([label]) => label);
+  // Specific descriptors take precedence over the generic word adult; middle-aged is not elderly.
+  if ((ages.includes("child") || ages.includes("teen")) && ages.includes("young"))
+    ages.splice(ages.indexOf("young"), 1);
+  if (ages.length > 1 && ages.includes("adult")) ages.splice(ages.indexOf("adult"), 1);
+  if (ages.includes("middle-aged") && ages.includes("elderly"))
+    ages.splice(ages.indexOf("elderly"), 1);
   return {
+    age: ages,
     gender: tags.filter((t) => ["male", "female", "non-binary", "neutral gender"].includes(t)),
     accent: accents.map(normalizeVoiceName),
     region: [...new Set(voice.languages.split(",").map(normalizeVoiceName).filter(Boolean))],
@@ -92,6 +114,7 @@ export function voiceTraits(voice: Voice): VoiceTraits {
     style: tags.filter(
       (t) =>
         !useCases.has(t) &&
+        !agePatterns.some(([, pattern]) => pattern.test(t)) &&
         !["male", "female", "non-binary", "neutral gender"].includes(t) &&
         !accentPatterns.some(([, pattern]) => pattern.test(t)),
     ),

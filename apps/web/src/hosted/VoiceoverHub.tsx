@@ -327,7 +327,7 @@ export function VoiceoverHub() {
           )}
         </div>
         <div className="voice-facet-row" role="group" aria-label="Filter voices">
-          {(["gender", "accent", "region"] as const).map(facetControl)}
+          {(["gender", "age", "accent", "region"] as const).map(facetControl)}
         </div>
         <details className="voice-more-filters">
           <summary>
@@ -502,7 +502,7 @@ export function VoiceoverHub() {
               ? "Try a different filter, or clear filters to see more voices."
               : search.trim()
                 ? "Try the beginning of a voice name, or browse the full library."
-                : "Listen to a few voices, then save the ones you love."}
+                : "Listen to a few voices, then star the ones you love."}
           </p>
           <div className="voice-empty-actions">
             {Boolean(activeFilterCount) && (
@@ -526,7 +526,8 @@ export function VoiceoverHub() {
       <div className="voice-hub-grid">
         {displayed.map((voice) => {
           const isPlaying = preview?.voice_id === voice.voice_id && playing;
-          const pending = save.isPending && save.variables?.voice.voice_id === voice.voice_id;
+          const isSaved = voice.saved || voice.starred;
+          const ages = voiceTraits(voice).age;
           const tone = (voice.name.codePointAt(0) ?? 0) % 5;
           return (
             <article
@@ -541,13 +542,13 @@ export function VoiceoverHub() {
                 <button
                   type="button"
                   className="voice-star"
-                  aria-label={`${voice.starred ? "Unstar" : "Star"} ${voice.name}`}
-                  aria-pressed={voice.starred}
-                  title={voice.starred ? "Remove star" : "Star voice"}
+                  aria-label={`${isSaved ? "Unstar" : "Star"} ${voice.name}`}
+                  aria-pressed={isSaved}
+                  title={isSaved ? "Remove from Saved" : "Star and save voice"}
                   disabled={save.isPending}
-                  onClick={() => save.mutate({ voice, saved: true, starred: !voice.starred })}
+                  onClick={() => save.mutate({ voice, saved: !isSaved, starred: !isSaved })}
                 >
-                  <Star size={18} fill={voice.starred ? "currentColor" : "none"} />
+                  <Star size={18} fill={isSaved ? "currentColor" : "none"} />
                 </button>
               </div>
               <div className="voice-card-tags">
@@ -560,6 +561,12 @@ export function VoiceoverHub() {
                     <span key={`${tag}-${i}`}>{tag}</span>
                   ))}
               </div>
+              <p className="voice-card-age">
+                Age:{" "}
+                {ages.length
+                  ? ages.map((age) => voiceFacetLabel("age", age)).join(" / ")
+                  : "Not specified"}
+              </p>
               <div className="voice-card-actions">
                 <button
                   type="button"
@@ -576,17 +583,6 @@ export function VoiceoverHub() {
                     )}
                   </span>
                   {voice.preview_url ? (isPlaying ? "Pause" : "Listen") : "No preview"}
-                </button>
-                <button
-                  type="button"
-                  className={`voice-save ${voice.saved ? "is-saved" : ""}`}
-                  aria-label={`${voice.saved ? "Remove" : "Save"} ${voice.name}`}
-                  aria-pressed={voice.saved}
-                  disabled={save.isPending}
-                  onClick={() => save.mutate({ voice, saved: !voice.saved, starred: false })}
-                >
-                  {voice.saved ? <Check size={15} /> : <Plus size={15} />}
-                  {pending ? "Saving…" : voice.saved ? "Saved" : "Save voice"}
                 </button>
               </div>
             </article>

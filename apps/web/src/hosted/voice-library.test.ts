@@ -54,3 +54,39 @@ it("uses exact gender tags and explicit accents, never supported regions or pers
     true,
   );
 });
+
+it("filters explicit catalog age descriptions without guessing from names or tone", async () => {
+  const { voiceTraits, matchesVoiceFilters, emptyVoiceFilters } = await import("./voice-library");
+  const base = {
+    voice_id: "age",
+    name: "Young",
+    tags: "Deep, Calm",
+    languages: "us",
+    saved: false,
+    starred: false,
+    preview_url: null,
+  };
+  expect(voiceTraits(base).age).toEqual([]);
+  for (const [description, age] of [
+    ["Young American Male", "young"],
+    ["Middle-aged adult", "middle-aged"],
+    ["Mature", "mature"],
+    ["Elderly woman", "elderly"],
+    ["Child", "child"],
+    ["Teenage", "teen"],
+    ["Adult", "adult"],
+  ] as const) {
+    const traits = voiceTraits({ ...base, name: `Cooper - ${description}` });
+    expect(traits.age).toEqual([age]);
+    expect(matchesVoiceFilters(traits, { ...emptyVoiceFilters, age })).toBe(true);
+    expect(matchesVoiceFilters(traits, { ...emptyVoiceFilters, age: "unspecified" })).toBe(false);
+  }
+  expect(voiceTraits({ ...base, tags: "Mature, Male, Calm" })).toMatchObject({
+    age: ["mature"],
+    style: ["calm"],
+  });
+  expect(voiceTraits({ ...base, name: "Aaron - Deep, old-fashioned narrator" }).age).toEqual([]);
+  expect(matchesVoiceFilters(voiceTraits(base), { ...emptyVoiceFilters, age: "unspecified" })).toBe(
+    true,
+  );
+});
