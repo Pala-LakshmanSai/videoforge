@@ -51,15 +51,31 @@ export function createHostedAuth(input: {
                 if (!active || active.session.expiresAt <= new Date()) return;
                 const cookie = context.context.authCookies.sessionToken;
                 // Expired/revoked cookies must not consume the native five-session limit.
-                for (const name of parseCookies(context.headers?.get("cookie") ?? "").keys()) {
-                  if (!name.startsWith(`${cookie.name}_multi-`)) continue;
-                  const token = await context.getSignedCookie(name, context.context.secret);
-                  const saved = token
-                    ? await context.context.internalAdapter.findSession(token)
-                    : null;
-                  if (!saved || saved.session.expiresAt <= new Date()) {
+                const remembered = await Promise.all(
+                  [...parseCookies(context.headers?.get("cookie") ?? "").keys()]
+                    .filter((name) => name.startsWith(`${cookie.name}_multi-`))
+                    .map(async (name) => ({
+                      name,
+                      token: await context.getSignedCookie(name, context.context.secret),
+                    })),
+                );
+                const tokens = remembered
+                  .map(({ token }) => token)
+                  .filter((token): token is string => typeof token === "string");
+                // Use the native batch lookup rather than one database round trip per account.
+                const saved = tokens.length
+                  ? await context.context.internalAdapter.findSessions(tokens, {
+                      onlyActiveSessions: true,
+                    })
+                  : [];
+                const valid = new Set(
+                  saved
+                    .filter((item) => item.session.expiresAt > new Date())
+                    .map((item) => item.session.token),
+                );
+                for (const { name, token } of remembered) {
+                  if (!token || !valid.has(token))
                     expireCookie(context, { name, attributes: cookie.attributes });
-                  }
                 }
                 await context.setSignedCookie(
                   `${cookie.name}_multi-${active.session.token.toLowerCase()}`,

@@ -50,8 +50,18 @@ export function AccountMenu() {
             <ArrowUpRight size={16} aria-hidden="true" />
           </Link>
         )}
-        {identity.switchAccount && identity.addAccount ? (
-          <AccountSwitcher onSwitch={identity.switchAccount} onAdd={identity.addAccount} />
+        {identity.switchAccount &&
+        identity.addAccount &&
+        identity.browserAccounts &&
+        identity.removeBrowserAccount &&
+        identity.refreshBrowserAccounts ? (
+          <AccountSwitcher
+            onSwitch={identity.switchAccount}
+            onAdd={identity.addAccount}
+            browserAccounts={identity.browserAccounts}
+            onRemove={identity.removeBrowserAccount}
+            onRefresh={identity.refreshBrowserAccounts}
+          />
         ) : null}
         <button type="button" className="account-signout" onClick={() => void identity.signOut()}>
           <LogOut size={16} aria-hidden="true" />

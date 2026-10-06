@@ -1,6 +1,6 @@
 import { HostedCreateDraftProvider } from "./HostedCreateDraft";
 import { HostedIdentityContext } from "./HostedIdentity";
-import { authClient } from "./auth-client";
+import { authClient, readBrowserAccounts, type BrowserAccounts } from "./auth-client";
 import { QueryClientContext } from "@tanstack/react-query";
 import { useContext } from "react";
 import { AccountSwitcher } from "./AccountSwitcher";
@@ -72,14 +72,21 @@ async function tenantAccess(): Promise<HostedAccess> {
   return { state: "ADMITTED", tenant: parseTenant(await response.json()) };
 }
 
-function notifyAccountChange() {
+function notifyAccountChange(existingChannel?: BroadcastChannel | null) {
+  if (existingChannel) {
+    existingChannel.postMessage("changed");
+    return;
+  }
   if (typeof BroadcastChannel === "undefined") return;
   const channel = new BroadcastChannel("videoforge-account");
   channel.postMessage("changed");
   channel.close();
 }
 
-export function HostedStagingApp({ children }: PropsWithChildren) {
+export function HostedStagingApp({
+  children,
+  onAccountSwitch,
+}: PropsWithChildren<{ onAccountSwitch?: () => Promise<void> }>) {
   const queryClient = useContext(QueryClientContext);
   const admittedIdentity = useRef<string | null>(null);
   const [access, setAccess] = useState<HostedAccess | null>(null);
@@ -91,10 +98,43 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
   const [message, setMessage] = useState<string | null>(null);
   const [status, setStatus] = useState<HostedStatus | null>(null);
   const refreshRequest = useRef(0);
+  const accountsRequest = useRef(0);
+  const accountChannel = useRef<BroadcastChannel | null>(null);
+  const [browserAccounts, setBrowserAccounts] = useState<BrowserAccounts>({
+    accounts: [],
+    activeId: null,
+    error: null,
+  });
+  const loadAccounts = useCallback(async () => {
+    try {
+      return await readBrowserAccounts();
+    } catch {
+      return { accounts: [], activeId: null, error: "Accounts could not load. Please try again." };
+    }
+  }, []);
+
+  async function refreshBrowserAccounts() {
+    const requestId = ++accountsRequest.current;
+    const next = await loadAccounts();
+    if (requestId === accountsRequest.current) setBrowserAccounts(next);
+  }
+
+  function removeBrowserAccount(sessionToken: string) {
+    setBrowserAccounts((previous) => ({
+      ...previous,
+      accounts: previous.accounts.filter(({ session }) => session.token !== sessionToken),
+    }));
+  }
 
   const refresh = useCallback(
-    async (preserveAdmittedView = false) => {
+    async (preserveAdmittedView = false, knownAccounts?: BrowserAccounts) => {
       const requestId = ++refreshRequest.current;
+      const accountRequestId = ++accountsRequest.current;
+      const preloaded = preserveAdmittedView
+        ? null
+        : knownAccounts
+          ? Promise.resolve(knownAccounts)
+          : loadAccounts();
       if (!preserveAdmittedView) {
         setLoading(true);
         setAccess(null);
@@ -107,9 +147,56 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
             nextAccess.state === "ADMITTED"
               ? `${nextAccess.tenant.account_id}:${nextAccess.tenant.workspace_id}`
               : null;
-          if (identity !== admittedIdentity.current) queryClient?.clear();
+          const changed = identity !== admittedIdentity.current;
+          if (changed) {
+            queryClient?.clear();
+            setAccess(null);
+            setLoading(true);
+          }
+          // Warm existing query keys after admission; never warm another tenant's cache.
+          if (
+            nextAccess.state === "ADMITTED" &&
+            (!preserveAdmittedView || changed) &&
+            queryClient
+          ) {
+            for (const [key, url] of [
+              ["hosted-queue", "/api/v2/hosted/queue"],
+              ["hosted-library", "/api/v2/library"],
+              ["voiceover-voices", "/api/v2/voiceovers/voices"],
+            ] as const) {
+              void queryClient.prefetchQuery({
+                queryKey: [key],
+                staleTime: key === "voiceover-voices" ? 60_000 : 5_000,
+                retry: false,
+                queryFn: async ({ signal }) => {
+                  const response = await fetch(url, {
+                    signal,
+                    headers: { accept: "application/json" },
+                  });
+                  if (!response.ok) throw new Error("Navigation data unavailable.");
+                  return response.json();
+                },
+              });
+            }
+            // Keep the large product screen chunk out of the initial application bundle.
+            void import("./HostedProductScreens")
+              .then(({ readHostedCatalog }) => {
+                if (requestId !== refreshRequest.current) return;
+                return queryClient.prefetchQuery({
+                  queryKey: ["hosted-project-catalog"],
+                  queryFn: ({ signal }) => readHostedCatalog(signal),
+                  retry: false,
+                });
+              })
+              .catch(() => {});
+          }
+          const nextAccounts = await (preloaded ?? (changed ? loadAccounts() : null));
+          if (requestId !== refreshRequest.current) return;
+          if (nextAccounts && accountRequestId === accountsRequest.current)
+            setBrowserAccounts(nextAccounts);
           admittedIdentity.current = identity;
           setAccess(nextAccess);
+          setLoading(false);
         }
       } catch {
         if (requestId === refreshRequest.current) {
@@ -120,14 +207,14 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
         if (requestId === refreshRequest.current && !preserveAdmittedView) setLoading(false);
       }
     },
-    [queryClient],
+    [queryClient, loadAccounts],
   );
 
   useEffect(() => {
     void refresh();
     if (window.location.hash === "#account-added") {
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
-      notifyAccountChange();
+      notifyAccountChange(accountChannel.current);
     }
     void fetch("/api/v2/hosted/status", { headers: { accept: "application/json" } })
       .then((response) => {
@@ -136,11 +223,15 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
       })
       .then(setStatus)
       .catch(() => setMessage("Hosted staging is unavailable. No local fallback was used."));
+    return () => {
+      refreshRequest.current += 1;
+      accountsRequest.current += 1;
+    };
   }, [refresh]);
 
   useEffect(() => {
     const revalidate = () => {
-      if (document.visibilityState === "visible" && access?.state === "ADMITTED") {
+      if (document.visibilityState === "visible" && admittedIdentity.current !== null) {
         void refresh(true);
       }
     };
@@ -150,27 +241,36 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
       window.removeEventListener("focus", revalidate);
       document.removeEventListener("visibilitychange", revalidate);
     };
-  }, [access?.state, refresh]);
+  }, [refresh]);
 
   useEffect(() => {
     if (typeof BroadcastChannel === "undefined") return;
     const channel = new BroadcastChannel("videoforge-account");
+    accountChannel.current = channel;
     channel.onmessage = () => void refresh();
-    return () => channel.close();
+    return () => {
+      accountChannel.current = null;
+      channel.close();
+    };
   }, [refresh]);
 
   async function switchAccount(sessionToken: string) {
     refreshRequest.current += 1;
+    admittedIdentity.current = null;
     setAccess(null);
     setLoading(true);
     queryClient?.clear();
+    accountsRequest.current += 1;
     try {
       const result = await authClient.multiSession.setActive({ sessionToken });
       if (result.error)
         throw new Error("This account session expired or was removed. Sign in again.");
-      notifyAccountChange();
-      // Recreate the router and all private UI state under the new session.
-      window.location.assign("/");
+      notifyAccountChange(accountChannel.current);
+      // Reset the route and all private UI state without downloading the app again.
+      if (onAccountSwitch) {
+        await onAccountSwitch();
+        await refresh(false, { ...browserAccounts, activeId: result.data?.user.id ?? null });
+      } else window.location.assign("/");
     } catch (error) {
       await refresh();
       setMessage(
@@ -212,8 +312,12 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
   async function signOut() {
     setMessage(null);
     refreshRequest.current += 1;
+    admittedIdentity.current = null;
     setAccess(null);
     setLoading(true);
+    accountsRequest.current += 1;
+    setBrowserAccounts({ accounts: [], activeId: null, error: null });
+    queryClient?.clear();
     try {
       const result = await authClient.signOut();
       if (result.error) {
@@ -221,7 +325,7 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
         setLoading(false);
         return;
       }
-      notifyAccountChange();
+      notifyAccountChange(accountChannel.current);
       await refresh();
     } catch {
       setMessage("Sign-out failed. Please try again.");
@@ -309,6 +413,9 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
           signOut,
           switchAccount,
           addAccount: startGoogleSignIn,
+          browserAccounts,
+          removeBrowserAccount,
+          refreshBrowserAccounts,
         }}
       >
         <HostedCreateDraftProvider
@@ -355,7 +462,13 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
               Sign out
             </button>
           </div>
-          <AccountSwitcher onSwitch={switchAccount} onAdd={startGoogleSignIn} />
+          <AccountSwitcher
+            onSwitch={switchAccount}
+            onAdd={startGoogleSignIn}
+            browserAccounts={browserAccounts}
+            onRemove={removeBrowserAccount}
+            onRefresh={refreshBrowserAccounts}
+          />
           {message ? <p role="status">{message}</p> : null}
         </section>
       </main>
@@ -410,7 +523,13 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
             </div>
           </>
         ) : null}
-        <AccountSwitcher onSwitch={switchAccount} onAdd={startGoogleSignIn} />
+        <AccountSwitcher
+          onSwitch={switchAccount}
+          onAdd={startGoogleSignIn}
+          browserAccounts={browserAccounts}
+          onRemove={removeBrowserAccount}
+          onRefresh={refreshBrowserAccounts}
+        />
         {message ? <p role="status">{message}</p> : null}
       </section>
     </main>

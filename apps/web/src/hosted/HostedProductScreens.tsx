@@ -582,8 +582,8 @@ export function isFailClosedGpuReadiness(
   );
 }
 
-async function readHostedCatalog(): Promise<CatalogResponse> {
-  const catalog = await readJson<CatalogResponse>("/api/v2/hosted/project-catalog");
+export async function readHostedCatalog(signal?: AbortSignal): Promise<CatalogResponse> {
+  const catalog = await readJson<CatalogResponse>("/api/v2/hosted/project-catalog", { signal });
   if (
     !isFailClosedGpuReadiness(catalog.gpu_readiness) ||
     catalog.gpu_transport !== catalog.gpu_readiness.gpu_transport
@@ -2882,7 +2882,7 @@ export function HostedCreateProjectScreen() {
   const draft = useHostedCreateDraft();
   const catalog = useQuery({
     queryKey: ["hosted-project-catalog"],
-    queryFn: readHostedCatalog,
+    queryFn: ({ signal }) => readHostedCatalog(signal),
     refetchInterval: 15_000,
   });
   const [title, setTitle] = useHostedCreateDraftState("title", "");
@@ -3970,7 +3970,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
   const [search, setSearch] = useState("");
   const catalog = useQuery({
     queryKey: ["hosted-project-catalog"],
-    queryFn: readHostedCatalog,
+    queryFn: ({ signal }) => readHostedCatalog(signal),
   });
   const isAvatar = kind === "avatars";
   const publishedItems: readonly HostedPresetCatalogItem[] = catalog.data

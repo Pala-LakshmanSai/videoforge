@@ -15,6 +15,7 @@ vi.mock("better-auth/react", () => ({ createAuthClient: () => auth }));
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useHostedIdentity } from "./HostedIdentity";
 import { useHostedCreateDraftState } from "./HostedCreateDraft";
+import { AccountMenu } from "./AccountMenu";
 import { HostedStagingApp } from "./HostedStagingApp";
 
 beforeEach(() => {
@@ -534,4 +535,141 @@ it("recovers the admitted account after a failed switch and exposes the failure"
     await screen.findByText("This account session expired or was removed. Sign in again."),
   ).toBeInTheDocument();
   expect(screen.getByText("owner@example.test")).toBeInTheDocument();
+});
+
+const admittedTenant = (second = false) => ({
+  schema_version: "videoforge-hosted-tenant/v1",
+  account_id: second ? "other" : "owner",
+  workspace_id: second ? "other-workspace" : "owner-workspace",
+  workspace_name: "Private",
+  user: {
+    id: second ? "other" : "owner",
+    email: second ? "other@example.test" : "owner@example.test",
+    name: second ? "Other" : "Owner",
+  },
+});
+const savedAccounts = [
+  {
+    session: { token: "owner-session" },
+    user: { id: "owner", email: "owner@example.test", name: "Owner" },
+  },
+  {
+    session: { token: "other-session" },
+    user: { id: "other", email: "other@example.test", name: "Other" },
+  },
+];
+it("preloads all browser accounts before exposing the app, so opening the menu makes zero requests", async () => {
+  let release: (value: unknown) => void = () => {};
+  auth.getSession.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+  );
+  auth.multiSession.listDeviceSessions.mockResolvedValue({ data: savedAccounts, error: null });
+  const fetchMock = vi.fn(async (input) =>
+    Response.json(
+      String(input) === "/api/v2/tenant" ? admittedTenant() : { authentication: ["GOOGLE"] },
+    ),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  render(
+    <HostedStagingApp>
+      <AccountMenu />
+      <p>Private app ready</p>
+    </HostedStagingApp>,
+  );
+  await waitFor(() => expect(auth.getSession).toHaveBeenCalledOnce());
+  expect(screen.queryByText("Private app ready")).not.toBeInTheDocument();
+  release({ data: savedAccounts[0], error: null });
+  await screen.findByText("Private app ready");
+  const calls = [
+    fetchMock.mock.calls.length,
+    auth.getSession.mock.calls.length,
+    auth.multiSession.listDeviceSessions.mock.calls.length,
+  ];
+  fireEvent.click(screen.getByText("Account", { exact: true }));
+  expect(screen.getByRole("button", { name: "Other other@example.test" })).toBeInTheDocument();
+  expect(screen.queryByText("Please wait…")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Switch account" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByText("Account", { exact: true }));
+  fireEvent.click(screen.getByText("Account", { exact: true }));
+  expect([
+    fetchMock.mock.calls.length,
+    auth.getSession.mock.calls.length,
+    auth.multiSession.listDeviceSessions.mock.calls.length,
+  ]).toEqual(calls);
+});
+it("switches in the running app without a document reload, clears private state and warms new-account navigation", async () => {
+  let second = false;
+  auth.getSession.mockResolvedValue({ data: savedAccounts[0], error: null });
+  auth.multiSession.listDeviceSessions.mockResolvedValue({ data: savedAccounts, error: null });
+  auth.multiSession.setActive.mockImplementation(async () => {
+    second = true;
+    return { data: savedAccounts[1], error: null };
+  });
+  const client = new QueryClient();
+  const resetRoute = vi.fn(async () => {});
+  const fetchMock = vi.fn(async (input) =>
+    Response.json(
+      String(input) === "/api/v2/tenant"
+        ? admittedTenant(second)
+        : String(input) === "/api/v2/hosted/status"
+          ? { authentication: ["GOOGLE"] }
+          : { owner: second ? "other" : "owner" },
+    ),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  render(
+    <QueryClientProvider client={client}>
+      <HostedStagingApp onAccountSwitch={resetRoute}>
+        <PrivateProbe />
+      </HostedStagingApp>
+    </QueryClientProvider>,
+  );
+  await screen.findByText("owner@example.test");
+  await waitFor(() =>
+    expect(client.getQueryData(["voiceover-voices"])).toEqual({ owner: "owner" }),
+  );
+  client.setQueryData(["private-library"], { private: "owner" });
+  fireEvent.change(screen.getByLabelText("Private draft"), {
+    target: { value: "private owner draft" },
+  });
+  const reads = auth.getSession.mock.calls.length;
+  fireEvent.click(screen.getByRole("button", { name: "Switch saved account" }));
+  await screen.findByText("other@example.test");
+  expect(resetRoute).toHaveBeenCalledOnce();
+  expect(auth.getSession.mock.calls.length).toBe(reads);
+  expect(client.getQueryData(["private-library"])).toBeUndefined();
+  expect(screen.getByLabelText("Private draft")).toHaveValue("");
+  await waitFor(() =>
+    expect(client.getQueryData(["voiceover-voices"])).toEqual({ owner: "other" }),
+  );
+  expect(client.getQueryData(["hosted-library"])).toEqual({ owner: "other" });
+  expect(client.getQueryData(["hosted-queue"])).toEqual({ owner: "other" });
+});
+it("shows an explicit retry when account preloading fails without hiding admitted access", async () => {
+  auth.multiSession.listDeviceSessions.mockResolvedValueOnce({ data: "invalid", error: null });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input) =>
+      Response.json(
+        String(input) === "/api/v2/tenant" ? admittedTenant() : { authentication: ["GOOGLE"] },
+      ),
+    ),
+  );
+  render(
+    <HostedStagingApp>
+      <AccountMenu />
+    </HostedStagingApp>,
+  );
+  await screen.findByText("Account", { exact: true });
+  fireEvent.click(screen.getByText("Account", { exact: true }));
+  expect(screen.getByRole("alert")).toHaveTextContent("Accounts could not load");
+  auth.getSession.mockResolvedValue({ data: savedAccounts[0], error: null });
+  auth.multiSession.listDeviceSessions.mockResolvedValue({ data: savedAccounts, error: null });
+  fireEvent.click(screen.getByRole("button", { name: "Retry accounts" }));
+  expect(
+    await screen.findByRole("button", { name: "Other other@example.test" }),
+  ).toBeInTheDocument();
 });

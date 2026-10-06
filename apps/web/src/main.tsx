@@ -32,7 +32,11 @@ createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       {hostedBrowser ? (
-        <HostedStagingApp>
+        <HostedStagingApp
+          onAccountSwitch={async () => {
+            await router.navigate({ to: "/", replace: true });
+          }}
+        >
           <RouterProvider router={router} />
         </HostedStagingApp>
       ) : (

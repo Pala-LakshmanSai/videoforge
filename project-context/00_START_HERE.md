@@ -1,3 +1,5 @@
+Preloaded Account menu is selected for V2-09/VF-10-09. Read `account_menu_preload_2026_10_06` and the follow-up section in the account-switching evidence brief. Live predecessor d9f80122/Workerbd07a14b is retained until focused validation, real Chrome and exact publication pass. No new paid provider or compute work.
+
 Browser account switching is production verified for V2-09/VF-10-09. Read `account_switching_2026_10_06` in CURRENT_STATE.yaml and its narrow evidence brief. Executable d9f80122 / Workerbd07a14b is live at100%; real Google add, two-way switching, private account data and other-tab identity pass. Latest prompt and assembly recovery additions remain; subsequent work starts provider-free.
 
 Final assembly WebP and recovery repair is selected for V2-09/VF-10-09. Read `assembly_webp_recovery_2026_10_06` in CURRENT_STATE.yaml and its narrow evidence brief. Executable ef1df235 / Worker1533a90f is live at100%; original video COMPLETE, full1080p audio/video decode passes, all14rentals CLEAN and fresh inventory0. Preserve saved media and original lifecycle; subsequent work starts provider-free.

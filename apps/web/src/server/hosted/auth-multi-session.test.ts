@@ -52,13 +52,19 @@ it("uses the real configured plugin to adopt, switch, expire, revoke and sign ou
   const a = await context.internalAdapter.createSession(owner.id);
   const b = await context.internalAdapter.createSession(other.id);
   const cookies = new Map([[primary, signed(a.token)]]);
-  const request = async (path: string, body?: unknown, requestOrigin = origin) => {
+  const request = async (
+    path: string,
+    body?: unknown,
+    requestOrigin = origin,
+    browserCookies = cookies,
+  ) => {
     const response = await auth.handler(
       new Request(`${origin}/api/auth${path}`, {
         method: body ? "POST" : "GET",
         headers: {
-          cookie: [...cookies].map(([k, v]) => `${k}=${v}`).join("; "),
+          cookie: [...browserCookies].map(([k, v]) => `${k}=${v}`).join("; "),
           origin: requestOrigin,
+          "cf-connecting-ip": "192.0.2.10",
           "content-type": "application/json",
         },
         ...(body ? { body: JSON.stringify(body) } : {}),
@@ -69,8 +75,8 @@ it("uses the real configured plugin to adopt, switch, expire, revoke and sign ou
       const index = pair.indexOf("=");
       const key = pair.slice(0, index);
       const value = pair.slice(index + 1);
-      if (/max-age=0/i.test(cookie)) cookies.delete(key);
-      else cookies.set(key, value);
+      if (/max-age=0/i.test(cookie)) browserCookies.delete(key);
+      else browserCookies.set(key, value);
     }
     return response;
   };
@@ -92,6 +98,23 @@ it("uses the real configured plugin to adopt, switch, expire, revoke and sign ou
       .map((s: { user: { id: string } }) => s.user.id)
       .sort(),
   ).toEqual([owner.id, other.id].sort());
+  // A separate browser signed into the SAME owner, on the SAME IP, cannot inherit other accounts.
+  const freshOwner = await context.internalAdapter.createSession(owner.id);
+  const freshBrowser = new Map([[primary, signed(freshOwner.token)]]);
+  await request("/get-session", undefined, origin, freshBrowser);
+  const freshList = (await (
+    await request("/multi-session/list-device-sessions", undefined, origin, freshBrowser)
+  ).json()) as Array<{ user: { id: string } }>;
+  expect(freshList.map((item) => item.user.id)).toEqual([owner.id]);
+  expect(
+    (await request("/multi-session/set-active", { sessionToken: b.token }, origin, freshBrowser))
+      .status,
+  ).toBe(401);
+  expect(
+    await (
+      await request("/multi-session/list-device-sessions", undefined, origin, new Map())
+    ).json(),
+  ).toEqual([]);
   expect(
     (
       await request(
