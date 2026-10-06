@@ -699,7 +699,7 @@ export async function writeProjectPrompts(
             // The archived task identity, terminal response, and known charge were verified above.
             // Claim at most one distinct replacement; keep every accepted batch and original claim.
             acceptedBatch = await dispatchOneHostedPromptBatch({
-              contentRepair: true,
+              contentRepair: "no-text-v2",
               apiKey: promptApiKey,
               plan: batchPlan,
               persistedBinding: binding,

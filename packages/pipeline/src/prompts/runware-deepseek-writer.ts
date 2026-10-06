@@ -38,9 +38,14 @@ export type PromptRequestPolicy =
   | "legacy"
   | "physical-placement-v1"
   | "physical-placement-v2"
-  | "no-graphics-v1";
+  | "no-graphics-v1"
+  | "no-graphics-v2";
 export const NO_GRAPHICS_PROMPT_REQUEST_VERSION =
   "runware-gemini-3.5-flash-prompt-request-v28" as const;
+export const NO_GRAPHICS_V2_PROMPT_REQUEST_VERSION =
+  "runware-gemini-3.5-flash-prompt-request-v29" as const;
+export const NO_GRAPHICS_V2_WRITER_INSTRUCTION =
+  "NO TEXT-BEARING ACTIONS: This rule also applies when narration explicitly mentions writing, reading labels, prices, lists, calculations or documents. Show the locally supported physical person, items, interaction or observable consequence without text-bearing paper, product markings or depicted writing. For a narrated calculation, use the supported person considering the actual items; never a pen or pencil writing on paper, a notebook, a price list or a screen. For label comparisons, show supported unmarked containers and the person inspecting them without a label or invented portrait. Unmarked surfaces are valid; blank labels must be described as unmarked surfaces. Keep source people, setting and ordinary physical evidence. Do not invent a different event. In literal_subject, action and environment, remove all requests for written or drawn content before returning JSON.";
 export const PROMPT_CONTENT_REPAIR_INSTRUCTION =
   "MANDATORY NO GRAPHICS: Do not depict maps, sea charts, compass roses, graphs, diagrams, schematics, blueprints, drawn routes or marked paper in any required scene fact. These are forbidden even as physical props or historical navigation tools, even without readable words. For navigation or dead reckoning, show locally supported sailors, unmarked instruments, stars, ocean or shore instead. For abstract information, show its locally supported physical subject, process or consequence. Never invent writing, graphics or a substitute story event. Recheck literal_subject, action and environment before returning every scene; a forbidden prop rejects the entire batch.";
 export const PHYSICAL_PLACEMENT_PROMPT_REQUEST_VERSION =
@@ -48,8 +53,10 @@ export const PHYSICAL_PLACEMENT_PROMPT_REQUEST_VERSION =
 export const PHYSICAL_PLACEMENT_V2_PROMPT_REQUEST_VERSION =
   "runware-gemini-3.5-flash-prompt-request-v27" as const;
 type PromptRequestVersion =
+  | typeof NO_GRAPHICS_V2_PROMPT_REQUEST_VERSION
   | typeof NO_GRAPHICS_PROMPT_REQUEST_VERSION
   | "runware-prompt-content-repair-v1"
+  | "runware-prompt-content-repair-v2"
   | typeof PHYSICAL_PLACEMENT_V2_PROMPT_REQUEST_VERSION
   | typeof PHYSICAL_PLACEMENT_PROMPT_REQUEST_VERSION
   | typeof RUNWARE_PROMPT_REQUEST_VERSION
@@ -375,7 +382,7 @@ export interface RunwarePromptAttemptEvidenceSink {
 }
 
 export interface RunwarePromptWriterOptions {
-  readonly contentRepair?: boolean;
+  readonly contentRepair?: boolean | "no-text-v2";
   readonly requestPolicy?: PromptRequestPolicy;
   readonly transport: RunwarePromptTransport;
   readonly evidenceSink: RunwarePromptAttemptEvidenceSink;
@@ -602,15 +609,22 @@ export function buildRunwarePromptRequest(
   /** @deprecated Retained for source compatibility; adaptive planning owns batch size. */
   minimumBatchScenes: 1 | 25 = 1,
   requestPolicy: PromptRequestPolicy = "legacy",
-  contentRepair = false,
+  contentRepair: boolean | "no-text-v2" = false,
 ): RunwarePromptTransportRequest {
   void minimumBatchScenes;
-  if (typeof contentRepair !== "boolean" || (contentRepair && attemptIndex !== 2))
+  if (
+    (typeof contentRepair !== "boolean" && contentRepair !== "no-text-v2") ||
+    (contentRepair && attemptIndex !== 2)
+  )
     fail("Content repair requires a distinct bounded replacement.", ["contentRepair"]);
   if (
-    !["legacy", "physical-placement-v1", "physical-placement-v2", "no-graphics-v1"].includes(
-      requestPolicy,
-    )
+    ![
+      "legacy",
+      "physical-placement-v1",
+      "physical-placement-v2",
+      "no-graphics-v1",
+      "no-graphics-v2",
+    ].includes(requestPolicy)
   )
     fail("Prompt request policy is invalid.", ["requestPolicy"]);
   if (scenes.length === 0) fail("Prompt attempt must contain at least one expected scene.");
@@ -644,22 +658,28 @@ export function buildRunwarePromptRequest(
 
   const natural = batch.styleProfileHash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH;
   const requestVersion: PromptRequestVersion =
-    contentRepair && requestPolicy !== "no-graphics-v1"
-      ? "runware-prompt-content-repair-v1"
-      : requestPolicy === "no-graphics-v1"
-        ? NO_GRAPHICS_PROMPT_REQUEST_VERSION
-        : requestPolicy === "physical-placement-v2"
-          ? PHYSICAL_PLACEMENT_V2_PROMPT_REQUEST_VERSION
-          : requestPolicy === "physical-placement-v1"
-            ? PHYSICAL_PLACEMENT_PROMPT_REQUEST_VERSION
-            : natural
-              ? NATURAL_DOCUMENTARY_PROMPT_REQUEST_VERSION
-              : RUNWARE_PROMPT_REQUEST_VERSION;
+    contentRepair === "no-text-v2" && requestPolicy !== "no-graphics-v2"
+      ? "runware-prompt-content-repair-v2"
+      : contentRepair && requestPolicy !== "no-graphics-v1" && requestPolicy !== "no-graphics-v2"
+        ? "runware-prompt-content-repair-v1"
+        : requestPolicy === "no-graphics-v2"
+          ? NO_GRAPHICS_V2_PROMPT_REQUEST_VERSION
+          : requestPolicy === "no-graphics-v1"
+            ? NO_GRAPHICS_PROMPT_REQUEST_VERSION
+            : requestPolicy === "physical-placement-v2"
+              ? PHYSICAL_PLACEMENT_V2_PROMPT_REQUEST_VERSION
+              : requestPolicy === "physical-placement-v1"
+                ? PHYSICAL_PLACEMENT_PROMPT_REQUEST_VERSION
+                : natural
+                  ? NATURAL_DOCUMENTARY_PROMPT_REQUEST_VERSION
+                  : RUNWARE_PROMPT_REQUEST_VERSION;
   const legacySystemPrompt = natural
     ? naturalDocumentaryWriterSystemPrompt(batch.literalCharacterLimit ?? 0)
     : SCENE_PROMPT_WRITER_SYSTEM_PROMPT;
   const systemPrompt =
-    requestPolicy === "physical-placement-v2" || requestPolicy === "no-graphics-v1"
+    requestPolicy === "physical-placement-v2" ||
+    requestPolicy === "no-graphics-v1" ||
+    requestPolicy === "no-graphics-v2"
       ? `${legacySystemPrompt} ${PHYSICAL_PLACEMENT_V2_WRITER_INSTRUCTION}`
       : requestPolicy === "physical-placement-v1"
         ? `${legacySystemPrompt} ${PHYSICAL_PLACEMENT_WRITER_INSTRUCTION}`
@@ -689,7 +709,10 @@ export function buildRunwarePromptRequest(
   });
   const taskUUID = deterministicUuid({
     requestVersion,
-    ...(contentRepair && requestPolicy !== "no-graphics-v1" ? { repairPolicy: requestPolicy } : {}),
+    ...((contentRepair === "no-text-v2" && requestPolicy !== "no-graphics-v2") ||
+    (contentRepair && requestPolicy !== "no-graphics-v1" && requestPolicy !== "no-graphics-v2")
+      ? { repairPolicy: requestPolicy }
+      : {}),
     batchId: batch.batchId,
     styleProfileHash: batch.styleProfileHash,
     attemptIndex,
@@ -708,7 +731,7 @@ export function buildRunwarePromptRequest(
     includeCost: true,
     includeUsage: true,
     settings: Object.freeze({
-      systemPrompt: `${systemPrompt}\n${SCENE_PROMPT_WRITER_OUTPUT_CONTRACT}${contentRepair || requestPolicy === "no-graphics-v1" ? `\n${PROMPT_CONTENT_REPAIR_INSTRUCTION}` : ""}`,
+      systemPrompt: `${systemPrompt}\n${SCENE_PROMPT_WRITER_OUTPUT_CONTRACT}${contentRepair || requestPolicy === "no-graphics-v1" || requestPolicy === "no-graphics-v2" ? `\n${PROMPT_CONTENT_REPAIR_INSTRUCTION}` : ""}${requestPolicy === "no-graphics-v2" || contentRepair === "no-text-v2" ? `\n${NO_GRAPHICS_V2_WRITER_INSTRUCTION}` : ""}`,
       // Match the exact canonical AIR/settings contract already qualified live
       // and used by the successful Stage 3 DeepSeek transport.
       thinkingLevel: "off",
@@ -1951,7 +1974,7 @@ export class RunwarePromptWriter implements PromptWriterPort {
   readonly #maximumBatchCostUsd: number;
   readonly #semanticQualityMode: "advisory" | "enforce";
   readonly #requestPolicy: PromptRequestPolicy;
-  readonly #contentRepair: boolean;
+  readonly #contentRepair: boolean | "no-text-v2";
 
   constructor(options: RunwarePromptWriterOptions) {
     if (!Number.isFinite(options.maximumBatchCostUsd) || options.maximumBatchCostUsd < 0)

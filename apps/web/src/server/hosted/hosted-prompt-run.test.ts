@@ -312,7 +312,7 @@ describe("versioned prompt request recovery", () => {
     try {
       // Exercises an actual planner budget rejection, not an invented provider error.
       expect(await recoverHostedPromptBatchPlan(authority, binding)).toEqual(legacy);
-      expect(seen).toEqual(["no-graphics-v1", "physical-placement-v2", "legacy"]);
+      expect(seen).toEqual(["no-graphics-v2", "no-graphics-v1", "physical-placement-v2", "legacy"]);
       seen.length = 0;
       authorityFor(false);
       expect(seen).toEqual(["legacy"]);
@@ -336,12 +336,85 @@ describe("versioned prompt request recovery", () => {
     );
   });
 
+  it.each(["physical-placement-v2", "no-graphics-v1", "no-graphics-v2"] as const)(
+    "recovers exact v2 repair for sealed %s without inference",
+    async (policy) => {
+      const plan = hostedPromptBatchPlan(authorityFor(true), policy);
+      const binding = {
+        plannedBatchCount: plan.batchCount,
+        plannedSceneCount: plan.totalScenes,
+        batchPlanHash: await hostedPromptBatchPlanHash(plan),
+      };
+      const original = promptRuntime.buildRunwarePromptRequest(
+        plan.batches[0]!.batch,
+        plan.batches[0]!.batch.scenes,
+        1,
+        null,
+        1,
+        policy,
+      );
+      const results: Parameters<
+        NonNullable<Parameters<typeof dispatchOneHostedPromptBatch>[0]["recordResult"]>
+      >[0][] = [];
+      const fetcher = successfulPromptFetcher();
+      const saved = await dispatchOneHostedPromptBatch({
+        contentRepair: "no-text-v2",
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        plan,
+        persistedBinding: binding,
+        batchOrdinal: 0,
+        remainingReservationMicroUsd: 250_000,
+        retryOfRequestHash: original.requestSha256,
+        claim: async () => true,
+        recordResult: async (result) => {
+          results.push(result);
+        },
+        fetcher,
+      });
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      fetcher.mockClear();
+      const task = JSON.parse(saved!.requestBytes)[0];
+      const restored = await recoverClaimedHostedPromptBatch({
+        apiKey: "unused",
+        plan,
+        persistedBinding: binding,
+        batchOrdinal: 0,
+        taskUUID: task.taskUUID,
+        requestBytes: saved!.requestBytes,
+        requestHash: saved!.requestHash,
+        reservationMicroUsd: 250_000,
+        retryOfRequestHash: original.requestSha256,
+        recordedResult: results[0]!.result,
+        fetcher,
+      });
+      expect(restored.scenes).toEqual(saved!.scenes);
+      expect(fetcher).not.toHaveBeenCalled();
+      await expect(
+        recoverClaimedHostedPromptBatch({
+          apiKey: "unused",
+          plan,
+          persistedBinding: binding,
+          batchOrdinal: 0,
+          taskUUID: task.taskUUID,
+          requestBytes: saved!.requestBytes.replace("NO TEXT-BEARING ACTIONS:", "UNTRUSTED:"),
+          requestHash: saved!.requestHash,
+          reservationMicroUsd: 250_000,
+          retryOfRequestHash: original.requestSha256,
+          recordedResult: results[0]!.result,
+          fetcher,
+        }),
+      ).rejects.toMatchObject({ problemCode: "HOSTED_PROMPT_INPUT_INVALID" });
+      expect(fetcher).not.toHaveBeenCalled();
+    },
+  );
+
   for (const natural of [false, true]) {
     it.each([
       "legacy",
       "physical-placement-v1",
       "physical-placement-v2",
       "no-graphics-v1",
+      "no-graphics-v2",
     ] as const)(
       `selects sealed %s policy, recovers without inference, and resumes unchanged (natural=${natural})`,
       async (policy) => {
@@ -354,7 +427,7 @@ describe("versioned prompt request recovery", () => {
         };
         const recoveredPlan = await recoverHostedPromptBatchPlan(authority, binding);
         expect(recoveredPlan).toEqual(planned);
-        expect(hostedPromptBatchPlan(authority).requestPolicy).toBe("no-graphics-v1");
+        expect(hostedPromptBatchPlan(authority).requestPolicy).toBe("no-graphics-v2");
         const fetcher = successfulPromptFetcher();
         const results: Parameters<
           NonNullable<Parameters<typeof dispatchOneHostedPromptBatch>[0]["recordResult"]>
@@ -456,7 +529,7 @@ describe("versioned prompt request recovery", () => {
         const replacementTask = JSON.parse(replacement!.requestBytes)[0];
         expect(replacementTask.taskUUID).not.toBe(task.taskUUID);
         expect(replacementTask.settings.systemPrompt).toBe(
-          policy === "no-graphics-v1"
+          policy === "no-graphics-v1" || policy === "no-graphics-v2"
             ? task.settings.systemPrompt
             : `${task.settings.systemPrompt}\n${promptRuntime.PROMPT_CONTENT_REPAIR_INSTRUCTION}`,
         );

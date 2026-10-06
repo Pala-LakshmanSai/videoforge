@@ -1452,6 +1452,12 @@
       "name": "hosted_api_avatar_webp",
       "filename": "0279_hosted_api_avatar_webp.sql",
       "sha256": "sha256:a3d128ab773f84b974cdfbd988612a0b46890f59e23bcb302c8bacd382e27671"
+    },
+    {
+      "version": 280,
+      "name": "hosted_prompt_no_text_action_correction",
+      "filename": "0280_hosted_prompt_no_text_action_correction.sql",
+      "sha256": "sha256:fe712cf636371deaa8cbe31afff47fb01eac45bd37d561dc1a49de88e1e17684"
     }
   ]
 }

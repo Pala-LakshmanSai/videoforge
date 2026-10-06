@@ -2294,3 +2294,60 @@ test("no-graphics requests and bounded repairs preserve legacy inputs and reject
     assert.equal(calls, 1);
   }
 });
+
+test("v29 forbids narrated writing and label reading without changing v28 identity", () => {
+  const batch = makeBatch(1);
+  const v28 = buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "no-graphics-v1");
+  const v29 = buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "no-graphics-v2");
+  assert.equal(v29.requestVersion, "runware-gemini-3.5-flash-prompt-request-v29");
+  assert.notEqual(v29.request.taskUUID, v28.request.taskUUID);
+  assert.deepEqual(v29.request.messages, v28.request.messages);
+  assert.ok(v29.request.settings.systemPrompt.startsWith(v28.request.settings.systemPrompt + "\n"));
+  assert.ok(v29.request.settings.systemPrompt.includes("narration explicitly mentions writing"));
+  assert.ok(v29.request.settings.systemPrompt.includes("never a pen or pencil writing on paper"));
+  assert.ok(v29.request.settings.systemPrompt.includes("unmarked surfaces"));
+  assert.equal(
+    buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "no-graphics-v1").requestBytes,
+    v28.requestBytes,
+  );
+});
+
+test("bounded v2 repairs use distinct identities and preserve v1 request bytes", () => {
+  const batch = makeBatch(1);
+  for (const policy of [
+    "legacy",
+    "physical-placement-v1",
+    "physical-placement-v2",
+    "no-graphics-v1",
+  ]) {
+    const first = buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, policy);
+    const v1 = buildRunwarePromptRequest(
+      batch,
+      batch.scenes,
+      2,
+      first.requestSha256,
+      1,
+      policy,
+      true,
+    );
+    const v2 = buildRunwarePromptRequest(
+      batch,
+      batch.scenes,
+      2,
+      first.requestSha256,
+      1,
+      policy,
+      "no-text-v2",
+    );
+    assert.notEqual(v1.request.taskUUID, v2.request.taskUUID);
+    assert.deepEqual(v1.request.messages, v2.request.messages);
+    assert.equal(v2.requestVersion, "runware-prompt-content-repair-v2");
+    assert.ok(v2.request.settings.systemPrompt.startsWith(v1.request.settings.systemPrompt + "\n"));
+    assert.ok(v2.request.settings.systemPrompt.includes("never a pen or pencil writing on paper"));
+    assert.equal(
+      buildRunwarePromptRequest(batch, batch.scenes, 2, first.requestSha256, 1, policy, true)
+        .requestBytes,
+      v1.requestBytes,
+    );
+  }
+});

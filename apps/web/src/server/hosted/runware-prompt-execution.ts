@@ -8,6 +8,7 @@ import type {
 import {
   RunwarePromptWriter,
   PROMPT_CONTENT_REPAIR_INSTRUCTION,
+  NO_GRAPHICS_V2_WRITER_INSTRUCTION,
   buildRunwarePromptRequest,
   planPromptBatches,
   runwarePromptValidationDiagnostic,
@@ -249,7 +250,7 @@ export async function recoverClaimedHostedPromptBatch(input: {
 
 /** Claim then submit exactly one new ordinal. A duplicate claim never reaches inference. */
 export async function dispatchOneHostedPromptBatch(input: {
-  readonly contentRepair?: boolean;
+  readonly contentRepair?: boolean | "no-text-v2";
   readonly apiKey: string;
   readonly plan: PromptBatchPlan;
   readonly persistedBinding: HostedPromptBatchPlanBinding;
@@ -540,10 +541,15 @@ function invalidPlanBinding(): HostedPromptExecutionError {
 function usesContentRepair(
   requestBytes: string,
   retryOfRequestHash?: Sha256Digest | null,
-): boolean {
+): boolean | "no-text-v2" {
   if (!retryOfRequestHash) return false;
   try {
     const systemPrompt: unknown = JSON.parse(requestBytes)?.[0]?.settings?.systemPrompt;
+    if (
+      typeof systemPrompt === "string" &&
+      systemPrompt.endsWith(`\n${NO_GRAPHICS_V2_WRITER_INSTRUCTION}`)
+    )
+      return "no-text-v2";
     return (
       typeof systemPrompt === "string" &&
       systemPrompt.endsWith(`\n${PROMPT_CONTENT_REPAIR_INSTRUCTION}`)

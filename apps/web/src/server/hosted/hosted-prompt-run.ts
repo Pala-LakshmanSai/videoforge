@@ -350,7 +350,7 @@ export const HOSTED_PROMPT_BATCH_MAX_OUTPUT_TOKENS = 14_336 as const;
  */
 export function hostedPromptBatchPlan(
   authority: PromptExecutionAuthority,
-  requestPolicy: PromptRequestPolicy = "no-graphics-v1",
+  requestPolicy: PromptRequestPolicy = "no-graphics-v2",
 ): PromptBatchPlan {
   let literalCharacterLimit: number | undefined;
   try {
@@ -380,6 +380,7 @@ export async function recoverHostedPromptBatchPlan(
   binding: HostedPromptBatchPlanBinding,
 ): Promise<PromptBatchPlan> {
   for (const policy of [
+    "no-graphics-v2",
     "no-graphics-v1",
     "physical-placement-v2",
     "legacy",
