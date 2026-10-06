@@ -11,6 +11,7 @@ import {
   RunwareStyleHttpTransport,
   RunwareTransportError,
   RunwareArchivedTaskRejectedError,
+  RunwareArchivedTextUnavailableError,
   readRunwareCreditBalance,
   retrieveRunwareTextTaskDetails,
 } from "./runware-http-transport";
@@ -46,37 +47,320 @@ const jsonResponse = (item: Record<string, unknown>, status = 200) =>
     headers: { "content-type": "application/json" },
   });
 
+const testHash = async (bytes: string): Promise<`sha256:${string}`> =>
+  `sha256:${[...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(bytes)))].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+
+const asyncPromptRequest = async (): Promise<RunwarePromptTransportRequest> => {
+  const base = promptRequest();
+  const request = { ...base.request, taskType: "textInference", deliveryMethod: "async" };
+  const requestBytes = canonicalizeJson([request]);
+  return {
+    ...base,
+    request,
+    requestBytes,
+    requestSha256: await testHash(requestBytes),
+  } as RunwarePromptTransportRequest;
+};
+
+const completeAsyncText = (taskUUID: string) => ({
+  taskType: "textInference",
+  taskUUID,
+  status: "success",
+  text: "x".repeat(16_000),
+  cost: 0.001,
+  finishReason: "stop",
+  usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
+});
+
 describe("Runware server HTTP transport", () => {
-  it.each([200, 429])("retains uncertain HTTP %s capacity identity and persists cooldown only for an exact uncharged refusal", async (status) => {
-    const request = promptRequest();
-    const rejection = { code: "concurrentRequestLimitExceeded", taskType: "textInference", taskUUID: request.request.taskUUID };
-    for (const [body, confirmed] of [
-      [{ errors: [rejection] }, true],
-      [{ errors: [{ ...rejection, taskUUID: crypto.randomUUID() }] }, false],
-      [{ errors: [rejection], data: [] }, false],
-      [{ errors: [{ ...rejection, cost: 0.001 }] }, false],
-      [{ errors: [rejection, rejection] }, false],
-      [{ error: "busy" }, false],
-    ] as const) {
+  it("submits async inference once and retrieves the full response through exact polling", async () => {
+    const request = await asyncPromptRequest(),
+      taskUUID = request.request.taskUUID;
+    const ledger = new RunwareSpendLedger(0.2);
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const [body] = JSON.parse(String(init?.body));
+      if (fetcher.mock.calls.length === 1) {
+        expect(body).toEqual(request.request);
+        return jsonResponse({ taskType: "textInference", taskUUID });
+      }
+      expect(body).toEqual({ taskType: "getResponse", taskUUID });
+      return jsonResponse(
+        fetcher.mock.calls.length === 2
+          ? { taskType: "getResponse", taskUUID, status: "processing" }
+          : completeAsyncText(taskUUID),
+      );
+    });
+    const transport = new RunwarePromptHttpTransport({
+      apiKey: "runware-test-key-at-least-twenty-characters",
+      ledger,
+      fetch: fetcher,
+      maximumRequestCostUsd: 0.02,
+      pollIntervalMs: 1,
+    });
+    await expect(transport.dispatch(request)).resolves.toMatchObject({
+      status: "succeeded",
+      outputText: "x".repeat(16_000),
+      costUsd: 0.001,
+    });
+    await expect(transport.dispatch(request)).resolves.toMatchObject({ status: "succeeded" });
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(ledger.snapshot()).toMatchObject({ reservedUsd: 0, settledUsd: 0.001 });
+  });
+
+  it("keeps async timeouts and failed or mismatched polls reserved without resubmitting", async () => {
+    const request = await asyncPromptRequest(),
+      taskUUID = request.request.taskUUID;
+    for (const outcome of ["timeout", "network", "identity", "failure", "redacted"] as const) {
       const ledger = new RunwareSpendLedger(0.2);
-      const onCapacityRefused = vi.fn(async () => {});
-      const fetcher = vi.fn(async () => new Response(JSON.stringify(body), {
-        status, headers: { "retry-after": "60" },
-      }));
+      const fetcher = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        const [body] = JSON.parse(String(init?.body));
+        if (fetcher.mock.calls.length === 1)
+          return jsonResponse({ taskType: "textInference", taskUUID });
+        expect(body.taskType).toBe("getResponse");
+        if (outcome === "network") throw new Error("lost polling response");
+        if (outcome === "failure")
+          return new Response(JSON.stringify({ errors: [{ taskUUID, code: "timeoutProvider" }] }));
+        if (outcome === "identity") return jsonResponse(completeAsyncText(crypto.randomUUID()));
+        if (outcome === "redacted")
+          return jsonResponse({
+            ...completeAsyncText(taskUUID),
+            text: "...[REDACTED 6476 bytes]...",
+          });
+        return jsonResponse({ taskType: "getResponse", taskUUID, status: "processing" });
+      });
       const transport = new RunwarePromptHttpTransport({
-        apiKey: "runware-test-key-at-least-twenty-characters", ledger,
-        maximumRequestCostUsd: 0.1, fetch: fetcher, onCapacityRefused,
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        ledger,
+        fetch: fetcher,
+        maximumRequestCostUsd: 0.02,
+        timeoutMs: 8,
+        pollIntervalMs: 2,
       });
       await expect(transport.dispatch(request)).resolves.toMatchObject({ status: "ambiguous" });
+      const count = fetcher.mock.calls.length;
       await expect(transport.dispatch(request)).resolves.toMatchObject({ status: "ambiguous" });
-      expect(fetcher).toHaveBeenCalledTimes(1);
-      expect(onCapacityRefused).toHaveBeenCalledTimes(confirmed ? 1 : 0);
-      expect(ledger.snapshot().reservedUsd).toBe(confirmed ? 0 : 0.1);
-      if (confirmed) expect(onCapacityRefused).toHaveBeenCalledWith({
-        taskUUID: request.request.taskUUID, responseHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/u), retryAfterMs: 60_000,
-      });
+      expect(fetcher).toHaveBeenCalledTimes(count);
+      expect(
+        fetcher.mock.calls.filter(
+          (call) => JSON.parse(String(call[1]?.body))[0].taskType === "textInference",
+        ),
+      ).toHaveLength(1);
+      expect(ledger.snapshot()).toMatchObject({ reservedUsd: 0.02, settledUsd: 0 });
     }
   });
+
+  it("does not poll an async acknowledgment with a different task identity", async () => {
+    const request = await asyncPromptRequest();
+    const fetcher = vi.fn(async () =>
+      jsonResponse({ taskType: "textInference", taskUUID: crypto.randomUUID() }),
+    );
+    const transport = new RunwarePromptHttpTransport({
+      apiKey: "runware-test-key-at-least-twenty-characters",
+      ledger: new RunwareSpendLedger(0.2),
+      fetch: fetcher,
+      maximumRequestCostUsd: 0.02,
+    });
+    await expect(transport.dispatch(request)).resolves.toMatchObject({ status: "ambiguous" });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("recovers an exact async response without an archive read or inference", async () => {
+    const request = await asyncPromptRequest();
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      expect(JSON.parse(String(init?.body))).toEqual([
+        { taskType: "getResponse", taskUUID: request.request.taskUUID },
+      ]);
+      return jsonResponse(completeAsyncText(request.request.taskUUID));
+    });
+    await expect(
+      retrieveRunwareTextTaskDetails({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        originalTaskUUID: request.request.taskUUID,
+        originalRequestBytes: request.requestBytes,
+        originalRequestSha256: request.requestSha256,
+        fetch: fetcher,
+      }),
+    ).resolves.toMatchObject({ outputText: "x".repeat(16_000), costUsd: 0.001 });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("distinguishes exact terminal redacted archives with verified known cost from generated output", async () => {
+    for (const deliveryMethod of ["sync", "async"] as const) {
+      const taskUUID = "11111111-1111-4111-8111-111111111111";
+      const originalRequest = [{ taskType: "textInference", taskUUID, deliveryMethod }];
+      const originalRequestBytes = canonicalizeJson(originalRequest);
+      const originalResponse = {
+        data: [
+          {
+            ...completeAsyncText(taskUUID),
+            text: "```json\n{\n...[REDACTED 6476 bytes]...\n}\n```",
+            cost: 0.042,
+          },
+        ],
+      };
+      const fetcher = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        const [body] = JSON.parse(String(init?.body));
+        if (body.taskType === "getResponse")
+          return jsonResponse({ taskType: "getResponse", taskUUID, status: "processing" });
+        expect(body.taskType).toBe("getTaskDetails");
+        return jsonResponse({
+          taskType: "getTaskDetails",
+          taskUUID,
+          request: originalRequest,
+          response: originalResponse,
+        });
+      });
+      const recovered = retrieveRunwareTextTaskDetails({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        originalTaskUUID: taskUUID,
+        originalRequestBytes,
+        originalRequestSha256: await testHash(originalRequestBytes),
+        fetch: fetcher,
+      });
+      await expect(recovered).rejects.toBeInstanceOf(RunwareArchivedTextUnavailableError);
+      await expect(recovered).rejects.toMatchObject({
+        code: "RUNWARE_TEXT_ARCHIVE_UNAVAILABLE",
+        costUsd: 0.042,
+        responseHash: await testHash(canonicalizeJson(originalResponse)),
+      });
+      expect(fetcher).toHaveBeenCalledTimes(deliveryMethod === "async" ? 2 : 1);
+    }
+  });
+
+  it("validates saved async request bytes before any recovery read", async () => {
+    const request = await asyncPromptRequest(),
+      fetcher = vi.fn();
+    await expect(
+      retrieveRunwareTextTaskDetails({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        originalTaskUUID: request.request.taskUUID,
+        originalRequestBytes: request.requestBytes + " ",
+        originalRequestSha256: request.requestSha256,
+        fetch: fetcher,
+      }),
+    ).rejects.toMatchObject({ code: "RUNWARE_IDEMPOTENCY_CONFLICT" });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("never treats processing or mismatched archived redaction as a known completed task", async () => {
+    const request = await asyncPromptRequest(),
+      taskUUID = request.request.taskUUID;
+    for (const invalid of [
+      { taskUUID: crypto.randomUUID() },
+      { taskType: "imageInference" },
+      { cost: null },
+      { usage: null },
+      { usage: { promptTokens: 10, completionTokens: 20, totalTokens: 29 } },
+      { usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30, cachedInputTokens: 11 } },
+      { finishReason: "length" },
+    ]) {
+      const fetcher = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        const [body] = JSON.parse(String(init?.body));
+        if (body.taskType === "getResponse")
+          return jsonResponse({ taskType: "getResponse", taskUUID, status: "processing" });
+        return jsonResponse({
+          taskType: "getTaskDetails",
+          taskUUID,
+          request: JSON.parse(request.requestBytes),
+          response: {
+            data: [
+              { ...completeAsyncText(taskUUID), text: "...[REDACTED 6476 bytes]...", ...invalid },
+            ],
+          },
+        });
+      });
+      await expect(
+        retrieveRunwareTextTaskDetails({
+          apiKey: "runware-test-key-at-least-twenty-characters",
+          originalTaskUUID: taskUUID,
+          originalRequestBytes: request.requestBytes,
+          originalRequestSha256: request.requestSha256,
+          fetch: fetcher,
+        }),
+      ).rejects.not.toBeInstanceOf(RunwareArchivedTextUnavailableError);
+      expect(fetcher).toHaveBeenCalledTimes(2);
+    }
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const [body] = JSON.parse(String(init?.body));
+      return body.taskType === "getResponse"
+        ? jsonResponse({ taskType: "getResponse", taskUUID, status: "processing" })
+        : new Response(JSON.stringify({ errors: [{ code: "taskNotFound", taskUUID }] }), {
+            status: 404,
+          });
+    });
+    await expect(
+      retrieveRunwareTextTaskDetails({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        originalTaskUUID: taskUUID,
+        originalRequestBytes: request.requestBytes,
+        originalRequestSha256: request.requestSha256,
+        fetch: fetcher,
+      }),
+    ).rejects.toMatchObject({ code: "RUNWARE_TASK_NOT_FOUND" });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects a mismatched polled identity before any archive fallback", async () => {
+    const request = await asyncPromptRequest();
+    const fetcher = vi.fn(async () => jsonResponse(completeAsyncText(crypto.randomUUID())));
+    await expect(
+      retrieveRunwareTextTaskDetails({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        originalTaskUUID: request.request.taskUUID,
+        originalRequestBytes: request.requestBytes,
+        originalRequestSha256: request.requestSha256,
+        fetch: fetcher,
+      }),
+    ).rejects.toMatchObject({ code: "RUNWARE_IDEMPOTENCY_CONFLICT" });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+  it.each([200, 429])(
+    "retains uncertain HTTP %s capacity identity and persists cooldown only for an exact uncharged refusal",
+    async (status) => {
+      const request = promptRequest();
+      const rejection = {
+        code: "concurrentRequestLimitExceeded",
+        taskType: "textInference",
+        taskUUID: request.request.taskUUID,
+      };
+      for (const [body, confirmed] of [
+        [{ errors: [rejection] }, true],
+        [{ errors: [{ ...rejection, taskUUID: crypto.randomUUID() }] }, false],
+        [{ errors: [rejection], data: [] }, false],
+        [{ errors: [{ ...rejection, cost: 0.001 }] }, false],
+        [{ errors: [rejection, rejection] }, false],
+        [{ error: "busy" }, false],
+      ] as const) {
+        const ledger = new RunwareSpendLedger(0.2);
+        const onCapacityRefused = vi.fn(async () => {});
+        const fetcher = vi.fn(
+          async () =>
+            new Response(JSON.stringify(body), {
+              status,
+              headers: { "retry-after": "60" },
+            }),
+        );
+        const transport = new RunwarePromptHttpTransport({
+          apiKey: "runware-test-key-at-least-twenty-characters",
+          ledger,
+          maximumRequestCostUsd: 0.1,
+          fetch: fetcher,
+          onCapacityRefused,
+        });
+        await expect(transport.dispatch(request)).resolves.toMatchObject({ status: "ambiguous" });
+        await expect(transport.dispatch(request)).resolves.toMatchObject({ status: "ambiguous" });
+        expect(fetcher).toHaveBeenCalledTimes(1);
+        expect(onCapacityRefused).toHaveBeenCalledTimes(confirmed ? 1 : 0);
+        expect(ledger.snapshot().reservedUsd).toBe(confirmed ? 0 : 0.1);
+        if (confirmed)
+          expect(onCapacityRefused).toHaveBeenCalledWith({
+            taskUUID: request.request.taskUUID,
+            responseHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/u),
+            retryAfterMs: 60_000,
+          });
+      }
+    },
+  );
   it("checks credits without inference and recognizes only an exact archived admission rejection", async () => {
     const apiKey = "runware-test-key-at-least-twenty-characters";
     for (const balance of [0.23815, { amount: 0.23815, currency: "USD" }]) {
@@ -89,11 +373,21 @@ describe("Runware server HTTP transport", () => {
       expect(fetcher).toHaveBeenCalledTimes(1);
     }
     const taskUUID = "11111111-1111-4111-8111-111111111111";
-    const originalRequest = [{ taskType: "textInference", taskUUID, model: "google:gemini@3.5-flash" }];
+    const originalRequest = [
+      { taskType: "textInference", taskUUID, model: "google:gemini@3.5-flash" },
+    ];
     const originalRequestBytes = canonicalizeJson(originalRequest);
-    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(originalRequestBytes));
-    const originalRequestSha256 = `sha256:${[...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2,"0")).join("")}` as const;
-    const rejection = { code: "concurrentRequestLimitExceeded", taskType: "textInference", taskUUID };
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(originalRequestBytes),
+    );
+    const originalRequestSha256 =
+      `sha256:${[...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("")}` as const;
+    const rejection = {
+      code: "concurrentRequestLimitExceeded",
+      taskType: "textInference",
+      taskUUID,
+    };
     for (const [response, rejected] of [
       [{ errors: [rejection] }, true],
       [{ errors: [{ ...rejection, taskUUID: crypto.randomUUID() }] }, false],
@@ -102,16 +396,23 @@ describe("Runware server HTTP transport", () => {
       [{ errors: [rejection], data: [] }, false],
       [{ status: "processing" }, false],
     ] as const) {
-      const fetcher = vi.fn(async () => jsonResponse({ taskType: "getTaskDetails", taskUUID,
-        request: originalRequest, response }));
-      const result = retrieveRunwareTextTaskDetails({ apiKey, originalTaskUUID: taskUUID,
-        originalRequestBytes, originalRequestSha256, fetch: fetcher });
+      const fetcher = vi.fn(async () =>
+        jsonResponse({ taskType: "getTaskDetails", taskUUID, request: originalRequest, response }),
+      );
+      const result = retrieveRunwareTextTaskDetails({
+        apiKey,
+        originalTaskUUID: taskUUID,
+        originalRequestBytes,
+        originalRequestSha256,
+        fetch: fetcher,
+      });
       if (rejected) await expect(result).rejects.toBeInstanceOf(RunwareArchivedTaskRejectedError);
       else await expect(result).rejects.not.toBeInstanceOf(RunwareArchivedTaskRejectedError);
       expect(fetcher).toHaveBeenCalledTimes(1);
     }
-    await expect(readRunwareCreditBalance(apiKey, async () => jsonResponse({ balance: -1 })))
-      .rejects.toBeInstanceOf(RunwareTransportError);
+    await expect(
+      readRunwareCreditBalance(apiKey, async () => jsonResponse({ balance: -1 })),
+    ).rejects.toBeInstanceOf(RunwareTransportError);
   });
   it("retrieves one exact archived text result without redispatching inference", async () => {
     const originalRequest = [

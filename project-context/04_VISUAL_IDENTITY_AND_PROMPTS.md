@@ -49,10 +49,12 @@ extraction with a 350-token output ceiling and a 10,000 micro-USD reservation. S
 
 Stage 5 plans against
 a 48,000-token input ceiling and a 14,336-token hosted output budget per request under
-the 64,000-token technical output ceiling, with one 40,000 micro-USD project reservation. One
-provider request is allowed per persisted planned batch. The hosted path performs no prompt-provider
-retry: accepted batches persist before the next request, while definite or ambiguous failure stops
-without redispatch. Do not duplicate the same global context inside every scene item. Prompt cores
+the 64,000-token technical output ceiling. Fresh hosted reservations are250000micro-USD per planned
+batch capped at8000000micro-USD; existing runs retain their exact original ceiling. One original
+provider request is allowed per persisted planned batch. An identity-verified completed unusable
+result permits the existing single distinct automatic replacement, with known cost recorded before
+dispatch and at least250000micro-USD remaining. UNKNOWN alone never authorizes replacement or
+redispatch. Accepted batches persist before the next request. Do not duplicate global context inside every scene item. Prompt cores
 stay concise and concrete; trusted code adds crop, style, optional keywords, and permanent guardrails
 exactly once.
 
@@ -137,9 +139,12 @@ be classified reliably by a bounded word matcher. Hosted acceptance also repairs
 formatting defects before strict persistence: it bounds harmless oversized or control-containing
 text and normalizes and deduplicates continuity tags. Required subject, action and environment
 facts remain mandatory; empty, forbidden or placeholder facts fail rather than becoming filler.
-A trailing explicitly blank label in those fields, optionally attached on/of an ordinary container,
-is canonicalized to an unmarked physical surface in hosted advisory acceptance. Printing, branding,
-barcodes and arbitrary following content still fail;
+A trailing explicitly blank label or label area in those fields, including an optional comma and
+explicit unmarked qualifier or on/of ordinary-container attachment, is canonicalized to an unmarked
+physical surface in hosted advisory acceptance. Preserve color/orientation, area and attachment.
+An explicitly unmarked trailing color-labeled ordinary container likewise becomes that container
+with the stated color surface; qualifiers requesting printing, branding or following content remain invalid.
+Printing, branding, barcodes and arbitrary preceding or following text-bearing content still fail;
 the independent compiler guard and immutable raw provider/request bytes remain unchanged. Forbidden continuity
 tags are dropped; text-bearing price tags and receipts are explicitly excluded. The compiler still
 derives final literal image content from the repaired structured
@@ -391,4 +396,4 @@ Empty, forbidden or generic-placeholder subject/action/environment fields must f
 
 Fresh physical-placement writer policy v27 requires visible torso/connected arms and a useful person/object/camera relationship for whole-person handling actions. Genuine HANDS_ACTION closeups and narrated collaborators remain valid. Legacy v24/v25 request construction stays exact; saved plans select their sealed policy before recovery. v26 is retained only as an experimental compatibility identity. The 80-image investigation still contains a v27 three-hand jar failure; these input rules do not replace output review or guarantee anatomy. See IMAGE_QUALITY_PLAN.md.
 
-Fresh hosted writer requests use immutable v29 (`no-graphics-v2`): narration about writing, label reading, prices, lists and calculations must use the supported physical subject or consequence without depicted writing or marked paper. Existing v24–v28 requests retain exact bytes. Bounded corrective replacements add only the exact versioned no-text instruction with a distinct request identity; native0280 preserves all other request fields, cost/count/tenant fences. A trailing explicitly blank label, including bounded ordinary color/orientation/paper qualifiers and an optional on/of ordinary-container attachment, can become an unmarked physical surface in hosted advisory validation. Preserve the physical qualifiers and attachment; actual writing, printed markings, arbitrary following content and required-fact substitutions still fail. Provider output remains probabilistic and must pass the independent compiler.
+Fresh hosted writer requests use immutable v30 (`no-graphics-async-v1`), preserving v29 content instructions while changing deliveryMethod to async and request identity. Narration about writing, label reading, prices, lists and calculations uses the supported physical subject or consequence without depicted writing or marked paper. Existing v24–v29 requests retain exact bytes and sealed-plan reconstruction. Submit once, then retrieve only that task's getResponse; a polling failure never replays inference. Exact terminal archive redaction is ARCHIVE_UNAVAILABLE, distinct from generated OUTPUT_INVALID. The existing one replacement/cost rules apply; exhausted archive loss settles once through native0281 with unchanged guards and an independent receipt. Bounded corrective replacements preserve native0280 field/cost/count/tenant fences. Explicitly blank or unmarked physical surfaces are canonicalized without accepting printed markings or arbitrary following content. Provider output remains probabilistic and must pass the independent compiler.

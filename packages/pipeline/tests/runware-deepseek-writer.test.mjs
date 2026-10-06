@@ -824,6 +824,15 @@ test("advisory canonicalizes text-free blank bottle labels without accepting pri
     ["showing a blank back white paper label", "showing an unmarked back white paper surface"],
     ["showing a blank white label with no text", "showing an unmarked white surface with no text"],
     ["Pointing to a blank label on a bottle.", "Pointing to an unmarked surface on a bottle."],
+    ["displaying a blank, unmarked white label area", "displaying an unmarked white surface area"],
+    [
+      "Reaching for an unmarked yellow-labeled bottle",
+      "Reaching for an unmarked bottle with a yellow surface",
+    ],
+    [
+      "showing a blank unmarked white label area on a bottle.",
+      "showing an unmarked white surface area on a bottle.",
+    ],
     [
       "showing blank white back labels of the jar",
       "showing unmarked white back surfaces of the jar",
@@ -863,8 +872,19 @@ test("advisory canonicalizes text-free blank bottle labels without accepting pri
   for (const description of [
     "holding a bottle with a printed label",
     "holding a bottle with a blank printed label",
+    "holding a bottle with a blank, unmarked printed label area",
+    "holding an unmarked bottle with a gold-trimmed label",
+    "holding a yellow-labeled bottle",
+    "holding an unmarked yellow-labeled Honey bottle",
+    "holding an unmarked yellow-labeled bottle with printed writing",
+    "holding a printed unmarked red-labeled bottle",
+    "reading Honey from an unmarked red-labeled bottle",
+    "holding a numbered unmarked red-labeled bottle",
+    "holding an inscribed unmarked red-labeled bottle",
+    "holding a printed bottle with a blank label",
     "holding a bottle with a blank Honey label",
     "holding a bottle with a blank label reading Honey",
+    "holding a bottle with a blank unmarked white label area reading Honey",
     "holding a bottle with a blank label and a logo",
     "holding a bottle with a blank label; showing its ingredient list",
     "holding a bottle with a blank label, barcode",
@@ -2322,6 +2342,43 @@ test("v29 forbids narrated writing and label reading without changing v28 identi
   assert.equal(
     buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "no-graphics-v1").requestBytes,
     v28.requestBytes,
+  );
+});
+
+test("v30 async delivery preserves v29 instructions and sealed legacy identities", () => {
+  const batch = makeBatch(1);
+  const legacy = buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "no-graphics-v2");
+  const current = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "no-graphics-async-v1",
+  );
+  assert.equal(legacy.request.deliveryMethod, "sync");
+  assert.equal(current.request.deliveryMethod, "async");
+  assert.equal(current.requestVersion, "runware-gemini-3.5-flash-prompt-request-v30");
+  assert.notEqual(current.request.taskUUID, legacy.request.taskUUID);
+  assert.deepEqual(current.request.settings, legacy.request.settings);
+  assert.deepEqual(current.request.messages, legacy.request.messages);
+  const replacement = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    2,
+    current.requestSha256,
+    1,
+    "no-graphics-async-v1",
+    "no-text-v2",
+  );
+  assert.equal(replacement.request.deliveryMethod, "async");
+  assert.equal(replacement.requestVersion, current.requestVersion);
+  assert.equal(replacement.request.settings.systemPrompt, current.request.settings.systemPrompt);
+  assert.notEqual(replacement.request.taskUUID, current.request.taskUUID);
+  assert.equal(replacement.retryOfRequestSha256, current.requestSha256);
+  assert.equal(
+    buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "no-graphics-v2").requestBytes,
+    legacy.requestBytes,
   );
 });
 

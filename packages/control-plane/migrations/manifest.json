@@ -1458,6 +1458,12 @@
       "name": "hosted_prompt_no_text_action_correction",
       "filename": "0280_hosted_prompt_no_text_action_correction.sql",
       "sha256": "sha256:fe712cf636371deaa8cbe31afff47fb01eac45bd37d561dc1a49de88e1e17684"
+    },
+    {
+      "version": 281,
+      "name": "hosted_prompt_unavailable_archive",
+      "filename": "0281_hosted_prompt_unavailable_archive.sql",
+      "sha256": "sha256:03ccb42c0e399d38708bb9510d081413058a1b746a914020a0be627d873ed116"
     }
   ]
 }

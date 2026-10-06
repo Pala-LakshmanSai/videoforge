@@ -23,6 +23,7 @@ import {
   hostedPromptBatchPlanHash,
   hostedPromptReservationMicroUsd,
   HostedPromptExecutionError,
+  HostedPromptArchivedOutputUnavailableError,
   HostedRunwarePromptWriter,
   recoverClaimedHostedPromptBatch,
   dispatchOneHostedPromptBatch,
@@ -222,6 +223,7 @@ function successfulPromptFetcher() {
     return Response.json({
       data: [
         {
+          taskType: "textInference",
           taskUUID: task.taskUUID,
           text: JSON.stringify(output),
           usage: {
@@ -312,7 +314,13 @@ describe("versioned prompt request recovery", () => {
     try {
       // Exercises an actual planner budget rejection, not an invented provider error.
       expect(await recoverHostedPromptBatchPlan(authority, binding)).toEqual(legacy);
-      expect(seen).toEqual(["no-graphics-v2", "no-graphics-v1", "physical-placement-v2", "legacy"]);
+      expect(seen).toEqual([
+        "no-graphics-async-v1",
+        "no-graphics-v2",
+        "no-graphics-v1",
+        "physical-placement-v2",
+        "legacy",
+      ]);
       seen.length = 0;
       authorityFor(false);
       expect(seen).toEqual(["legacy"]);
@@ -408,6 +416,72 @@ describe("versioned prompt request recovery", () => {
     },
   );
 
+  it("separates a completed billed redacted archive from invalid generated output", async () => {
+    const plan = hostedPromptBatchPlan(authorityFor(true), "no-graphics-v2");
+    const original = promptRuntime.buildRunwarePromptRequest(
+      plan.batches[0]!.batch,
+      plan.batches[0]!.batch.scenes,
+      1,
+      null,
+      1,
+      "no-graphics-v2",
+    );
+    const fetcher = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      expect(JSON.parse(String(init?.body))).toEqual([
+        { taskType: "getTaskDetails", taskUUID: original.request.taskUUID },
+      ]);
+      return Response.json({
+        data: [
+          {
+            taskType: "getTaskDetails",
+            taskUUID: original.request.taskUUID,
+            request: JSON.parse(original.requestBytes),
+            response: {
+              data: [
+                {
+                  taskType: "textInference",
+                  taskUUID: original.request.taskUUID,
+                  model: original.request.model,
+                  text: "```json\n{\n...[REDACTED 6476 bytes]...\n}\n```",
+                  finishReason: "stop",
+                  cost: 0.07613,
+                  usage: {
+                    promptTokens: 4745,
+                    completionTokens: 7668,
+                    totalTokens: 12413,
+                    cachedInputTokens: 0,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      });
+    });
+    const recovery = recoverClaimedHostedPromptBatch({
+      apiKey: "runware-test-key-at-least-twenty-characters",
+      plan,
+      persistedBinding: {
+        plannedBatchCount: plan.batchCount,
+        plannedSceneCount: plan.totalScenes,
+        batchPlanHash: await hostedPromptBatchPlanHash(plan),
+      },
+      batchOrdinal: 0,
+      taskUUID: original.request.taskUUID,
+      requestBytes: original.requestBytes,
+      requestHash: original.requestSha256,
+      reservationMicroUsd: 4_000_000,
+      fetcher,
+    });
+    await expect(recovery).rejects.toBeInstanceOf(HostedPromptArchivedOutputUnavailableError);
+    await expect(recovery).rejects.toMatchObject({
+      knownCostMicroUsd: 76_130,
+      responseHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/u),
+      message: "HOSTED_PROMPT_ARCHIVE_UNAVAILABLE",
+    });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
   for (const natural of [false, true]) {
     it.each([
       "legacy",
@@ -415,6 +489,7 @@ describe("versioned prompt request recovery", () => {
       "physical-placement-v2",
       "no-graphics-v1",
       "no-graphics-v2",
+      "no-graphics-async-v1",
     ] as const)(
       `selects sealed %s policy, recovers without inference, and resumes unchanged (natural=${natural})`,
       async (policy) => {
@@ -427,7 +502,7 @@ describe("versioned prompt request recovery", () => {
         };
         const recoveredPlan = await recoverHostedPromptBatchPlan(authority, binding);
         expect(recoveredPlan).toEqual(planned);
-        expect(hostedPromptBatchPlan(authority).requestPolicy).toBe("no-graphics-v2");
+        expect(hostedPromptBatchPlan(authority).requestPolicy).toBe("no-graphics-async-v1");
         const fetcher = successfulPromptFetcher();
         const results: Parameters<
           NonNullable<Parameters<typeof dispatchOneHostedPromptBatch>[0]["recordResult"]>
@@ -529,7 +604,9 @@ describe("versioned prompt request recovery", () => {
         const replacementTask = JSON.parse(replacement!.requestBytes)[0];
         expect(replacementTask.taskUUID).not.toBe(task.taskUUID);
         expect(replacementTask.settings.systemPrompt).toBe(
-          policy === "no-graphics-v1" || policy === "no-graphics-v2"
+          policy === "no-graphics-v1" ||
+            policy === "no-graphics-v2" ||
+            policy === "no-graphics-async-v1"
             ? task.settings.systemPrompt
             : `${task.settings.systemPrompt}\n${promptRuntime.PROMPT_CONTENT_REPAIR_INSTRUCTION}`,
         );

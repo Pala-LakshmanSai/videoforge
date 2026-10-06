@@ -1300,6 +1300,7 @@ interface ProjectDetailResponse {
   readonly prompt_progress?: null | {
     readonly state?: "DISPATCHING" | "SUCCEEDED" | "FAILED" | "UNKNOWN";
     readonly problem_code?: string | null;
+    readonly automatic_recovery_pending?: boolean;
     readonly total_scenes?: HostedCount;
     readonly accepted_scenes?: HostedCount;
     readonly total_batches?: HostedCount;
@@ -6442,6 +6443,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
   // atomic batch-progress commit, so both belong in the live viewer.
   const acceptedPrompts = prompts;
   const promptProgress = query.data.prompt_progress;
+  const promptRecoveryPending = promptProgress?.automatic_recovery_pending === true;
   const promptCapacityHeld =
     promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT";
   const promptWritingActive =
@@ -6467,6 +6469,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
             { ...stage, status: "FAILED" as const, detail: contextExtraction.error.message }
           : stage.id === "prompt-writing" &&
               promptWritingActive &&
+              stage.status !== "RETRYING" &&
               !["COMPLETE", "FAILED", "CANCELLED"].includes(stage.status)
             ? { ...stage, status: "RUNNING" as const }
             : stage,
@@ -6535,6 +6538,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       promptProgress?.problem_code === "HOSTED_PROMPT_OUTPUT_INVALID"
     )
       return "The original provider result was invalid and its known cost is settled. Saved prompts remain available; this project cannot send another paid prompt request automatically.";
+    if (
+      stageId === "prompt-writing" &&
+      promptProgress?.problem_code === "HOSTED_PROMPT_ARCHIVE_UNAVAILABLE"
+    )
+      return "The provider completed this request, but its full result is unavailable. Saved prompts remain intact; the allowed replacement or spend limit is exhausted.";
     if (stageId === "prompt-writing" && promptCapacityHeld)
       return "The prompt provider was busy. Contact support to review this held request; saved prompts remain intact and no new request will be sent automatically.";
     if (stageId === "prompt-writing" && promptProgress?.state === "UNKNOWN")
@@ -6691,7 +6699,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     (promptProgress?.state !== "UNKNOWN" ||
       savedUnknownPromptsCanFinish ||
       promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW") &&
-    promptProgress?.problem_code !== "HOSTED_PROMPT_OUTPUT_INVALID"
+    promptProgress?.problem_code !== "HOSTED_PROMPT_OUTPUT_INVALID" &&
+    promptProgress?.problem_code !== "HOSTED_PROMPT_ARCHIVE_UNAVAILABLE"
       ? {
           "prompt-writing": stageRetryButton(
             promptWriting.isPending,
@@ -7212,21 +7221,25 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                 {promptWritingActive ? (
                   <span className="live-prompt-activity-pulse" aria-hidden="true" />
                 ) : null}
-                {promptWritingActive
-                  ? hasBatchProgress
-                    ? `Writing ${promptBatchStatus.toLowerCase()}.`
-                    : "Writing prompt batches."
-                  : promptWritingStopped
-                    ? promptCapacityHeld
-                      ? "The prompt provider was busy. Saved prompts remain intact; contact support before continuing."
-                      : promptProgress?.problem_code === "HOSTED_PROMPT_OUTPUT_INVALID"
-                        ? "The original provider result was invalid. Saved prompts are intact; another paid batch will not be sent automatically."
-                        : promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
-                          ? "Prompt writing is paused while provider credits are unavailable. Saved prompts remain intact."
-                          : "No new prompt batch will be sent automatically."
-                    : acceptedPrompts.length > 0
-                      ? "Accepted prompts saved."
-                      : "Waiting for prompt writing."}
+                {promptRecoveryPending
+                  ? "Recovering the current prompt batch automatically. Saved prompts remain intact."
+                  : promptWritingActive
+                    ? hasBatchProgress
+                      ? `Writing ${promptBatchStatus.toLowerCase()}.`
+                      : "Writing prompt batches."
+                    : promptWritingStopped
+                      ? promptCapacityHeld
+                        ? "The prompt provider was busy. Saved prompts remain intact; contact support before continuing."
+                        : promptProgress?.problem_code === "HOSTED_PROMPT_ARCHIVE_UNAVAILABLE"
+                          ? "The provider completed this request, but its full result is unavailable. Saved prompts are intact; the allowed replacement or spend limit is exhausted."
+                          : promptProgress?.problem_code === "HOSTED_PROMPT_OUTPUT_INVALID"
+                            ? "The original provider result was invalid. Saved prompts are intact; another paid batch will not be sent automatically."
+                            : promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
+                              ? "Prompt writing is paused while provider credits are unavailable. Saved prompts remain intact."
+                              : "No new prompt batch will be sent automatically."
+                      : acceptedPrompts.length > 0
+                        ? "Accepted prompts saved."
+                        : "Waiting for prompt writing."}
               </p>
               {acceptedPrompts.length > 0 ? (
                 <>
@@ -7421,9 +7434,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                             : "Waiting for GPU qualification."
                           : promptProgress?.problem_code === "HOSTED_PROMPT_PROVIDER_CREDITS_LOW"
                             ? "Prompt writing is paused for provider credits."
-                            : promptAutoStartError
-                              ? "Automatic image prompt writing could not start."
-                              : "Writing image prompts…"
+                            : promptRecoveryPending
+                              ? "Recovering image prompts automatically…"
+                              : promptAutoStartError
+                                ? "Automatic image prompt writing could not start."
+                                : "Writing image prompts…"
                   : "Transcription complete; generation planning is starting."}
           </strong>
           {renderHandoff.isError && !query.data.generation ? (

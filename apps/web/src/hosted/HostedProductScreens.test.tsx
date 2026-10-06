@@ -4304,7 +4304,7 @@ describe("hosted product journey", () => {
     const action = screen.getByRole("button", { name: "Create video" });
     fireEvent.click(action);
     await waitFor(() => expect(projectRequests).toHaveLength(1));
-    expect(screen.getByRole("alert")).toHaveTextContent("network connection lost");
+    expect(await screen.findByRole("alert")).toHaveTextContent("network connection lost");
 
     fireEvent.click(screen.getByRole("button", { name: "Create video" }));
     await waitFor(() => expect(projectRequests).toHaveLength(2));
@@ -6119,10 +6119,97 @@ describe("hosted product journey", () => {
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(false);
   });
 
+  it("keeps automatic prompt recovery visible while polling through accepted batches", async () => {
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    let phase: "recovering" | "writing" | "complete" = "recovering";
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL) =>
+      Response.json({
+        project: {
+          id: projectId,
+          title: "Private project",
+          created_at: "2026-08-17T10:00:00.000Z",
+          revision_id: "22222222-2222-4222-8222-222222222222",
+          revision_state: "LOCKED",
+        },
+        attempts: [],
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: gpuReadiness,
+        voiceover_context: {
+          id: projectId,
+          state: "SUCCEEDED",
+          context_hash: `sha256:${"c".repeat(64)}`,
+          transcript_hash: `sha256:${"b".repeat(64)}`,
+          reserved_cost_micro_usd: 10_000,
+        },
+        generation: {
+          id: projectId,
+          timeline_plan_sha256: `sha256:${"f".repeat(64)}`,
+          planned_tasks: 1,
+          completed_tasks: 0,
+          failed_tasks: 0,
+          stage: "WAITING_FOR_GPU_QUALIFICATION",
+        },
+        stages: stageList({
+          prepare: "COMPLETE",
+          transcription: "COMPLETE",
+          "voiceover-context": "COMPLETE",
+          planning: "COMPLETE",
+          "prompt-writing":
+            phase === "recovering" ? "RETRY_WAIT" : phase === "writing" ? "RUNNING" : "COMPLETE",
+        }),
+        prompts: [],
+        prompt_progress: {
+          state:
+            phase === "recovering" ? "UNKNOWN" : phase === "writing" ? "DISPATCHING" : "SUCCEEDED",
+          problem_code: phase === "recovering" ? "HOSTED_PROMPT_EXECUTION_UNKNOWN" : null,
+          automatic_recovery_pending: phase === "recovering",
+          total_scenes: 17,
+          accepted_scenes: phase === "recovering" ? 10 : 17,
+          total_batches: 2,
+          accepted_batches: phase === "recovering" ? 1 : 2,
+          active_batch_ordinal: phase === "complete" ? null : 2,
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    focusManager.setFocused(false);
+    const { client } = renderHosted(<HostedProjectScreen projectId={projectId} />);
+    expect(
+      await screen.findByText(
+        "Recovering the current prompt batch automatically. Saved prompts remain intact.",
+      ),
+    ).toBeInTheDocument();
+    expect(within(stageRow("Write image prompts")).getByText("RETRYING")).toBeInTheDocument();
+    expect(within(stageRow("Write image prompts")).queryByText("FAILED")).not.toBeInTheDocument();
+    expect(
+      within(stageRow("Write image prompts")).queryByRole("button", { name: "Retry" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("HOSTED_PROMPT_EXECUTION_UNKNOWN")).not.toBeInTheDocument();
+    expect(screen.queryByText(/before writing stopped/u)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/10 \/ 17 prompts accepted/u).length).toBeGreaterThan(0);
+    phase = "writing";
+    await waitFor(
+      () =>
+        expect(within(stageRow("Write image prompts")).getByText("RUNNING")).toBeInTheDocument(),
+      { timeout: 3_500 },
+    );
+    expect(screen.getAllByText(/17 \/ 17 prompts accepted/u).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Recovering the current prompt batch/u)).not.toBeInTheDocument();
+    phase = "complete";
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    await waitFor(() =>
+      expect(within(stageRow("Write image prompts")).getByText("COMPLETE")).toBeInTheDocument(),
+    );
+    expect(fetchMock.mock.calls.every(([input]) => !String(input).endsWith("/prompts"))).toBe(true);
+  });
+
   it.each([
     ["FAILED", null, true],
     ["UNKNOWN", null, false],
     ["FAILED", "HOSTED_PROMPT_OUTPUT_INVALID", false],
+    ["FAILED", "HOSTED_PROMPT_ARCHIVE_UNAVAILABLE", false],
     ["UNKNOWN", "HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT", false],
   ] as const)(
     "shows Stage 5 %s progress with a safe retry only when definite",
@@ -6210,6 +6297,9 @@ describe("hosted product journey", () => {
         expect(screen.getAllByText(/original provider result was invalid/u).length).toBeGreaterThan(
           0,
         );
+      }
+      if (problemCode === "HOSTED_PROMPT_ARCHIVE_UNAVAILABLE") {
+        expect(screen.getAllByText(/full result is unavailable/u).length).toBeGreaterThan(0);
       }
       expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/prompts"))).toBe(
         false,

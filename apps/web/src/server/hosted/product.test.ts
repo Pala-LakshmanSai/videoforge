@@ -4,6 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 import { NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH } from "@videoforge/pipeline";
 import type { CloudComputeSnapshot, ProjectApiCost } from "../../lib/cloud-compute";
 
+const continuationWatchdog = vi.hoisted(() => ({ ensure: vi.fn(async () => false) }));
+vi.mock("./pair-observer-guard", () => ({
+  ensureHostedContinuationDriver: continuationWatchdog.ensure,
+}));
+
 const testState = vi.hoisted(() => {
   const scopeRows: Record<string, unknown>[] = [
     {
@@ -2850,8 +2855,263 @@ describe("hosted product route contract", () => {
     expect(hostedPromptProgressForCapacityHold(null)).toBeNull();
     expect(
       hostedPromptProgressForCapacityHold({ state: "SUCCEEDED", capacity_hold: true }),
-    ).toEqual({ state: "SUCCEEDED", capacity_hold: true });
+    ).toEqual({ state: "SUCCEEDED", capacity_hold: true, automatic_recovery_pending: false });
   });
+
+  it.each([
+    {
+      name: "exact current claim",
+      state: "UNKNOWN",
+      problem: "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+      eligible: true,
+      task: "FAILED",
+      expected: "RETRY_WAIT",
+    },
+    {
+      name: "saved prefix",
+      state: "UNKNOWN",
+      problem: "HOSTED_PROMPT_DISPATCH_TIMEOUT",
+      eligible: true,
+      task: "FAILED",
+      expected: "RETRY_WAIT",
+    },
+    {
+      name: "replacement running",
+      state: "DISPATCHING",
+      problem: null,
+      eligible: false,
+      task: "RUNNING",
+      expected: "RUNNING",
+    },
+    {
+      name: "complete",
+      state: "SUCCEEDED",
+      problem: null,
+      eligible: false,
+      task: "COMPLETE",
+      expected: "COMPLETE",
+    },
+    {
+      name: "invalid exhausted result",
+      state: "FAILED",
+      problem: "HOSTED_PROMPT_OUTPUT_INVALID",
+      eligible: false,
+      task: "FAILED",
+      expected: "FAILED",
+    },
+    {
+      name: "missing exact claim",
+      state: "UNKNOWN",
+      problem: "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+      eligible: false,
+      task: "FAILED",
+      expected: "FAILED",
+    },
+    {
+      name: "cancelled generation",
+      state: "UNKNOWN",
+      problem: "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+      eligible: false,
+      task: "FAILED",
+      expected: "FAILED",
+    },
+    {
+      name: "inactive generation",
+      state: "UNKNOWN",
+      problem: "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+      eligible: false,
+      task: "FAILED",
+      expected: "FAILED",
+    },
+    {
+      name: "credits hold",
+      state: "UNKNOWN",
+      problem: "HOSTED_PROMPT_PROVIDER_CREDITS_LOW",
+      eligible: true,
+      task: "FAILED",
+      expected: "BLOCKED",
+    },
+    {
+      name: "capacity hold",
+      state: "UNKNOWN",
+      problem: "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+      eligible: true,
+      task: "FAILED",
+      expected: "ACTION_REQUIRED",
+      capacity: true,
+    },
+  ])(
+    "projects prompt $name without a false terminal stage",
+    async ({ state, problem, eligible, task, expected, capacity }) => {
+      const priorQuery = testState.query.getMockImplementation()!;
+      testState.query.mockImplementation(async (sql, params) => {
+        if (sql.includes("FROM hosted_prompt_runs AS run"))
+          return {
+            rows: [
+              {
+                state,
+                problem_code: problem,
+                automatic_recovery_pending: eligible,
+                capacity_hold: capacity ?? false,
+                accepted_scenes: 25,
+                total_scenes: 100,
+                accepted_batches: 1,
+                total_batches: 4,
+                finished_at: "2026-10-06T08:00:00Z",
+              },
+            ],
+            affectedRows: 1,
+          };
+        if (sql.includes("AS prompt_task_state"))
+          return { rows: [{ id: PROJECT_ID, prompt_task_state: task }], affectedRows: 1 };
+        return priorQuery(sql, params);
+      });
+      try {
+        const result = await handleHostedProductRequest(
+          request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+          {},
+          stagingConfig,
+          executionContext,
+        );
+        expect(result?.status).toBe(200);
+        const body = (await result!.json()) as {
+          prompt_progress: { automatic_recovery_pending: boolean };
+          stages: { id: string; status: string; detail: string; completed_at: string | null }[];
+        };
+        const pending = expected === "RETRY_WAIT";
+        expect(body.prompt_progress.automatic_recovery_pending).toBe(pending);
+        const stage = body.stages.find((item) => item.id === "prompt-writing")!;
+        expect(stage.status).toBe(expected);
+        if (pending) {
+          expect(stage.completed_at).toBeNull();
+          expect(stage.detail).toBe(
+            "Recovering the current prompt batch automatically. Saved prompts remain intact.",
+          );
+        }
+      } finally {
+        testState.query.mockImplementation(priorQuery);
+      }
+    },
+  );
+
+  it.each([
+    { name: "eligible Cloud dispatch", state: "DISPATCHING", eligible: true, expected: true },
+    {
+      name: "exact unknown recovery",
+      state: "UNKNOWN",
+      recovery: true,
+      problem: "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+      expected: true,
+    },
+    { name: "terminal prompt failure", state: "FAILED", eligible: true, expected: false },
+    { name: "opaque unknown", state: "UNKNOWN", expected: false },
+    {
+      name: "capacity held",
+      state: "DISPATCHING",
+      eligible: true,
+      capacity: true,
+      expected: false,
+    },
+    {
+      name: "credits held",
+      state: "UNKNOWN",
+      recovery: true,
+      problem: "HOSTED_PROMPT_PROVIDER_CREDITS_LOW",
+      expected: false,
+    },
+    {
+      name: "cancelled generation",
+      state: "DISPATCHING",
+      eligible: true,
+      queue: "CANCELLED",
+      expected: false,
+    },
+    {
+      name: "inactive generation",
+      state: "DISPATCHING",
+      eligible: false,
+      queue: "WAITING",
+      expected: false,
+    },
+    {
+      name: "failed context",
+      state: "DISPATCHING",
+      eligible: true,
+      context: "FAILED",
+      expected: false,
+    },
+    {
+      name: "deleted project",
+      state: "DISPATCHING",
+      eligible: true,
+      missing: true,
+      expected: false,
+    },
+    {
+      name: "unscoped request",
+      state: "DISPATCHING",
+      eligible: true,
+      unscoped: true,
+      expected: false,
+    },
+  ])(
+    "revives the shared coordinator only for native eligible Stage 5 progress: $name",
+    async (testCase) => {
+      const prior = testState.query.getMockImplementation()!;
+      continuationWatchdog.ensure.mockClear();
+      testState.query.mockImplementation(async (sql, params) => {
+        if (testCase.unscoped && sql.includes("videoforge_hosted_session_scope"))
+          return { rows: [], affectedRows: 0 };
+        if (sql.includes("project.name AS title") && sql.includes("FROM projects AS project"))
+          return {
+            rows: testCase.missing
+              ? []
+              : [{ ...testState.projectRows[0], media_execution_backend: "RUNPOD_POD" }],
+            affectedRows: testCase.missing ? 0 : 1,
+          };
+        if (sql.includes("FROM hosted_prompt_runs AS run"))
+          return {
+            rows: [
+              {
+                state: testCase.state,
+                continuation_driver_eligible: testCase.eligible ?? false,
+                automatic_recovery_pending: testCase.recovery ?? false,
+                capacity_hold: testCase.capacity ?? false,
+                problem_code: testCase.problem ?? null,
+              },
+            ],
+            affectedRows: 1,
+          };
+        if (sql.includes("FROM hosted_voiceover_contexts AS context"))
+          return { rows: [{ state: testCase.context ?? "SUCCEEDED" }], affectedRows: 1 };
+        if (sql.includes("FROM generation_requests AS request"))
+          return { rows: [{ state: testCase.queue ?? "ACTIVE" }], affectedRows: 1 };
+        return prior(sql, params);
+      });
+      try {
+        const result = await handleHostedProductRequest(
+          request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+          {},
+          stagingConfig,
+          executionContext,
+        );
+        expect(result?.status).toBe(testCase.missing ? 404 : testCase.unscoped ? 403 : 200);
+        expect(continuationWatchdog.ensure).toHaveBeenCalledTimes(testCase.expected ? 1 : 0);
+        if (testCase.expected) {
+          const query = testState.query.mock.calls.find(([sql]) =>
+            sql.includes("AS continuation_driver_eligible"),
+          );
+          expect(query?.[0]).toContain(
+            "request.account_id=run.account_id AND request.workspace_id=run.workspace_id",
+          );
+          expect(query?.[0]).toContain("request.project_revision_id=run.project_revision_id");
+          expect(query?.[0]).toContain("request.state='ACTIVE')=1");
+        }
+      } finally {
+        testState.query.mockImplementation(prior);
+      }
+    },
+  );
 
   it("does not report image prompts complete merely because a timeline exists", () => {
     expect(

@@ -27,6 +27,7 @@ import {
   HOSTED_PROMPT_RESERVATION_MICRO_USD,
   HostedPromptExecutionError,
   HostedPromptArchivedOutputInvalidError,
+  HostedPromptArchivedOutputUnavailableError,
   HostedPromptCapacityPausedError,
   hostedPromptReservationMicroUsd,
   hostedPromptBatchPlanHash,
@@ -685,7 +686,13 @@ export async function writeProjectPrompts(
                 })
               : null;
         } catch (error) {
-          if (!original.claim || !(error instanceof HostedPromptArchivedOutputInvalidError))
+          if (
+            !original.claim ||
+            !(
+              error instanceof HostedPromptArchivedOutputInvalidError ||
+              error instanceof HostedPromptArchivedOutputUnavailableError
+            )
+          )
             throw error;
           const invalidClaim = original.claim;
           if (
@@ -696,8 +703,9 @@ export async function writeProjectPrompts(
               error.knownCostMicroUsd >=
               250_000
           ) {
-            // The archived task identity, terminal response, and known charge were verified above.
-            // Claim at most one distinct replacement; keep every accepted batch and original claim.
+            // Exact completion and cost are verified for either invalid output or an unavailable
+            // redacted archive. Native CAS records that hash/cost before one distinct replacement.
+            // Keep every accepted batch and original claim; an uncertain task grants no authority.
             acceptedBatch = await dispatchOneHostedPromptBatch({
               contentRepair: "no-text-v2",
               apiKey: promptApiKey,
@@ -751,7 +759,9 @@ export async function writeProjectPrompts(
                   [saved.id, "UNKNOWN", "HOSTED_PROMPT_EXECUTION_UNKNOWN", true, 0],
                 );
               await transaction.query(
-                "SELECT public.videoforge_adjudicate_invalid_hosted_prompt_batch($1,$2,$3,$4)",
+                error instanceof HostedPromptArchivedOutputUnavailableError
+                  ? "SELECT public.videoforge_adjudicate_unavailable_hosted_prompt_archive($1,$2,$3,$4)"
+                  : "SELECT public.videoforge_adjudicate_invalid_hosted_prompt_batch($1,$2,$3,$4)",
                 [
                   saved.id,
                   invalidClaim.provider_task_uuid,
@@ -760,7 +770,17 @@ export async function writeProjectPrompts(
                 ],
               );
             });
-            return response({ error: { code: "HOSTED_PROMPT_OUTPUT_INVALID" } }, 409);
+            return response(
+              {
+                error: {
+                  code:
+                    error instanceof HostedPromptArchivedOutputUnavailableError
+                      ? "HOSTED_PROMPT_ARCHIVE_UNAVAILABLE"
+                      : "HOSTED_PROMPT_OUTPUT_INVALID",
+                },
+              },
+              409,
+            );
           }
         }
         if (acceptedBatch)

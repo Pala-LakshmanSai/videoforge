@@ -295,6 +295,87 @@ test("Stage 5 feels live and keeps every accepted prompt in a bounded scrollable
   expect(projectReads).toBe(3);
 });
 
+test("Stage 5 recovery stays live and preserves genuine terminal failures", async ({ page }) => {
+  let phase: "recovering" | "writing" | "complete" | "failed" = "recovering";
+  let promptPosts = 0;
+  const startedAt = new Date(Date.now() - 6 * 60_000).toISOString();
+  page.on("request", (request) => {
+    if (request.method() === "POST" && new URL(request.url()).pathname.endsWith("/prompts"))
+      promptPosts += 1;
+  });
+  await page.route(`**/api/v2/hosted/projects/${promptProjectId}`, async (route) => {
+    const detail = promptProjectDetail(phase === "complete" ? 3 : 2);
+    await route.fulfill({
+      json: {
+        ...detail,
+        project: { ...detail.project, created_at: startedAt },
+        stages: detail.stages.map((stage) => ({
+          ...stage,
+          started_at: startedAt,
+          completed_at:
+            phase === "complete" || phase === "failed" ? new Date().toISOString() : null,
+          detail:
+            phase === "recovering"
+              ? "Recovering the current prompt batch automatically. Saved prompts remain intact."
+              : "Image prompts are being written and verified against the approved style.",
+          status:
+            phase === "recovering" ? "RETRY_WAIT" : phase === "failed" ? "FAILED" : stage.status,
+        })),
+        prompt_progress: {
+          ...detail.prompt_progress,
+          state:
+            phase === "recovering"
+              ? "UNKNOWN"
+              : phase === "failed"
+                ? "FAILED"
+                : phase === "complete"
+                  ? "SUCCEEDED"
+                  : "DISPATCHING",
+          automatic_recovery_pending: phase === "recovering",
+          problem_code:
+            phase === "recovering"
+              ? "HOSTED_PROMPT_EXECUTION_UNKNOWN"
+              : phase === "failed"
+                ? "HOSTED_PROMPT_OUTPUT_INVALID"
+                : null,
+        },
+      },
+    });
+  });
+  await page.goto(`/projects/${promptProjectId}`);
+  const stages = page.getByRole("list", { name: "Project stages" });
+  const row = stages.getByRole("listitem").filter({ hasText: "Write image prompts" });
+  await expect(row.getByText("RETRYING", { exact: true })).toBeVisible();
+  await expect(row.getByText("FAILED", { exact: true })).toHaveCount(0);
+  await expect(row.getByRole("button", { name: "Retry", exact: true })).toHaveCount(0);
+  await expect(page.locator(".live-prompt-activity")).toHaveText(
+    "Recovering the current prompt batch automatically. Saved prompts remain intact.",
+  );
+  await expect(page.getByText("HOSTED_PROMPT_EXECUTION_UNKNOWN", { exact: true })).toHaveCount(0);
+  const viewer = page.getByRole("region", { name: "Accepted image prompts" });
+  await expect(viewer.getByRole("listitem")).toHaveCount(14);
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      width,
+    );
+    await page.screenshot({ path: `/tmp/videoforge-prompt-recovery-${width}.png` });
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  phase = "writing";
+  await expect(row.getByText("RUNNING", { exact: true })).toBeVisible({ timeout: 5_000 });
+  phase = "complete";
+  await expect(row.getByText("COMPLETE", { exact: true })).toBeVisible({ timeout: 5_000 });
+  await expect(viewer.getByRole("listitem")).toHaveCount(28);
+  phase = "failed";
+  await page.reload();
+  await expect(row.getByText("FAILED", { exact: true })).toBeVisible();
+  await expect(row.getByText("HOSTED_PROMPT_OUTPUT_INVALID", { exact: true })).toBeVisible();
+  await expect(row.getByRole("button", { name: "Retry", exact: true })).toBeDisabled();
+  await expect(viewer.getByRole("listitem")).toHaveCount(14);
+  expect(promptPosts).toBe(0);
+});
+
 test("Progress dashboard keeps desktop columns, mobile controls and full saved prompts", async ({
   page,
 }) => {

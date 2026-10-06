@@ -39,7 +39,10 @@ export type PromptRequestPolicy =
   | "physical-placement-v1"
   | "physical-placement-v2"
   | "no-graphics-v1"
-  | "no-graphics-v2";
+  | "no-graphics-v2"
+  | "no-graphics-async-v1";
+export const ASYNC_NO_GRAPHICS_PROMPT_REQUEST_VERSION =
+  "runware-gemini-3.5-flash-prompt-request-v30" as const;
 export const NO_GRAPHICS_PROMPT_REQUEST_VERSION =
   "runware-gemini-3.5-flash-prompt-request-v28" as const;
 export const NO_GRAPHICS_V2_PROMPT_REQUEST_VERSION =
@@ -53,6 +56,7 @@ export const PHYSICAL_PLACEMENT_PROMPT_REQUEST_VERSION =
 export const PHYSICAL_PLACEMENT_V2_PROMPT_REQUEST_VERSION =
   "runware-gemini-3.5-flash-prompt-request-v27" as const;
 type PromptRequestVersion =
+  | typeof ASYNC_NO_GRAPHICS_PROMPT_REQUEST_VERSION
   | typeof NO_GRAPHICS_V2_PROMPT_REQUEST_VERSION
   | typeof NO_GRAPHICS_PROMPT_REQUEST_VERSION
   | "runware-prompt-content-repair-v1"
@@ -153,7 +157,7 @@ export interface RunwarePromptApiRequest {
   readonly model: typeof RUNWARE_PROMPT_MODEL;
   // No outputFormat/jsonSchema: Google Gemini rejects structured output with providerBadRequest, so
   // the shape is stated in the system prompt instead and validated strictly after the answer arrives.
-  readonly deliveryMethod: "sync";
+  readonly deliveryMethod: "sync" | "async";
   readonly includeCost: true;
   readonly includeUsage: true;
   readonly settings: {
@@ -624,6 +628,7 @@ export function buildRunwarePromptRequest(
       "physical-placement-v2",
       "no-graphics-v1",
       "no-graphics-v2",
+      "no-graphics-async-v1",
     ].includes(requestPolicy)
   )
     fail("Prompt request policy is invalid.", ["requestPolicy"]);
@@ -657,8 +662,10 @@ export function buildRunwarePromptRequest(
     fail("Prompt attempt must preserve the original batch scene order.", ["scenes"]);
 
   const natural = batch.styleProfileHash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH;
-  const requestVersion: PromptRequestVersion =
-    contentRepair === "no-text-v2" && requestPolicy !== "no-graphics-v2"
+  const asyncDelivery = requestPolicy === "no-graphics-async-v1";
+  const requestVersion: PromptRequestVersion = asyncDelivery
+    ? ASYNC_NO_GRAPHICS_PROMPT_REQUEST_VERSION
+    : contentRepair === "no-text-v2" && requestPolicy !== "no-graphics-v2"
       ? "runware-prompt-content-repair-v2"
       : contentRepair && requestPolicy !== "no-graphics-v1" && requestPolicy !== "no-graphics-v2"
         ? "runware-prompt-content-repair-v1"
@@ -679,7 +686,8 @@ export function buildRunwarePromptRequest(
   const systemPrompt =
     requestPolicy === "physical-placement-v2" ||
     requestPolicy === "no-graphics-v1" ||
-    requestPolicy === "no-graphics-v2"
+    requestPolicy === "no-graphics-v2" ||
+    asyncDelivery
       ? `${legacySystemPrompt} ${PHYSICAL_PLACEMENT_V2_WRITER_INSTRUCTION}`
       : requestPolicy === "physical-placement-v1"
         ? `${legacySystemPrompt} ${PHYSICAL_PLACEMENT_WRITER_INSTRUCTION}`
@@ -709,8 +717,9 @@ export function buildRunwarePromptRequest(
   });
   const taskUUID = deterministicUuid({
     requestVersion,
-    ...((contentRepair === "no-text-v2" && requestPolicy !== "no-graphics-v2") ||
-    (contentRepair && requestPolicy !== "no-graphics-v1" && requestPolicy !== "no-graphics-v2")
+    ...(!asyncDelivery &&
+    ((contentRepair === "no-text-v2" && requestPolicy !== "no-graphics-v2") ||
+      (contentRepair && requestPolicy !== "no-graphics-v1" && requestPolicy !== "no-graphics-v2"))
       ? { repairPolicy: requestPolicy }
       : {}),
     batchId: batch.batchId,
@@ -727,11 +736,11 @@ export function buildRunwarePromptRequest(
     taskType: "textInference",
     taskUUID,
     model: RUNWARE_PROMPT_MODEL,
-    deliveryMethod: "sync",
+    deliveryMethod: asyncDelivery ? "async" : "sync",
     includeCost: true,
     includeUsage: true,
     settings: Object.freeze({
-      systemPrompt: `${systemPrompt}\n${SCENE_PROMPT_WRITER_OUTPUT_CONTRACT}${contentRepair || requestPolicy === "no-graphics-v1" || requestPolicy === "no-graphics-v2" ? `\n${PROMPT_CONTENT_REPAIR_INSTRUCTION}` : ""}${requestPolicy === "no-graphics-v2" || contentRepair === "no-text-v2" ? `\n${NO_GRAPHICS_V2_WRITER_INSTRUCTION}` : ""}`,
+      systemPrompt: `${systemPrompt}\n${SCENE_PROMPT_WRITER_OUTPUT_CONTRACT}${contentRepair || requestPolicy === "no-graphics-v1" || requestPolicy === "no-graphics-v2" || asyncDelivery ? `\n${PROMPT_CONTENT_REPAIR_INSTRUCTION}` : ""}${requestPolicy === "no-graphics-v2" || contentRepair === "no-text-v2" || asyncDelivery ? `\n${NO_GRAPHICS_V2_WRITER_INSTRUCTION}` : ""}`,
       // Match the exact canonical AIR/settings contract already qualified live
       // and used by the successful Stage 3 DeepSeek transport.
       thinkingLevel: "off",
@@ -946,17 +955,25 @@ const singleSceneValidation = (
     // Blank physical surfaces carry no writing. Canonicalize an explicitly blank trailing label
     // or its ordinary container attachment; printing, branding or following content still fail.
     const unmarked = (value: JsonValue): JsonValue =>
-      typeof value === "string"
-        ? value.replace(
-            /\b(a\s+)?blank\s+((?:(?:back|front|white|black|green|brown|red|blue|yellow|orange|purple|pink|grey|gray|beige|cream|tan|gold|silver|plain|paper)\s+){0,3})label(s)?(?=\s*(?:\s+(?:on|of)\s+(?:a|an|the)\s+(?:bottle|jar|container|package|carton|can|box))?\s*(?:with\s+no\s+(?:text|writing)\s*)?[.!?]?\s*$)/giu,
-            (
-              _match,
-              article: string | undefined,
-              modifier: string | undefined,
-              plural: string | undefined,
-            ) =>
-              `${article ? "an " : ""}unmarked${modifier?.trim() ? ` ${modifier.trim()}` : ""} surface${plural ? "s" : ""}`,
-          )
+      typeof value === "string" &&
+      !/\b(?:print(?:s|ed|ing)?|writ(?:e|es|ten|ing)|read(?:s|ing)?|word(?:s|ed|ing)?|letter(?:s|ed|ing)?|number(?:s|ed|ing)?|logos?|brand(?:s|ed|ing)?|barcod(?:e|es|ed|ing)|text(?:s|ual)?|inscri(?:be|bes|bed|bing|ption|ptions)|engrav(?:e|es|ed|ing)|etch(?:es|ed|ing)?|spell(?:s|ed|ing)?|marked|drawn|drawing)\b/iu.test(
+        value.replace(/\bwith\s+no\s+(?:text|writing)\s*[.!?]?\s*$/iu, ""),
+      )
+        ? value
+            .replace(
+              /\bunmarked\s+(white|black|green|brown|red|blue|yellow|orange|purple|pink|grey|gray|beige|cream|tan|gold|silver)[- ]labeled\s+(bottle|jar|container|package|carton|can|box)(?=[.!?]?\s*$)/giu,
+              "unmarked $2 with a $1 surface",
+            )
+            .replace(
+              /\b(a\s+)?blank(?:\s*,)?\s+(?:unmarked\s+)?((?:(?:back|front|white|black|green|brown|red|blue|yellow|orange|purple|pink|grey|gray|beige|cream|tan|gold|silver|plain|paper)\s+){0,3})label(s)?(?=\s*(?:\s+area)?(?:\s+(?:on|of)\s+(?:a|an|the)\s+(?:bottle|jar|container|package|carton|can|box))?\s*(?:with\s+no\s+(?:text|writing)\s*)?[.!?]?\s*$)/giu,
+              (
+                _match,
+                article: string | undefined,
+                modifier: string | undefined,
+                plural: string | undefined,
+              ) =>
+                `${article ? "an " : ""}unmarked${modifier?.trim() ? ` ${modifier.trim()}` : ""} surface${plural ? "s" : ""}`,
+            )
         : value;
     row = {
       ...row,

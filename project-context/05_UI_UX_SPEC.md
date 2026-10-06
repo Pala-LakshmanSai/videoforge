@@ -45,8 +45,24 @@ section instructions. Stage rows show descriptions for current/problem stages, n
 pending stages. Preset traits and generation rules remain available in disclosures. Connected
 computers show setup/installers under an add/update disclosure; first setup and required updates
 remain expanded. Dropdowns dismiss on outside interaction or focus departure, retain keyboard
-navigation, and wrap full option names. Unknown provider results retain explicit no-automatic-retry
-copy. Never present missing cost data as zero or hardcode enabled generation as unavailable.
+navigation, and wrap full option names. Unknown provider results without an eligible exact recovery
+path retain explicit no-automatic-retry copy. Never present missing cost data as zero or hardcode
+enabled generation as unavailable.
+
+### Prompt recovery progress — 2026-10-06
+
+Native prompt UNKNOWN may mark its task FAILED while the existing workflow checks the exact claim
+or resumes a saved contiguous batch prefix. Project detail exposes automatic_recovery_pending only
+for eligible UNKNOWN codes, an active project/original generation and the existing claim/prefix.
+Capacity and credit holds are excluded. Project stages show RETRY_WAIT/RETRYING, retain accepted
+counts, polling and elapsed timing, and explain automatic recovery without a terminal error or
+manual retry control. Terminal invalid output, cancellation, inactive work and unknown results with
+no eligible exact path remain visibly stopped. This projection never authorizes another request,
+changes saved results, or expands native retry/spend limits.
+Terminal ARCHIVE_UNAVAILABLE explains that the provider completed the request but its full result
+is unavailable and the replacement or spend limit is exhausted; saved prompts remain accessible
+and Retry stays disabled. Eligible authenticated Cloud progress polling reuses the stable bounded
+continuation-driver guard, so an errored driver can recover without a desktop-worker poll.
 
 Provider-free acceptance and release status: `CURRENT_STATE.yaml`,
 `evidence/acceptance/VF-10-09/2026-09-14-ui-ux-polish/acceptance.json`.

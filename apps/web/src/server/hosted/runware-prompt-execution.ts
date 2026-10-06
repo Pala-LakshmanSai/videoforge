@@ -29,6 +29,7 @@ import {
   RunwareSpendLedger,
   retrieveRunwareTextTaskDetails,
   RunwareArchivedTaskRejectedError,
+  RunwareArchivedTextUnavailableError,
   type RunwareCapacityRefusal,
   type RunwareSafeDiagnostic,
 } from "../providers/runware-http-transport";
@@ -81,6 +82,17 @@ export class HostedPromptArchivedOutputInvalidError extends Error {
     public readonly validationDiagnostic: RunwarePromptValidationDiagnostic | null,
   ) {
     super("Archived prompt output failed strict validation.");
+  }
+}
+
+/** A completed, billed response whose archive redacted the output is not bad generated content. */
+export class HostedPromptArchivedOutputUnavailableError extends Error {
+  public override readonly name = "HostedPromptArchivedOutputUnavailableError";
+  public constructor(
+    public readonly responseHash: Sha256Digest,
+    public readonly knownCostMicroUsd: number,
+  ) {
+    super("HOSTED_PROMPT_ARCHIVE_UNAVAILABLE");
   }
 }
 
@@ -142,6 +154,11 @@ export async function recoverClaimedHostedPromptBatch(input: {
         fetch: input.fetcher,
       }));
   } catch (error) {
+    if (error instanceof RunwareArchivedTextUnavailableError) {
+      const knownCostMicroUsd = actualCostMicroUsd(error.costUsd, input.reservationMicroUsd);
+      if (knownCostMicroUsd > 250_000) throw error;
+      throw new HostedPromptArchivedOutputUnavailableError(error.responseHash, knownCostMicroUsd);
+    }
     if (error instanceof RunwareArchivedTaskRejectedError)
       throw new HostedPromptCapacityPausedError({
         taskUUID: input.taskUUID,
@@ -305,6 +322,8 @@ export async function dispatchOneHostedPromptBatch(input: {
     apiKey: input.apiKey,
     ledger,
     maximumRequestCostUsd: input.remainingReservationMicroUsd / 1_000_000,
+    // Historical sealed sync requests need enough time to retain their full result before timeout.
+    timeoutMs: 300_000,
     fetch: input.fetcher,
     onCapacityRefused: async (value) => {
       await input.onCapacityRefused?.(value);

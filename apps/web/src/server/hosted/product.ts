@@ -5064,10 +5064,20 @@ const PROMPT_WRITER_STATES: ReadonlyMap<
 export function hostedPromptProgressForCapacityHold(
   progress: Record<string, unknown> | null,
 ): Record<string, unknown> | null {
-  if (!progress || progress.state === "SUCCEEDED" || progress.capacity_hold !== true)
-    return progress;
-  return {
+  if (!progress) return null;
+  const projected = {
     ...progress,
+    automatic_recovery_pending:
+      progress.state === "UNKNOWN" &&
+      ["HOSTED_PROMPT_EXECUTION_UNKNOWN", "HOSTED_PROMPT_DISPATCH_TIMEOUT"].includes(
+        String(progress.problem_code),
+      ) &&
+      progress.capacity_hold !== true &&
+      progress.automatic_recovery_pending === true,
+  };
+  if (progress.state === "SUCCEEDED" || progress.capacity_hold !== true) return projected;
+  return {
+    ...projected,
     state: "UNKNOWN",
     problem_code: "HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT",
     active_batch_ordinal: null,
@@ -5083,6 +5093,8 @@ export function hostedPromptWritingState(
     readonly acceptedScenes: number;
     readonly totalScenes: number;
     readonly problemCode?: unknown;
+    readonly runState?: unknown;
+    readonly automaticRecoveryPending?: boolean;
   },
 ): {
   readonly status:
@@ -5115,6 +5127,22 @@ export function hostedPromptWritingState(
           ? Math.min(99, Math.floor((progress.acceptedScenes / progress.totalScenes) * 100))
           : 0,
       detail: `Prompt writing is paused while provider credits are unavailable. ${progress.acceptedScenes} saved prompts remain intact.`,
+    };
+  }
+  if (
+    progress?.runState === "UNKNOWN" &&
+    progress.automaticRecoveryPending === true &&
+    ["HOSTED_PROMPT_EXECUTION_UNKNOWN", "HOSTED_PROMPT_DISPATCH_TIMEOUT"].includes(
+      String(progress.problemCode),
+    )
+  ) {
+    return {
+      status: "RETRY_WAIT",
+      progressPercent:
+        progress.totalScenes > 0
+          ? Math.min(99, Math.floor((progress.acceptedScenes / progress.totalScenes) * 100))
+          : 0,
+      detail: "Recovering the current prompt batch automatically. Saved prompts remain intact.",
     };
   }
   // A scene-batch prompt task is created the moment prompt writing starts, and its durable state is
@@ -7862,6 +7890,30 @@ async function projectDetail(
       const promptProgress = await transaction.query(
         `SELECT run.state, run.problem_code, run.started_at, run.finished_at,
                 public.videoforge_hosted_prompt_capacity_held(run.id) AS capacity_hold,
+                coalesce(run.state='DISPATCHING'
+                  AND (SELECT count(*) FROM generation_requests request
+                    WHERE request.account_id=run.account_id AND request.workspace_id=run.workspace_id
+                      AND request.project_revision_id=run.project_revision_id
+                      AND request.state='ACTIVE')=1,false) AS continuation_driver_eligible,
+                coalesce(run.state='UNKNOWN'
+                  AND run.problem_code IN ('HOSTED_PROMPT_EXECUTION_UNKNOWN','HOSTED_PROMPT_DISPATCH_TIMEOUT')
+                  AND run.provider_may_have_charged IS TRUE
+                  AND run.acceptance_fingerprint_hash IS NULL
+                  AND EXISTS (SELECT 1 FROM projects project
+                    WHERE project.id=run.project_id AND project.status='ACTIVE')
+                  AND (SELECT count(*) FROM generation_requests request
+                    WHERE request.project_revision_id=run.project_revision_id
+                      AND request.state='ACTIVE')=1
+                  AND (
+                    EXISTS (SELECT 1 FROM hosted_prompt_batch_claims claim_row
+                      WHERE claim_row.run_id=run.id AND claim_row.batch_ordinal=(
+                        SELECT count(*) FROM hosted_prompt_batch_progress WHERE run_id=run.id))
+                    OR (SELECT count(*) BETWEEN 1 AND run.planned_batch_count
+                      AND count(*)=(SELECT count(*) FROM hosted_prompt_batch_progress WHERE run_id=run.id)
+                      AND bool_and(EXISTS (SELECT 1 FROM hosted_prompt_batch_progress saved
+                        WHERE saved.run_id=run.id AND saved.batch_ordinal=claim_row.batch_ordinal))
+                      FROM hosted_prompt_batch_claims claim_row WHERE claim_row.run_id=run.id)
+                  ),false) AS automatic_recovery_pending,
                 COALESCE(run.planned_scene_count, expected.scene_count) AS total_scenes,
                 count(DISTINCT scene.id) AS accepted_scenes,
                 run.planned_batch_count AS total_batches,
@@ -8437,6 +8489,23 @@ async function projectDetail(
       };
     });
     if (!detail?.project) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+    // Cloud projects have no desktop claim poll to revive a terminal coordinator.
+    // Native Stage 5 eligibility keeps paused, terminal and capacity-held runs stopped.
+    const watchdogPrompt = detail.promptProgress as Record<string, unknown> | null;
+    if (
+      (detail.queue as Record<string, unknown> | null)?.state === "ACTIVE" &&
+      (detail.voiceoverContext as Record<string, unknown> | null)?.state === "SUCCEEDED" &&
+      watchdogPrompt?.capacity_hold !== true &&
+      !["HOSTED_PROMPT_PROVIDER_CREDITS_LOW", "HOSTED_PROMPT_PROVIDER_CAPACITY_WAIT"].includes(
+        String(watchdogPrompt?.problem_code ?? ""),
+      ) &&
+      ((watchdogPrompt?.state === "DISPATCHING" &&
+        watchdogPrompt.continuation_driver_eligible === true) ||
+        (watchdogPrompt?.state === "UNKNOWN" && watchdogPrompt.automatic_recovery_pending === true))
+    ) {
+      const { ensureHostedContinuationDriver } = await import("./pair-observer-guard");
+      executionContext.waitUntil(ensureHostedContinuationDriver(environment));
+    }
     const signer = new HostedR2Signer(config.r2);
     const attempts = [] as Record<string, unknown>[];
     for (const value of detail.attempts as Record<string, unknown>[]) {
@@ -8707,6 +8776,8 @@ async function projectDetail(
         acceptedScenes: acceptedPromptScenes,
         totalScenes: totalPromptScenes,
         problemCode: promptProgress?.problem_code,
+        runState: promptProgress?.state,
+        automaticRecoveryPending: promptProgress?.automatic_recovery_pending === true,
       },
     );
     const storedVoiceoverContext = detail.voiceoverContext as Record<string, unknown> | null;
@@ -8985,7 +9056,7 @@ async function projectDetail(
           (detail.promptProgress as Record<string, unknown> | null)?.started_at,
         ),
         completed_at: timestampOrNull(
-          (detail.promptProgress as Record<string, unknown> | null)?.finished_at,
+          promptProgress?.automatic_recovery_pending === true ? null : promptProgress?.finished_at,
         ),
         detail: promptStage.detail,
         eta_ms: null,

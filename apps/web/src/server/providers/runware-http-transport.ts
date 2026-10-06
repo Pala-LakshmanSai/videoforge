@@ -18,6 +18,7 @@ export type RunwareTransportFailureCode =
   | "RUNWARE_TASK_DETAILS_UNAVAILABLE"
   | "RUNWARE_TASK_NOT_FOUND"
   | "RUNWARE_TASK_PROVIDER_FAILED"
+  | "RUNWARE_TEXT_ARCHIVE_UNAVAILABLE"
   | "RUNWARE_RESPONSE_INVALID";
 
 export class RunwareTransportError extends Error {
@@ -34,7 +35,20 @@ export class RunwareArchivedTaskRejectedError extends RunwareTransportError {
   }
 }
 
-export async function readRunwareCreditBalance(apiKey: string, fetcher: FetchPort = fetch): Promise<number> {
+/** The provider completed this exact task, but its archive omitted the generated text. */
+export class RunwareArchivedTextUnavailableError extends RunwareTransportError {
+  constructor(
+    readonly costUsd: number,
+    readonly responseHash: `sha256:${string}`,
+  ) {
+    super("RUNWARE_TEXT_ARCHIVE_UNAVAILABLE");
+  }
+}
+
+export async function readRunwareCreditBalance(
+  apiKey: string,
+  fetcher: FetchPort = fetch,
+): Promise<number> {
   if (apiKey.trim().length < 20) throw new RunwareTransportError("RUNWARE_AUTH_INVALID");
   const taskUUID = crypto.randomUUID();
   const response = await fetcher(DEFAULT_ENDPOINT, {
@@ -47,9 +61,17 @@ export async function readRunwareCreditBalance(apiKey: string, fetcher: FetchPor
   const rows = Array.isArray(body?.data) ? body.data.map(record) : [];
   const row = rows[0];
   const balance = typeof row?.balance === "number" ? row.balance : record(row?.balance)?.amount;
-  if (!response.ok || (Array.isArray(body?.errors) && body.errors.length > 0) || rows.length !== 1 ||
-      row?.taskUUID !== taskUUID || row.taskType !== "accountManagement" || row.operation !== "getDetails" ||
-      typeof balance !== "number" || !Number.isFinite(balance) || balance < 0)
+  if (
+    !response.ok ||
+    (Array.isArray(body?.errors) && body.errors.length > 0) ||
+    rows.length !== 1 ||
+    row?.taskUUID !== taskUUID ||
+    row.taskType !== "accountManagement" ||
+    row.operation !== "getDetails" ||
+    typeof balance !== "number" ||
+    !Number.isFinite(balance) ||
+    balance < 0
+  )
     throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
   return balance;
 }
@@ -114,6 +136,7 @@ interface RunwareHttpClientOptions {
   readonly fetch?: FetchPort;
   readonly endpoint?: string;
   readonly timeoutMs?: number;
+  readonly pollIntervalMs?: number;
   readonly onDiagnostic?: (diagnostic: RunwareSafeDiagnostic) => void;
   /** Persist shared cooldown only for an exact, uncharged admission refusal. */
   readonly onCapacityRefused?: (value: RunwareCapacityRefusal) => Promise<void>;
@@ -132,8 +155,12 @@ export function exactRunwareCapacityRefusal(value: unknown, taskUUID: string): b
   const errors = Array.isArray(body.errors) ? body.errors : [];
   if (errors.length !== 1) return false;
   const error = record(errors[0]);
-  return error?.taskUUID === taskUUID && error.taskType === "textInference" &&
-    error.code === "concurrentRequestLimitExceeded" && !("cost" in error);
+  return (
+    error?.taskUUID === taskUUID &&
+    error.taskType === "textInference" &&
+    error.code === "concurrentRequestLimitExceeded" &&
+    !("cost" in error)
+  );
 }
 
 export interface RunwareSafeDiagnostic {
@@ -155,6 +182,12 @@ function record(value: unknown): NativeData | null {
 }
 
 function finiteNonnegative(value: unknown): number | null {
+  if (
+    value === null ||
+    typeof value === "boolean" ||
+    (typeof value === "string" && value.trim().length === 0)
+  )
+    return null;
   const number = typeof value === "number" ? value : Number(value);
   return Number.isFinite(number) && number >= 0 ? number : null;
 }
@@ -168,6 +201,33 @@ function outputText(value: unknown): string | null {
   if (typeof value === "string") return value;
   if (record(value)) return canonicalizeJson(value as never);
   return null;
+}
+
+function redactedText(value: string): boolean {
+  return /\.\.\.\[REDACTED \d+ bytes\]\.\.\./u.test(value);
+}
+
+function polledTextItem(body: NativeData | null, taskUUID: string): NativeData | null {
+  if (
+    !body ||
+    ("errors" in body && (!Array.isArray(body.errors) || body.errors.length > 0)) ||
+    !Array.isArray(body.data) ||
+    body.data.length !== 1
+  )
+    throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
+  const item = record(body.data[0]);
+  if (
+    !item ||
+    item.taskUUID !== taskUUID ||
+    (item.taskType !== "textInference" && item.taskType !== "getResponse")
+  )
+    throw new RunwareTransportError("RUNWARE_IDEMPOTENCY_CONFLICT");
+  if (item.status === "processing" && !("text" in item) && !("cost" in item)) return null;
+  if (item.taskType !== "textInference" || (item.status !== undefined && item.status !== "success"))
+    throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
+  const parsed = textResult(item);
+  if (parsed.finishReason !== "stop") throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
+  return item;
 }
 
 function textResult(item: NativeData): {
@@ -189,6 +249,8 @@ function textResult(item: NativeData): {
     outputTokens === null ||
     totalTokens === null ||
     cachedInputTokens === null ||
+    cachedInputTokens > inputTokens ||
+    totalTokens < inputTokens + outputTokens ||
     text === null ||
     costUsd === null ||
     typeof item.finishReason !== "string"
@@ -241,7 +303,8 @@ export interface RetrieveRunwareTextTaskDetailsOptions {
 
 /**
  * Reads Runware's archived task details for an already-dispatched text task.
- * This sends only getTaskDetails and can never redispatch text inference.
+ * Async tasks read their retrievable result first, then fall back to the archive.
+ * Both operations are read-only and can never redispatch text inference.
  */
 export async function retrieveRunwareTextTaskDetails(
   options: RetrieveRunwareTextTaskDetailsOptions,
@@ -267,6 +330,54 @@ export async function retrieveRunwareTextTaskDetails(
     expectedTask.taskUUID !== options.originalTaskUUID
   )
     throw new RunwareTransportError("RUNWARE_IDEMPOTENCY_CONFLICT");
+
+  if (expectedTask.deliveryMethod === "async") {
+    let polled: Response | null = null;
+    try {
+      const fetcher = options.fetch ?? fetch;
+      polled = await fetcher(options.endpoint ?? DEFAULT_ENDPOINT, {
+        method: "POST",
+        headers: { authorization: `Bearer ${options.apiKey}`, "content-type": "application/json" },
+        body: canonicalizeJson([{ taskType: "getResponse", taskUUID: options.originalTaskUUID }]),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch {
+      // A lost polling response permits an archive read, never another inference request.
+    }
+    if (polled?.ok) {
+      let body: NativeData | null;
+      try {
+        body = record(JSON.parse(await polled.text()));
+      } catch {
+        throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
+      }
+      const errors = Array.isArray(body?.errors) ? body.errors.map(record) : [];
+      if (errors.length === 0) {
+        const item = polledTextItem(body, options.originalTaskUUID);
+        if (item && !redactedText(textResult(item).outputText)) {
+          if (
+            typeof item.model === "string" &&
+            typeof expectedTask.model === "string" &&
+            item.model !== expectedTask.model
+          )
+            throw new RunwareTransportError("RUNWARE_IDEMPOTENCY_CONFLICT");
+          const parsed = textResult(item);
+          const originalResponseBytes = canonicalizeJson(body as never);
+          return Object.freeze({
+            ...parsed,
+            finishReason: "stop",
+            taskUUID: options.originalTaskUUID,
+            originalRequestBytes: options.originalRequestBytes,
+            originalRequestSha256: options.originalRequestSha256,
+            originalResponseBytes,
+            originalResponseSha256: await sha256(originalResponseBytes),
+          });
+        }
+      }
+    } else if (polled?.status === 401 || polled?.status === 403) {
+      throw new RunwareTransportError("RUNWARE_AUTH_INVALID");
+    }
+  }
 
   let response: Response;
   try {
@@ -348,14 +459,28 @@ export async function retrieveRunwareTextTaskDetails(
     throw new RunwareTransportError("RUNWARE_IDEMPOTENCY_CONFLICT");
 
   const originalResponse = record(details.response);
-  const admissionErrors = Array.isArray(originalResponse?.errors) ? originalResponse.errors.map(record) : [];
+  const admissionErrors = Array.isArray(originalResponse?.errors)
+    ? originalResponse.errors.map(record)
+    : [];
   const admissionError = admissionErrors[0];
-  if (originalResponse && admissionErrors.length === 1 &&
-      !('data' in originalResponse) && !('response' in originalResponse) &&
-      admissionError?.taskUUID === options.originalTaskUUID && admissionError.taskType === "textInference" &&
-      admissionError.code === "concurrentRequestLimitExceeded") {
-    options.onDiagnostic?.({ stage: "response", httpStatus: 200, providerCode: admissionError.code, providerParameter: null });
-    throw new RunwareArchivedTaskRejectedError(await sha256(canonicalizeJson(originalResponse as never)) as `sha256:${string}`);
+  if (
+    originalResponse &&
+    admissionErrors.length === 1 &&
+    !("data" in originalResponse) &&
+    !("response" in originalResponse) &&
+    admissionError?.taskUUID === options.originalTaskUUID &&
+    admissionError.taskType === "textInference" &&
+    admissionError.code === "concurrentRequestLimitExceeded"
+  ) {
+    options.onDiagnostic?.({
+      stage: "response",
+      httpStatus: 200,
+      providerCode: admissionError.code,
+      providerParameter: null,
+    });
+    throw new RunwareArchivedTaskRejectedError(
+      (await sha256(canonicalizeJson(originalResponse as never))) as `sha256:${string}`,
+    );
   }
   const archivedProviderResponse = record(originalResponse?.response);
   const archivedProviderError = record(archivedProviderResponse?.errors);
@@ -391,6 +516,10 @@ export async function retrieveRunwareTextTaskDetails(
   const result = originalRows.find((candidate) => candidate?.taskUUID === options.originalTaskUUID);
   if (!result || originalRows.length !== 1)
     throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
+  if (result.taskType !== undefined && result.taskType !== "textInference")
+    throw new RunwareTransportError("RUNWARE_IDEMPOTENCY_CONFLICT");
+  if (typeof result.model === "string" && expectedModel !== null && result.model !== expectedModel)
+    throw new RunwareTransportError("RUNWARE_IDEMPOTENCY_CONFLICT");
   const parsed = textResult(result);
   // A terminal token limit confirms that this task has no complete result to recover.
   // Keep incomplete output rejected and let the existing explicit bounded Retry create a new task.
@@ -398,6 +527,13 @@ export async function retrieveRunwareTextTaskDetails(
     throw new RunwareTransportError("RUNWARE_TASK_PROVIDER_FAILED");
   if (parsed.finishReason !== "stop") throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
   const originalResponseBytes = canonicalizeJson(originalResponse as never);
+  if (redactedText(parsed.outputText) && result.taskType !== "textInference")
+    throw new RunwareTransportError("RUNWARE_RESPONSE_INVALID");
+  if (redactedText(parsed.outputText))
+    throw new RunwareArchivedTextUnavailableError(
+      parsed.costUsd,
+      await sha256(originalResponseBytes),
+    );
   return Object.freeze({
     taskUUID: options.originalTaskUUID,
     outputText: parsed.outputText,
@@ -416,6 +552,7 @@ class RunwareHttpClient {
   private readonly fetch: FetchPort;
   private readonly endpoint: string;
   private readonly timeoutMs: number;
+  private readonly pollIntervalMs: number;
   private readonly requestHashesByTask = new Map<string, string>();
   private readonly replays = new Map<string, Promise<NativeClientResult>>();
 
@@ -426,9 +563,12 @@ class RunwareHttpClient {
     this.fetch = options.fetch ?? fetch;
     this.endpoint = options.endpoint ?? DEFAULT_ENDPOINT;
     this.timeoutMs = options.timeoutMs ?? 120_000;
+    this.pollIntervalMs = options.pollIntervalMs ?? 3_000;
     if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs < 1) {
       throw new RangeError("Runware timeout must be a positive integer.");
     }
+    if (!Number.isSafeInteger(this.pollIntervalMs) || this.pollIntervalMs < 1)
+      throw new RangeError("Runware polling interval must be a positive integer.");
   }
 
   request(
@@ -444,17 +584,29 @@ class RunwareHttpClient {
     const replay = this.replays.get(requestSha256);
     if (replay) return replay;
     this.requestHashesByTask.set(taskUUID, requestSha256);
-    const pending = this.dispatch(taskUUID, requestBytes, reservationUsd);
+    const pending = this.dispatch(taskUUID, requestSha256, requestBytes, reservationUsd);
     this.replays.set(requestSha256, pending);
     return pending;
   }
 
   private async dispatch(
     taskUUID: string,
+    requestSha256: string,
     requestBytes: string,
     reservationUsd: number,
   ): Promise<NativeClientResult> {
+    const tasks: unknown = JSON.parse(requestBytes);
+    const task = Array.isArray(tasks) && tasks.length === 1 ? record(tasks[0]) : null;
+    const asynchronous = task?.deliveryMethod === "async";
+    if (
+      asynchronous &&
+      (task.taskUUID !== taskUUID ||
+        task.taskType !== "textInference" ||
+        (await sha256(requestBytes)) !== requestSha256)
+    )
+      throw new RunwareTransportError("RUNWARE_IDEMPOTENCY_CONFLICT");
     this.options.ledger.reserve(reservationUsd);
+    const deadline = Date.now() + this.timeoutMs;
     let response: Response;
     try {
       // Native Worker fetch must be called as a function. Calling the stored port as
@@ -507,9 +659,11 @@ class RunwareHttpClient {
       if (response.status === 429) {
         if (exactRunwareCapacityRefusal(errorBody, taskUUID)) {
           this.options.ledger.release(reservationUsd);
-          await this.options.onCapacityRefused?.({ taskUUID,
+          await this.options.onCapacityRefused?.({
+            taskUUID,
             responseHash: await sha256(canonicalizeJson(errorBody as never)),
-            retryAfterMs: providerRetryAfterMs(response.headers.get("retry-after")) });
+            retryAfterMs: providerRetryAfterMs(response.headers.get("retry-after")),
+          });
         }
         // Keep the original identity for archive reconciliation. Never treat throttling as bad output.
         return { disposition: "ambiguous", item: null };
@@ -555,11 +709,71 @@ class RunwareHttpClient {
     }
     const data = Array.isArray(body?.data) ? body.data.map(record).filter(Boolean) : [];
     const item = data.find((candidate) => candidate?.taskUUID === taskUUID) ?? null;
-    if (!item) return { disposition: "ambiguous", item: null };
+    if (
+      !item ||
+      (asynchronous &&
+        ((body?.data instanceof Array && body.data.length !== 1) ||
+          data.length !== 1 ||
+          item.taskType !== "textInference" ||
+          ("errors" in (body ?? {}) && !Array.isArray(body?.errors))))
+    )
+      return { disposition: "ambiguous", item: null };
+    if (asynchronous) {
+      if (
+        !("text" in item) &&
+        !("cost" in item) &&
+        !("usage" in item) &&
+        (item.status === undefined || item.status === "processing")
+      )
+        return this.poll(taskUUID, reservationUsd, deadline);
+      try {
+        const completed = polledTextItem(body, taskUUID);
+        if (completed && redactedText(textResult(completed).outputText))
+          return { disposition: "ambiguous", item: null };
+      } catch {
+        return { disposition: "ambiguous", item: null };
+      }
+    }
     const cost = finiteNonnegative(item.cost);
     if (cost === null) return { disposition: "ambiguous", item: null };
     this.options.ledger.settle(reservationUsd, cost);
     return { disposition: "succeeded", item };
+  }
+
+  private async poll(
+    taskUUID: string,
+    reservationUsd: number,
+    deadline: number,
+  ): Promise<NativeClientResult> {
+    while (Date.now() < deadline) {
+      let item: NativeData | null;
+      try {
+        const fetcher = this.fetch;
+        const response = await fetcher(this.endpoint, {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${this.options.apiKey}`,
+            "content-type": "application/json",
+          },
+          body: canonicalizeJson([{ taskType: "getResponse", taskUUID }]),
+          signal: AbortSignal.timeout(Math.max(1, deadline - Date.now())),
+        });
+        if (!response.ok) return { disposition: "ambiguous", item: null };
+        item = polledTextItem(record(JSON.parse(await response.text())), taskUUID);
+      } catch {
+        return { disposition: "ambiguous", item: null };
+      }
+      if (item) {
+        if (redactedText(textResult(item).outputText))
+          return { disposition: "ambiguous", item: null };
+        this.options.ledger.settle(reservationUsd, textResult(item).costUsd);
+        return { disposition: "succeeded", item };
+      }
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) break;
+      await new Promise((resolve) => setTimeout(resolve, Math.min(this.pollIntervalMs, remaining)));
+    }
+    return { disposition: "ambiguous", item: null };
   }
 }
 
