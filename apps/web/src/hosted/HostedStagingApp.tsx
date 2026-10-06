@@ -1,3 +1,4 @@
+import { HostedCreateDraftProvider } from "./HostedCreateDraft";
 import { HostedIdentityContext } from "./HostedIdentity";
 import { createAuthClient } from "better-auth/react";
 import { useCallback, useEffect, useRef, useState, type PropsWithChildren } from "react";
@@ -269,7 +270,11 @@ export function HostedStagingApp({ children }: PropsWithChildren) {
           signOut,
         }}
       >
-        {children}
+        <HostedCreateDraftProvider
+          key={`${access.tenant.account_id}:${access.tenant.workspace_id}`}
+        >
+          {children}
+        </HostedCreateDraftProvider>
       </HostedIdentityContext.Provider>
     );
   }

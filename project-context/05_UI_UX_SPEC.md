@@ -1,3 +1,9 @@
+## New project draft navigation — 2026-10-06
+
+Retain all inputs, selected File and script/voice across dock navigation. Scope to admission;
+clear on sign-out, changed account/workspace and successful Create. Preserve uncertain request
+body/key/lock/metadata. Recheck readiness. Reload/closed-tab persistence is outside this fix.
+
 # UI and UX specification
 
 Status: compact dark product UI; the authorized 2026-10-01 Progress redesign supersedes exact

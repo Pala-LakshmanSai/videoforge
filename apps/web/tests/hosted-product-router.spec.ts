@@ -628,6 +628,27 @@ test("Create keeps the configurable AI opening separate from whole-video coverag
     ),
   ).toBeVisible();
   await expect(page.getByLabel("Preliminary scene footage estimate")).toHaveText(/20\.00s/);
+  await page.getByRole("radio", { name: "Cloud" }).check();
+  for (const dock of ["Queue", "Voices", "Avatar Hub", "Image Styles", "Library", "Settings"]) {
+    await page
+      .getByRole("navigation", { name: "Primary navigation" })
+      .getByRole("link", { name: dock, exact: true })
+      .click();
+    await expect(page.getByRole("heading", { name: "New project", exact: true })).toHaveCount(0);
+    await page
+      .getByRole("navigation", { name: "Primary navigation" })
+      .getByRole("link", { name: "New Project", exact: true })
+      .click();
+    await expect(page.getByRole("textbox", { name: "Video title" })).toHaveValue(
+      "Opening control proof",
+    );
+    await expect(page.getByText("opening-proof.wav", { exact: true })).toBeVisible();
+    await expect(page.getByRole("radio", { name: "Cloud" })).toBeChecked();
+    await expect(minutes).toHaveValue("2.5");
+    await expect(coverage).toHaveValue("23");
+    await expect(create).toBeEnabled();
+  }
+
   await page.setViewportSize({ width: 418, height: 900 });
   await expect(page.getByRole("group", { name: "Opening footage" })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("opening-on.png"), fullPage: true });
@@ -657,7 +678,10 @@ test("Create keeps the configurable AI opening separate from whole-video coverag
   await opening.check();
   await expect(minutes).toHaveValue("0.11");
   await expect(create).toBeDisabled();
-  expect(unexpectedWrites).toEqual([]);
+  // Settings prepares its existing connect commands on entry; no production work is submitted.
+  expect(unexpectedWrites.filter((url) => !url.endsWith("/media-worker/connect-command"))).toEqual(
+    [],
+  );
 });
 
 test("finished video appears in Library and the legacy viewer downloads without approval", async ({

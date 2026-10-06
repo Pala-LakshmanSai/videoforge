@@ -1,3 +1,9 @@
+import {
+  emptyHostedCreateDraft,
+  useHostedCreateDraft,
+  useHostedCreateDraftState,
+  useHostedCreateDraftRef,
+} from "./HostedCreateDraft";
 import { ScriptProjectFields } from "./VoiceoverHub";
 import { HostedCloudCompute } from "./HostedCloudCompute";
 import {
@@ -2872,36 +2878,55 @@ function hostedProjectStages(
 
 export function HostedCreateProjectScreen() {
   const navigate = useNavigate();
+  const draft = useHostedCreateDraft();
   const catalog = useQuery({
     queryKey: ["hosted-project-catalog"],
     queryFn: readHostedCatalog,
     refetchInterval: 15_000,
   });
-  const [title, setTitle] = useState("");
-  const [executionBackend, setExecutionBackend] = useState<"PERSONAL_WORKER" | "RUNPOD_POD">(
-    "PERSONAL_WORKER",
-  );
-  const [avatarVersionId, setAvatarVersionId] = useState("");
-  const [avatarEnabled, setAvatarEnabled] = useState(true);
-  const [styleVersionId, setStyleVersionId] = useState("");
-  const [voiceover, setVoiceover] = useState<File | null>(null);
+  const [title, setTitle] = useHostedCreateDraftState("title", "");
+  const [executionBackend, setExecutionBackend] = useHostedCreateDraftState<
+    "PERSONAL_WORKER" | "RUNPOD_POD"
+  >("executionBackend", "PERSONAL_WORKER");
+  const [avatarVersionId, setAvatarVersionId] = useHostedCreateDraftState("avatarVersionId", "");
+  const [avatarEnabled, setAvatarEnabled] = useHostedCreateDraftState("avatarEnabled", true);
+  const [styleVersionId, setStyleVersionId] = useHostedCreateDraftState("styleVersionId", "");
+  const [voiceover, setVoiceover] = useHostedCreateDraftState<File | null>("voiceover", null);
   const [voiceoverDragOver, setVoiceoverDragOver] = useState(false);
-  const [scriptInput, setScriptInput] = useState({ script: "", voiceId: "" });
+  const [scriptInput, setScriptInput] = useHostedCreateDraftState("scriptInput", {
+    script: "",
+    voiceId: "",
+  });
   const scriptReady = Boolean(
     scriptInput.script.trim() &&
       scriptInput.script.length <= 100000 &&
       !scriptInput.script.includes("\0") &&
       scriptInput.voiceId,
   );
-  const [voiceoverSource, setVoiceoverSource] = useState<"audio" | "script">("audio");
-  const [extraPromptKeywords, setExtraPromptKeywords] = useState("");
-  const [applyExtraPromptKeywords, setApplyExtraPromptKeywords] = useState(false);
-  const [userSeed, setUserSeed] = useState("");
-  const [videoCoverageInput, setVideoCoverageInput] = useState("7");
-  const coverageInitialized = useRef(false);
-  const openingInitialized = useRef(false);
-  const [openingEnabled, setOpeningEnabled] = useState(false);
-  const [openingMinutesInput, setOpeningMinutesInput] = useState("3");
+  const [voiceoverSource, setVoiceoverSource] = useHostedCreateDraftState<"audio" | "script">(
+    "voiceoverSource",
+    "audio",
+  );
+  const [extraPromptKeywords, setExtraPromptKeywords] = useHostedCreateDraftState(
+    "extraPromptKeywords",
+    "",
+  );
+  const [applyExtraPromptKeywords, setApplyExtraPromptKeywords] = useHostedCreateDraftState(
+    "applyExtraPromptKeywords",
+    false,
+  );
+  const [userSeed, setUserSeed] = useHostedCreateDraftState("userSeed", "");
+  const [videoCoverageInput, setVideoCoverageInput] = useHostedCreateDraftState(
+    "videoCoverageInput",
+    "7",
+  );
+  const coverageInitialized = useHostedCreateDraftRef("coverageInitialized", false);
+  const openingInitialized = useHostedCreateDraftRef("openingInitialized", false);
+  const [openingEnabled, setOpeningEnabled] = useHostedCreateDraftState("openingEnabled", false);
+  const [openingMinutesInput, setOpeningMinutesInput] = useHostedCreateDraftState(
+    "openingMinutesInput",
+    "3",
+  );
   const selectedOpeningSeconds = openingMinutesSeconds(openingMinutesInput);
   const openingValid = !openingEnabled || selectedOpeningSeconds !== null;
   const effectiveOpeningSeconds = openingEnabled ? (selectedOpeningSeconds ?? 0) : 0;
@@ -2910,7 +2935,7 @@ export function HostedCreateProjectScreen() {
       catalog.data?.video_generation?.required_opening_seconds,
   );
   const [voiceoverDurationMs, setVoiceoverDurationMs] = useState<number | null>(null);
-  const [creationLocked, setCreationLocked] = useState(false);
+  const [creationLocked, setCreationLocked] = useHostedCreateDraftState("creationLocked", false);
   const videoCoveragePercent = Number(videoCoverageInput);
   const coverageValid =
     /^\d{1,3}$/u.test(videoCoverageInput) &&
@@ -2955,16 +2980,19 @@ export function HostedCreateProjectScreen() {
     setOpeningMinutesInput(value);
     setPreflightResult(null);
   };
-  const [voiceoverMeta, setVoiceoverMeta] = useState<{
+  const [voiceoverMeta, setVoiceoverMeta] = useHostedCreateDraftState<{
     readonly filename: string;
     readonly contentType: string;
     readonly checksumSha256: string;
     readonly durationMs: number;
-  } | null>(null);
+  } | null>("voiceoverMeta", null);
   const [preflightResult, setPreflightResult] = useState<HostedPreflightResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const createRequest = useRef<{ readonly body: string; readonly key: string } | null>(null);
-  const creationAccepted = useRef(false);
+  const createRequest = useHostedCreateDraftRef<{
+    readonly body: string;
+    readonly key: string;
+  } | null>("createRequest", null);
+  const creationAccepted = useHostedCreateDraftRef("creationAccepted", false);
   const contentTypeForVoiceover = (file: File): string => {
     if (/\.wav$/iu.test(file.name)) return "audio/wav";
     if (/\.mp3$/iu.test(file.name)) return "audio/mpeg";
@@ -3336,7 +3364,10 @@ export function HostedCreateProjectScreen() {
       );
       return ready.project_id;
     },
-    onSuccess: (projectId) => void navigate({ to: "/projects/$projectId", params: { projectId } }),
+    onSuccess: (projectId) => {
+      if (draft) draft.current = emptyHostedCreateDraft();
+      void navigate({ to: "/projects/$projectId", params: { projectId } });
+    },
     onError: (value) => {
       // Definite input/auth and typed Cloud admission rejections create no project.
       // Other conflicts and upload/commit failures retain the original request.

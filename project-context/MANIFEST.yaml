@@ -4,8 +4,8 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-10-06"
 source_of_truth: project-context
 
-current_selected_profile: v2_09_script_project_settings
-current_selected_brief: evidence/acceptance/VF-10-09/2026-10-06-script-project-settings.md
+current_selected_profile: v2_09_create_draft
+current_selected_brief: evidence/acceptance/VF-10-09/2026-10-06-create-draft-navigation.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -25,6 +25,10 @@ conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
 target_profile_word_budget: 15000
 
 read_profiles:
+  v2_09_create_draft:
+    - evidence/acceptance/VF-10-09/2026-10-06-create-draft-navigation.md
+    - 05_UI_UX_SPEC.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
   v2_09_script_project_settings:
     - evidence/acceptance/VF-10-09/2026-10-06-script-project-settings.md
     - 08_MODELS_AND_PROVIDERS.md

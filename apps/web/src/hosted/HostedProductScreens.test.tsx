@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider, focusManager } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { HostedCreateDraftProvider } from "./HostedCreateDraft";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const routerState = vi.hoisted(() => ({ navigate: vi.fn() }));
@@ -1038,7 +1039,14 @@ it("does not render the previous project while a new project detail is loading",
 
 function renderHosted(node: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return { ...render(<QueryClientProvider client={client}>{node}</QueryClientProvider>), client };
+  return {
+    ...render(
+      <QueryClientProvider client={client}>
+        <HostedCreateDraftProvider>{node}</HostedCreateDraftProvider>
+      </QueryClientProvider>,
+    ),
+    client,
+  };
 }
 
 /**
@@ -7917,6 +7925,7 @@ it.each([0, 7, 15, 25, 50, 75, 100, 23])(
     expect(screen.getByLabelText("Coverage percent")).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "100%" }));
     expect(screen.getByLabelText("Coverage percent")).toHaveValue(coverage);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Create video" })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: "Create video" }));
     await waitFor(() => expect(creates).toHaveLength(2));
     expect(creates[1]).toEqual(creates[0]);
@@ -8221,7 +8230,7 @@ it.each(["CLOUD_MEDIA_NOT_READY", "CLOUD_MEDIA_UNAVAILABLE"])(
     fireEvent.click(screen.getByRole("button", { name: "75%" }));
     fireEvent.click(screen.getByRole("button", { name: "Create video" }));
     await screen.findByText("Cloud access changed before creation.");
-    expect(screen.getByLabelText("Coverage percent")).toBeEnabled();
+    await waitFor(() => expect(screen.getByLabelText("Coverage percent")).toBeEnabled());
     expect(screen.getByRole("radio", { name: "Local" })).toBeEnabled();
     expect(screen.getByLabelText("Video title")).toBeEnabled();
     expect(screen.queryByText("Ready to create")).not.toBeInTheDocument();
@@ -8464,7 +8473,7 @@ it("allows a corrected coverage choice and new identity after a definite rejecte
   await fillCoverageCreateForm();
   fireEvent.click(screen.getByRole("button", { name: "Create video" }));
   await screen.findByText("Create input rejected");
-  expect(screen.getByLabelText("Coverage percent")).toBeEnabled();
+  await waitFor(() => expect(screen.getByLabelText("Coverage percent")).toBeEnabled());
   fireEvent.click(screen.getByRole("button", { name: "100%" }));
   fireEvent.click(screen.getByRole("button", { name: "Create video" }));
   await waitFor(() => expect(requests).toHaveLength(2));
@@ -8701,7 +8710,14 @@ it("queues script and voice in one Create action, preserving identity after a lo
     throw new Error(`Unexpected request: ${path}`);
   });
   vi.stubGlobal("fetch", fetcher);
-  renderHosted(<HostedCreateProjectScreen />);
+  const rendered = renderHosted(<HostedCreateProjectScreen />);
+  const dock = (visible: boolean) => (
+    <QueryClientProvider client={rendered.client}>
+      <HostedCreateDraftProvider>
+        {visible ? <HostedCreateProjectScreen /> : <p>Voices dock page</p>}
+      </HostedCreateDraftProvider>
+    </QueryClientProvider>
+  );
   fireEvent.change(await screen.findByLabelText("Video title"), {
     target: { value: "Every river" },
   });
@@ -8713,11 +8729,21 @@ it("queues script and voice in one Create action, preserving identity after a lo
   });
   fireEvent.change(screen.getByLabelText("Opening minutes"), { target: { value: "0.5" } });
   fireEvent.change(screen.getByLabelText("Coverage percent"), { target: { value: "23" } });
+  rendered.rerender(dock(false));
+  rendered.rerender(dock(true));
+  expect(await screen.findByLabelText("Voiceover script")).toHaveValue(
+    "Every river begins with a single drop. This is our narration.",
+  );
+  expect(screen.getByLabelText("Script voice")).toHaveValue("Alice");
+  expect(screen.getByLabelText("Opening minutes")).toHaveValue(0.5);
+  expect(screen.getByLabelText("Coverage percent")).toHaveValue(23);
   expect(screen.queryByRole("button", { name: "Generate voiceover" })).toBeNull();
   expect(screen.getByRole("button", { name: "Create video" })).toBeEnabled();
   fireEvent.click(screen.getByRole("button", { name: "Create video" }));
   await screen.findByText("Confirmation interrupted");
-  expect(screen.getByLabelText("Voiceover script")).toBeDisabled();
+  rendered.rerender(dock(false));
+  rendered.rerender(dock(true));
+  expect(await screen.findByLabelText("Voiceover script")).toBeDisabled();
   fireEvent.click(screen.getByRole("button", { name: "Create video" }));
   await waitFor(() => expect(submissions).toHaveLength(2));
   expect(submissions[1]).toEqual(submissions[0]);
@@ -8755,7 +8781,7 @@ it("opens the saved project's Progress page as soon as script Create is confirme
       throw new Error(`Unexpected request: ${path}`);
     }),
   );
-  renderHosted(<HostedCreateProjectScreen />);
+  const rendered = renderHosted(<HostedCreateProjectScreen />);
   fireEvent.change(await screen.findByLabelText("Video title"), {
     target: { value: "Singing dunes" },
   });
@@ -8771,6 +8797,17 @@ it("opens the saved project's Progress page as soon as script Create is confirme
       params: { projectId: "saved-script-project" },
     }),
   );
+  const dock = (visible: boolean) => (
+    <QueryClientProvider client={rendered.client}>
+      <HostedCreateDraftProvider>
+        {visible ? <HostedCreateProjectScreen /> : <p>Progress dock page</p>}
+      </HostedCreateDraftProvider>
+    </QueryClientProvider>
+  );
+  rendered.rerender(dock(false));
+  rendered.rerender(dock(true));
+  expect(await screen.findByLabelText("Video title")).toHaveValue("");
+  expect(screen.queryByLabelText("Voiceover script")).not.toBeInTheDocument();
 });
 it.each(["WAITING", "GENERATING", "PREPARING", "FAILED", "UNKNOWN_NO_RETRY"])(
   "opens saved script progress in %s without a revision or browser generation",
@@ -8890,4 +8927,62 @@ it("turns avatars off without a preset and keeps opening and coverage independen
       ai_video_opening_seconds: 180,
       video_coverage_percent: 23,
     });
+});
+
+it("retains hosted Create fields and the selected audio across dock remounts, scoped to admission", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
+        styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
+        media_worker_state: "ONLINE",
+        generation_provider: "KIE_FAL",
+        cloud_media: { available: true },
+        video_generation: {
+          enabled: true,
+          configurable_opening: true,
+          default_opening_seconds: 180,
+          adjustable_coverage_supported: true,
+          coverage_default_percent: 7,
+        },
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: gpuReadiness,
+      }),
+    ),
+  );
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const view = (visible: boolean, admission = "account-one") => (
+    <QueryClientProvider client={client}>
+      <HostedCreateDraftProvider key={admission}>
+        {visible ? <HostedCreateProjectScreen /> : <p>Another dock page</p>}
+      </HostedCreateDraftProvider>
+    </QueryClientProvider>
+  );
+  const rendered = render(view(true));
+  await screen.findByText("Documentary");
+  fireEvent.change(screen.getByLabelText("Final voiceover"), {
+    target: { files: [new File(["audio"], "draft-narration.mp3", { type: "audio/mpeg" })] },
+  });
+  fireEvent.change(screen.getByLabelText("Video title"), {
+    target: { value: "My retained draft" },
+  });
+  fireEvent.click(screen.getByRole("radio", { name: "Cloud" }));
+  fireEvent.click(screen.getByLabelText("Include avatar"));
+  fireEvent.change(screen.getByLabelText("Opening minutes"), { target: { value: "1.5" } });
+  fireEvent.click(screen.getByRole("button", { name: "25%" }));
+  rendered.rerender(view(false));
+  expect(screen.getByText("Another dock page")).toBeInTheDocument();
+  rendered.rerender(view(true));
+  expect(await screen.findByLabelText("Video title")).toHaveValue("My retained draft");
+  expect(screen.getByText("draft-narration.mp3")).toBeInTheDocument();
+  expect(screen.getByRole("radio", { name: "Cloud" })).toBeChecked();
+  expect(screen.getByLabelText("Include avatar")).not.toBeChecked();
+  expect(screen.getByLabelText("Opening minutes")).toHaveValue(1.5);
+  expect(screen.getByLabelText("Coverage percent")).toHaveValue(25);
+  expect(screen.getByText("Documentary")).toBeInTheDocument();
+  rendered.rerender(view(true, "account-two"));
+  expect(await screen.findByLabelText("Video title")).toHaveValue("");
+  expect(screen.queryByText("draft-narration.mp3")).not.toBeInTheDocument();
+  expect(screen.getByRole("radio", { name: "Local" })).toBeChecked();
 });
