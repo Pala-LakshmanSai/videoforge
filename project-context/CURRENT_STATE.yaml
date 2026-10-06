@@ -3,6 +3,9 @@ runware_luna_prompts_2026_10_06:
   selected_task: VF-10-09
   read_profile: v2_09_runware_luna_prompts
   branch: codex/gpt6-luna-prompt-writer
+  candidate_source_commit: ac773f54665fe7d9ffefde6a05332b96015d610c
+  candidate_source_pushed: true
+  candidate_validations: Pipeline323_focusedWeb362_native32_types_lint_productionBuild_quarantine_context_secretScan3205_PASS;full152Qualification_and_productionPublication_pending
   status: V38_PARTIAL_SERVICE_ACCEPTANCE_142_OF_152_FINAL_SCENE_AND_FULL_REVIEW_PENDING
   base: d4eac449c50db0840986cb2c15a4b8724b721536
   production_executable: 69175135c0402ce0fdcbfdbbf12abf5d60c06628
