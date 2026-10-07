@@ -295,7 +295,7 @@ describe("API prompt binding before scheduling", () => {
       components: { literalContent, cropGuidance: "wide view", stylePositiveSuffix: "photo",
         styleNegativeSuffix: "blur", continuityAndShotRole: "same subject/setting/state, viewpoint: hands action", extraPromptKeywords: "" },
     }));
-    const expected = compiled.map((prompt) => buildKieScenePrompt(prompt as never, { handAnatomy: true }));
+    const expected = compiled.map((prompt) => buildKieScenePrompt(prompt as never, { handAnatomy: true, wirePolicy: "photographic-v1" }));
     const jobs = compiled.map((prompt, index) => ({
       generationTaskId: id(String(index + 5)), lane: "IMAGE", state: "PREPARED",
       inputManifest: { get compiledPrompt() {

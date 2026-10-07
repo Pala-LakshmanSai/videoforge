@@ -322,3 +322,7 @@ substituting a still. Legacy Off retains zero scene-video calls. Keep projected 
 reported provider charges and final invoices separate. Existing concurrency, cancellation,
 uncertain-identity fences and finite compute shutdown remain. Current acceptance spend and
 resource state live only in CURRENT_STATE.yaml.
+
+## Generated-image text QA candidate — 2026-10-07
+
+Activation is pending. The proposed separate Runware Gemini 3.1 Flash Lite check uses at most 128 output tokens, a $0.02 per-check reservation, and provider-reported actual cost in the project API cost breakdown. Official pricing checked 2026-10-07: $0.25 per million text/image input tokens and $1.50 per million output tokens ([provider documentation](https://runware.ai/docs/models/google-gemini-3-1-flash-lite)). No account invoice or representative image latency has been qualified. A finite qualification cap must be approved before calls. Ongoing checks on future user-created jobs require separate consent; there is no silently expiring lifetime budget or automatic image regeneration. Existing saved jobs are not retroactively billed for QA.

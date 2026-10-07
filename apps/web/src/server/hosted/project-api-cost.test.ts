@@ -16,6 +16,7 @@ it("counts project API work once across revisions, retains missing charges and e
         RETURNS jsonb LANGUAGE SQL AS 'SELECT result FROM fixture_prompt_receipts r WHERE r.run_id=$1 AND r.uuid=$2 AND r.hash=$3';
       CREATE TABLE project_revisions(account_id text, workspace_id text, id text, project_id text);
       CREATE TABLE generation_tasks(account_id text, workspace_id text, id text, task_key text, lane text);
+      CREATE TABLE hosted_image_text_qa_runs(account_id text,workspace_id text,project_id text,reported_cost_micro_usd bigint,state text);
       CREATE TABLE cost_events(account_id text,workspace_id text,owner_id text,owner_type text,task_id text,attempt_id text,event_type text,amount_micro_usd bigint,details jsonb NOT NULL DEFAULT '{}'::jsonb);
       CREATE TABLE hosted_api_generation_jobs(account_id text,workspace_id text,project_id text,lane text,input_manifest jsonb,state text,provider_task_id text,submitted_at timestamptz,failure_code text);
       CREATE TABLE hosted_video_plans(account_id text,workspace_id text,project_revision_id text,price_per_second_usd numeric);
@@ -280,6 +281,13 @@ it("counts project API work once across revisions, retains missing charges and e
     });
     // Prior partial settlement cannot make a still-UNKNOWN attempt look fully priced.
     expect(settled.breakdown.find((row) => row.label === "Scene prompts")?.unconfirmed).toBe(true);
+    await db.exec(`INSERT INTO hosted_image_text_qa_runs VALUES
+      ('a','w','p',100,'PASS'),('a','w','p',250,'TEXT'),('a','w','p',NULL,'RESERVED'),
+      ('other','w','p',999999,'PASS');`);
+    const qa = await readProjectApiCost(db as unknown as SqlExecutor, "a", "w", "p");
+    expect(qa.breakdown.find((row) => row.label === "Image text checks")).toMatchObject({
+      usd: 0.00035, estimated: false, unconfirmed: true,
+    });
   } finally {
     await db.close();
   }

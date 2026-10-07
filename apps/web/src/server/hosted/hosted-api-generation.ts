@@ -1,5 +1,6 @@
 import type { SqlPrimitive, TransactionalSqlExecutor } from "@videoforge/control-plane";
 
+import { generatedImageTextQa } from "./generated-image-text-qa";
 import { hostedRuntimeConfiguration, type HostedRuntimeEnvironment } from "./configuration";
 import type { ProviderAccountIdentity } from "./provider-account-credentials";
 import { HostedR2Signer } from "./r2";
@@ -423,6 +424,7 @@ export async function advanceHostedApiGeneration(
               objectKey: job.outputObjectKey,
               client: new KieZImageClient(credentials.apiKeyFor("KIE", job.providerAccount)),
               bucket,
+              inspectText: generatedImageTextQa({ database, accountId: scope.accountId, apiKey: config.styleAnalysis?.apiKey }),
             })
           : await observeFalAvatarJob({
               requestId: job.providerTaskId,
@@ -461,7 +463,8 @@ export async function advanceHostedApiGeneration(
     if (result.state === "FAILED") {
       await callHostedApiGeneration(database, scope.accountId, "videoforge_fail_hosted_api_job", [
         ...jobArgs,
-        "PROVIDER_TASK_FAILED",
+        "failCode" in result && (result.failCode === "IMAGE_TEXT_QA_REJECTED" || result.failCode === "IMAGE_TEXT_QA_UNCERTAIN")
+          ? result.failCode : "PROVIDER_TASK_FAILED",
       ]);
       return "PROGRESSED";
     }

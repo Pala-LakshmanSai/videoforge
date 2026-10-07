@@ -1,4 +1,5 @@
 import type { TransactionalSqlExecutor } from "@videoforge/control-plane";
+import { generatedImageTextQa } from "./generated-image-text-qa";
 import { hostedRuntimeConfiguration, type HostedRuntimeEnvironment } from "./configuration";
 import { createHostedImageRegenerationService } from "./hosted-image-regeneration-service";
 import { createHostedRunPodPair, type HostedPairLiveEnvironment } from "./hosted-pair-live-wiring";
@@ -25,6 +26,7 @@ export interface ImageRegenerationParameters {
 }
 async function observeApiImageRegeneration(
   environment: HostedRuntimeEnvironment,
+  database: TransactionalSqlExecutor,
   store: HostedSqlImageRegenerationStore,
   row: Record<string, unknown>,
 ) {
@@ -99,8 +101,9 @@ async function observeApiImageRegeneration(
         objectKey: String(row.outputObjectKey),
         client,
         bucket: environment.PRIVATE_ARTIFACTS,
+        inspectText: generatedImageTextQa({ database, accountId: store.accountId, apiKey: config.styleAnalysis?.apiKey }),
       });
-      if (result.state === "FAILED") row = await store.failApi(requestId, "PROVIDER_TASK_FAILED");
+      if (result.state === "FAILED") row = await store.failApi(requestId, result.failCode === "IMAGE_TEXT_QA_REJECTED" || result.failCode === "IMAGE_TEXT_QA_UNCERTAIN" ? result.failCode : "PROVIDER_TASK_FAILED");
       else if (result.state === "SUCCEEDED")
         row = await store.commitApi(requestId, result.artifact);
     } catch (error) {
@@ -132,7 +135,7 @@ export async function observeHostedImageRegeneration(
 ) {
   const store = new HostedSqlImageRegenerationStore(database, params.accountId, params.workspaceId);
   const api = await store.loadApi(params.requestId);
-  if (api) return observeApiImageRegeneration(environment, store, api);
+  if (api) return observeApiImageRegeneration(environment, database, store, api);
   if (hostedPairProductionBindingState(environment).state === "DISABLED_UNQUALIFIED")
     return {
       requestId: params.requestId,

@@ -2,6 +2,7 @@ import { serveHostedVideo } from "./serve-video";
 import { HOSTED_COMPLETED_RENDER_SQL } from "./completed-render";
 import { readCloudCompute } from "./cloud-compute";
 import { readProjectApiCost } from "./project-api-cost";
+import { imageTextQaMessage } from "./image-text-qa-message";
 import {
   hostedAccountCleanupPending,
   HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE,
@@ -8339,7 +8340,7 @@ async function projectDetail(
         (project.rows[0] as Record<string, unknown>).generation_provider === "KIE_FAL";
       const apiJobs = projectApiGeneration
         ? await transaction.query(
-            `SELECT lane,state,created_at,submitted_at,completed_at
+            `SELECT lane,state,created_at,submitted_at,completed_at,failure_code
                FROM hosted_api_generation_jobs
               WHERE account_id=$1 AND workspace_id=$2 AND project_id=$3
                 AND project_revision_id=$4
@@ -9207,7 +9208,10 @@ async function projectDetail(
         completed_at: timestampOrNull(laneState("mage_image")?.terminal_at),
         detail: undispatchedApiBlocked
           ? "Images have not been submitted. Cloud audio preparation must finish first."
-          : "Generate and verify the planned scene images.",
+          : (detail.apiJobs as Record<string, unknown>[])
+              .filter((job) => job.lane === "IMAGE" && job.state === "FAILED")
+              .map((job) => imageTextQaMessage(job.failure_code))
+              .find(Boolean) ?? "Generate and verify the planned scene images.",
         eta_ms: null,
       },
       ...(videoPlan && (requestedVideoCoverage > 0 || requiredOpening)

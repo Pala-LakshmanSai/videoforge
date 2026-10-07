@@ -61,6 +61,20 @@ describe("HostedSqlImageRegenerationStore", () => {
     );
     await expect(s.hasHistoricalRequest("unknown-key")).rejects.toThrow("HISTORY_INVALID");
   });
+  it("looks up an existing API prompt only under the full request identity", async () => {
+    const x = make();
+    const s = new HostedSqlImageRegenerationStore(x.executor, "a", "w");
+    const input = { accountId: "a", workspaceId: "w", projectId: "p", projectRevisionId: "v",
+      imageTaskId: "s", prompt: "edited", idempotencyKey: "k" };
+    x.query.mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ value: "saved old prompt" }] } as never);
+    expect(await s.existingApiPrompt(input)).toBe("saved old prompt");
+    expect(x.query).toHaveBeenCalledWith(expect.stringContaining("image_task_id=$5 AND idempotency_key=$6"),
+      ["a", "w", "p", "v", "s", "k"]);
+    x.query.mockClear();
+    await expect(s.existingApiPrompt({ ...input, workspaceId: "other" })).rejects.toThrow("SCOPE");
+    expect(x.query).not.toHaveBeenCalled();
+  });
   it("rejects a different tenant before SQL", async () => {
     const x = make();
     const s = new HostedSqlImageRegenerationStore(x.executor, "a", "w");

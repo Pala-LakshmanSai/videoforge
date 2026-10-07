@@ -148,6 +148,7 @@ export const RELATIONAL_TABLE_NAMES = [
   "serverless_reconciliations",
   "serverless_cost_ledgers",
   "serverless_cost_events",
+  "hosted_image_text_qa_runs",
   "hosted_api_generation_jobs",
   "hosted_video_plans",
   "hosted_video_jobs",

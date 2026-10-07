@@ -223,6 +223,8 @@ const RESTORE_INSERT_ORDER = Object.freeze([
   "global_session_cost_events",
   "global_session_events",
   "global_queue_audits",
+  // Restore checksum-bound QA receipts before either job table: accepted image inserts require PASS.
+  "hosted_image_text_qa_runs",
   "hosted_api_generation_jobs",
   "provider_api_rejections",
   "hosted_video_jobs",

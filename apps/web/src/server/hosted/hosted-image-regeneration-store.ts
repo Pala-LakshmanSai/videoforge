@@ -98,6 +98,20 @@ export class HostedSqlImageRegenerationStore implements HostedImageRegenerationS
     if (typeof value !== "boolean") throw new Error("HOSTED_IMAGE_REGENERATION_HISTORY_INVALID");
     return value;
   }
+  async existingApiPrompt(input: HostedImageRegenerationCreateInput): Promise<string | null> {
+    if (input.accountId !== this.accountId || input.workspaceId !== this.workspaceId)
+      throw new Error("HOSTED_IMAGE_REGENERATION_SCOPE_INVALID");
+    const value = await this.query(
+      `SELECT input_manifest->>'prompt' AS value FROM public.hosted_api_image_regeneration_jobs
+       WHERE account_id=$1 AND workspace_id=$2 AND project_id=$3 AND project_revision_id=$4
+         AND image_task_id=$5 AND idempotency_key=$6`,
+      [this.accountId, this.workspaceId, input.projectId, input.projectRevisionId,
+        input.imageTaskId, input.idempotencyKey],
+    );
+    if (value !== null && typeof value !== "string")
+      throw new Error("HOSTED_IMAGE_REGENERATION_SOURCE_INVALID");
+    return value;
+  }
   async createApi(input: HostedImageRegenerationCreateInput, prompt: string): Promise<Row> {
     if (input.accountId !== this.accountId || input.workspaceId !== this.workspaceId)
       throw new Error("HOSTED_IMAGE_REGENERATION_SCOPE_INVALID");

@@ -215,6 +215,13 @@ Store `scene_prompt_writer_version`, `prompt_compiler_version`, every component,
 
 ## Permanent output guardrail
 
+### Generated text prevention — 2026-10-07
+
+Fresh initial and regenerated images use the `photographic-v1` provider wire policy: join structured scene facts without caption-like field labels, preserve all scene/style content and no-text exclusions, and retain the 800-character provider bound. Saved wire prompts and immutable style/compiler hashes stay exact; legacy regeneration keys retain their byte-matched replay identity.
+
+A separate generated-image pixel QA gate is implemented but must remain disabled until finite live qualification and ongoing per-image charges are approved. It is not reference-style analysis. When activated for new jobs, both fresh downloads and cached image bytes require a tenant/job/provider-task/checksum-bound PASS receipt before acceptance. Visible text, pseudo-text and uncertain inspection block acceptance without automatic paid regeneration. One durable Runware UUID is polled after an interrupted response; accepted image generation is never repeated. Existing jobs remain under their saved policy. The detector is probabilistic; neither stronger prompts nor vision inspection is a mathematical guarantee of perfect detection.
+
+
 These apply to every style and cannot be disabled by the style profile or project keywords:
 
 ```text

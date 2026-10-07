@@ -12,6 +12,8 @@ import {
 import { withMigratedDatabase } from "./support/pglite.mjs";
 
 const CAPABILITY_WRITTEN_TABLES = [
+  "hosted_image_text_qa_runs",
+  "hosted_voiceover_library_assets",
   "hosted_voiceover_jobs",
   "saved_voiceover_voices",
   "cloud_media_render_recoveries",
