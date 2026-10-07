@@ -128,9 +128,10 @@ test("V2-03 shows two accounts only their factual fair-queue state without compu
       await expect(page.getByText(ownTitle, { exact: true })).toBeVisible();
       await expect(page.getByText(foreignTitle, { exact: true })).toHaveCount(0);
       await expect(
-        page.getByText("Two global slots rotate deterministically", { exact: false }),
+        page.getByText("Two shared slots. Reordering affects only your projects.", { exact: true }),
       ).toBeVisible();
-      await expect(page.getByText(/GPU|Pod|RunPod/u)).toHaveCount(0);
+      const forbiddenComputeCopy = page.getByText(/GPU|Pod|RunPod/u).filter({ visible: true });
+      await expect(forbiddenComputeCopy).toHaveCount(0);
       expect(consoleErrors).toEqual([]);
     }
 

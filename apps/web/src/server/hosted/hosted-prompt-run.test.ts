@@ -33,6 +33,7 @@ import {
   recoverClaimedHostedPromptBatch,
   dispatchOneHostedPromptBatch,
   type HostedAcceptedPromptBatch,
+  type HostedRecoveredPromptBatch,
 } from "./runware-prompt-execution";
 
 const ids = {
@@ -320,6 +321,7 @@ describe("versioned prompt request recovery", () => {
       // Exercises an actual planner budget rejection, not an invented provider error.
       expect(await recoverHostedPromptBatchPlan(authority, binding)).toEqual(legacy);
       expect(seen).toEqual([
+        "runware-luna-grounded-v2",
         "runware-luna-grounded-v1",
         "grounded-scenes-v1",
         "validated-scenes-v1",
@@ -344,7 +346,7 @@ describe("versioned prompt request recovery", () => {
 
   it("selects Luna for fresh plans with the preserved ten-scene and output ceilings", () => {
     const planned = hostedPromptBatchPlan(authorityFor(true));
-    expect(planned.requestPolicy).toBe("runware-luna-grounded-v1");
+    expect(planned.requestPolicy).toBe("runware-luna-grounded-v2");
     expect(planned.batches.every((batch) => batch.batch.scenes.length <= 10)).toBe(true);
     expect(
       planned.batches.every(
@@ -352,6 +354,449 @@ describe("versioned prompt request recovery", () => {
       ),
     ).toBe(true);
   });
+
+  it("dispatches, repairs, recovers, compiles and hands off a full 152-scene Luna stage without replay", async () => {
+    const roles = [
+      "ENVIRONMENTAL_WIDE",
+      "HUMAN_MEDIUM",
+      "HANDS_ACTION",
+      "OBJECT_EVIDENCE",
+      "MACRO_DETAIL",
+      "REACTION_RESULT",
+    ] as const;
+    const stageScenes = Array.from({ length: 152 }, (_, index) => {
+      const role = roles[index % roles.length]!;
+      const human = role === "HUMAN_MEDIUM" || role === "REACTION_RESULT";
+      const handAction = role === "HANDS_ACTION";
+      const phrase =
+        human || handAction
+          ? "A cook places a glass jar on the kitchen table."
+          : "A glass jar rests on the kitchen table.";
+      return {
+        scene_id: `scene_${String(index + 1).padStart(3, "0")}`,
+        phrase,
+        sentence_context: phrase,
+        prior_context: index === 0 ? null : phrase,
+        next_context: index === 151 ? null : phrase,
+        in_image_shot_role: role,
+        layout: index % 2 === 0 ? "IMAGE_FULL" : "SPLIT_RIGHT_IMAGE",
+      };
+    });
+    const authority = hostedPromptAuthority({
+      plan: plan({
+        project_title: "Kitchen jars",
+        story_context: JSON.stringify({
+          subject: "A cook and a glass jar in a home kitchen",
+          visual_facts: ["glass jar", "wooden kitchen table", "ordinary home kitchen"],
+          continuity: ["same glass jar"],
+          resolved_references: [],
+        }),
+        scenes: stageScenes,
+        all_segments: stageScenes.map((scene, segment_index) => ({
+          scene_id: scene.scene_id,
+          segment_index,
+          phrase: scene.phrase,
+        })),
+      }),
+      identity,
+      reservedCostMicroUsd: 8_000_000,
+    });
+    const batchPlan = hostedPromptBatchPlan(authority);
+    const binding = {
+      plannedBatchCount: batchPlan.batchCount,
+      plannedSceneCount: batchPlan.totalScenes,
+      batchPlanHash: await hostedPromptBatchPlanHash(batchPlan),
+    };
+    expect(batchPlan.requestPolicy).toBe("runware-luna-grounded-v2");
+    expect(batchPlan.batches).toHaveLength(16);
+    expect(
+      new Set(
+        batchPlan.batches.flatMap((batch) =>
+          batch.batch.scenes.map((scene) => scene.inImageShotRole),
+        ),
+      ).size,
+    ).toBe(6);
+    expect(
+      new Set(batchPlan.batches.flatMap((batch) => batch.batch.scenes.map((scene) => scene.layout)))
+        .size,
+    ).toBe(2);
+    const cappedScene = batchPlan.batches
+      .flatMap((entry) =>
+        entry.batch.scenes.map((scene) => ({
+          entry,
+          scene,
+          limit: entry.batch.literalCharacterLimits?.[scene.sceneId],
+        })),
+      )
+      .find(
+        (candidate) =>
+          candidate.limit !== undefined &&
+          candidate.limit >= 174 &&
+          candidate.scene.inImageShotRole === "OBJECT_EVIDENCE",
+      )!;
+    const legacyPlan = hostedPromptBatchPlan(authority, "runware-luna-grounded-v1");
+    const legacyEntry = legacyPlan.batches.find((entry) =>
+      entry.sceneIds.includes(cappedScene.scene.sceneId),
+    )!;
+    const literals = {
+      literal_subject: "A clear glass jar on a kitchen table.",
+      action: "The jar rests on the wooden table.",
+      environment:
+        "A home kitchen surrounds the wooden table, with a large window, a counter, and daylight on the surface.",
+    };
+    expect(
+      literals.literal_subject.length + literals.action.length + literals.environment.length,
+    ).toBe(174);
+    expect(cappedScene.limit).toBeGreaterThanOrEqual(174);
+    // v38's sealed shared cap for this failing case was 168 characters.
+    const sealedV38Batch = { ...legacyEntry.batch, literalCharacterLimit: 168 };
+    const cappedWriterOutput = {
+      scene_id: cappedScene.scene.sceneId,
+      ...literals,
+      in_image_shot_role: cappedScene.scene.inImageShotRole,
+      lighting_context: "available daylight",
+      continuity_tags: [],
+      prompt_core: "A clear glass jar rests on a kitchen table inside an ordinary home kitchen.",
+    };
+    const legacyRows = legacyEntry.batch.scenes.map((scene) =>
+      scene.sceneId === cappedScene.scene.sceneId
+        ? cappedWriterOutput
+        : {
+            scene_id: scene.sceneId,
+            literal_subject: "A glass jar on the kitchen table.",
+            action: scene.phrase,
+            environment: "Ordinary home kitchen around the wooden table.",
+            in_image_shot_role: scene.inImageShotRole,
+            lighting_context: "available daylight",
+            continuity_tags: [],
+            prompt_core: "A glass jar is in an ordinary home kitchen.",
+          },
+    );
+    const legacyRepair = promptRuntime.buildRunwarePromptCorrection(
+      sealedV38Batch,
+      JSON.stringify({ batch_id: sealedV38Batch.batchId, scenes: legacyRows }),
+      "runware-luna-grounded-v1",
+    );
+    expect(legacyRepair?.failedSceneIds).toContain(cappedScene.scene.sceneId);
+    expect(
+      legacyRepair?.failures.some((failure) => failure.reason === "literal_character_limit"),
+    ).toBe(true);
+    const compiled174 = promptRuntime.compileImagePrompt({
+      compilerPolicy: "local-evidence-v1",
+      expectedScene: cappedScene.scene,
+      writerOutput: cappedWriterOutput,
+      style: authority.style,
+      styleProfileHash: authority.styleProfileHash,
+      extraPromptKeywords: authority.extraPromptKeywords,
+      applyExtraPromptKeywords: authority.applyExtraPromptKeywords,
+    });
+    expect(
+      buildKieScenePrompt(compiled174, {
+        handAnatomy: cappedScene.scene.inImageShotRole === "HANDS_ACTION",
+      }).length,
+    ).toBeLessThanOrEqual(800);
+
+    const claims: Array<{ taskUUID: string; requestBytes: string; requestHash: string }> = [];
+    const receipts = new Map<
+      string,
+      Extract<
+        import("@videoforge/pipeline/prompts").RunwarePromptTransportResult,
+        { status: "succeeded" }
+      >
+    >();
+    const sourceOutputByScene = new Map<string, PromptFixtureSceneOutput>();
+    let providerCalls = 0;
+    const fetcher: typeof fetch = async (_url, init) => {
+      providerCalls += 1;
+      const request = JSON.parse(String(init?.body)) as {
+        model: string;
+        messages: Array<{ role: string; content: string }>;
+      };
+      const payload = JSON.parse(
+        request.messages.find((message) => message.role === "user")!.content,
+      ) as {
+        batch_id: string;
+        scenes: PromptFixtureScene[];
+        correction?: { failed_scene_ids: string[] };
+      };
+      const correctionIds = payload.correction?.failed_scene_ids;
+      const selected = correctionIds
+        ? payload.scenes.filter((scene) => correctionIds.includes(scene.scene_id))
+        : payload.scenes;
+      const rows = selected.map((scene) => {
+        const row = (() => {
+          if (
+            scene.in_image_shot_role === "HUMAN_MEDIUM" ||
+            scene.in_image_shot_role === "REACTION_RESULT"
+          )
+            return {
+              scene_id: scene.scene_id,
+              literal_subject: "A cook's visible torso and connected arm beside a glass jar.",
+              action: "Places the glass jar on the table.",
+              environment: "Beside the jar, seen from the side.",
+              in_image_shot_role: scene.in_image_shot_role,
+              lighting_context: "Available daylight.",
+              continuity_tags: [],
+              prompt_core: "A cook places a glass jar on the kitchen table.",
+            };
+          if (scene.in_image_shot_role === "HANDS_ACTION")
+            return {
+              scene_id: scene.scene_id,
+              literal_subject: "A cook's hand grips a glass jar.",
+              action: "Places the jar on the table.",
+              environment: "On a wooden kitchen table.",
+              in_image_shot_role: scene.in_image_shot_role,
+              lighting_context: "Available daylight.",
+              continuity_tags: [],
+              prompt_core: "A cook places a glass jar on the kitchen table.",
+            };
+          return {
+            scene_id: scene.scene_id,
+            literal_subject: "A glass jar on a kitchen table.",
+            action: "Rests upright on the table.",
+            environment: "An ordinary home kitchen.",
+            in_image_shot_role: scene.in_image_shot_role,
+            lighting_context: "Available daylight.",
+            continuity_tags: [],
+            prompt_core: "A glass jar rests on the kitchen table.",
+          };
+        })();
+        if (
+          providerCalls === 1 &&
+          !correctionIds &&
+          scene.scene_id === batchPlan.batches[0]!.batch.scenes[0]!.sceneId
+        )
+          row.literal_subject = "A glass jar with a printed logo.";
+        if (!correctionIds && providerCalls === 1) sourceOutputByScene.set(scene.scene_id, row);
+        return row;
+      });
+      const outputText = JSON.stringify({ batch_id: payload.batch_id, scenes: rows });
+      return Response.json({
+        id: `chatcmpl-fullstage_${providerCalls}`,
+        model: request.model,
+        choices: [
+          { index: 0, message: { role: "assistant", content: outputText }, finish_reason: "stop" },
+        ],
+        usage: {
+          prompt_tokens: 400,
+          completion_tokens: 180,
+          total_tokens: 580,
+          prompt_tokens_details: { cached_tokens: 40, cache_write_tokens: 10 },
+          completion_tokens_details: { reasoning_tokens: 20 },
+        },
+      });
+    };
+
+    const acceptedBatches: HostedRecoveredPromptBatch[] = [];
+    const compiledByScene = new Map<
+      string,
+      import("@videoforge/pipeline/prompts").CompiledImagePrompt
+    >();
+    const noHttp = vi.fn(async () => {
+      throw new Error("Saved Luna responses must recover without HTTP.");
+    }) as unknown as typeof fetch;
+    for (const [batchOrdinal, entry] of batchPlan.batches.entries()) {
+      const claim = async (value: {
+        taskUUID: string;
+        requestBytes: string;
+        requestHash: string;
+      }) => {
+        claims.push(value);
+        return true;
+      };
+      const recordResult = async (value: {
+        requestHash: string;
+        result: Extract<
+          import("@videoforge/pipeline/prompts").RunwarePromptTransportResult,
+          { status: "succeeded" }
+        >;
+      }) => {
+        receipts.set(value.requestHash, value.result);
+      };
+      let accepted: HostedAcceptedPromptBatch | null = null;
+      let retryOfRequestHash: string | null = null;
+      let sourceRecordedResult: Extract<
+        import("@videoforge/pipeline/prompts").RunwarePromptTransportResult,
+        { status: "succeeded" }
+      > | null = null;
+      if (batchOrdinal === 0) {
+        try {
+          accepted = await dispatchOneHostedPromptBatch({
+            apiKey: "configured-test-key-value",
+            plan: batchPlan,
+            persistedBinding: binding,
+            batchOrdinal,
+            remainingReservationMicroUsd: 8_000_000,
+            claim,
+            recordResult,
+            fetcher,
+          });
+          expect.fail("The deliberately marked product should be rejected locally.");
+        } catch (error) {
+          expect(promptRuntime.runwarePromptValidationDiagnostic(error)).not.toBeNull();
+          if (claims.length === 0) throw error;
+          sourceRecordedResult = receipts.get(claims[0]!.requestHash)!;
+          expect(sourceRecordedResult).toBeDefined();
+          const correction = promptRuntime.buildRunwarePromptCorrection(
+            entry.batch,
+            sourceRecordedResult!.outputText,
+            batchPlan.requestPolicy,
+          );
+          expect(correction?.failedSceneIds).toEqual([entry.batch.scenes[0]!.sceneId]);
+          retryOfRequestHash = claims[0]!.requestHash;
+          accepted = await dispatchOneHostedPromptBatch({
+            apiKey: "configured-test-key-value",
+            plan: batchPlan,
+            persistedBinding: binding,
+            batchOrdinal,
+            remainingReservationMicroUsd: 8_000_000,
+            retryOfRequestHash: retryOfRequestHash as `sha256:${string}`,
+            correction: correction!,
+            claim,
+            recordResult,
+            fetcher,
+          });
+        }
+      } else {
+        accepted = await dispatchOneHostedPromptBatch({
+          apiKey: "configured-test-key-value",
+          plan: batchPlan,
+          persistedBinding: binding,
+          batchOrdinal,
+          remainingReservationMicroUsd: 8_000_000,
+          claim,
+          recordResult,
+          fetcher,
+        });
+      }
+      expect(accepted).not.toBeNull();
+      if (batchOrdinal === 0) {
+        expect(accepted!.scenes[1]!.writerOutput).toEqual(
+          sourceOutputByScene.get(accepted!.scenes[1]!.scene.sceneId),
+        );
+      }
+      const savedClaim = claims.at(-1)!;
+      const savedResult = receipts.get(savedClaim.requestHash)!;
+      const recovered = await recoverClaimedHostedPromptBatch({
+        apiKey: "configured-test-key-value",
+        plan: batchPlan,
+        persistedBinding: binding,
+        batchOrdinal,
+        taskUUID: savedClaim.taskUUID,
+        requestBytes: savedClaim.requestBytes,
+        requestHash: savedClaim.requestHash as `sha256:${string}`,
+        reservationMicroUsd: 8_000_000,
+        retryOfRequestHash: retryOfRequestHash as `sha256:${string}` | null,
+        sourceRecordedResult,
+        recordedResult: savedResult,
+        fetcher: noHttp,
+      });
+      expect(recovered.scenes.map((scene) => scene.scene.sceneId)).toEqual(entry.sceneIds);
+      const persisted: Parameters<
+        NonNullable<Parameters<typeof runHostedPromptExecution>[0]["persistBatch"]>
+      >[0][] = [];
+      await compileAndPersistHostedPromptBatch(
+        { ...authority, compilerPolicy: "local-evidence-v1" },
+        recovered,
+        async (batch) => {
+          persisted.push(batch);
+        },
+      );
+      for (const scene of persisted[0]!.scenes) {
+        expect(
+          buildKieScenePrompt(scene.compiledPrompt, { handAnatomy: true }).length,
+        ).toBeLessThanOrEqual(800);
+        compiledByScene.set(scene.sceneId, scene.compiledPrompt);
+      }
+      acceptedBatches.push({
+        ...recovered,
+        retryOfRequestHash: retryOfRequestHash as `sha256:${string}` | null,
+        scenes: recovered.scenes.map(({ sceneOrdinal, scene, writerOutput }) => ({
+          sceneOrdinal,
+          sceneId: scene.sceneId,
+          writerOutput,
+        })),
+      });
+    }
+    expect(providerCalls).toBe(17);
+    expect(receipts.size).toBe(17);
+    expect(compiledByScene.size).toBe(152);
+    for (const [index, saved] of acceptedBatches.entries()) {
+      const entry = batchPlan.batches[index]!;
+      expect(saved.batchOrdinal, `batch ${index} ordinal`).toBe(index);
+      expect(saved.firstSceneOrdinal, `batch ${index} first scene`).toBe(entry.sceneStartIndex);
+      expect(
+        saved.scenes.map((scene) => scene.sceneId),
+        `batch ${index} IDs`,
+      ).toEqual(entry.sceneIds);
+      expect(
+        saved.scenes.map((scene) => scene.sceneOrdinal),
+        `batch ${index} ordinals`,
+      ).toEqual(entry.batch.scenes.map((_, sceneIndex) => entry.sceneStartIndex + sceneIndex));
+      expect(Number.isSafeInteger(saved.reportedCostMicroUsd), `batch ${index} cost`).toBe(true);
+      expect(Number.isSafeInteger(saved.inputTokens), `batch ${index} input`).toBe(true);
+      expect(Number.isSafeInteger(saved.outputTokens), `batch ${index} output`).toBe(true);
+      const body = JSON.parse(saved.requestBytes) as Array<{
+        messages: Array<{ role: string; content: string }>;
+      }>;
+      const payload = JSON.parse(
+        body[0]!.messages.find((message) => message.role === "user")!.content,
+      ) as {
+        correction?: { source_output_text?: string };
+      };
+      const correction = payload.correction
+        ? promptRuntime.buildRunwarePromptCorrection(
+            entry.batch,
+            payload.correction.source_output_text!,
+            batchPlan.requestPolicy,
+          )!
+        : undefined;
+      const expectedRequest = promptRuntime.buildRunwarePromptRequest(
+        entry.batch,
+        entry.batch.scenes,
+        saved.retryOfRequestHash ? 2 : 1,
+        saved.retryOfRequestHash ?? null,
+        1,
+        batchPlan.requestPolicy,
+        false,
+        correction,
+      );
+      expect(saved.requestBytes).toBe(expectedRequest.requestBytes);
+      expect(saved.requestHash).toBe(expectedRequest.requestSha256);
+    }
+    const noSubmit = vi.fn(async () => {
+      throw new Error("Every provider response is already durably recoverable.");
+    });
+    const handedOff = await runHostedPromptExecution({
+      scope: { workspaceId: authority.workspaceId, actorUserId: ids.workspace },
+      authority: { ...authority, compilerPolicy: "local-evidence-v1" },
+      batchPlan,
+      persistedBatchPlanBinding: binding,
+      command: {
+        projectId: authority.projectId,
+        revisionId: authority.revisionId,
+        timelineId: authority.timelineId,
+        taskId: authority.taskId,
+        attemptId: authority.attemptId,
+        outboxId: authority.outboxId,
+        presentedClaimTokenHash: authority.claimTokenHash,
+      },
+      apiKey: "configured-test-key-value",
+      persist: async () => undefined,
+      fetcher: noHttp,
+      acceptedCompiledPrompts: compiledByScene,
+      continuation: {
+        reservationMicroUsd: 8_000_000,
+        acceptedBatches,
+        beforeBatchSubmit: noSubmit,
+      },
+    });
+    expect(handedOff.compiledPrompts).toHaveLength(152);
+    expect([...compiledByScene.values()].every((prompt) => prompt.positivePrompt.length > 0)).toBe(
+      true,
+    );
+    expect(noSubmit).not.toHaveBeenCalled();
+  }, 30_000);
 
   it("budgets Luna literals against the real Kie builder for custom styles and HANDS_ACTION", () => {
     const base = authorityFor(false);
@@ -384,14 +829,15 @@ describe("versioned prompt request recovery", () => {
     expect(() => buildKieScenePrompt(overflowing, { handAnatomy: true })).toThrow("INPUT_INVALID");
 
     const luna = hostedPromptBatchPlan(custom);
-    const budget = luna.batches[0]?.batch.literalCharacterLimit;
+    expect(luna.batches[0]?.batch.literalCharacterLimit).toBeUndefined();
+    const scene = luna.batches[0]!.batch.scenes[0]!;
+    const budget = luna.batches[0]?.batch.literalCharacterLimits?.[scene.sceneId];
     expect(budget).toBeGreaterThanOrEqual(90);
     const subjectLength = Math.min(240, Math.max(1, Math.floor(budget! / 3)));
     const literalSubject = "s".repeat(subjectLength);
     const remaining = budget! - literalSubject.length;
     const action = "a".repeat(Math.min(240, Math.max(1, Math.floor(remaining / 2))));
     const environment = "e".repeat(Math.min(240, remaining - action.length));
-    const scene = luna.batches[0]!.batch.scenes[0]!;
     const compiled = promptRuntime.compileImagePrompt({
       compilerPolicy: custom.compilerPolicy,
       expectedScene: scene,
@@ -940,7 +1386,7 @@ describe("versioned prompt request recovery", () => {
         };
         const recoveredPlan = await recoverHostedPromptBatchPlan(authority, binding);
         expect(recoveredPlan).toEqual(planned);
-        expect(hostedPromptBatchPlan(authority).requestPolicy).toBe("runware-luna-grounded-v1");
+        expect(hostedPromptBatchPlan(authority).requestPolicy).toBe("runware-luna-grounded-v2");
         const fetcher = successfulPromptFetcher();
         const results: Parameters<
           NonNullable<Parameters<typeof dispatchOneHostedPromptBatch>[0]["recordResult"]>
@@ -1137,7 +1583,11 @@ describe("hosted prompt authority", () => {
       });
     }
     const planned = hostedPromptBatchPlan({ ...authority, applyExtraPromptKeywords: false });
-    expect(planned.batches[0]?.batch.literalCharacterLimit).toBeGreaterThanOrEqual(90);
+    expect(
+      Object.values(planned.batches[0]?.batch.literalCharacterLimits ?? {}).every(
+        (limit) => limit >= 90,
+      ),
+    ).toBe(true);
   });
   it("finalizes a long accepted prefix without submitting another provider request", async () => {
     const plannedScenes = scenes(327);

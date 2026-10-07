@@ -263,7 +263,9 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
   await expect(styleSummary).toContainText("Authentic Documentary Stock");
   await expect(page.locator(".visual-preset-menu:visible")).toHaveCount(0);
   await expect(page.getByLabel("Exact script (optional)")).toHaveCount(0);
-  await expect(page.getByText(/Keywords (?:will be applied|not applied)/iu)).toHaveCount(0);
+  await expect(
+    page.getByText(/Keywords (?:will be applied|not applied)/iu).filter({ visible: true }),
+  ).toHaveCount(0);
 
   await expect(page.getByRole("radiogroup", { name: "Avatar Profile options" })).not.toBeVisible();
 
@@ -405,8 +407,8 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
       )
       .toBeGreaterThanOrEqual(640);
   }
-  await page.getByRole("button", { name: "Prepare analysis" }).click();
-  const analyzeStyle = page.getByRole("button", { name: "Analyze this draft once" });
+  await page.getByRole("button", { name: "Continue to analysis" }).click();
+  const analyzeStyle = page.getByRole("button", { name: "Analyze once" });
   await expect(analyzeStyle).toBeVisible();
   const resumeUrl = new URL(page.url());
   expect(resumeUrl.searchParams.get("fixture")).toBe("project_create_ready");
@@ -418,26 +420,26 @@ test("new Avatar and Image Style round trips preserve and update the exact proje
   expect(styleMutationCount).toBe(2);
 
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Analyze references" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Analyze" })).toBeVisible();
   await expect(page.getByText(`Continuing “${styleName}”`)).toBeVisible();
   await expect(analyzeStyle).toBeVisible();
   await expect(page.getByLabel("Upload style references")).toHaveCount(0);
   expect(styleMutationCount).toBe(2);
 
   await analyzeStyle.click();
-  await expect(page.getByText("Local fixture profile returned for workflow review.")).toBeVisible();
+  await expect(page.getByText("Profile ready for review.", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Review notes (optional)")).toHaveCount(0);
   expect(styleMutationCount).toBe(3);
 
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Review and publish" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Publish" })).toBeVisible();
   await expect(page.getByText(`Continuing “${styleName}”`)).toBeVisible();
-  await expect(page.getByText("Local fixture profile returned for workflow review.")).toBeVisible();
+  await expect(page.getByText("Profile ready for review.", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Upload style references")).toHaveCount(0);
   expect(styleMutationCount).toBe(3);
 
   const styleGate = await installMutationGate(page, "/api/v1/image-styles/*/versions/*/publish");
-  const publishStyle = page.getByRole("button", { name: "Publish immutable style version" });
+  const publishStyle = page.getByRole("button", { name: "Publish style" });
   await publishStyle.click();
   await expect(publishStyle).toBeDisabled();
   await expect(publishStyle).toHaveAttribute("aria-busy", "true");

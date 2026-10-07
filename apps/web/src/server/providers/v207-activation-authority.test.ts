@@ -76,10 +76,10 @@ describe("V2-07 activation authority", () => {
   it("pins the consumed Attempt85 proposal and published immutable image", () => {
     expect(V207_REPAIRED_IMAGE_SOURCE_COMMIT).toMatch(/^[0-9a-f]{40}$/u);
     expect(V207_REPAIRED_IMAGE).toContain(
-      "@sha256:0f3203ceaedd8d570dcca301e32ca6d0ecb4d1136c32d5cd7d76fdc292a030cb",
+      "@sha256:26680786552e7a40f88a312e97720dffa6944173eb83080a100989beac2216b0",
     );
     expect(V207_REPAIRED_IMAGE_CONFIG_DIGEST).toBe(
-      "sha256:fe08710bb809b702d8efe46b4d67d100b9f9630c8969f62efe7fd1b54d069897",
+      "sha256:9758825b923a26832570ff68fb841a95f24d9b0f5c684f67443039e6ebf36e34",
     );
     expect(V207_REPAIRED_IMAGE_LAYER_DIGEST).toBe(
       "sha256:3fa4e0376595860c72c0f86c49ec5820f8330115bc0895680b7a3714f684b83d",

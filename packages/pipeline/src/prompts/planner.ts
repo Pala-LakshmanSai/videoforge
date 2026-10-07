@@ -2,6 +2,7 @@ import { PipelineDomainError } from "../errors.js";
 import { buildPromptBatch, MAX_PROMPT_LOCAL_CONTEXT_CHARS } from "./batch.js";
 import {
   buildRunwarePromptRequest,
+  isRunwareLunaPromptPolicy,
   type PromptRequestPolicy,
   estimatePromptWriterOutputTokens,
   estimateRunwarePromptRequestInputTokens,
@@ -124,6 +125,9 @@ const normalizedGlobalInput = (
     ...(input.literalCharacterLimit === undefined
       ? {}
       : { literalCharacterLimit: input.literalCharacterLimit }),
+    ...(input.literalCharacterLimits === undefined
+      ? {}
+      : { literalCharacterLimits: input.literalCharacterLimits }),
     styleTreatment: input.styleTreatment,
     plannerGuidance: input.plannerGuidance,
     storyContext: input.storyContext,
@@ -137,6 +141,9 @@ const normalizedGlobalInput = (
     ...(first.literalCharacterLimit === undefined
       ? {}
       : { literalCharacterLimit: first.literalCharacterLimit }),
+    ...(input.literalCharacterLimits === undefined
+      ? {}
+      : { literalCharacterLimits: input.literalCharacterLimits }),
     styleTreatment: first.styleTreatment,
     plannerGuidance: first.plannerGuidance,
     storyContext: first.storyContext,
@@ -210,7 +217,7 @@ const candidateFor = (
   const requestedOutputTokens = Math.max(
     2_048,
     estimatedOutputTokens +
-      (requestPolicy === "runware-luna-grounded-v1" ? 0 : RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM),
+      (isRunwareLunaPromptPolicy(requestPolicy) ? 0 : RUNWARE_PROMPT_OUTPUT_TOKEN_HEADROOM),
   );
   if (requestedOutputTokens > maxOutputTokens) return null;
   // Build the exact request once for this candidate so planning accounts for
@@ -246,16 +253,15 @@ export function planPromptBatches(input: PromptBatchPlanningInput): PromptBatchP
       "options",
       "maxInputTokens",
     ]);
-  const maxInputTokens =
-    requestPolicy === "runware-luna-grounded-v1"
-      ? Math.min(
-          requestedMaxInputTokens,
-          Math.floor(
-            (RUNWARE_PROMPT_MAX_INPUT_TOKENS - LUNA_TRANSPORT_INPUT_OVERHEAD_TOKENS) /
-              RUNWARE_PROMPT_ESTIMATED_BYTES_PER_TOKEN,
-          ),
-        )
-      : requestedMaxInputTokens;
+  const maxInputTokens = isRunwareLunaPromptPolicy(requestPolicy)
+    ? Math.min(
+        requestedMaxInputTokens,
+        Math.floor(
+          (RUNWARE_PROMPT_MAX_INPUT_TOKENS - LUNA_TRANSPORT_INPUT_OVERHEAD_TOKENS) /
+            RUNWARE_PROMPT_ESTIMATED_BYTES_PER_TOKEN,
+        ),
+      )
+    : requestedMaxInputTokens;
   const maxOutputTokens = finitePositiveInteger(
     input.options?.maxOutputTokens,
     DEFAULT_PROMPT_BATCH_MAX_OUTPUT_TOKENS,

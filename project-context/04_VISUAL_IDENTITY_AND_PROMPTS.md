@@ -1,6 +1,8 @@
-## Selected prompt-provider transition — 2026-10-06
+## Selected prompt-provider transition — 2026-10-06; v39 budget follow-up — 2026-10-07
 
-Fresh image-prompt writing uses Runware AIR `openai:gpt@6-luna`, request v38 with low reasoning. All 152 tuples qualified under mixed provenance; independent review `c909e4dff7c945fe8a0bf7c2e2d6a01147dc711540fd47c7cf1c77d6ae1e29f0` binds accepted records `af040be63801ee9808a36efa11a2aba313995cef44568b8f67914612ae85a882` to final 195-file source manifest `ee54e65cd94a4a7dd223bb5e52506aa898ac7c41a6304f3f793491b119c69cae`; offline compiler/Kie validation passed 152 scenes/16 batches with zero HTTP. Worker `eae84263703aa8900bf3aeca466bc90d53d03612`, version `aa60628f-571d-4503-bef1-7ab31a314bc1` at 100%, and native schema283 are live. Existing Workflows adopted: restart acknowledged, four successful zero-work ticks, DUE=0, positive runtime-version readback. Target linkage is inferred from `activeWorker`/fixed binding; see `workflow-driver-promotion-proof-private.json`. No new Workflow instance or paid create occurred. Broad CI is non-green; generated-image and full-film quality remain unverified.
+Production fresh image-prompt writing uses Runware AIR `openai:gpt@6-luna`, request v38/profile8 with low reasoning. All 152 tuples remain qualified under mixed provenance; independent review `c909e4dff7c945fe8a0bf7c2e2d6a01147dc711540fd47c7cf1c77d6ae1e29f0` binds accepted records `af040be63801ee9808a36efa11a2aba313995cef44568b8f67914612ae85a882` to final 195-file source manifest `ee54e65cd94a4a7dd223bb5e52506aa898ac7c41a6304f3f793491b119c69cae`; offline compiler/Kie validation passed 152 scenes/16 batches with zero HTTP. Worker `eae84263703aa8900bf3aeca466bc90d53d03612`, version `aa60628f-571d-4503-bef1-7ab31a314bc1` at 100%, and native schema286 are live. Existing Workflows adopted: restart acknowledged, four successful zero-work ticks, DUE=0, positive runtime-version readback. Target linkage is inferred from `activeWorker`/fixed binding; see `workflow-driver-promotion-proof-private.json`. No new Workflow instance or paid create occurred. Broad CI is non-green; generated-image and full-film quality remain unverified.
+
+Staged source adds fresh policy `runware-luna-grounded-v2`, request v39/profile9, with per-scene literal-character limits derived from the pinned compiler and Kie builder. The provider-free 152-scene plan has 16 batches, at most 32 POSTs, and a conservative projected ceiling of USD0.319488; provider calls remain zero. This is not live provider qualification or deployment. Native migrations 0284–0286 are live and backward-compatible; production remains v38/profile8. Preserve sealed v38 requests and accepted prefixes. A saved UNKNOWN result never authorizes replay; unresolved v34 HTTP 524 remains no-replay.
 
 # Visual identity and image prompting
 
@@ -51,19 +53,21 @@ scenes-per-batch rule and no project scene cap.
 Token and cost bounds are part of acceptance. The live hosted profile uses one bounded context
 extraction with a 350-token output ceiling and a 10,000 micro-USD reservation. Schema-valid global context is normalized to the existing 360-character flattened budget: retain the subject, then whole remote-reference facts, continuity facts, and visual facts in that priority order while they fit. Preserve category order in the final context; reject malformed keys, types, duplicate facts, and excessive list counts. Aggregate verbosity alone must not trigger another inference or stop the pipeline.
 
-Stage 5 plans against
-a 48,000-token input ceiling and a 14,336-token hosted output budget per request under
-the 64,000-token technical output ceiling. Fresh hosted reservations are250000micro-USD per planned
-batch capped at8000000micro-USD; existing runs retain their exact original ceiling. One original
-provider request is allowed per persisted planned batch. An identity-verified completed unusable
-result permits the existing single distinct automatic replacement, with known cost recorded before
-dispatch and at least250000micro-USD remaining. UNKNOWN alone never authorizes replacement or
-redispatch. Accepted batches persist before the next request. Do not duplicate global context inside every scene item. Prompt cores
-stay concise and concrete; trusted code adds crop, style, optional keywords, and permanent guardrails
-exactly once.
+Stage 5 retains the 48,000-token input ceiling. Persisted Luna v38 and fresh Luna v39 requests use
+at most 6,144 output tokens; legacy requests retain their pinned 14,336-token output budget. Fresh
+v39 also uses per-scene literal-character limits derived from each scene's compiler/Kie constraints. Fresh hosted
+reservations remain 250,000 micro-USD per planned batch, capped at 8,000,000 micro-USD; existing
+runs retain their original ceiling. One original provider request is allowed per persisted planned
+batch. An identity-verified completed unusable result permits the existing single distinct automatic
+replacement, with known cost recorded before dispatch and at least 250,000 micro-USD remaining.
+UNKNOWN alone never authorizes replacement or redispatch. Persist accepted batches before the next
+request. Do not duplicate global context inside every scene item. Prompt cores stay concise and
+concrete; trusted code adds crop, style, optional keywords, and permanent guardrails exactly once.
 
-Runware Gemini 3.5 Flash writes scene-content prompts only. The legacy source filename retains
-DeepSeek in its name; current runtime model identity is `google:gemini@3.5-flash`. Code already knows:
+The separate post-transcription story-context step uses Runware Gemini 3.5 Flash. Scene-content
+prompts use Runware Luna: production remains request v38/profile8; staged v39 uses
+`runware-luna-grounded-v2` and profile9. The legacy writer source filename retains DeepSeek in its
+name and does not identify the runtime model. Code already knows:
 
 - The sanitized project title as global topic context.
 - The scene start/end and exact narration phrase.

@@ -19,12 +19,44 @@ import {
 const DUE_QUERY = await continuationDueQuery();
 
 it("continues Luna prompt work only when the current unresolved batch has a saved receipt", () => {
-  expect(DUE_QUERY).toContain("prompt_profile_revision IS DISTINCT FROM 8");
+  expect(DUE_QUERY).toContain("prompt_profile_revision NOT IN (8, 9)");
+  expect(DUE_QUERY).toContain(
+    "prompt_profile_revision IS NULL OR prompt_profile_revision NOT IN (8, 9)",
+  );
   expect(DUE_QUERY).toContain("prompt_current_claim_started_at IS NULL");
   expect(DUE_QUERY).toContain("prompt_current_receipt_available");
   expect(DUE_QUERY).toContain("videoforge_load_hosted_prompt_response(");
   expect(DUE_QUERY).toContain("prompt_run_started_at < now() - make_interval");
   expect(DUE_QUERY).toContain("WHEN prompt_state = 'UNKNOWN'");
+});
+
+it("requires a saved current-claim receipt before retrying Luna profiles 8 and 9", async () => {
+  const database = new PGlite();
+  const { rows } = await database.query<{
+    profile: number;
+    has_claim: boolean;
+    has_receipt: boolean;
+    recoverable: boolean;
+  }>(`
+    SELECT profile, has_claim, has_receipt,
+      (profile IS NULL OR profile NOT IN (8, 9) OR NOT has_claim OR has_receipt) AS recoverable
+    FROM (VALUES
+      (8, true, false), (8, true, true),
+      (9, true, false), (9, true, true),
+      (8, false, false), (9, false, false),
+      (7, true, false)
+    ) AS cases(profile, has_claim, has_receipt)
+  `);
+  expect(rows.map(({ recoverable }) => recoverable)).toEqual([
+    false,
+    true,
+    false,
+    true,
+    true,
+    true,
+    true,
+  ]);
+  await database.close();
 });
 
 it("restarts only completed saved regeneration workflows inside their tenant scope", async () => {

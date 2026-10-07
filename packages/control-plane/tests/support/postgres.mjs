@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 
 import pg from "pg";
 
@@ -8,11 +9,14 @@ import { loadMigrationSources } from "./pglite.mjs";
 const { Pool } = pg;
 
 class PostgresExecutor {
-  constructor(client) {
+  constructor(client, migrationPrerequisites = new Map()) {
     this.client = client;
+    this.migrationPrerequisites = migrationPrerequisites;
   }
 
   async execute(sql) {
+    const prerequisite = this.migrationPrerequisites.get(sql);
+    if (prerequisite !== undefined) await this.client.query(prerequisite);
     await this.client.query(sql);
   }
 
@@ -25,7 +29,7 @@ class PostgresExecutor {
     const client = await this.client.connect();
     try {
       await client.query("BEGIN");
-      const result = await work(new PostgresExecutor(client));
+      const result = await work(new PostgresExecutor(client, this.migrationPrerequisites));
       await client.query("COMMIT");
       return result;
     } catch (error) {
@@ -50,8 +54,24 @@ export async function withPostgresDatabase(baseUrl, work) {
   try {
     await admin.query(`CREATE DATABASE ${databaseName}`);
     pool = new Pool({ connectionString: databaseUrl(baseUrl, databaseName), max: 20 });
-    const executor = new PostgresExecutor(pool);
+    await pool.query("CREATE EXTENSION IF NOT EXISTS pgcrypto");
     const sources = await loadMigrationSources();
+    const continuationGrants = sources.find((source) => source.version === 195);
+    if (continuationGrants === undefined)
+      throw new Error("fixture continuation grant migration is missing");
+    const prerequisites = await Promise.all(
+      [
+        "0160_hosted_continuation_heartbeats.sql",
+        "0162_hosted_continuation_tenant_scoped_sweeps.sql",
+        "0163_hosted_continuation_heartbeat_sequence.sql",
+      ].map((filename) =>
+        readFile(new URL(`../../migrations/${filename}`, import.meta.url), "utf8"),
+      ),
+    );
+    const executor = new PostgresExecutor(
+      pool,
+      new Map([[continuationGrants.sql, prerequisites.join("\n")]]),
+    );
     await applyMigrations(executor, sources);
     return await work({ database: pool, executor, sources });
   } finally {

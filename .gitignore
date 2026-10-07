@@ -31,6 +31,8 @@ artifacts/
 !packages/pipeline/src/artifacts/**
 weights/
 *.mp4
+# Synthetic, non-editorial provider-response fixture for the H264 validation tests.
+!apps/web/src/server/providers/fixtures/h264-seedance-sample.mp4
 *.m4v
 *.mov
 *.mkv

@@ -253,6 +253,8 @@ export interface PromptSceneInput {
 
 export interface PromptBatchInput {
   readonly literalCharacterLimit?: number;
+  /** Per-scene Kie ceiling for fresh Luna v39 requests; absent on sealed v38/legacy plans. */
+  readonly literalCharacterLimits?: Readonly<Record<string, number>>;
   readonly batchId: string;
   readonly projectTitle: string;
   readonly imageStyleVersionId: string;
@@ -292,6 +294,7 @@ export interface PromptWriterPort {
 
 export interface PromptBatch {
   readonly literalCharacterLimit?: number;
+  readonly literalCharacterLimits?: Readonly<Record<string, number>>;
   readonly scenePromptWriterVersion: typeof SCENE_PROMPT_WRITER_VERSION;
   readonly batchId: string;
   readonly sanitizedProjectTitle: string;

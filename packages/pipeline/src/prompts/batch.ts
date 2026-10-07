@@ -278,6 +278,23 @@ export function buildPromptBatch(input: PromptBatchInput): PromptBatch {
   // immutable prompt contract without inventing a project-level scene cap.
   if (input.scenes.length < 1)
     fail("PROMPT_INPUT_INVALID", "Prompt batch must contain at least one scene.", ["scenes"]);
+  const literalCharacterLimits = input.literalCharacterLimits;
+  if (literalCharacterLimits !== undefined) {
+    if (
+      literalCharacterLimits === null ||
+      typeof literalCharacterLimits !== "object" ||
+      Array.isArray(literalCharacterLimits)
+    )
+      fail("PROMPT_INPUT_INVALID", "Per-scene literal limits must be an object.", [
+        "literalCharacterLimits",
+      ]);
+    for (const [sceneId, limit] of Object.entries(literalCharacterLimits))
+      if (!ID.test(sceneId) || !Number.isSafeInteger(limit) || limit < 3 || limit > 800)
+        fail("PROMPT_INPUT_INVALID", "A per-scene literal limit is invalid.", [
+          "literalCharacterLimits",
+          sceneId,
+        ]);
+  }
 
   const ids = new Set<string>();
   const scenes = input.scenes.map((scene, index): PromptSceneInput => {
@@ -320,6 +337,22 @@ export function buildPromptBatch(input: PromptBatchInput): PromptBatch {
       layout: scene.layout,
     });
   });
+  const batchLiteralCharacterLimits =
+    literalCharacterLimits === undefined
+      ? undefined
+      : Object.freeze(
+          Object.fromEntries(
+            scenes.map((scene) => {
+              const limit = literalCharacterLimits[scene.sceneId];
+              if (limit === undefined)
+                fail("PROMPT_INPUT_INVALID", "A scene is missing its literal limit.", [
+                  "literalCharacterLimits",
+                  scene.sceneId,
+                ]);
+              return [scene.sceneId, limit!];
+            }),
+          ),
+        );
   const localContextCharacters = scenes.reduce(
     (total, scene) =>
       total +
@@ -348,6 +381,9 @@ export function buildPromptBatch(input: PromptBatchInput): PromptBatch {
     ...(input.literalCharacterLimit === undefined
       ? {}
       : { literalCharacterLimit: input.literalCharacterLimit }),
+    ...(batchLiteralCharacterLimits === undefined
+      ? {}
+      : { literalCharacterLimits: batchLiteralCharacterLimits }),
     scenePromptWriterVersion: SCENE_PROMPT_WRITER_VERSION,
     batchId: input.batchId,
     sanitizedProjectTitle: normalized(input.projectTitle, 240, "Project title", ["projectTitle"]),

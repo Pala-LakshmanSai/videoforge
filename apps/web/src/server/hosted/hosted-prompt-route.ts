@@ -1,6 +1,7 @@
 import type { HostedExecutionContext } from "./auth";
 import {
   runwarePromptValidationDiagnostic,
+  isRunwareLunaPromptPolicy,
   type CompiledImagePrompt,
 } from "@videoforge/pipeline/prompts";
 import type { HostedRuntimeConfiguration } from "./configuration";
@@ -76,7 +77,26 @@ type PromptBatchReceipt = Parameters<
   NonNullable<Parameters<typeof runHostedPromptExecution>[0]["persistBatch"]>
 >[0];
 
-async function recordPromptResponse(
+function transientPromptReceiptFailure(error: unknown): boolean {
+  if (error instanceof AggregateError)
+    return error.errors.length > 0 && error.errors.every(transientPromptReceiptFailure);
+  if (!error || typeof error !== "object") return false;
+  const { code, cause } = error as { code?: unknown; cause?: unknown };
+  if (typeof code === "string")
+    return /^(?:08[0-9A-Z]{3}|40001|40003|40P01|53300|57P0[123]|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EPIPE)$/u.test(
+      code,
+    );
+  if (cause !== undefined && transientPromptReceiptFailure(cause)) return true;
+  // Neon/pg also emits these connection failures without a SQLSTATE or cause.
+  return (
+    error instanceof Error &&
+    /^(?:Connection terminated unexpectedly|Connection terminated due to connection timeout|timeout exceeded when trying to connect)$/u.test(
+      error.message,
+    )
+  );
+}
+
+export async function recordPromptResponse(
   pool: ReturnType<typeof createNeonPool>,
   accountId: string,
   runId: string,
@@ -84,13 +104,27 @@ async function recordPromptResponse(
     NonNullable<Parameters<typeof dispatchOneHostedPromptBatch>[0]["recordResult"]>
   >[0],
 ): Promise<void> {
-  await createNeonExecutor(pool).transaction(async (transaction) => {
-    await transaction.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", accountId]);
-    await transaction.query(
-      "SELECT public.videoforge_record_hosted_prompt_response($1,$2,$3,$4::jsonb)",
-      [runId, value.taskUUID, value.requestHash, JSON.stringify(value.result)],
-    );
-  });
+  const parameters = [runId, value.taskUUID, value.requestHash, JSON.stringify(value.result)];
+  // The native receipt is idempotent over these exact bytes, including after a lost COMMIT reply.
+  // Retry only persistence; the paid provider POST is outside this loop.
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await createNeonExecutor(pool).transaction(async (transaction) => {
+        await transaction.query("SELECT set_config($1,$2,true)", [
+          "videoforge.account_id",
+          accountId,
+        ]);
+        await transaction.query(
+          "SELECT public.videoforge_record_hosted_prompt_response($1,$2,$3,$4::jsonb)",
+          parameters,
+        );
+      });
+      return;
+    } catch (error) {
+      if (attempt === 2 || !transientPromptReceiptFailure(error)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+    }
+  }
 }
 
 async function claimHostedPromptBatch(
@@ -719,9 +753,10 @@ export async function writeProjectPrompts(
               contentRepair: "no-text-v2",
               correction:
                 error instanceof HostedPromptArchivedOutputInvalidError &&
-                ["validated-scenes-v1", "grounded-scenes-v1", "runware-luna-grounded-v1"].includes(
+                (["validated-scenes-v1", "grounded-scenes-v1"].includes(
                   batchPlan.requestPolicy ?? "legacy",
-                )
+                ) ||
+                  isRunwareLunaPromptPolicy(batchPlan.requestPolicy))
                   ? (error.correction ?? undefined)
                   : undefined,
               apiKey: promptApiKey,
@@ -813,9 +848,8 @@ export async function writeProjectPrompts(
                   ? original.claim?.provider_task_uuid
                   : undefined,
               ),
-            ["grounded-scenes-v1", "runware-luna-grounded-v1"].includes(
-              batchPlan.requestPolicy ?? "legacy",
-            )
+            ["grounded-scenes-v1"].includes(batchPlan.requestPolicy ?? "legacy") ||
+              isRunwareLunaPromptPolicy(batchPlan.requestPolicy)
               ? "local-evidence-v1"
               : undefined,
           );
@@ -964,7 +998,7 @@ export async function writeProjectPrompts(
             input_hash: authority.recordedInputHash,
             claim_token_hash: identity.claimTokenHash,
             reserved_cost_micro_usd: reservedCostMicroUsd,
-            ...(batchPlan.requestPolicy === "runware-luna-grounded-v1"
+            ...(isRunwareLunaPromptPolicy(batchPlan.requestPolicy)
               ? { request_policy: batchPlan.requestPolicy }
               : {}),
             planned_batch_count: batchPlan.batchCount,
@@ -1030,9 +1064,8 @@ export async function writeProjectPrompts(
         authority,
         firstBatch,
         (batch) => recordHostedPromptBatch(pool, scope.account_id, persistedRunId, batch),
-        ["grounded-scenes-v1", "runware-luna-grounded-v1"].includes(
-          batchPlan.requestPolicy ?? "legacy",
-        )
+        ["grounded-scenes-v1"].includes(batchPlan.requestPolicy ?? "legacy") ||
+          isRunwareLunaPromptPolicy(batchPlan.requestPolicy)
           ? "local-evidence-v1"
           : undefined,
       );

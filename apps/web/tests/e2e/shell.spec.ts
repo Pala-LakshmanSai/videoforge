@@ -193,7 +193,14 @@ async function chooseFixture(page: Page, fixture: string): Promise<void> {
     await page.getByText("Fixture mode", { exact: true }).click();
   }
   await scenarioTrigger.click();
-  await page.getByRole("option", { name: fixture, exact: true }).click();
+  const optionLabel = fixture
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase())
+    .replace(/\bV(\d+)\b/g, "v$1")
+    .replace(/\bGpu\b/g, "GPU")
+    .replace(/\bAsr\b/g, "ASR")
+    .replace(/\bMp4\b/g, "MP4");
+  await page.getByRole("option", { name: optionLabel, exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`fixture=${fixture}`));
 }
 
@@ -491,13 +498,13 @@ test("Settings disclosures keep padded, non-touching content at desktop and mobi
     await page.goto("/settings?fixture=happy_generating");
     await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
 
-    for (const label of [
-      "Team details",
-      "Connection status",
-      "Execution details",
-      "Default details",
-    ]) {
-      const summary = page.locator(".settings-grid summary").filter({ hasText: label });
+    for (const eyebrow of ["Team", "Connections", "Execution", "Defaults"]) {
+      const panel = page
+        .locator(".settings-grid > .panel")
+        .filter({ has: page.getByText(eyebrow, { exact: true }) });
+      await expect(panel).toHaveCount(1);
+      const summary = panel.locator("summary.disclosure-summary");
+      await expect(summary).toHaveText("Details");
       const details = summary.locator("xpath=..");
       await summary.focus();
       await page.keyboard.press("Enter");
@@ -968,7 +975,7 @@ for (const viewport of [
     });
     if (viewport.width <= 820) {
       expect(dockLayout.display).toBe("grid");
-      expect(dockLayout.columns).toBe(4);
+      expect(dockLayout.columns).toBe(5);
     } else {
       expect(dockLayout.display).toBe("flex");
     }

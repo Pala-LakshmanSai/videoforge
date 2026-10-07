@@ -311,6 +311,12 @@ test("fresh Runware Luna request has its own strict schema, identity, and ten-sc
     1,
     "runware-luna-grounded-v1",
   );
+  assert.equal(request.requestVersion, "runware-gpt-6-luna-prompt-request-v38");
+  assert.equal(request.request.taskUUID, "af353312-8262-4a5c-a48e-98e4a65f8d3d");
+  assert.equal(
+    request.requestSha256,
+    "sha256:d3a18d315381426d2a16dc4bdaebcab509aec0b663ce239015cc4887b79b92b1",
+  );
   const schema = request.request.jsonSchema.schema;
   const sceneSchema = schema.properties.scenes.items;
   assert.equal(request.request.model, RUNWARE_LUNA_PROMPT_MODEL);
@@ -415,6 +421,53 @@ test("Luna projects generic store/name-brand categories only when no physical ma
     "Store-brand bottles with a printed name",
   );
   assert.match(RUNWARE_LUNA_UNMARKED_PRODUCT_INSTRUCTION, /even when narration describes it/u);
+});
+
+test("Luna v39 accepts the reproducible 174-character scene at its exact cap and rejects an absent or tight cap", async () => {
+  const phrase = "Hands demonstrate irrigation valve step 1.";
+  const base = withScenePhrase(makeBatch(1), phrase);
+  const literals = {
+    literal_subject: phrase,
+    action: "The hands demonstrate the irrigation valve.",
+    environment:
+      "The valve rests on dry farm soil beside a water channel in the open field during the day.",
+  };
+  assert.equal(
+    literals.literal_subject.length + literals.action.length + literals.environment.length,
+    174,
+  );
+  const run = async (literalCharacterLimits) => {
+    const batch = { ...base, literalCharacterLimits };
+    const transport = new ScriptedTransport([
+      (request) =>
+        success(request, {
+          change: (rows) => [
+            {
+              ...rows[0],
+              ...literals,
+              prompt_core:
+                "Hands demonstrate the irrigation valve on dry farm soil beside a water channel.",
+            },
+          ],
+        }),
+    ]);
+    const writer = new RunwarePromptWriter({
+      requestPolicy: "runware-luna-grounded-v2",
+      semanticQualityMode: "advisory",
+      allowPartialRetry: false,
+      transport,
+      evidenceSink: { record() {} },
+      maximumBatchCostUsd: 0.01,
+    });
+    return { result: await writer.write(batch), transport };
+  };
+
+  const { result, transport } = await run({ [base.scenes[0].sceneId]: 174 });
+  assert.equal(transport.requests.length, 1);
+  assert.equal(result.scenes[0].literal_subject, phrase);
+
+  await expectInvalid(() => run({ [base.scenes[0].sceneId]: 173 }));
+  await expectInvalid(() => run({}));
 });
 
 test("Luna accepts generic store-brand category without depicting a product mark", async () => {

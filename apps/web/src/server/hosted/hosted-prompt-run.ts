@@ -12,6 +12,7 @@ import {
   compileImagePrompt,
   PipelineDomainError,
   naturalDocumentaryLiteralCharacterLimit,
+  isRunwareLunaPromptPolicy,
   derivePromptStyleTreatment,
   planPromptBatches,
   promptStyleTreatmentPositiveSuffix,
@@ -352,45 +353,73 @@ export const HOSTED_LUNA_PROMPT_BATCH_MAX_OUTPUT_TOKENS = 6_144 as const;
  */
 export function hostedPromptBatchPlan(
   authority: PromptExecutionAuthority,
-  requestPolicy: PromptRequestPolicy = "runware-luna-grounded-v1",
+  requestPolicy: PromptRequestPolicy = "runware-luna-grounded-v2",
 ): PromptBatchPlan {
   let literalCharacterLimit: number | undefined;
+  let literalCharacterLimits: Readonly<Record<string, number>> | undefined;
   try {
-    literalCharacterLimit =
-      requestPolicy === "runware-luna-grounded-v1"
-        ? Math.min(
-            naturalDocumentaryLiteralCharacterLimit(authority) ?? Number.MAX_SAFE_INTEGER,
-            ...[
-              ...new Map(
-                authority.scenes.map((scene) => [
-                  `${scene.inImageShotRole}:${scene.layout}`,
-                  scene,
-                ]),
-              ).values(),
-            ].map((scene) =>
-              kieScenePromptLiteralCharacterLimit(
-                compileImagePrompt({
-                  compilerPolicy: "local-evidence-v1",
-                  writerOutput: {
-                    scene_id: scene.sceneId,
-                    literal_subject: "x",
-                    action: "x",
-                    environment: "x",
-                    in_image_shot_role: scene.inImageShotRole,
-                    lighting_context: "x",
-                    continuity_tags: [],
-                    prompt_core: "x",
-                  },
-                  expectedScene: scene,
-                  style: authority.style,
-                  styleProfileHash: authority.styleProfileHash,
-                  extraPromptKeywords: authority.extraPromptKeywords,
-                  applyExtraPromptKeywords: authority.applyExtraPromptKeywords,
-                }),
-              ),
+    if (requestPolicy === "runware-luna-grounded-v1") {
+      // Keep the v38 shared scalar calculation byte-exact for existing runs.
+      literalCharacterLimit = Math.min(
+        naturalDocumentaryLiteralCharacterLimit(authority) ?? Number.MAX_SAFE_INTEGER,
+        ...[
+          ...new Map(
+            authority.scenes.map((scene) => [`${scene.inImageShotRole}:${scene.layout}`, scene]),
+          ).values(),
+        ].map((scene) =>
+          kieScenePromptLiteralCharacterLimit(
+            compileImagePrompt({
+              compilerPolicy: "local-evidence-v1",
+              writerOutput: {
+                scene_id: scene.sceneId,
+                literal_subject: "x",
+                action: "x",
+                environment: "x",
+                in_image_shot_role: scene.inImageShotRole,
+                lighting_context: "x",
+                continuity_tags: [],
+                prompt_core: "x",
+              },
+              expectedScene: scene,
+              style: authority.style,
+              styleProfileHash: authority.styleProfileHash,
+              extraPromptKeywords: authority.extraPromptKeywords,
+              applyExtraPromptKeywords: authority.applyExtraPromptKeywords,
+            }),
+          ),
+        ),
+      );
+    } else if (requestPolicy === "runware-luna-grounded-v2") {
+      literalCharacterLimits = Object.freeze(
+        Object.fromEntries(
+          authority.scenes.map((scene) => [
+            scene.sceneId,
+            kieScenePromptLiteralCharacterLimit(
+              compileImagePrompt({
+                compilerPolicy: "local-evidence-v1",
+                writerOutput: {
+                  scene_id: scene.sceneId,
+                  literal_subject: "x",
+                  action: "x",
+                  environment: "x",
+                  in_image_shot_role: scene.inImageShotRole,
+                  lighting_context: "x",
+                  continuity_tags: [],
+                  prompt_core: "x",
+                },
+                expectedScene: scene,
+                style: authority.style,
+                styleProfileHash: authority.styleProfileHash,
+                extraPromptKeywords: authority.extraPromptKeywords,
+                applyExtraPromptKeywords: authority.applyExtraPromptKeywords,
+              }),
             ),
-          )
-        : naturalDocumentaryLiteralCharacterLimit(authority);
+          ]),
+        ),
+      );
+    } else {
+      literalCharacterLimit = naturalDocumentaryLiteralCharacterLimit(authority);
+    }
     if (
       requestPolicy === "runware-luna-grounded-v1" &&
       (!Number.isSafeInteger(literalCharacterLimit) || literalCharacterLimit! < 90)
@@ -398,12 +427,21 @@ export function hostedPromptBatchPlan(
       throw new RangeError(
         "The pinned image style leaves too little Kie prompt room for a grounded scene.",
       );
+    if (
+      requestPolicy === "runware-luna-grounded-v2" &&
+      (!literalCharacterLimits ||
+        Object.values(literalCharacterLimits).some(
+          (limit) => !Number.isSafeInteger(limit) || limit < 90,
+        ))
+    )
+      throw new RangeError("The pinned image style leaves too little Kie prompt room for a scene.");
   } catch {
     // This runs before preparing/claiming a paid batch, not after provider submission.
     throw new HostedPromptExecutionError("HOSTED_PROMPT_INPUT_INVALID", "FAILED", false, null);
   }
   return planPromptBatches({
     ...(literalCharacterLimit === undefined ? {} : { literalCharacterLimit }),
+    ...(literalCharacterLimits === undefined ? {} : { literalCharacterLimits }),
     batchIdPrefix: `${authority.taskId}:adaptive`,
     projectTitle: authority.projectTitle,
     imageStyleVersionId: authority.imageStyleVersionId,
@@ -414,10 +452,9 @@ export function hostedPromptBatchPlan(
     continuityTags: authority.continuityTags,
     scenes: authority.scenes,
     options: {
-      maxOutputTokens:
-        requestPolicy === "runware-luna-grounded-v1"
-          ? HOSTED_LUNA_PROMPT_BATCH_MAX_OUTPUT_TOKENS
-          : HOSTED_PROMPT_BATCH_MAX_OUTPUT_TOKENS,
+      maxOutputTokens: isRunwareLunaPromptPolicy(requestPolicy)
+        ? HOSTED_LUNA_PROMPT_BATCH_MAX_OUTPUT_TOKENS
+        : HOSTED_PROMPT_BATCH_MAX_OUTPUT_TOKENS,
       requestPolicy,
     },
   });
@@ -429,6 +466,7 @@ export async function recoverHostedPromptBatchPlan(
   binding: HostedPromptBatchPlanBinding,
 ): Promise<PromptBatchPlan> {
   for (const policy of [
+    "runware-luna-grounded-v2",
     "runware-luna-grounded-v1",
     "grounded-scenes-v1",
     "validated-scenes-v1",
@@ -494,6 +532,14 @@ export function hostedPromptBatchPlanDocument(plan: PromptBatchPlan): Record<str
       estimated_input_tokens: batch.estimatedInputTokens,
       estimated_output_tokens: batch.estimatedOutputTokens,
       max_output_tokens: batch.maxOutputTokens,
+      ...(batch.batch.literalCharacterLimits === undefined
+        ? {}
+        : {
+            literal_character_limits: batch.batch.scenes.map((scene) => ({
+              scene_id: scene.sceneId,
+              limit: batch.batch.literalCharacterLimits![scene.sceneId],
+            })),
+          }),
       ends_at_natural_boundary: batch.endsAtNaturalBoundary,
     })),
   };
@@ -564,7 +610,7 @@ export async function runHostedPromptExecution(input: {
     ...input.authority,
     compilerPolicy:
       input.batchPlan.requestPolicy === "grounded-scenes-v1" ||
-      input.batchPlan.requestPolicy === "runware-luna-grounded-v1"
+      isRunwareLunaPromptPolicy(input.batchPlan.requestPolicy)
         ? ("local-evidence-v1" as const)
         : undefined,
   };

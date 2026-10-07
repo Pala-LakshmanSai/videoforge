@@ -11,6 +11,7 @@ import {
   NO_GRAPHICS_V2_WRITER_INSTRUCTION,
   buildRunwarePromptRequest,
   buildRunwarePromptCorrection,
+  isRunwareLunaPromptPolicy,
   planPromptBatches,
   runwarePromptValidationDiagnostic,
   validatePromptWriterOutput,
@@ -168,7 +169,7 @@ export async function recoverClaimedHostedPromptBatch(input: {
     throw invalidPlanBinding();
   // The compatible endpoint has no documented native task polling. A receipt is the only
   // recovery source; a missing reply never authorizes repeating a paid POST.
-  if (input.plan.requestPolicy === "runware-luna-grounded-v1" && !input.recordedResult)
+  if (isRunwareLunaPromptPolicy(input.plan.requestPolicy) && !input.recordedResult)
     throw new HostedPromptExecutionError("HOSTED_PROMPT_EXECUTION_UNKNOWN", "UNKNOWN", true, null);
   let recovered;
   try {
@@ -201,7 +202,7 @@ export async function recoverClaimedHostedPromptBatch(input: {
       requestHash: input.requestHash,
       result: { ...recovered, status: "succeeded", latencyMs: 0 },
     });
-  if (input.plan.requestPolicy === "runware-luna-grounded-v1") {
+  if (isRunwareLunaPromptPolicy(input.plan.requestPolicy)) {
     const wire = await buildRunwareLunaPromptWireRequest(expected);
     if (!("wireHash" in recovered) || recovered.wireHash !== wire.wireHash)
       throw invalidPlanBinding();
@@ -273,9 +274,11 @@ export async function recoverClaimedHostedPromptBatch(input: {
       await sha256Utf8(recovered.outputText),
       knownCostMicroUsd,
       diagnostic,
-      ["validated-scenes-v1", "grounded-scenes-v1", "runware-luna-grounded-v1"].includes(
+      (["validated-scenes-v1", "grounded-scenes-v1"].includes(
         input.plan.requestPolicy ?? "legacy",
-      ) && !correction
+      ) ||
+        isRunwareLunaPromptPolicy(input.plan.requestPolicy)) &&
+      !correction
         ? buildRunwarePromptCorrection(entry.batch, recovered.outputText, input.plan.requestPolicy)
         : null,
     );
@@ -355,7 +358,7 @@ export async function dispatchOneHostedPromptBatch(input: {
     input.contentRepair ?? false,
     input.correction,
   );
-  if (input.plan.requestPolicy === "runware-luna-grounded-v1" && !input.recordResult)
+  if (isRunwareLunaPromptPolicy(input.plan.requestPolicy) && !input.recordResult)
     throw invalidPlanBinding();
   const claimed = await input.claim({
     batchOrdinal: input.batchOrdinal,
@@ -366,30 +369,29 @@ export async function dispatchOneHostedPromptBatch(input: {
   if (!claimed) return null;
   const ledger = new RunwareSpendLedger(input.remainingReservationMicroUsd / 1_000_000);
   let capacityRefusal: RunwareCapacityRefusal | null = null;
-  const transport =
-    input.plan.requestPolicy === "runware-luna-grounded-v1"
-      ? new RunwareLunaPromptHttpTransport({
-          apiKey: input.apiKey,
-          ledger,
-          maximumRequestCostUsd: Math.min(250_000, input.remainingReservationMicroUsd) / 1_000_000,
-          fetch: input.fetcher,
-          onCapacityRefused: async (value) => {
-            await input.onCapacityRefused?.(value);
-            capacityRefusal = value;
-          },
-        })
-      : new RunwarePromptHttpTransport({
-          apiKey: input.apiKey,
-          ledger,
-          maximumRequestCostUsd: Math.min(250_000, input.remainingReservationMicroUsd) / 1_000_000,
-          // Historical sealed sync requests need enough time to retain their full result before timeout.
-          timeoutMs: 300_000,
-          fetch: input.fetcher,
-          onCapacityRefused: async (value) => {
-            await input.onCapacityRefused?.(value);
-            capacityRefusal = value;
-          },
-        });
+  const transport = isRunwareLunaPromptPolicy(input.plan.requestPolicy)
+    ? new RunwareLunaPromptHttpTransport({
+        apiKey: input.apiKey,
+        ledger,
+        maximumRequestCostUsd: Math.min(250_000, input.remainingReservationMicroUsd) / 1_000_000,
+        fetch: input.fetcher,
+        onCapacityRefused: async (value) => {
+          await input.onCapacityRefused?.(value);
+          capacityRefusal = value;
+        },
+      })
+    : new RunwarePromptHttpTransport({
+        apiKey: input.apiKey,
+        ledger,
+        maximumRequestCostUsd: Math.min(250_000, input.remainingReservationMicroUsd) / 1_000_000,
+        // Historical sealed sync requests need enough time to retain their full result before timeout.
+        timeoutMs: 300_000,
+        fetch: input.fetcher,
+        onCapacityRefused: async (value) => {
+          await input.onCapacityRefused?.(value);
+          capacityRefusal = value;
+        },
+      });
   let result: RunwarePromptTransportResult | null = null;
   let transportError: unknown;
   let evidence: RunwarePromptAttemptEvidence | null = null;
@@ -413,7 +415,7 @@ export async function dispatchOneHostedPromptBatch(input: {
               requestHash: request.requestSha256,
               result: received,
             });
-            if (input.plan.requestPolicy === "runware-luna-grounded-v1")
+            if (isRunwareLunaPromptPolicy(input.plan.requestPolicy))
               requireLunaCompletion(received, input.remainingReservationMicroUsd);
           }
         } catch (error) {
@@ -495,9 +497,8 @@ function sealedCorrection(
   const payload = JSON.parse(user.content) as { correction?: { source_output_text?: unknown } };
   if (!payload.correction) return null;
   if (
-    !["validated-scenes-v1", "grounded-scenes-v1", "runware-luna-grounded-v1"].includes(
-      plan.requestPolicy ?? "legacy",
-    ) ||
+    (!["validated-scenes-v1", "grounded-scenes-v1"].includes(plan.requestPolicy ?? "legacy") &&
+      !isRunwareLunaPromptPolicy(plan.requestPolicy)) ||
     typeof payload.correction.source_output_text !== "string"
   )
     throw invalidPlanBinding();
@@ -760,6 +761,10 @@ async function validatePlanBeforeDispatch(
   persistedBinding?: HostedPromptBatchPlanBinding,
 ): Promise<void> {
   try {
+    const literalCharacterLimits = Object.assign(
+      {},
+      ...plan.batches.map((entry) => entry.batch.literalCharacterLimits ?? {}),
+    );
     const recomputed = planPromptBatches({
       batchIdPrefix: plan.batchIdPrefix,
       projectTitle: batch.sanitizedProjectTitle,
@@ -768,6 +773,7 @@ async function validatePlanBeforeDispatch(
       ...(batch.literalCharacterLimit === undefined
         ? {}
         : { literalCharacterLimit: batch.literalCharacterLimit }),
+      ...(Object.keys(literalCharacterLimits).length === 0 ? {} : { literalCharacterLimits }),
       styleTreatment: batch.styleTreatment,
       plannerGuidance: batch.plannerGuidance,
       storyContext: batch.storyContext,
@@ -924,7 +930,7 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
       }
       for (const entry of this.plan.batches.slice(recovered.length)) {
         // New compatible requests must use the durable one-batch receipt path above.
-        if (this.plan.requestPolicy === "runware-luna-grounded-v1") throw invalidPlanBinding();
+        if (isRunwareLunaPromptPolicy(this.plan.requestPolicy)) throw invalidPlanBinding();
         const remainingReservationUsd = ledger.snapshot().remainingUsd;
         if (remainingReservationUsd * 1_000_000 < minimumNextBatchMicroUsd)
           throw new RangeError("Runware prompt reservation is exhausted.");

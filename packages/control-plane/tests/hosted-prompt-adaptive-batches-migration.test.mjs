@@ -9,6 +9,7 @@ import {
   FIXED_TIME,
   sha256,
   uuid,
+  withMigratedDatabase,
   withPgcryptoMigratedDatabase,
 } from "./support/pglite.mjs";
 
@@ -439,6 +440,270 @@ export async function seedSucceededVoiceoverContext(executor, base) {
     }),
   ]);
 }
+
+async function seedPromptCancellationOwner(executor, requestId, runtimeId) {
+  await executor.query("SELECT set_config($1,$2,false)", [TENANT_PRINCIPAL_SETTING, IDS.accountA]);
+  await executor.query(
+    `INSERT INTO generation_requests(id,account_id,workspace_id,project_id,project_revision_id,
+      created_by_user_id,state,queue_order,available_at,attempt_ordinal,idempotency_key,
+      created_at,updated_at)
+     VALUES($1,$2,$3,$4,$5,$6,'WAITING',1,transaction_timestamp(),1,$7,
+      transaction_timestamp(),transaction_timestamp())`,
+    [
+      requestId,
+      IDS.accountA,
+      IDS.workspaceA,
+      IDS.projectA,
+      IDS.revisionA,
+      IDS.userA,
+      `prompt-cancel-race-${requestId}`,
+    ],
+  );
+  await executor.query(
+    `INSERT INTO video_runtime_states(id,account_id,workspace_id,project_id,project_revision_id,
+      generation_request_id,stage,created_at,updated_at)
+     VALUES($1,$2,$3,$4,$5,$6,'QUEUED',transaction_timestamp(),transaction_timestamp())`,
+    [runtimeId, IDS.accountA, IDS.workspaceA, IDS.projectA, IDS.revisionA, requestId],
+  );
+  for (const [idValue, lane] of [
+    [uuid(2_840_013), "mage_image"],
+    [uuid(2_840_014), "soulx_avatar"],
+  ]) {
+    await executor.query(
+      `INSERT INTO video_runtime_lane_states(id,account_id,workspace_id,runtime_id,
+        project_revision_id,lane,state,created_at,updated_at)
+       VALUES($1,$2,$3,$4,$5,$6,'BLOCKED_ON_PREPARATION',transaction_timestamp(),
+        transaction_timestamp())`,
+      [idValue, IDS.accountA, IDS.workspaceA, runtimeId, IDS.revisionA, lane],
+    );
+  }
+}
+
+test("0284 defers owner cancellation while a prompt provider claim is unresolved", async () => {
+  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+    const authority = await seedAdaptivePromptRun(executor, {
+      sceneCount: 2,
+      plannedBatchCount: 1,
+    });
+    const requestId = uuid(2_840_001);
+    await seedPromptCancellationOwner(executor, requestId, uuid(2_840_002));
+    const requestBytes = JSON.stringify([
+      { taskType: "textInference", taskUUID: uuid(2_840_003), model: "deepseek:v4@flash" },
+    ]);
+    assert.equal(
+      (
+        await executor.query(
+          `SELECT videoforge_claim_next_hosted_prompt_batch($1,0,$2,$3,$4) AS claimed`,
+          [authority.runId, uuid(2_840_003), requestBytes, sha256(requestBytes)],
+        )
+      ).rows[0].claimed,
+      true,
+    );
+
+    await expectDatabaseError(
+      () =>
+        executor.query(`SELECT * FROM videoforge_cancel_hosted_project_predispatch($1,$2,$3)`, [
+          IDS.accountA,
+          IDS.workspaceA,
+          IDS.projectA,
+        ]),
+      "55000",
+    );
+    assert.deepEqual(
+      (
+        await executor.query(
+          `SELECT request.state,run.state AS prompt_state,
+                  (SELECT count(*)::integer FROM hosted_prompt_batch_claims claim
+                    WHERE claim.run_id=run.id) AS claims
+             FROM generation_requests request CROSS JOIN hosted_prompt_runs run
+            WHERE request.id=$1 AND run.id=$2`,
+          [requestId, authority.runId],
+        )
+      ).rows,
+      [{ state: "WAITING", prompt_state: "DISPATCHING", claims: 1 }],
+    );
+  });
+});
+
+test("0284 rejects a prompt claim after its owning generation is cancelled", async () => {
+  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+    const authority = await seedAdaptivePromptRun(executor, {
+      sceneCount: 2,
+      plannedBatchCount: 1,
+    });
+    const requestId = uuid(2_840_004);
+    await seedPromptCancellationOwner(executor, requestId, uuid(2_840_005));
+    const cancelled = await executor.query(
+      `SELECT * FROM videoforge_cancel_hosted_project_predispatch($1,$2,$3)`,
+      [IDS.accountA, IDS.workspaceA, IDS.projectA],
+    );
+    assert.equal(cancelled.rows[0].state, "CANCELLED");
+
+    const requestBytes = JSON.stringify([
+      { taskType: "textInference", taskUUID: uuid(2_840_006), model: "deepseek:v4@flash" },
+    ]);
+    await expectDatabaseError(
+      () =>
+        executor.query(`SELECT videoforge_claim_hosted_prompt_batch($1,0,$2,$3,$4)`, [
+          authority.runId,
+          uuid(2_840_006),
+          requestBytes,
+          sha256(requestBytes),
+        ]),
+      "55000",
+    );
+    assert.deepEqual(
+      (
+        await executor.query(
+          `SELECT request.state,run.state AS prompt_state,
+                  (SELECT count(*)::integer FROM hosted_prompt_batch_claims claim
+                    WHERE claim.run_id=run.id) AS claims
+             FROM generation_requests request CROSS JOIN hosted_prompt_runs run
+            WHERE request.id=$1 AND run.id=$2`,
+          [requestId, authority.runId],
+        )
+      ).rows,
+      [{ state: "CANCELLED", prompt_state: "DISPATCHING", claims: 0 }],
+    );
+  });
+});
+
+test(
+  "0284 serializes concurrent owner cancellation behind an in-flight PostgreSQL prompt claim",
+  { skip: !process.env.VIDEOFORGE_TEST_POSTGRES_URL },
+  async () => {
+    await withMigratedDatabase(async ({ database, executor }) => {
+      const authority = await seedAdaptivePromptRun(executor, {
+        sceneCount: 2,
+        plannedBatchCount: 1,
+      });
+      const requestId = uuid(2_840_007);
+      await seedPromptCancellationOwner(executor, requestId, uuid(2_840_008));
+      const requestBytes = JSON.stringify([
+        { taskType: "textInference", taskUUID: uuid(2_840_009), model: "deepseek:v4@flash" },
+      ]);
+      const claimClient = await database.connect();
+      const cancelClient = await database.connect();
+      try {
+        await claimClient.query("BEGIN");
+        await claimClient.query("SELECT set_config($1,$2,true)", [
+          TENANT_PRINCIPAL_SETTING,
+          IDS.accountA,
+        ]);
+        const claimed = await claimClient.query(
+          `SELECT videoforge_claim_next_hosted_prompt_batch($1,0,$2,$3,$4) AS claimed`,
+          [authority.runId, uuid(2_840_009), requestBytes, sha256(requestBytes)],
+        );
+        assert.equal(claimed.rows[0].claimed, true);
+
+        await cancelClient.query("BEGIN");
+        await cancelClient.query("SELECT set_config($1,$2,true)", [
+          TENANT_PRINCIPAL_SETTING,
+          IDS.accountA,
+        ]);
+        const cancellation = cancelClient
+          .query(`SELECT * FROM videoforge_cancel_hosted_project_predispatch($1,$2,$3)`, [
+            IDS.accountA,
+            IDS.workspaceA,
+            IDS.projectA,
+          ])
+          .then(
+            () => ({ returned: true }),
+            (error) => ({ error }),
+          );
+        const premature = await Promise.race([
+          cancellation,
+          new Promise((resolve) => setTimeout(() => resolve(null), 100)),
+        ]);
+        assert.equal(premature, null, "cancellation must wait on the generation-request row");
+
+        await claimClient.query("COMMIT");
+        const result = await cancellation;
+        assert.equal(result.error?.code, "55000");
+        await cancelClient.query("ROLLBACK");
+        const durable = await executor.query(
+          `SELECT request.state,
+                  (SELECT count(*)::integer FROM hosted_prompt_batch_claims claim
+                    WHERE claim.run_id=$2) AS claims
+             FROM generation_requests request WHERE request.id=$1`,
+          [requestId, authority.runId],
+        );
+        assert.deepEqual(durable.rows, [{ state: "WAITING", claims: 1 }]);
+      } finally {
+        await claimClient.query("ROLLBACK").catch(() => {});
+        await cancelClient.query("ROLLBACK").catch(() => {});
+        claimClient.release();
+        cancelClient.release();
+      }
+    });
+
+    await withMigratedDatabase(async ({ database, executor }) => {
+      const authority = await seedAdaptivePromptRun(executor, {
+        sceneCount: 2,
+        plannedBatchCount: 1,
+      });
+      const requestId = uuid(2_840_010);
+      await seedPromptCancellationOwner(executor, requestId, uuid(2_840_011));
+      const requestBytes = JSON.stringify([
+        { taskType: "textInference", taskUUID: uuid(2_840_012), model: "deepseek:v4@flash" },
+      ]);
+      const cancelClient = await database.connect();
+      const claimClient = await database.connect();
+      try {
+        await cancelClient.query("BEGIN");
+        await cancelClient.query("SELECT set_config($1,$2,true)", [
+          TENANT_PRINCIPAL_SETTING,
+          IDS.accountA,
+        ]);
+        const cancelled = await cancelClient.query(
+          `SELECT * FROM videoforge_cancel_hosted_project_predispatch($1,$2,$3)`,
+          [IDS.accountA, IDS.workspaceA, IDS.projectA],
+        );
+        assert.equal(cancelled.rows[0].state, "CANCELLED");
+
+        await claimClient.query("BEGIN");
+        await claimClient.query("SELECT set_config($1,$2,true)", [
+          TENANT_PRINCIPAL_SETTING,
+          IDS.accountA,
+        ]);
+        const claim = claimClient
+          .query(`SELECT videoforge_claim_next_hosted_prompt_batch($1,0,$2,$3,$4) AS claimed`, [
+            authority.runId,
+            uuid(2_840_012),
+            requestBytes,
+            sha256(requestBytes),
+          ])
+          .then(
+            (result) => ({ result }),
+            (error) => ({ error }),
+          );
+        const premature = await Promise.race([
+          claim,
+          new Promise((resolve) => setTimeout(() => resolve(null), 100)),
+        ]);
+        assert.equal(premature, null, "claim must wait on the cancellation's request-row lock");
+
+        await cancelClient.query("COMMIT");
+        const result = await claim;
+        assert.equal(result.error?.code, "55000");
+        await claimClient.query("ROLLBACK");
+        const durable = await executor.query(
+          `SELECT request.state,
+                  (SELECT count(*)::integer FROM hosted_prompt_batch_claims claim
+                    WHERE claim.run_id=$2) AS claims
+             FROM generation_requests request WHERE request.id=$1`,
+          [requestId, authority.runId],
+        );
+        assert.deepEqual(durable.rows, [{ state: "CANCELLED", claims: 0 }]);
+      } finally {
+        await cancelClient.query("ROLLBACK").catch(() => {});
+        await claimClient.query("ROLLBACK").catch(() => {});
+        cancelClient.release();
+        claimClient.release();
+      }
+    });
+  },
+);
 
 export function scenePayload(startOrdinal, count, { corruptAt = -1 } = {}) {
   return Array.from({ length: count }, (_, offset) => {
@@ -985,9 +1250,15 @@ test("0071 failure settlement sums accepted batches and preserves historical 007
   });
 });
 
-test("0283 prepares a separate Runware Luna profile and binds only its claims to the pinned model", async () => {
-  for (const requestPolicy of [null, "runware-luna-grounded-v1"]) {
+test("0285 prepares revision-pinned Runware Luna profiles and binds claims to their request policy", async () => {
+  for (const requestPolicy of [null, "runware-luna-grounded-v1", "runware-luna-grounded-v2"]) {
     await withPgcryptoMigratedDatabase(async ({ executor }) => {
+      const prepareDefinition = (
+        await executor.query(
+          "SELECT pg_get_functiondef('public.videoforge_prepare_hosted_prompt_run(jsonb)'::regprocedure) AS definition",
+        )
+      ).rows[0].definition;
+      assert.match(prepareDefinition, /runware-luna-grounded-v2/u);
       const authority = await seedAdaptivePromptRun(executor, {
         sceneCount: 2,
         plannedBatchCount: 1,
@@ -1036,16 +1307,17 @@ test("0283 prepares a separate Runware Luna profile and binds only its claims to
         )
       ).rows[0];
       if (requestPolicy) {
+        const version = requestPolicy === "runware-luna-grounded-v2" ? 39 : 38;
         assert.equal(row.name, "Hosted Runware GPT-6 Luna scene prompts");
-        assert.equal(row.revision, 8);
+        assert.equal(row.revision, version === 39 ? 9 : 8);
         assert.equal(row.dispatch_target, "RUNWARE");
         assert.deepEqual(row.configuration, {
           model: "openai:gpt@6-luna",
           operation: "scene-prompt-writer-v2",
           provider: "runware",
-          request_policy: "runware-luna-grounded-v1",
+          request_policy: requestPolicy,
           reasoning_effort: "low",
-          request_version: "runware-gpt-6-luna-prompt-request-v38",
+          request_version: `runware-gpt-6-luna-prompt-request-v${version}`,
           transport: "runware_openai_chat_completions",
           pricing: {
             input_micro_usd_per_million: 100_000,

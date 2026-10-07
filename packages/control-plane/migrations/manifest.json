@@ -1476,6 +1476,24 @@
       "name": "runware_luna_prompt_writer",
       "filename": "0283_runware_luna_prompt_writer.sql",
       "sha256": "sha256:6dd011d42eba4fd9d015404e745b43904d6bcfabda99a2637f81a895487af3b1"
+    },
+    {
+      "version": 284,
+      "name": "hosted_prompt_cancellation_serialization",
+      "filename": "0284_hosted_prompt_cancellation_serialization.sql",
+      "sha256": "sha256:5e18e230202d9d22f5a364fc14f635f8b8a9dccb0e7a54fb5a2927799b66e085"
+    },
+    {
+      "version": 285,
+      "name": "runware_luna_scene_budget_v2",
+      "filename": "0285_runware_luna_scene_budget_v2.sql",
+      "sha256": "sha256:30babd7b6db031addc9c238a9f650d877c76e1030a8daa85255042d9b3586385"
+    },
+    {
+      "version": 286,
+      "name": "hosted_prompt_profile_revision_read",
+      "filename": "0286_hosted_prompt_profile_revision_read.sql",
+      "sha256": "sha256:2769934a3536a5f8ec0ed4890203b146db42ef968546f92a0ef102912343425d"
     }
   ]
 }

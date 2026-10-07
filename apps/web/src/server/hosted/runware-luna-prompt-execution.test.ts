@@ -4,6 +4,8 @@ import {
 } from "@videoforge/pipeline";
 import { buildRunwarePromptRequest, planPromptBatches } from "@videoforge/pipeline/prompts";
 import { describe, expect, it, vi } from "vitest";
+import type { HostedNeonPool } from "./configuration";
+import { recordPromptResponse } from "./hosted-prompt-route";
 
 import {
   HostedPromptArchivedOutputInvalidError,
@@ -145,6 +147,78 @@ const dispatch = async (
 };
 
 describe("Runware Luna hosted prompt execution", () => {
+  it.each(["receipt", "commit", "commit-unknown", "socket-ended", "connect-timeout"])(
+    "retains a known response through a transient %s failure without another provider POST",
+    async (failurePoint) => {
+      let attempt = 0;
+      const payloads: unknown[][] = [];
+      const query = vi.fn(async (sql: string, parameters?: unknown[]) => {
+        if (sql === "BEGIN") attempt += 1;
+        if (sql.includes("videoforge_record_hosted_prompt_response")) {
+          payloads.push(parameters!);
+          if (failurePoint === "receipt" && attempt === 1)
+            throw Object.assign(new Error("database disconnected"), { code: "08006" });
+          if (failurePoint === "socket-ended" && attempt === 1)
+            throw new Error("Connection terminated unexpectedly");
+          if (failurePoint === "connect-timeout" && attempt === 1)
+            throw new Error("timeout exceeded when trying to connect");
+        }
+        if (failurePoint === "commit" && sql === "COMMIT" && attempt === 1)
+          throw Object.assign(new Error("commit reply lost"), { code: "ECONNRESET" });
+        if (failurePoint === "commit-unknown" && sql === "COMMIT" && attempt === 1)
+          throw Object.assign(new Error("statement completion unknown"), { code: "40003" });
+        return { rows: [], rowCount: 0 };
+      });
+      const release = vi.fn();
+      const pool = { connect: async () => ({ query, release }) } as unknown as HostedNeonPool;
+      const fetcher = vi.fn(async (_url: unknown, init?: RequestInit) => completionResponse(init));
+      const result = await dispatch(fetcher, (receipt) =>
+        recordPromptResponse(pool, "account", "run", receipt),
+      );
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(result.accepted?.scenes).toHaveLength(1);
+      expect(payloads).toHaveLength(2);
+      expect(payloads[1]).toEqual(payloads[0]);
+      expect(release).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it.each([
+    { code: "23514", attempts: 1 },
+    { code: "42501", attempts: 1 },
+    { code: "08006", attempts: 3 },
+  ])("bounds receipt persistence and preserves failure $code", async ({ code, attempts }) => {
+    const error = Object.assign(new Error("database failure"), { code });
+    const connect = vi.fn(async () => {
+      throw error;
+    });
+    const pool = { connect } as unknown as HostedNeonPool;
+    const fetcher = vi.fn(async (_url: unknown, init?: RequestInit) => completionResponse(init));
+    await expect(
+      dispatch(fetcher, (receipt) => recordPromptResponse(pool, "account", "run", receipt)),
+    ).rejects.toBe(error);
+    expect(connect).toHaveBeenCalledTimes(attempts);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not hide an invalid receipt when rollback also loses its connection", async () => {
+    const permanent = Object.assign(new Error("receipt drift"), { code: "23514" });
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes("videoforge_record_hosted_prompt_response")) throw permanent;
+      if (sql === "ROLLBACK")
+        throw Object.assign(new Error("socket closed"), { code: "ECONNRESET" });
+      return { rows: [], rowCount: 0 };
+    });
+    const connect = vi.fn(async () => ({ query, release: vi.fn() }));
+    const pool = { connect } as unknown as HostedNeonPool;
+    const fetcher = vi.fn(async (_url: unknown, init?: RequestInit) => completionResponse(init));
+    await expect(
+      dispatch(fetcher, (receipt) => recordPromptResponse(pool, "account", "run", receipt)),
+    ).rejects.toBeInstanceOf(AggregateError);
+    expect(connect).toHaveBeenCalledTimes(1);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
   it("posts one compatible completion and persists its normalized receipt before accepting", async () => {
     const events: string[] = [];
     const receipts: Parameters<

@@ -18,7 +18,7 @@ function input(lane: "mage" | "soulx" = "mage") {
     lanes: [
       {
         lane: "mage",
-        image_sha256: "sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161",
+        image_sha256: "sha256:a74a622400ab21a51f270176ce0df1e7ea292f1ded999abe6193b4c40bb1fde3",
         image_source_commit: "b".repeat(40),
         image_config_sha256: hash("mage-config"),
         anonymous_proof_sha256: hash("mage-anonymous"),
@@ -295,8 +295,7 @@ test("cleanup accepts an exact full pre-bind pair and deletes endpoint before ba
     id: templateId,
     name: resourceName("mage", "template"),
     raw: {
-      imageName:
-        "ghcr.io/pala-lakshmansai/videoforge-mage-v2-07@sha256:5aff610dd00075ac0601eda9dbd3caf07d7ebf96a73fca849d075a215e4e7161",
+      imageName: deployment("mage").image,
       isServerless: true,
       containerDiskInGb: 120,
       env: workerEnvironment("mage"),
