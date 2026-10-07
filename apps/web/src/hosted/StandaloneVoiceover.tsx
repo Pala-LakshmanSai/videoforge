@@ -618,7 +618,7 @@ export function StandaloneVoiceover() {
               <p>Add a script to the queue. Finished MP3s stay here and in your Library.</p>
             </div>
           ) : null}
-          <ol className="standalone-queue-list">
+          <ol className="standalone-queue-list" aria-label="Voiceover jobs" tabIndex={0}>
             {queueJobs.map((item) => {
               const ready = READY_STATES.has(item.state) && Boolean(item.audio_url);
               const active = ACTIVE_STATES.has(item.state);

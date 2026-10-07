@@ -579,6 +579,113 @@ test("standalone queue accepts successive scripts and survives leaving the studi
   expect(jobs).toHaveLength(2);
 });
 
+test("standalone queue stays bounded and keyboard-scrollable with many jobs", async ({ page }) => {
+  const jobs = Array.from({ length: 24 }, (_, index) => {
+    const ordinal = String(index + 1).padStart(12, "0");
+    const id = `00000000-0000-4000-8000-${ordinal}`;
+    const ready = index < 20;
+    return {
+      id,
+      title: `Queue item ${index + 1}`,
+      voice_name: "Alice",
+      voice_id: "alice",
+      state: ready ? "COMPLETED" : index % 3 === 0 ? "WAITING" : "PROCESSING",
+      filename: `queue-item-${index + 1}.mp3`,
+      created_at: new Date(Date.now() - index * 60_000).toISOString(),
+      script: `Queue script ${index + 1}.`,
+      character_count: 18,
+      duration_ms: ready ? 8_000 : null,
+      content_length: ready ? 12_000 : null,
+      creator_id: "owner",
+      creator_name: "Owner",
+      creator_email: "owner@example.test",
+      audio_url: ready ? `/api/v2/voiceovers/library/${id}/audio` : null,
+      download_url: ready ? `/api/v2/voiceovers/library/${id}/audio?download=1` : null,
+    };
+  });
+
+  await page.route("**/api/v2/voiceovers/voices", (route) =>
+    route.fulfill({
+      json: {
+        voices: [
+          {
+            voice_id: "alice",
+            name: "Alice",
+            tags: "Warm narration",
+            languages: "us",
+            saved: true,
+            starred: true,
+            preview_url: null,
+          },
+        ],
+      },
+    }),
+  );
+  await page.route("**/api/v2/voiceovers/library**", (route) =>
+    route.fulfill({
+      json: {
+        voiceovers: jobs,
+        creators: [{ id: "owner", name: "Owner", email: "owner@example.test" }],
+        total: jobs.length,
+        total_voiceovers: jobs.length,
+        page: 0,
+        page_size: 48,
+      },
+    }),
+  );
+
+  for (const viewport of [
+    { name: "desktop", width: 1280, height: 900 },
+    { name: "mobile", width: 390, height: 844 },
+  ] as const) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto("/create-voiceover");
+    await expect(page.getByRole("heading", { name: "Voiceover queue" })).toBeVisible();
+    const queue = page.getByRole("list", { name: "Voiceover jobs" });
+    await expect(queue.getByRole("listitem")).toHaveCount(jobs.length);
+
+    const metrics = await queue.evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+      overflowY: getComputedStyle(element).overflowY,
+      tabIndex: element.getAttribute("tabindex"),
+    }));
+    expect(metrics.overflowY).toBe("auto");
+    expect(metrics.tabIndex).toBe("0");
+    expect(metrics.clientHeight).toBeLessThanOrEqual(360);
+    expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
+
+    await queue.focus();
+    await page.keyboard.press("End");
+    await expect.poll(() => queue.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    await expect
+      .poll(() =>
+        queue
+          .getByRole("listitem")
+          .last()
+          .evaluate((element) => {
+            const row = element.getBoundingClientRect();
+            const list = element.parentElement!.getBoundingClientRect();
+            return row.bottom - list.bottom;
+          }),
+      )
+      .toBeLessThanOrEqual(1);
+
+    const libraryLink = page.getByRole("link", { name: "Open Library" });
+    const [listBox, libraryBox] = await Promise.all([
+      queue.boundingBox(),
+      libraryLink.boundingBox(),
+    ]);
+    expect(listBox).not.toBeNull();
+    expect(libraryBox).not.toBeNull();
+    expect(libraryBox!.y).toBeGreaterThanOrEqual(listBox!.y + listBox!.height - 1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      viewport.width,
+    );
+    await page.screenshot({ path: `/tmp/videoforge-voiceover-queue-${viewport.name}.png` });
+  }
+});
+
 test("Stage 5 feels live and keeps every accepted prompt in a bounded scrollable viewer", async ({
   page,
 }) => {

@@ -4,12 +4,17 @@ voiceover_queue_2026_10_07:
   selected_task: VF-10-09
   read_profile: v2_09_standalone_voiceovers
   brief: VOICEOVERS_PLAN.md
-  status: QUALIFIED_PENDING_PRODUCTION
+  queue_overflow_followup: Implemented_bounded_scroll_pending_browser_and_publication
+  status: PRODUCTION_VERIFIED
+  executable_commit: 6140c6576dca2e68db9b5e8749234740cfb41902
+  worker_version: 4a3303d6-db32-4730-844b-7f1aaaefb9eb
+  traffic_percent: 100
   scope: Durable_waiting_backlog_background_ack_reset_composer_persistent_queue_title_based_MP3_downloads
-  native_migration: 291_pending
+  native_migration: 291_verified
   provider_spend: Provider_free_tests_only_no_new_paid_generation
   paid_compute_shutdown: No_compute_started_existing_projects_untouched
-  remaining_gates: Final_tests_publication_live_Chrome_readback
+  validation: Web3296pass1skip_SQL8_Chrome3_types_builds_context_secrets_live_playback_HTTP_title_37_asset_hashes_PASS
+  remaining_gates: Native_browser_download_file_save_blocked_by_client_no_fresh_paid_multijob_canary
   evidence: evidence/acceptance/VF-10-09/2026-10-07-voiceover-queue.md
 image_no_text_2026_10_07:
   checkpoint: V2-09
@@ -3398,7 +3403,7 @@ updated_at: "2026-10-07T10:32:45Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: Prevent_generated_image_text
+current_milestone: Bound_voiceover_queue
 current_task: VF-10-09
 current_wave: v2_09_image_no_text
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -10314,14 +10319,14 @@ recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
   milestone: Prevent_generated_image_text
-  status: COMPLETE
+  status: IN_PROGRESS
   dependency_status: Production_14c1907b_verified_existing_film_active_preserved
   authorization_status: User_requested_no_text_repair_parallel_verification_and_production_prompt_only_user_revoked_all_future_QA_charges
   task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current
   read_profile: v2_09_image_no_text
   task_brief: IMAGE_NO_TEXT_PLAN.md
-  goal: Preserve_prompt_only_prevention_and_no_QA_charges
+  goal: Strengthen_physical_scene_prompting_without_extra_calls_or_QA_charges
   provider_mode: fixture
   provider_calls_authorized: true
   read_only_provider_calls_authorized: true

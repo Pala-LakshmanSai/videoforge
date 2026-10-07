@@ -20,8 +20,34 @@ Parent audited Luna backend/filename changes and owns final studio implementatio
 acceptance. Fixture Chrome checks cover two successive submissions, leaving/returning, lost POST
 acknowledgement without replay, desktop/mobile layout and existing Library deletion.
 
-Seven focused database tests, 27 J1 route/client checks, 23 archive/library checks,
-nine studio checks and three Chrome flows pass. Types, touched-file lint, both bundle
-firewalls, context and secret checks pass. Full web suite:223 files,3270 passed,one existing skip; final manual status-check
-addition passes the nine-test studio suite. Publication/live readback pending. No new paid generation or GPU action is needed for these
-queue/database/UI checks; existing production audio will verify live playback/download headers.
+Final combined release: `6140c6576dca2e68db9b5e8749234740cfb41902`, Worker
+`4a3303d6-db32-4730-844b-7f1aaaefb9eb` at100%, native291. Image QA production
+commit3ce1bbd6 was merged intact when exact-baseline guards detected concurrent publication.
+The first290 migration attempt raised BASELINE_CHANGED before any change; a fresh291 proof and
+intent applied after ledger290 reconciliation. Production bindings and existing Workflow identities
+were preserved. No Workflow registration, restart or paid activation occurred.
+
+Eight focused database tests,27 J1 checks,23 archive/library checks,nine studio checks and
+three installed-Chrome flows pass. Combined full web suite:226 files,3296 passed,one existing skip.
+Both TypeScript projects, touched-file lint, production/staging builds and bundle firewalls,
+context and secret checks pass. Existing broad CI formatting and stale legacy rollback-document
+range remain outside this change. All37 public deployed assets match local SHA256; private anonymous
+access remains401. Initial asset propagation lag passed a GET-only recheck without redeployment.
+
+Live Chrome shows the saved dssd result beside a cleared composer, plays its39.427483-second MP3
+with readyState4 and advancing currentTime, and retains the result after navigation. Authenticated
+HTTP206 returns audio/mpeg and attachment filename="dssd.mp3" with the exact16-byte requested range.
+The browser automation download action hit ERR_BLOCKED_BY_CLIENT, so native file-save location is
+not claimed. No fresh paid multi-job canary was run; queue/FIFO/observer and reload behavior are
+covered by provider-free database, route and Chrome tests. Existing projects remain untouched;
+no new provider generation, GPU rental or other compute was started.
+
+Private receipts: `.videoforge/voiceover-queue-20261007/` native-proof-291.json,
+migration-291-verified-private.json, title-proof.json and release-final/verified-private.json.
+
+## Bounded queue follow-up
+
+The desktop list had a580px ceiling (390px on shorter screens), but the mobile rule removed
+its ceiling entirely. Use one240–360px viewport-responsive limit at every breakpoint, native
+vertical scrolling, stable scrollbar gutter, non-shrinking rows and keyboard focus. Heading,
+counts and Library access remain outside the list. No job/media/database/provider behavior changes.
