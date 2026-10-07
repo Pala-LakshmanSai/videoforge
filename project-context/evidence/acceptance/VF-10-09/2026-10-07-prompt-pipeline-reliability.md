@@ -10,7 +10,10 @@ is not yet provider-qualified or published.
 
 - A grounded174-character scene was rejected by the shared168-character scalar even though
   its actual Kie prompt was777/800. Fresh immutablev39 derives each exact scene ceiling from
-  its pinned compiler, style, role, layout and extra keywords. Existingv38 requests stay sealed.
+  its pinned compiler, style, role, layout and extra keywords. The follow-up replay exposed optional
+  negative-style filler counted as mandatory by the tiny baseline. Freshv39 now excludes only
+  optional filler: the same scene has a196-character safe budget and remains777/800 downstream.
+  Existingv38 defaults and golden request bytes stay sealed.
 - An actual production progress request produced nineHTTP500s: runtime permission to read
   `execution_profiles` was absent. Migration286 grants only `id` and `revision`; table-wide,
   configuration and account columns remain denied under forced account RLS. The same progress
@@ -23,11 +26,14 @@ is not yet provider-qualified or published.
 
 ## Verification
 
-121 focused prompt/recovery tests,324 pipeline tests, all21 package build/lint/typecheck tasks,
+The prior source passed121 focused prompt/recovery tests,324 pipeline tests, all21 package build/lint/typecheck tasks,
 49 downstream Web tests,44 installed-Chrome desktop/compact journeys and native/PGlite
 0284–0286 tests pass. Native PostgreSQL tests cover both claim/cancellation transaction winners.
-The source-only formatting pass changes no behavior; the final198-file runtime manifest is
+The earlier source-only formatting pass changed no behavior; its superseded198-file manifest was
 `sha256:f3f38d04867e527ae3a1b0c33fb127c5fd5aec4ea31dd0318b2619939d584d6b`.
+
+The required-only follow-up additionally passes76 Kie/prompt/recovery tests and Web typechecks;
+independent source review found no blocker. Its archived174 replay uses zero provider calls.
 
 Production migration application used a rollback-only dry run and fresh idle guard. Existing
 profile/run/claim/checkpoint/request row hashes, historical journal entries, capability ACLs and
@@ -45,12 +51,15 @@ forced RLS survived unchanged. Private evidence is retained under
 
 ## Remaining gates and spend
 
-Fresh152-scene/16-batch v39 qualification is prepared, with maximum32 POSTs, conservative
-USD0.319488 wire/token bound and proposedUSD0.35 hard cap within the existingUSD6 cumulative
-approval. It requires fresh exact paid-test authority. It saves raw/normalized receipts before
-validation, allows at most one targeted correction per batch, and stops on UNKNOWN, invalid
-correction or cap risk. Earlier one-POST approvals are consumed; never replay unresolvedv34.
-
+The user approved the USD0.35 incremental cap, then reduced fresh qualification to50 scenes.
+The first50 image-prompt authority scenes retain the full152-scene source context:5 batches,
+at most10 POSTs, one targeted correction per batch, USD0.099840 conservative wire/token ceiling.
+The old152 launch stopped before any POST because its private harness passed a per-request
+reservation instead of stage remainder; that launch is retired and preserved. The corrected
+50-scene actual-dispatch mock reaches one fake POST and persists one claim/receipt before
+intentional local output rejection; no network or credential use. Fresh live qualification and
+Worker/Workflow publication remain pending. Stop on UNKNOWN, invalid correction or cap risk;
+never replay unresolvedv34.
 No new inference or GPU launch occurred. Prior liability-inclusive prompt-test bound remains
 USD3.099707. Complete RunPod inventory was zero Pods at2026-10-07T02:05UTC; historical
 STOPPING/UNKNOWN cleanup and liability remain unresolved. Owned fixture server, disposable

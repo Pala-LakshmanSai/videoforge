@@ -1,3 +1,4 @@
+import type { CompiledImagePrompt } from "@videoforge/pipeline";
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { compileImagePrompt, NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH } from "@videoforge/pipeline";
@@ -10,6 +11,8 @@ import {
   observeKieImageJob,
   submitKieImageJob,
 } from "./kie-image-job";
+
+import { kieScenePromptLiteralCharacterLimit } from "./kie-image-prompt";
 
 const TASK_ID = "task_z-image_123";
 const OUTPUT_KEY =
@@ -180,6 +183,54 @@ describe("Kie image job", () => {
         components: full,
       } as never),
     ).not.toContain("viewpoint: hands action");
+  });
+
+  it("excludes optional filler from fresh literal budgets without changing existing Kie bytes", () => {
+    for (const version of ["prompt-compiler-v3", "prompt-compiler-v4", "prompt-compiler-v5"]) {
+      for (const role of ["reaction result", "hands action"]) {
+        const compiled = {
+          promptCompilerVersion: version,
+          components: {
+            literalContent: "subject: x, action: x, environment: x",
+            cropGuidance: "continuous photo",
+            stylePositiveSuffix: "documentary",
+            continuityAndShotRole: `viewpoint: ${role}`,
+            extraPromptKeywords: "natural light",
+            styleNegativeSuffix: "illustration, CGI",
+          },
+        } as CompiledImagePrompt;
+        const unchanged = buildKieScenePrompt(compiled, { handAnatomy: true });
+        expect(unchanged).toContain("Avoid: illustration, CGI");
+        const oldLimit = kieScenePromptLiteralCharacterLimit(compiled);
+        const limit = kieScenePromptLiteralCharacterLimit(compiled, { requiredOnly: true });
+        expect(limit).toBeGreaterThan(oldLimit);
+        const full = {
+          ...compiled,
+          components: {
+            ...compiled.components,
+            literalContent: `subject: ${"x".repeat(limit - 2)}, action: x, environment: x`,
+          },
+        };
+        const wire = buildKieScenePrompt(full, { handAnatomy: true });
+        expect(wire).toHaveLength(800);
+        expect(wire).toContain("natural light");
+        expect(wire).toContain("No visible text/pseudo-text");
+        if (role === "hands action") expect(wire).toContain(KIE_HAND_ANATOMY_GUIDANCE);
+        expect(() =>
+          buildKieScenePrompt(
+            {
+              ...full,
+              components: {
+                ...full.components,
+                literalContent: `${full.components.literalContent}x`,
+              },
+            },
+            { handAnatomy: true, requiredOnly: true },
+          ),
+        ).toThrow("INPUT_INVALID");
+        expect(buildKieScenePrompt(compiled, { handAnatomy: true })).toBe(unchanged);
+      }
+    }
   });
 
   it("maps fresh v5 object-only HUMAN_MEDIUM scenes without inventing a visible face, retaining legacy v4 bytes", () => {

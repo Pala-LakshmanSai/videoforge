@@ -98,12 +98,14 @@ Run focused checks, canonical provider-free verification, and actual Chrome acce
 synthetic fault proof, live prompt qualification, full-film/editorial proof and provider billing
 as separate gates. Publish only qualified source and verify Workflow registration/runtime adoption.
 
-Fresh v39 dry-run:152 scenes,16 batches, at most32 paid POSTs (one initial and at most one targeted
-correction per batch), conservative wire/token bound USD0.319488. A new qualification proposal
-is capped at USD0.35 within the historical USD6 total; it has not been approved or executed yet.
-Old v34 remains unresolved and must not be replayed. The live harness requires a fresh authority,
-append-only request intents and saved raw/normalized receipts before validation, and stops the
-entire run on UNKNOWN, invalid corrected output or cap risk.
+User approved fresh qualification under USD0.35 incremental / USD6 cumulative, then selected50 scenes.
+Use the first50 image scenes after full-source authority parsing, preserving global context.
+Five batches allow at most10 POSTs (one initial and at most one targeted correction each),
+USD0.099840 conservative wire ceiling. The old152 zero-POST harness launch is retired;
+its reservation binding was repaired and proven with an actual-dispatch network-free mock.
+The required-only Kie budget excludes optional negative filler while preserving mandatory
+source/style/role/keywords and oldv38 bytes. Exact archived174 replay is777/800 and now accepted
+under its196-character safe scene cap. Live qualification/publication gates remain pending.
 
 Full-film preflight remains separate: the revoked installed worker is0.1.45, not pinned0.1.52,
 and has no usable local configuration. A44.6s offline plan gives9 images,3 avatar spans (9.67s),

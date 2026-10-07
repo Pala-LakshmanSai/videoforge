@@ -413,6 +413,7 @@ export function hostedPromptBatchPlan(
                 extraPromptKeywords: authority.extraPromptKeywords,
                 applyExtraPromptKeywords: authority.applyExtraPromptKeywords,
               }),
+              { requiredOnly: true },
             ),
           ]),
         ),

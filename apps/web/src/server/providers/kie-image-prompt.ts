@@ -53,7 +53,7 @@ function distinctStyleNegatives(value: string): string[] {
 /** Map compiled prompt parts into Kie's medium target without cutting scene or style text. */
 export function buildKieScenePrompt(
   compiled: CompiledImagePrompt,
-  options: { readonly handAnatomy?: boolean } = {},
+  options: { readonly handAnatomy?: boolean; readonly requiredOnly?: boolean } = {},
 ): string {
   const c = compiled.components;
   const handAnatomy =
@@ -64,7 +64,9 @@ export function buildKieScenePrompt(
         handAnatomy ? { ...c, continuityAndShotRole: KIE_HAND_ANATOMY_GUIDANCE } : c,
       );
       let addedNegative = false;
-      for (const term of distinctStyleNegatives(c.styleNegativeSuffix)) {
+      for (const term of options.requiredOnly
+        ? []
+        : distinctStyleNegatives(c.styleNegativeSuffix)) {
         const next = `${prompt}${addedNegative ? ", " : ". Avoid: "}${term}`;
         if (next.length > KIE_PROMPT_TARGET_LENGTH) break;
         prompt = next;
@@ -105,10 +107,12 @@ export function buildKieScenePrompt(
   )
     throw new KieZImageError("INPUT_INVALID");
 
-  if (!handAnatomy) add(compactContinuity(c.continuityAndShotRole), KIE_PROMPT_TARGET_LENGTH);
-  add(c.extraPromptKeywords ?? "", MAX_KIE_PROMPT_LENGTH);
+  if (!handAnatomy && !options.requiredOnly)
+    add(compactContinuity(c.continuityAndShotRole), KIE_PROMPT_TARGET_LENGTH);
+  if (!add(c.extraPromptKeywords ?? "", MAX_KIE_PROMPT_LENGTH) && options.requiredOnly)
+    throw new KieZImageError("INPUT_INVALID");
   let addedNegative = false;
-  for (const term of distinctStyleNegatives(negativeStyle)) {
+  for (const term of options.requiredOnly ? [] : distinctStyleNegatives(negativeStyle)) {
     const next = `${result}${addedNegative ? ", " : ". Avoid: "}${term}`;
     if (next.length > KIE_PROMPT_TARGET_LENGTH) break;
     result = next;
@@ -118,12 +122,15 @@ export function buildKieScenePrompt(
   return result;
 }
 
-/** Largest combined literal-field allowance that this exact Kie builder can accept. */
-export function kieScenePromptLiteralCharacterLimit(compiled: CompiledImagePrompt): number {
+/** Literal allowance; requiredOnly excludes optional filler for fresh v39 bindings. */
+export function kieScenePromptLiteralCharacterLimit(
+  compiled: CompiledImagePrompt,
+  options: { readonly requiredOnly?: boolean } = {},
+): number {
   const skeleton = "subject: x, action: x, environment: x";
   const baseline = buildKieScenePrompt(
     { ...compiled, components: { ...compiled.components, literalContent: skeleton } },
-    { handAnatomy: true },
+    { handAnatomy: true, ...options },
   );
   // The baseline contains three literal characters; the labels/separators remain compiler-owned.
   return MAX_KIE_PROMPT_LENGTH - baseline.length + 3;
