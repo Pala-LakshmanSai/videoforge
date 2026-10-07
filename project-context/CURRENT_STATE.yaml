@@ -1,4 +1,5 @@
 voiceover_queue_2026_10_07:
+  branch: codex/standalone-voiceovers
   checkpoint: V2-09
   selected_task: VF-10-09
   read_profile: v2_09_standalone_voiceovers
