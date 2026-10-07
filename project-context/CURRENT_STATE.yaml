@@ -2,12 +2,15 @@ avatar_preview_2026_10_07:
   checkpoint: V2-09
   selected_task: VF-10-09
   read_profile: v2_09_media_review_count
-  status: QUALIFIED_PENDING_PRODUCTION
+  status: PRODUCTION_AND_CHROME_PLAYBACK_VERIFIED
+  executable_commit: 14c1907b3840b8e80dcc6c37897dbf5d29a0ea65
+  worker_version: bf78d0c1-4ed6-45cc-a97e-1f4b67c92ca9
+  traffic_percent: 100
   scope: Show_accepted_avatar_clips_during_generation_using_existing_private_gallery
-  validation: Red_before_fix_288_focused_UI_tests_types_lint_production_build_PASS
+  validation: Red_before_fix_288_UI_tests_types_lint_both_builds_context_secrets_37_live_asset_hashes_Chrome_playback_next_clip_PASS
   provider_spend: No_new_provider_work_or_compute
   paid_compute_shutdown: Existing_running_project_untouched_no_resource_mutations
-  remaining_gates: Production_publication_and_real_Chrome_playback
+  remaining_gates: None_for_this_fix_existing_broad_CI_and_long_form_gates_unchanged
   evidence: evidence/acceptance/VF-10-09/2026-10-07-avatar-preview.md
 
 standalone_voiceovers_2026_10_07:
