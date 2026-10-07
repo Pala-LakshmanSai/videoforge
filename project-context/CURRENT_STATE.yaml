@@ -17,7 +17,7 @@ image_no_text_2026_10_07:
   read_profile: v2_09_image_no_text
   brief: IMAGE_NO_TEXT_PLAN.md
   branch: codex/image-no-text
-  status: PRODUCTION_PROMPT_ONLY_QA_DISABLED_ZERO_NEW_COST
+  status: IN_PROGRESS_STRONGER_PROMPT_ONLY_ZERO_EXTRA_CALLS
   baseline_executable: 14c1907b3840b8e80dcc6c37897dbf5d29a0ea65
   executable_commit: 6140c6576dca2e68db9b5e8749234740cfb41902
   feature_commit: 3ce1bbd6816a3dbfcde770df2c78e763ca6ff7ee
@@ -40,7 +40,7 @@ image_no_text_2026_10_07:
   production_readback: Source37_asset_hashes_private401_55bindings27secret_names_all3Workflow_IDs_preserved
   continuation_registration: 89fa873a-dfab-4d91-bb60-c0f8983507f1
   existing_continuation: Same_instance_adopted_89fa873a_at_idle_healthy_tick_dispatch0_observers0_error_null_stable_preimages_preserved
-  remaining_gates: Prompt_only_cannot_guarantee_model_compliance_existing_images_unchanged
+  remaining_gates: Versioned_writer_v40_profile10_regression_native_rollback_build_production_Chrome_no_paid_qualification
   qualification_authority: Seven_tests_USD0_002334_historical_all_future_paid_QA_authority_revoked
   live_qa: Seven_calls_3TEXT_4PASS_all_expected_USD0_002334
   postrelease_Chrome: Signed_in_queue_progress_308_image_gallery_navigation_PASS

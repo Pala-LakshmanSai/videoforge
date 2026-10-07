@@ -1,3 +1,5 @@
+Current task: strengthen prompt-only prevention in a new immutable writer policy/version for fresh work. Replace existing instructions with shorter camera-visible action/physical-condition guidance; keep model, call count, output caps, retry behavior and image QA defaults unchanged. Saved v39/profile9 work must recover byte-exactly. No new inference or compute is authorized. Provider-free regressions, native rollback proof, production publication and Chrome readback are required; visual model compliance remains probabilistic.
+
 Current instruction supersedes paid QA: prompt-stage-only prevention, no extra inspection cost. Migration293/source53143e05 is live; both new/replacement defaultsfalse, zero required images/QA receipts, complete historical rows unchanged. Existing prompt bans and physical-scene formatter remain. No further paid QA calls are authorized. Earlier activation/qualification details below are historical only.
 
 # V2-09 image text prevention — 2026-10-07
