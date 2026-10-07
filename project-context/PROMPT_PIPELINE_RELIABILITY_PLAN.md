@@ -29,7 +29,7 @@ and compiler/Kie acceptance, not a fresh uninterrupted full stage or a full film
 The consumed v38 final batch contained a source-grounded 174-character scene whose actual Kie
 prompt would be 777/800 characters. The shared hard cap was 168, so six excess characters caused
 an unnecessary correction. Fresh policy `runware-luna-grounded-v2`, sealed requestv39/profile9,
-will carry per-scene budgets derived from the actual pinned compiler/role/layout. Policyv1/v38
+carries required-only per-scene budgets derived from the actual pinned compiler/role/layout. Policyv1/v38
 must remain frozen and recoverable; never broaden a whole batch to its most permissive scene.
 
 Known-response persistence now retries only the exact idempotent database receipt, at most three
@@ -105,7 +105,7 @@ USD0.099840 conservative wire ceiling. The old152 zero-POST harness launch is re
 its reservation binding was repaired and proven with an actual-dispatch network-free mock.
 The required-only Kie budget excludes optional negative filler while preserving mandatory
 source/style/role/keywords and oldv38 bytes. Exact archived174 replay is777/800 and now accepted
-under its196-character safe scene cap. Live qualification/publication gates remain pending.
+under its196-character safe scene cap. Fresh50 live qualification, independentall50 zero-findings review, Worker100% deployment, all three existing Workflow registrations and idle singleton adoption are complete. Final source8d0d334f; acceptedbundlea48dfc96; independentreviewde30bae7; Worker9ae57da8; native286. Actual7POSTs/2corrections/USD0.009479 estimate and zero recoveryHTTP; originalv38/UNKNOWN identities retained. Remaining full-film/generated-image/editorial/invoice/broadCI/cleanup gates below are unchanged.
 
 Full-film preflight remains separate: the revoked installed worker is0.1.45, not pinned0.1.52,
 and has no usable local configuration. A44.6s offline plan gives9 images,3 avatar spans (9.67s),

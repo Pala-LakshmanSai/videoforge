@@ -1,6 +1,22 @@
-## Runware GPT-6 Luna prompt writer: v38 production and v39 staged follow-up — 2026-10-07
+## Runware GPT-6 Luna prompt writer: v39 production — 2026-10-07
 
-User-approved fresh prompt writer AIR: `openai:gpt@6-luna`, using the existing Runware key at `/v1/chat/completions`, strict JSON and request v38 `reasoning_effort=low`. Native `/v1` textInference returned `invalidModel`; compatible Chat Completions worked. No direct OpenAI credential or provider switch. The v38 prompt candidate is qualified for 152 tuples under mixed provenance; current-source independent review is zero-findings and binds accepted records to final source manifest ee54e65cd94a4a7dd223bb5e52506aa898ac7c41a6304f3f793491b119c69cae. Executable eae84263703aa8900bf3aeca466bc90d53d03612 / Worker aa60628f-571d-4503-bef1-7ab31a314bc1 (100%) is live on native schema286. Brave and Chrome passed queue/library navigation, project-form controls and Cloud readiness; no Create submission or paid creation occurred. Workflow versions were registered for video=2bc2234a-602d-4ef6-80dc-3331acab9b04;pair=9c5939a1-bf45-4ff1-b127-55d367217503;continuation=0c4ca502-9970-462b-8007-428ccbff2411. Target linkage was inferred from activeWorker/fixed binding because no API Worker pointer was exposed. Existing-singleton restart, four successful zero-work ticks, and positive runtime-version readback verify adoption; see `workflow-driver-promotion-proof-private.json` and CURRENT_STATE.yaml. Broad CI remains non-green with known failures classified. See CURRENT_STATE.yaml and RUNWARE_LUNA_PROMPTS_PLAN.md.
+Fresh prompt writing uses `openai:gpt@6-luna` at Runware `/v1/chat/completions`,
+`reasoning_effort=low`, policy `runware-luna-grounded-v2`, requestv39/profile9. Existingv38
+requests/profile8 stay sealed. Required-only scene budgets exclude optional negative filler,
+while preserving full source/style/role/framing/exclusions and enabled keywords. Actual archived174
+replay now fits its196-character safe budget and keeps the original777/800 Kie serialization.
+User-selected50 fresh scenes completed5 batches through7POSTs with2 targeted corrections,
+16 valid original rows retained byte-exactly,5 saved-result recovery checks and zero recoveryHTTP.
+Independent all50 review found zero grounding/duplicate/truncation findings; Kie686–791/800.
+Pinned-rate estimate USD0.009479 under USD0.35 incremental; cumulative liability boundUSD3.109186
+ofUSD6 includes unresolvedv34 USD0.006429, never replayed. This is not an invoice or new full film.
+Executable8d0d334f / Worker9ae57da8 at100% / native286 are live; three existing Workflow IDs,
+55 bindings,27 secret names and qualified Cloud/Desktop0.1.52 pins survive. Existing singleton
+adopted03898683 and produced a successful tick (dispatch0,observers0,cloud1,error-null).
+Prompt/task/cost/API preimages and historical Cloud stable identity survive; cleanup remains
+unverified. Production36 asset hashes/private401, actual Brave progress/form/CloudReady/Library/
+retained-film play/seek pass without Create. No new media/GPU/Workflow instances.
+Source scope, acceptance and remaining broadCI/full-film/visual/invoice gates are in CURRENT_STATE.yaml.
 
 # Models and providers
 
@@ -12,7 +28,7 @@ configuration before any mutation or paid proposal. Do not hard-code planning ra
 truth. Existing Pod evidence proves specific artifacts and samples; it does not prove queue-based
 Serverless startup, concurrency, timeout, scale-to-zero, or billing behavior.
 
-## GPT-6 Luna prompt-writer production and staging status (2026-10-07)
+## Historical v38 qualification and earlier v39 staging (superseded above)
 
 Runware modelSearch returned AIR openai:gpt@6-luna; native /v1 textInference returned HTTP400 invalidModel, while /v1/chat/completions passed a bounded strict-JSON canary. The published Worker carries request v38/profile8 and low reasoning. Workflow versions were registered for video `2bc2234a-602d-4ef6-80dc-3331acab9b04`, pair `9c5939a1-bf45-4ff1-b127-55d367217503`, and continuation `0c4ca502-9970-462b-8007-428ccbff2411`. Target linkage was inferred from `activeWorker`/fixed binding because no explicit API Worker pointer was exposed. The acknowledged existing-singleton restart completed at 01:22:26 UTC. Current driver `0c4ca502-9970-462b-8007-428ccbff2411` is RUNNING with parameters unchanged; four successful ticks dispatched zero work and observers, DUE=0, and runtime-version readback is positive. Prompt/task/claim/progress/scene/cost/API preimages remained exact; prior FAILED attempt/version 5/events 0/debit USD0.20 is unchanged. No new Workflow instance or paid create occurred. Private proof: `workflow-driver-promotion-proof-private.json` (SHA-256 `ef3a100135917db82615b01097bfca5f7c195891f7460f663b09d3ff7e4068fc`). Official references: OpenAI GPT-6 Luna (https://developers.openai.com/api/docs/models/gpt-6-luna), Runware compatible APIs (https://runware.ai/docs/tools/compatible-apis), and Runware GPT-6 Luna (https://runware.ai/models/openai-gpt-6-luna).
 
