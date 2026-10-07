@@ -13,6 +13,25 @@ prompt_runtime_fetch_2026_10_07:
   paid_compute_shutdown: Fresh_project_ASR_CLEAN_no_new_compute
   remaining_gates: Full_stage_real_provider_native_receipts_Chrome_release_and_cap_boundary
 
+current_api_pricing_2026_10_07:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  read_profile: v2_09_current_api_pricing
+  brief: CURRENT_API_PRICING_PLAN.md
+  branch: codex/gpt6-luna-prompt-writer
+  baseline_executable: bcc5170869bf84616f6648c32eaef225cc2f6f98
+  status: CURRENT_BCC_MERGED_CALCULATOR_605_QUALIFIED_PUBLICATION_PENDING
+  validations: Merged605_cost_prompt_route_input_retry_screens_Cloud_PASS_types_lint_both_builds_quarantine_PASS_prior_finalUI2_installedChrome1_nativeRuntimeRLS_PASS
+  user_authority: Update_current_API_cost_calculator_and_continue_existing_qualified_production_publication_no_new_inference_or_compute
+  rates_checked_at: "2026-10-07"
+  related_prompt_cause: Duplicate_dispatch_batch_document_omitted_literal_character_limits_preparation_hash_mismatch_before_any_claim
+  related_prompt_fix: Concurrent_bcc51708_canonical_serializer_and_native287_safe_manual_Retry_preserved_byte_exactly_relative_current_production
+  publication_delta: Seven_cost_code_test_files_only_since_bcc51708_no_dispatch_native_model_or_budget_changes
+  original_failed_project: Preserved_no_retry_no_provider_claim
+  invoice_gaps: Luna_output_cache_reference_estimates_Fal_billing_unit_account_debit_J1_per_request_charge_unverified
+  provider_spend_usd: 0
+  paid_compute: No_new_start_stop_or_restart_authorized_for_calculator_checks
+
 prompt_plan_binding_2026_10_07:
   checkpoint: V2-09
   selected_task: VF-10-09
@@ -7830,7 +7849,7 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/prompt-plan-binding
+  branch: codex/gpt6-luna-prompt-writer
   branch_upstream: none
   branch_published: false
   current_source_head: "69175135c0402ce0fdcbfdbbf12abf5d60c06628"

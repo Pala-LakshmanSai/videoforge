@@ -8,6 +8,7 @@ import {
 } from "./hosted-v209-queue-admission";
 import { localMediaRequiredBytes, qualifiedPersonalWorkers } from "./personal-worker-readiness";
 import type { HostedExecutionContext } from "./auth";
+import type { ProjectApiCost } from "../../lib/cloud-compute";
 import type { SqlExecutor, TransactionalSqlExecutor } from "@videoforge/control-plane";
 import {
   NATURAL_DOCUMENTARY_STYLE_ID,
@@ -8348,6 +8349,7 @@ async function projectDetail(
         : { rows: [] as Record<string, unknown>[] };
       const videoPlan = await transaction.query(
         `SELECT selections,planned_at,coverage_percent,replacement_policy,selection_sha256,
+          price_per_second_usd,
           CASE WHEN replacement_policy='OPENING_180_V3' THEN 180 ELSE opening_seconds END AS opening_seconds,
           (SELECT sum(CASE WHEN replacement_policy='FOOTAGE_COMPOSITION_V5' THEN least(scene.end_frame_exclusive,opening_seconds*30)-scene.start_frame ELSE scene.end_frame_exclusive-scene.start_frame END) FROM timeline_segments scene
             WHERE scene.account_id=$1 AND scene.workspace_id=$2 AND scene.project_revision_id=$3 AND scene.start_frame<30*(CASE WHEN replacement_policy='OPENING_180_V3' THEN 180 ELSE opening_seconds END)
@@ -9333,7 +9335,16 @@ async function projectDetail(
       : 0;
     const apiImageCount = numberOrNull(apiPlan?.image_scene_count);
     const apiAvatarFrames = numberOrNull(apiPlan?.avatar_frame_count);
-    // Published planning rates checked 2026-09-25; actual Fal audio-route billing is unavailable.
+    const apiCostSoFar = detail.apiCostSoFar as ProjectApiCost;
+    const textCostBreakdown = apiCostSoFar.breakdown.filter(
+      (charge) => charge.label === "Context analysis" || charge.label.startsWith("Scene prompts"),
+    );
+    const textCostSoFarUsd = textCostBreakdown.reduce((sum, charge) => sum + (charge.usd ?? 0), 0);
+    const textCostPending =
+      promptStage.status !== "COMPLETE" || acceptedPromptScenes < totalPromptScenes;
+    const pricingIncomplete = textCostPending || apiCostSoFar.unconfirmed;
+    // Runware's public Seedance price rounds the sealed historical quote to $0.0134/s; Kie/Fal
+    // figures remain estimates because the project does not receive invoice-level cost receipts.
     const apiEstimate =
       projectApiGeneration && apiImageCount !== null && apiAvatarFrames !== null
         ? {
@@ -9341,15 +9352,22 @@ async function projectDetail(
             kie_usd: apiImageCount * 0.004,
             fal_avatar_seconds: apiAvatarFrames / 30,
             fal_usd: (apiAvatarFrames / 30) * 0.005,
+            fal_pricing_basis: "OUTPUT_SECOND_PROXY_ESTIMATE",
+            text_cost_so_far_usd: textCostSoFarUsd,
+            text_cost_pending: textCostPending,
+            pricing_incomplete: pricingIncomplete,
             ...(videoPlan
               ? {
+                  seedance_usd_per_second: numberOrNull(videoPlan.price_per_second_usd) ?? 0.01336,
                   seedance_seconds: videoSelections.reduce(
                     (sum, selection) => sum + (numberOrNull(selection.durationSeconds) ?? 0),
                     0,
                   ),
                   seedance_usd: videoSelections.reduce(
                     (sum, selection) =>
-                      sum + (numberOrNull(selection.durationSeconds) ?? 0) * 0.01336,
+                      sum +
+                      (numberOrNull(selection.durationSeconds) ?? 0) *
+                        (numberOrNull(videoPlan.price_per_second_usd) ?? 0.01336),
                     0,
                   ),
                   seedance_reported_usd: videoJobs.reduce(
@@ -9364,7 +9382,7 @@ async function projectDetail(
                   seedance_fallback_count: videoFallback,
                 }
               : {}),
-            pricing_checked_at: videoPlan ? "2026-10-02" : "2026-09-25",
+            pricing_checked_at: "2026-10-07",
           }
         : null;
     const apiJobs = detail.apiJobs as Record<string, unknown>[];
@@ -9581,16 +9599,17 @@ async function projectDetail(
         projected_usd: projectApiGeneration
           ? apiEstimate === null
             ? null
-            : apiEstimate.kie_usd + apiEstimate.fal_usd + (apiEstimate.seedance_usd ?? 0)
+            : apiEstimate.kie_usd +
+              apiEstimate.fal_usd +
+              (apiEstimate.seedance_usd ?? 0) +
+              apiEstimate.text_cost_so_far_usd
           : projectedCost,
         settled_usd: projectApiGeneration ? null : settledCost,
         api_estimate: apiEstimate,
         cap_usd: null,
         billed_seconds: null,
         provider: projectApiGeneration
-          ? videoPlan
-            ? "kie+fal+runware"
-            : "kie+fal"
+          ? "kie+fal+runware"
           : serverlessAttempts.length > 0
             ? "runpod"
             : voiceoverContext || detail.prompts.length > 0

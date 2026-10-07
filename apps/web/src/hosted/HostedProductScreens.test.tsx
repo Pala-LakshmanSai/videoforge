@@ -2314,12 +2314,15 @@ it.each(["KIE_FAL", "RUNPOD"] as const)(
           cost:
             generationProvider === "KIE_FAL"
               ? {
-                  projected_usd: 0.023,
+                  projected_usd: 0.029,
                   api_estimate: {
                     kie_images: 2,
                     kie_usd: 0.008,
                     fal_avatar_seconds: 3,
                     fal_usd: 0.015,
+                    text_cost_so_far_usd: 0.006,
+                    text_cost_pending: true,
+                    pricing_incomplete: true,
                     pricing_checked_at: "2026-09-25",
                   },
                 }
@@ -2362,10 +2365,10 @@ it.each(["KIE_FAL", "RUNPOD"] as const)(
       generationProvider === "KIE_FAL" ? "2m 00s" : "—",
     );
     if (generationProvider === "KIE_FAL") {
-      expect(screen.getByText("$0.02")).toBeInTheDocument();
+      expect(screen.getByText("$0.03")).toBeInTheDocument();
       expect(
         screen.getByText(
-          "2 Kie images + 3.0s Fal avatar · published-rate estimate · excludes Cloud compute",
+          "2 Kie images + 3.0s Fal avatar · $0.0060 text · published-rate estimate · text generation incomplete · partial estimate · excludes Cloud compute",
         ),
       ).toBeInTheDocument();
       expect(screen.getByLabelText("Generate avatar video elapsed time")).toHaveTextContent(

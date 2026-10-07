@@ -29,6 +29,13 @@ read_profiles:
     - PROMPT_RUNTIME_FETCH_PLAN.md
     - 19_IMPLEMENTATION_PLAYBOOK.md
     - 10_DATA_AND_API_CONTRACTS.md
+
+  v2_09_current_api_pricing:
+    - CURRENT_API_PRICING_PLAN.md
+    - CLOUD_COMPUTE_COST_PLAN.md
+    - 11_COST_SPEED_BUDGET.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+
   v2_09_prompt_plan_binding:
     - PROMPT_PLAN_BINDING_PLAN.md
     - 19_IMPLEMENTATION_PLAYBOOK.md

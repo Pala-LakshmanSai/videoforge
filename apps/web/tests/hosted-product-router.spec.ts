@@ -436,15 +436,28 @@ test("GPU uptime, all API total and stopped charges stay correct on desktop and 
     return route.fulfill({
       json: {
         ...detail,
+        generation_provider: "KIE_FAL",
         project: { ...detail.project, media_execution_backend: "RUNPOD_POD" },
         cost: {
+          projected_usd: 1.1609,
+          api_estimate: {
+            kie_images: 90,
+            kie_usd: 0.36,
+            fal_avatar_seconds: 160,
+            fal_usd: 0.8,
+            pricing_checked_at: "2026-10-07",
+            text_cost_so_far_usd: 0.0009,
+            text_cost_pending: true,
+            pricing_incomplete: true,
+          },
           api_cost_so_far: {
-            usd: 1.16,
+            usd: 1.1609,
             unconfirmed: false,
             estimated: true,
             breakdown: [
               { label: "Generated images", usd: 0.36, estimated: true },
               { label: "Avatar footage", usd: 0.8, estimated: true },
+              { label: "Scene prompts (GPT-6 Luna)", usd: 0.0009, estimated: true },
             ],
           },
           cloud_compute: {
@@ -468,6 +481,9 @@ test("GPU uptime, all API total and stopped charges stay correct on desktop and 
   const panel = page.getByRole("region", { name: "Cloud compute charges" });
   await expect(panel.getByText("GPU uptime", { exact: true })).toBeVisible();
   await expect(panel.getByText("Total cost so far", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(/\$0\.0009 text.*text generation incomplete.*partial estimate/),
+  ).toBeVisible();
   const cost = panel.locator(".cloud-compute-metrics .metric").nth(1).locator("strong");
   const firstCost = await cost.innerText();
   await expect.poll(() => cost.innerText()).not.toBe(firstCost);
@@ -482,10 +498,10 @@ test("GPU uptime, all API total and stopped charges stay correct on desktop and 
   }
   stopped = true;
   await expect(cost).toHaveText("$0.5000");
-  await expect(panel.locator(".cloud-compute-total strong")).toHaveText("$1.6600");
+  await expect(panel.locator(".cloud-compute-total strong")).toHaveText("$1.6609");
   await page.waitForTimeout(2100);
   await expect(cost).toHaveText("$0.5000");
-  await expect(panel.locator(".cloud-compute-total strong")).toHaveText("$1.6600");
+  await expect(panel.locator(".cloud-compute-total strong")).toHaveText("$1.6609");
 });
 
 const regenerationSceneId = "12121212-1212-4212-8212-121212121212";
