@@ -53,8 +53,34 @@ function distinctStyleNegatives(value: string): string[] {
 /** Map compiled prompt parts into Kie's medium target without cutting scene or style text. */
 export function buildKieScenePrompt(
   compiled: CompiledImagePrompt,
-  options: { readonly handAnatomy?: boolean; readonly requiredOnly?: boolean } = {},
+  options: {
+    readonly handAnatomy?: boolean;
+    readonly requiredOnly?: boolean;
+    readonly wirePolicy?: "photographic-v1";
+  } = {},
 ): string {
+  // Opt-in only at fresh binding: saved wire prompts and sealed writer/compiler hashes stay exact.
+  if (options.wirePolicy === "photographic-v1") {
+    const literal = compiled.components.literalContent.trim();
+    if (!literal) throw new KieZImageError("INPUT_INVALID");
+    const fields = /^subject:\s*(.+?), action:\s*(.+?), environment:\s*(.+)$/su.exec(literal);
+    const prose = fields
+      ? fields
+          .slice(1)
+          .map((field) => field.trim().replace(/[.!?]+$/u, ""))
+          .join(", ") + "."
+      : literal;
+    return buildKieScenePrompt(
+      {
+        ...compiled,
+        components: {
+          ...compiled.components,
+          literalContent: `Physical scene, never words. ${prose}`,
+        },
+      },
+      { handAnatomy: options.handAnatomy, requiredOnly: options.requiredOnly },
+    );
+  }
   const c = compiled.components;
   const handAnatomy =
     options.handAnatomy === true && /\bviewpoint:\s*hands action\b/iu.test(c.continuityAndShotRole);

@@ -79,6 +79,13 @@ function reservation(payload = { taskId: TASK_ID, attemptId: ATTEMPT_ID, provide
 
 async function seedRecoveryMetadata(executor, payload) {
   await seedLockedProjects(executor);
+  // Keep accepted pixel evidence and its paid-inference identity across portable recovery.
+  await executor.query(`INSERT INTO hosted_image_text_qa_runs(id,account_id,workspace_id,project_id,
+    job_id,job_kind,provider_task_id,image_sha256,state,reported_cost_micro_usd,prompt_tokens,
+    completion_tokens,response_hash,finished_at)
+    VALUES($1,$2,$3,$4,$5,'INITIAL','restore-image-provider-task',$6,'PASS',100,200,10,$7,$8)`,
+    [uuid(40_020), IDS.accountA, IDS.workspaceA, IDS.projectA, uuid(40_021),
+      sha256("restore-image-pixels"),sha256("restore-image-qa-response"),FIXED_TIME]);
   const repositories = createPGliteControlPlaneRepositories(executor);
   ok(
     await repositories.execution.reserveTaskAttempt(SCOPE, reservation(payload)),
@@ -334,6 +341,11 @@ test("the same metadata snapshot restores exactly, resumes idempotently, and rem
     });
 
     assert.deepEqual(await footageMetadata(destination.executor), originalFootage);
+    const qa = await destination.executor.query("SELECT id,state,image_sha256,reported_cost_micro_usd FROM hosted_image_text_qa_runs");
+    assert.equal(qa.rows[0].id,uuid(40_020));
+    assert.equal(qa.rows[0].state,"PASS");
+    assert.equal(qa.rows[0].image_sha256,sha256("restore-image-pixels"));
+    assert.equal(Number(qa.rows[0].reported_cost_micro_usd),100);
     const restoredVideo = (await footageMetadata(destination.executor)).jobs[0];
     assert.equal(restoredVideo.state, "UNKNOWN_NO_RETRY");
     assert.equal(restoredVideo.id, uuid(40_010));

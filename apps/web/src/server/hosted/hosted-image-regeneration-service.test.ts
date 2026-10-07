@@ -15,6 +15,8 @@ import {
   type CompiledImagePrompt,
 } from "@videoforge/pipeline/prompts";
 
+import { buildKieScenePrompt } from "../providers/kie-image-prompt";
+
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
 import {
   createHostedImageRegenerationService,
@@ -225,6 +227,15 @@ const args = {
 };
 
 describe("hosted image regeneration service", () => {
+  it.each([
+    ["IMAGE_TEXT_QA_REJECTED", "An image contained text"],
+    ["IMAGE_TEXT_QA_UNCERTAIN", "could not be confirmed text-free"],
+  ])("explains blocked replacement pixels for %s", (failureCode, message) => {
+    const result = regenerationStatus({ id: requestId, state: "FAILED", failureCode });
+    expect(result).toMatchObject({ state: "FAILED", error_code: failureCode });
+    expect(result.error_message).toContain(message);
+    expect(result.error_message).toContain("No automatic regeneration was charged");
+  });
   it("keeps unknown paid submissions distinct from retryable failures", () => {
     expect(
       regenerationStatus({ id: requestId, attempt_id: attemptId, state: "UNKNOWN_NO_RETRY" }),
@@ -284,6 +295,7 @@ describe("hosted image regeneration service", () => {
               },
             ],
           };
+        if (sql.includes("SELECT input_manifest->>'prompt'")) return { rows: [] };
         if (sql.includes("videoforge_create_hosted_api_image_regeneration"))
           return { rows: [{ value: { id: requestId, state: "PREPARED" } }] };
         throw new Error(`unexpected API regeneration SQL: ${sql}`);
@@ -309,11 +321,43 @@ describe("hosted image regeneration service", () => {
       expect(creation?.values[5]).toContain(editedPrompt);
       expect(creation?.values[5]).not.toContain(previousGuard);
       expect(creation?.values[5]).toContain("No visible text");
+      expect(creation?.values[5]).toContain("Physical scene, never words.");
       expect(creation?.values[5]).toContain("CGI, fake lettering");
       expect(creation?.values[5]).not.toContain("original role");
       expect(workflow.create).toHaveBeenCalledOnce();
     },
   );
+  it("reuses a pre-release regeneration key only for the exact old wire request", async () => {
+    const compiled = { promptCompilerVersion: "prompt-compiler-v5", components: {
+      literalContent: "", continuityAndShotRole: "", cropGuidance: "",
+      stylePositiveSuffix: "original style", styleNegativeSuffix: "", extraPromptKeywords: null,
+    } } as CompiledImagePrompt;
+    const saved = buildKieScenePrompt({ ...compiled, components: { ...compiled.components, literalContent: editedPrompt } });
+    const writes: unknown[][] = [];
+    const query = vi.fn(async (sql: string, values: readonly SqlPrimitive[] = []) => {
+      if (sql.includes("set_config")) return { rows: [] };
+      if (sql.includes("SELECT generation_provider")) return { rows: [{ value: "KIE_FAL" }] };
+      if (sql.includes("videoforge_read_hosted_api_image_regeneration_source"))
+        return { rows: [{ value: { sourceInputManifest: { compiledPrompt: compiled } } }] };
+      if (sql.includes("SELECT input_manifest->>'prompt'")) return { rows: [{ value: saved }] };
+      if (sql.includes("videoforge_create_hosted_api_image_regeneration")) {
+        writes.push([...values]);
+        if (values[5] !== saved) throw new Error("API regeneration idempotency conflict");
+        return { rows: [{ value: { id: requestId, state: "SUBMITTED" } }] };
+      }
+      throw new Error(`Unexpected SQL: ${sql}`);
+    });
+    const service = createHostedImageRegenerationService({
+      database: { transaction: async (fn: (tx: unknown) => unknown) => fn({ query }) } as TransactionalSqlExecutor,
+      scheduleWorkflow: false,
+      config: { ...configuration(), apiGeneration: { kieApiKey: "test-key", falApiKey: "test-key" } } as HostedRuntimeConfiguration,
+      environment: { HOSTED_PAIR_WORKFLOW: {}, PRIVATE_ARTIFACTS: {} } as never,
+    });
+    await expect(service.create({ ...args, prompt: editedPrompt })).resolves.toMatchObject({ request_id: requestId });
+    expect(writes[0]?.[5]).toBe(saved);
+    await expect(service.create({ ...args, prompt: "A different worker beside a door" })).rejects.toThrow("idempotency conflict");
+    expect(writes[1]?.[5]).not.toBe(saved);
+  });
   it("prepares one exact source scene with the edited prompt, fresh seed, and fresh output authority", async () => {
     const randomValues = vi
       .spyOn(webcrypto, "getRandomValues")

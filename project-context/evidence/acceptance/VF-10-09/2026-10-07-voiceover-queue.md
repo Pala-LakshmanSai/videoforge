@@ -3,10 +3,10 @@
 V2-09 / VF-10-09, profile `v2_09_standalone_voiceovers`.
 
 The previous composer locked to one result and the database rejected a second pending job.
-Additive0290 allows WAITING backlog, preserves one active submission per account, existing
+Additive0291 allows WAITING backlog, preserves one active submission per account, existing
 provider caps/cooldowns and FIFO fairness, and all immutable provider identity/no-replay guards.
 Native PostgreSQL rollback-only migration + two-job proof passed; no provider request occurred.
-Rollback is the immediate predecessor application (14c1907b), retaining0290 and all queued rows;
+Rollback is the immediate predecessor application (3ce1bbd6), retaining0291 and all queued rows;
 historical retired direct-start APIs are not a supported rollback target.
 
 Standalone POST acknowledges only a saved job with an exact confirmed background observer;

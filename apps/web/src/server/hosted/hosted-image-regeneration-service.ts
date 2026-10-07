@@ -21,6 +21,8 @@ import {
 } from "./hosted-pair-live-wiring";
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
 import { buildKieScenePrompt } from "../providers/kie-image-job";
+import { KieZImageError } from "../providers/kie-z-image";
+import { imageTextQaMessage } from "./image-text-qa-message";
 
 type Row = Record<string, unknown>;
 function record(value: unknown): Row {
@@ -39,6 +41,7 @@ const withoutTrailingGuard = (value: string, guard: string): string =>
   value === guard ? "" : value.endsWith(`, ${guard}`) ? value.slice(0, -guard.length - 2) : value;
 export const imageRegenerationWorkflowId = (id: string) => `image-regen-${id}`;
 export function regenerationStatus(row: Row): Row {
+  const textQaMessage = row.state === "FAILED" ? imageTextQaMessage(row.failureCode) : null;
   return {
     request_id: row.id,
     attempt_id: row.attempt_id,
@@ -51,6 +54,7 @@ export function regenerationStatus(row: Row): Row {
           ? "FAILED"
           : "PENDING",
     ...(row.state === "UNKNOWN_NO_RETRY" ? { error_code: "UNKNOWN_NO_RETRY" } : {}),
+    ...(textQaMessage ? { error_code: row.failureCode, error_message: textQaMessage } : {}),
   };
 }
 export function createHostedImageRegenerationService(input: {
@@ -89,7 +93,7 @@ export function createHostedImageRegenerationService(input: {
           ),
           stylePositive,
         );
-        const prompt = buildKieScenePrompt({
+        const candidate = {
           ...compiled,
           components: {
             ...components,
@@ -99,7 +103,20 @@ export function createHostedImageRegenerationService(input: {
             stylePositiveSuffix: stylePositive,
             extraPromptKeywords: null,
           },
-        } as Parameters<typeof buildKieScenePrompt>[0]);
+        } as Parameters<typeof buildKieScenePrompt>[0];
+        const existingPrompt = await store.existingApiPrompt({ ...args, projectRevisionId: args.revisionId });
+        // Old keys keep their exact wire identity only when the supplied edit still compiles to it.
+        // SQL remains the final conflict/tenant arbiter; never substitute saved bytes for changed text.
+        let legacyMatch = false;
+        if (existingPrompt !== null) {
+          try { legacyMatch = buildKieScenePrompt(candidate) === existingPrompt; }
+          catch (error) {
+            // Removing field labels can make a fresh prompt fit when its legacy rendering cannot.
+            if (!(error instanceof KieZImageError && error.code === "INPUT_INVALID")) throw error;
+          }
+        }
+        const prompt = legacyMatch ? existingPrompt!
+          : buildKieScenePrompt(candidate, { wirePolicy: "photographic-v1" });
         const row = await store.createApi({ ...args, projectRevisionId: args.revisionId }, prompt);
         const requestId = text(row.id);
         if (input.scheduleWorkflow !== false && ["PREPARED", "SUBMITTING", "SUBMITTED"].includes(String(row.state))) {

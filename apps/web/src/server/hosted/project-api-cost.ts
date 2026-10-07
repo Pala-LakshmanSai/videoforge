@@ -104,6 +104,11 @@ WITH unresolved_prompt_receipts AS (
      AND job.state<>'PREPARED'
      AND COALESCE(job.failure_code,'') NOT LIKE '%BEFORE_SUBMIT'
   UNION ALL
+  SELECT 'Image text checks', reported_cost_micro_usd::numeric / 1000000,
+         state='RESERVED', false
+    FROM hosted_image_text_qa_runs
+   WHERE account_id=$1 AND workspace_id=$2 AND project_id=$3
+  UNION ALL
   SELECT 'Replacement images',
          CASE WHEN job.provider_task_id IS NOT NULL OR job.submitted_at IS NOT NULL OR job.state='SUCCEEDED'
               THEN CASE WHEN job.input_manifest->>'provider'='FAL_Z_IMAGE'

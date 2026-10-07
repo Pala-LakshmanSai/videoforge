@@ -1515,8 +1515,14 @@
     },
     {
       "version": 290,
+      "name": "generated_image_text_qa",
+      "filename": "0290_generated_image_text_qa.sql",
+      "sha256": "sha256:625bb6ab81782702301b6e0180bac87e0ef95fbde28b6261084e61538bf1808c"
+    },
+    {
+      "version": 291,
       "name": "hosted_voiceover_queue",
-      "filename": "0290_hosted_voiceover_queue.sql",
+      "filename": "0291_hosted_voiceover_queue.sql",
       "sha256": "sha256:ae9786f6627720d351f584ca9cce83170cb7bdd6d9c3f76d88a4afd8ceadb489"
     }
   ]

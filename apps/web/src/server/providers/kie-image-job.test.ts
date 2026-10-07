@@ -668,3 +668,21 @@ describe("Kie image job", () => {
     expect(storage.put).not.toHaveBeenCalled();
   });
 });
+
+describe("pixel text gate", () => {
+  it("checks downloaded and cached pixels, blocks text and never creates another task", async () => {
+    const storage = bucket();
+    const client = { get: vi.fn(async () => ({ state: "success" as const, taskId: TASK_ID, imageUrl: "https://example.com/image.png" })) };
+    const fetchPort = vi.fn(async () => new Response(PNG));
+    const inspectText = vi.fn(async (_artifact: unknown, _bytes: Uint8Array) => "TEXT" as const);
+    const input = { taskId: TASK_ID, objectKey: OUTPUT_KEY, client, bucket: storage, fetchPort, inspectText };
+    expect(await observeKieImageJob(input)).toEqual({ state: "FAILED", failCode: "IMAGE_TEXT_QA_REJECTED" });
+    expect(await observeKieImageJob(input)).toEqual({ state: "FAILED", failCode: "IMAGE_TEXT_QA_REJECTED" });
+    expect(await observeKieImageJob({ ...input, inspectText: async () => "UNCERTAIN" })).toEqual({ state: "FAILED", failCode: "IMAGE_TEXT_QA_UNCERTAIN" });
+    expect(fetchPort).toHaveBeenCalledTimes(1);
+    expect(inspectText).toHaveBeenCalledTimes(2);
+    expect(inspectText.mock.calls[0]?.[1]).toEqual(PNG);
+    expect(await observeKieImageJob({ ...input, inspectText: async () => "PENDING" })).toEqual({ state: "PENDING" });
+    expect((await observeKieImageJob({ ...input, inspectText: async () => "PASS" })).state).toBe("SUCCEEDED");
+  });
+});

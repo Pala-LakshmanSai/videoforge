@@ -245,6 +245,7 @@ export async function observeKieImageJob(input: {
   readonly client: Pick<KieZImageClient, "get"> & Partial<Pick<KieZImageClient, "downloadUrl">>;
   readonly bucket: HostedR2BucketBinding;
   readonly fetchPort?: FetchPort;
+  readonly inspectText?: (artifact: KieImageArtifact, bytes: Uint8Array) => Promise<"PASS" | "TEXT" | "UNCERTAIN" | "PENDING">;
 }): Promise<
   | { readonly state: "PENDING" | "FAILED"; readonly failCode?: string | null }
   | { readonly state: "SUCCEEDED"; readonly artifact: KieImageArtifact }
@@ -258,7 +259,18 @@ export async function observeKieImageJob(input: {
   if (task.state === "fail") return { state: "FAILED", failCode: task.failCode };
   if (task.state !== "success") return { state: "PENDING" };
   const previous = await readStored(input.bucket, input.objectKey);
-  if (previous) return { state: "SUCCEEDED", artifact: previous };
+  const inspect = async (artifact: KieImageArtifact) => {
+    if (!input.inspectText) return { state: "SUCCEEDED" as const, artifact };
+    const stored = await input.bucket.get(artifact.objectKey);
+    if (!stored) throw new KieImageJobError("RESULT_STORAGE_UNKNOWN");
+    const pixels = new Uint8Array(await stored.arrayBuffer());
+    if (await sha256Bytes(pixels) !== artifact.sha256) throw new KieImageJobError("RESULT_STORAGE_UNKNOWN");
+    const verdict = await input.inspectText(artifact, pixels);
+    if (verdict === "PENDING") return { state: "PENDING" as const };
+    if (verdict !== "PASS") return { state: "FAILED" as const, failCode: verdict === "TEXT" ? "IMAGE_TEXT_QA_REJECTED" : "IMAGE_TEXT_QA_UNCERTAIN" };
+    return { state: "SUCCEEDED" as const, artifact };
+  };
+  if (previous) return inspect(previous);
   const url = input.client.downloadUrl
     ? await input.client.downloadUrl(task.imageUrl)
     : task.imageUrl;
@@ -275,8 +287,5 @@ export async function observeKieImageJob(input: {
   const stored = await readStored(input.bucket, input.objectKey);
   if (!stored || stored.sha256 !== sha256 || stored.byteSize !== bytes.byteLength)
     throw new KieImageJobError("RESULT_STORAGE_UNKNOWN");
-  return {
-    state: "SUCCEEDED",
-    artifact: { ...stored, ...details },
-  };
+  return inspect({ ...stored, ...details });
 }

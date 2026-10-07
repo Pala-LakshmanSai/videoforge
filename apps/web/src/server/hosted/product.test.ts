@@ -1340,6 +1340,29 @@ describe("hosted product route contract", () => {
     }
   });
 
+  it("explains rejected image text in stage detail", async () => {
+    const original = testState.query.getMockImplementation()!;
+    const previous = testState.projectRows[0]!;
+    testState.projectRows[0] = { ...previous, generation_provider: "KIE_FAL" };
+    testState.query.mockImplementation(async (sql, params) => {
+      if (sql.includes("SELECT lane,state,created_at,submitted_at,completed_at"))
+        return { rows: [{ lane: "IMAGE", state: "FAILED", failure_code: "IMAGE_TEXT_QA_REJECTED" }], affectedRows: 1 };
+      return original(sql, params);
+    });
+    try {
+      const response = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"), environment, stagingConfig, executionContext,
+      );
+      const body = await response!.json() as { stages: Array<{ id: string; detail: string }> };
+      expect(body.stages.find((stage) => stage.id === "image-generation")?.detail).toBe(
+        "An image contained text and was blocked. No automatic regeneration was charged.",
+      );
+    } finally {
+      testState.projectRows[0] = previous;
+      testState.query.mockImplementation(original);
+    }
+  });
+
   it("exposes sent and waiting API counts before any avatar output, preserving historical response shape", async () => {
     const original = testState.query.getMockImplementation()!;
     const previousProject = testState.projectRows[0]!;
