@@ -28,3 +28,7 @@ Web suite: 226 files, 3,284 passed, one skipped. Web/Worker TypeScript, changed-
 The first live rollback rehearsal deadlocked while upgrading a SHARE ROW EXCLUSIVE lock during concurrent work; rollback was independently confirmed. The harness now takes ACCESS EXCLUSIVE at the start in fixed initial/regeneration order with a five-second lock timeout; the second rehearsal passed without modifying user work.
 
 Production publication is authorized. Paid pixel QA remains disabled by default until explicit consent, live qualification and safe runtime adoption. The pending proposal permits eight checks of existing images under USD0.20, then one billed check for each future image; it authorizes no new image generation or automatic regeneration. Current accepted images and saved prompts remain unchanged.
+
+## Published evidence
+
+Production source3ce1bbd6 / Worker77d7ae03 at100%, native290 inactive defaults. See [acceptance](evidence/acceptance/VF-10-09/2026-10-07-image-no-text.md). Existing coordinator adoption, postrelease Chrome and paid QA approval/qualification remain open.

@@ -4,14 +4,21 @@ image_no_text_2026_10_07:
   read_profile: v2_09_image_no_text
   brief: IMAGE_NO_TEXT_PLAN.md
   branch: codex/image-no-text
-  status: QUALIFIED_PENDING_PRODUCTION_AND_PAID_QA_APPROVAL
+  status: PRODUCTION_REGISTERED_QA_DISABLED_ADOPTION_AND_CHROME_PENDING
   baseline_executable: 14c1907b3840b8e80dcc6c37897dbf5d29a0ea65
+  executable_commit: 3ce1bbd6816a3dbfcde770df2c78e763ca6ff7ee
+  worker_version: 77d7ae03-6ec5-4e8d-93a2-9ce067540014
+  traffic_percent: 100
+  evidence: evidence/acceptance/VF-10-09/2026-10-07-image-no-text.md
   cause: Saved_labeled_action_sentence_painted_verbatim_despite_intact_no_text_exclusions_no_pixel_acceptance_gate
   provider_spend_usd: 0
   paid_compute_shutdown: No_new_compute_or_resource_mutation_existing_video_continues
   validation: Web3284pass1skip_types_lint_web_Cloudflare_staging_builds_native290_rollback_tenant_checksum_no_replay_metadata6_context_firewall_secrets_PASS
-  native_migration_candidate: 290_defaults_false_no_paid_activation
-  remaining_gates: Production_publication_existing_Workflow_adoption_live_QA_approval_and_qualification
+  native_migration: 290_defaults_false_no_paid_activation
+  production_readback: Source37_asset_hashes_private401_55bindings27secret_names_all3Workflow_IDs_preserved
+  continuation_registration: 651973de-b72a-4dcd-8d6d-7a5bf7799b7f
+  existing_continuation: Healthy_9a87cf6d_previous_code_active_user_work_prevents_restart
+  remaining_gates: Existing_Workflow_adoption_postrelease_Chrome_disconnected_live_QA_approval_and_qualification
 
 avatar_preview_2026_10_07:
   checkpoint: V2-09
@@ -3359,7 +3366,7 @@ image_review_regeneration_request_2026_09_14:
   latest_demo_ui_to_accepted_ms: 34940
   latest_demo_evidence: evidence/acceptance/VF-10-09/2026-09-14-image-regeneration-source/live-demo.json
   final_runpod_balance_usd: 16.7686399735
-updated_at: "2026-10-07T08:28:51Z"
+updated_at: "2026-10-07T10:32:45Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
