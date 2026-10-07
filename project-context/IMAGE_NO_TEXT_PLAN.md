@@ -1,6 +1,6 @@
 # V2-09 image text prevention — 2026-10-07
 
-User scope: diagnose captions painted into generated images, repair shared causes with parallel agents, verify functionality and publish production. No new paid inference has been approved for qualification yet.
+User scope: diagnose captions painted into generated images, repair shared causes with parallel agents, verify functionality and publish production. The user approved up to8 existing-image QA checks underUSD0.20 and ongoing billed checks for future images; seven checks qualified atUSD0.002334.
 
 ## Cause and scope
 
@@ -27,10 +27,10 @@ Web suite: 226 files, 3,284 passed, one skipped. Web/Worker TypeScript, changed-
 
 The first live rollback rehearsal deadlocked while upgrading a SHARE ROW EXCLUSIVE lock during concurrent work; rollback was independently confirmed. The harness now takes ACCESS EXCLUSIVE at the start in fixed initial/regeneration order with a five-second lock timeout; the second rehearsal passed without modifying user work.
 
-Production publication is authorized. Paid pixel QA remains disabled by default until explicit consent, live qualification and safe runtime adoption. The pending proposal permits eight checks of existing images under USD0.20, then one billed check for each future image; it authorizes no new image generation or automatic regeneration. Current accepted images and saved prompts remain unchanged.
+Production publication is authorized. Paid pixel QA remains disabled until safe runtime adoption and migration292 activation. The approved proposal permits up to8 existing-image checks underUSD0.20, then one billed check per future image; seven checks are complete. It authorizes no new image generation or automatic regeneration. Current accepted images and saved prompts remain unchanged.
 
 ## Published evidence
 
-Production source3ce1bbd6 / Worker77d7ae03 at100%, native290 inactive defaults. See [acceptance](evidence/acceptance/VF-10-09/2026-10-07-image-no-text.md). Existing coordinator adoption, postrelease Chrome and paid QA approval/qualification remain open.
+Production source3ce1bbd6 / Worker77d7ae03 at100%, native290 inactive defaults. See [acceptance](evidence/acceptance/VF-10-09/2026-10-07-image-no-text.md). Combined6140c657/4a3303d6 preserves this code and adds voiceover queuing. Chrome and live QA qualification now pass; safe coordinator adoption and native292 activation remain open.
 
-User approved the pending proposal on7October2026: up to8 existing-image vision checks underUSD0.20, then one billed check per future generated/replacement image. Model/rates/reservation as recorded in CURRENT_STATE.yaml; no new image generation, automatic regeneration or GPU. Qualification and safe runtime adoption still precede activation.
+User approved the pending proposal on7October2026: up to8 existing-image vision checks underUSD0.20, then one billed check per future generated/replacement image. Model/rates/reservation as recorded in CURRENT_STATE.yaml; no new image generation, automatic regeneration or GPU. Seven actual checks pass all expected labels (three text, four clean), costUSD0.002334. Native292 rollback preserves all historical records; safe runtime adoption still precedes activation.

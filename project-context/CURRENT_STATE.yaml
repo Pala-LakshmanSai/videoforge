@@ -17,14 +17,14 @@ image_no_text_2026_10_07:
   read_profile: v2_09_image_no_text
   brief: IMAGE_NO_TEXT_PLAN.md
   branch: codex/image-no-text
-  status: PAID_QA_APPROVED_QUALIFICATION_IN_PROGRESS
+  status: QA_LIVE7_PASS_AWAITING_SAFE_RUNTIME_ACTIVATION
   baseline_executable: 14c1907b3840b8e80dcc6c37897dbf5d29a0ea65
   executable_commit: 3ce1bbd6816a3dbfcde770df2c78e763ca6ff7ee
   worker_version: 77d7ae03-6ec5-4e8d-93a2-9ce067540014
   traffic_percent: 100
   evidence: evidence/acceptance/VF-10-09/2026-10-07-image-no-text.md
   cause: Saved_labeled_action_sentence_painted_verbatim_despite_intact_no_text_exclusions_no_pixel_acceptance_gate
-  provider_spend_usd: 0
+  provider_spend_usd: 0.002334
   qa_authority: User_approved_2026_10_07_up_to8_existing_image_checks_USD0_20_then_one_billed_check_per_future_image
   qa_model: google_gemini_3_1_flash_lite
   qa_rates: USD0_25_per_million_input_USD1_50_per_million_output_tokens
@@ -37,7 +37,9 @@ image_no_text_2026_10_07:
   production_readback: Source37_asset_hashes_private401_55bindings27secret_names_all3Workflow_IDs_preserved
   continuation_registration: 651973de-b72a-4dcd-8d6d-7a5bf7799b7f
   existing_continuation: Healthy_9a87cf6d_previous_code_active_user_work_prevents_restart
-  remaining_gates: Existing_Workflow_adoption_postrelease_Chrome_disconnected_live_QA_approval_and_qualification
+  remaining_gates: Combined_release_registration_existing_Workflow_adoption_future_policy_activation
+  live_qa: Seven_calls_3TEXT_4PASS_all_expected_USD0_002334
+  postrelease_Chrome: Signed_in_queue_progress_308_image_gallery_navigation_PASS
 
 avatar_preview_2026_10_07:
   checkpoint: V2-09
@@ -3399,11 +3401,11 @@ execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 task_stage: bounded_mutation
 application_code_changes_authorized: true
 provider_calls_authorized: true
-read_only_provider_calls_authorized: true
+read_only_provider_calls_authorized: false
 remote_or_cloud_mutations_authorized: true
 credential_access_authorized: true
 gpu_use_authorized: false
-maximum_external_spend_usd: 0
+maximum_external_spend_usd: 0.20
 
 v2_09_stage6_7_autonomous_mvp_repair_2026_09_13:
   status: "ACCEPTED_DEPLOYED_ZERO_COMPUTE"
@@ -7953,7 +7955,7 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/standalone-voiceovers
+  branch: codex/image-no-text
   branch_upstream: none
   branch_published: false
   current_source_head: "69175135c0402ce0fdcbfdbbf12abf5d60c06628"
@@ -7975,9 +7977,9 @@ live_development:
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: fixture
+  provider_mode: production
   provider_calls_authorized: true
-  authorized_spend_usd: 0
+  authorized_spend_usd: 0.20
   provider_authority_scope: Image_no_text_zero_inference_application_publication_existing_work_preserved
 
 v2_destination:
@@ -10294,15 +10296,24 @@ v2_09_historical_consumed_native_authority:
   note: "Continuing user authorization permits source repairs and fresh exact successor records; it does not replay this consumed click. Retained qualified deployment remains present and idle."
 
 provider_authority: &v2_09_provider_authority_current
-  mode: deployment
-  provider: Cloudflare_and_Neon
-  cap_usd: 0
+  mode: paid
+  provider: Runware_Cloudflare_and_Neon
+  cap_usd: 0.20
+  rate_snapshot:
+    - resource_id: google_gemini_3_1_flash_lite_input
+      billing_unit: million_tokens
+      usd_per_unit: 0.25
+      checked_at: "2026-10-07"
+    - resource_id: google_gemini_3_1_flash_lite_output
+      billing_unit: million_tokens
+      usd_per_unit: 1.50
+      checked_at: "2026-10-07"
   paid_generation_authorized: false
   non_transferable: true
   authorized_by_user_at: "2026-10-07"
-  resources: [videoforge-production-runtime, videoforge_native_metadata, videoforge_existing_workflows]
-  authorized_operations: [metadata_migration, application_deploy, configuration_readback, artifact_verification, resource_identity_lookup]
-  allowed_operations: [metadata_migration, application_deploy, configuration_readback, artifact_verification, resource_identity_lookup]
+  resources: [videoforge-production-runtime, videoforge_native_metadata, videoforge_existing_workflows, google_gemini_3_1_flash_lite]
+  authorized_operations: [metadata_migration, application_deploy, configuration_readback, artifact_verification, resource_identity_lookup, existing_image_vision_qa]
+  allowed_operations: [metadata_migration, application_deploy, configuration_readback, artifact_verification, resource_identity_lookup, existing_image_vision_qa]
 
 recommended_next_task:
   task_id: VF-10-09
@@ -10310,16 +10321,16 @@ recommended_next_task:
   milestone: Prevent_generated_image_text
   status: IN_PROGRESS
   dependency_status: Production_14c1907b_verified_existing_film_active_preserved
-  authorization_status: User_requested_no_text_repair_parallel_verification_and_production_no_paid_QA_authority_yet
+  authorization_status: User_requested_no_text_repair_parallel_verification_and_production_approved_USD0_20_QA_and_future_checks
   task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current
   read_profile: v2_09_image_no_text
   task_brief: IMAGE_NO_TEXT_PLAN.md
   goal: Repair_fresh_prompts_prepare_fail_closed_QA_verify_and_publish
-  provider_mode: fixture
+  provider_mode: production
   provider_calls_authorized: true
-  read_only_provider_calls_authorized: true
-  maximum_external_spend_usd: 0
+  read_only_provider_calls_authorized: false
+  maximum_external_spend_usd: 0.20
   remote_or_cloud_mutations_authorized: true
   credential_access_authorized: true
   application_code_changes_authorized: true
@@ -10329,7 +10340,7 @@ recommended_next_task:
   worker_image_publication_authorized: false
   gpu_use_authorized: false
   retained_volume_mutation_authorized: false
-  spend_usd: 0
+  spend_usd: 0.002334
   resources: []
   authorized_operations: [local_code_and_tests, read_only_production_inspection, zero_inference_app_publication]
 

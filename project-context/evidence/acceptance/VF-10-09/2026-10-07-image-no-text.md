@@ -32,3 +32,13 @@ New provider inference/compute spend USD0. No new GPU rental, stop/start, workfl
 The first live rehearsal deadlocked during lock upgrade; rollback and schema289 were independently verified. Taking ACCESS EXCLUSIVE on initial/regeneration tables up front in fixed order, with a five-second lock timeout, allowed the second rollback proof and one application to pass. Workflow release drift comparisons exclude only observed volatile instance/timestamp fields, retaining all identity/configuration and latest-registration fences.
 
 Private evidence: primary checkout `.videoforge/image-no-text-20261007/release/`; contains authoritative release receipts, native rollback/readback and runtime snapshots. Never publish credentials, signed URLs, customer prompts or images from this directory.
+
+## Funded qualification follow-up
+
+User approved the pending finite and ongoing-charge proposal. Seven live calls through the exact production provider implementation returned all expected verdicts: both original captioned photographs and the small-logo car example TEXT; four independently inspected clean photographs PASS. Actual reported totalUSD0.002334; no UNKNOWN receipts, no repeated submissions, no new image generation/GPU. The eighth call is unnecessary. Each receipt binds its UUID, original PNG checksum and provider response hash.
+
+Chrome reconnected: signed-in Queue, current project Progress, live cost breakdown,308-image gallery and next-image navigation passed. Screenshot saved privately. Existing regeneration controls remain present; no paid regenerate/Create click.
+
+Concurrent release6140c657/Worker4a3303d6 preserved exact QA/prompt code and added voiceover queue/native291. It was merged into this branch without reverting changes. Combined registrations preserve all IDs/configuration: video99b4c266, pair2f2630e5, continuation89fa873a. No running instance restarted yet.
+
+Candidate migration292 enables only future defaults; six QA/metadata checks and native291 rollback proof pass with exact historical rows. Runtime adoption and live292 application still wait for the user's active final render and cleanup.
