@@ -4,14 +4,22 @@ voice_import_repair_2026_10_07:
   read_profile: v2_09_voice_import_repair
   brief: VOICE_IMPORT_REPAIR_PLAN.md
   branch: codex/voice-import-fix
-  status: LOCAL_QUALIFIED_PRODUCTION_PENDING
+  status: PRODUCTION_HTTP_IMPORT_PRIVATE_SAVE_AND_PLAYBACK_VERIFIED
   baseline_executable: 71af8de83aa04e0d05b19dbedd2b223b4a7a7c82
   baseline_worker: 5a201da0-ea5a-4edb-bd58-33742d225c88
   cause: Existing_provider_voice_reimport_returns400_already_imported_before_private_save
   provider_spend: No_new_TTS_or_paid_generation_metadata_import_only
   paid_compute_shutdown: No_compute_started_stopped_or_reaudited
-  validation: Four_baseline_regressions_reproduced_Web3327pass1skip_types_lint_web_Cloudflare_build_native_workerd_context_secrets_PASS
-  remaining_gates: Production_publication_asset_private_HTTP_and_Chrome_acceptance
+  executable_commit: 49f0267fa50a5b393060649d3e606c4441141378
+  worker_version: a342a0ea-9eb3-42a0-a514-e5af41edf24c
+  traffic_percent: 100
+  native_migration: 294_unchanged
+  bindings: 55_27_secret_names_preserved
+  workflow_registration: Three_existing_IDs_preserved_qualified_code_registered
+  coordinator: Existing4928d96c_kept_running_unrelated_prompt_job_active_no_restart
+  live_validation: Exact_import200_2_47s_repeat200_1_46s_reload_Saved4_preview9_9265s_ended_error_null_script_picker_owner1118_foreign1117_preview404_anonymous401_PASS
+  validation: Four_baseline_regressions_reproduced_Web3327pass1skip_focused91_types_lint_web_Cloudflare_build_native_workerd_context_secrets_37public_asset_hashes_PASS
+  remaining_gates: No_import_release_gate_remaining_idle_coordinator_adoption_deferred_until_unrelated_prompt_work_finishes_no_new_paid_full_pipeline_canary
   evidence: evidence/acceptance/VF-10-09/2026-10-07-voice-import-repair.md
 
 prompt_output_reliability_2026_10_07:
@@ -8033,8 +8041,8 @@ repository:
   published: true
   branch: codex/voice-import-fix
   branch_upstream: origin/codex/voice-import-fix
-  branch_published: false
-  current_source_head: "71af8de83aa04e0d05b19dbedd2b223b4a7a7c82"
+  branch_published: true
+  current_source_head: "49f0267fa50a5b393060649d3e606c4441141378"
   current_source_head_semantics: executable_release_identity_recorded_after_publication_evidence_commits_follow
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
   current_source_head_note: "Executable327fa6e / Worker8d2f1f98 at100%, native294 unchanged. Shared startup allowance600s, active heartbeat300s and rental deadlines preserved. Private current narration player is live below costs/above progress; exact accepted audio checksum/full decode, real Chrome playback/seek and tenant denial verified. Same idle coordinator adoptedf01ca766 with healthy tick and stable durable preimages. No new paid work; original failed/cleaned attempt preserved. Fresh ASR retry awaits separateUSD1 approval; deleted-container startup error remains unavailable."
