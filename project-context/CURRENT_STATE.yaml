@@ -4,7 +4,13 @@ prompt_stage_audit_2026_10_07:
   read_profile: v2_09_prompt_stage_audit
   brief: PROMPT_STAGE_AUDIT_PLAN.md
   branch: codex/prompt-stage-audit
-  status: QUALIFIED_PRODUCTION_PUBLICATION_PENDING
+  status: PRODUCTION_VERIFIED
+  executable: e9c8146730bc6f5bb58957741df640fbb0f5eb83
+  worker: 2e14f1a4-3f6c-4c76-bda5-1835f376c67d
+  traffic_percent: 100
+  native_migration: 298
+  coordinator_version: 46133fd0-3c08-43f0-bb2b-10de65e7c165
+  coordinator_status: Same_instance_adopted_healthy_tick_dispatch0_observers0_error_null_stable_preimages
   baseline_source: 585547acdde0e61e11eb33bc4e8d251faaedb1ce
   baseline_executable: 7cf76e3f69a0c9b36bafc097420c71093c3c5df0
   authority: User_requested_multiagent_rootcause_repair_production_and_USD3_total_new_verification
@@ -16,8 +22,12 @@ prompt_stage_audit_2026_10_07:
   validation: Pipeline341_Web3356pass1skip_finalfocused100_native26pass1skip_reclaim7_types_builds_lint_rollback_PASS
   evidence: evidence/acceptance/VF-10-09/2026-10-08-prompt-flow-continuity.md
   provider_spend_usd: 0.165680
+  provider_spend_basis: Estimated_pinned_prompt_rates_not_invoice_reconciliation
   live_qualification: Isolated401scenes41batches41receipts_zero_corrective_calls_one_source_fallback
-  remaining_gates: Safe_idle_production_publication_coordinator_adoption_and_Chrome
+  release_checks: Assets37_SHA_bindings55_secrets27_CPU300000_private401_QAfalse_existing_Workflow_IDs_preserved
+  production_chrome: Existing_failed_project_unchanged_Queue_and_New_project_form_work_no_console_errors
+  preservation: Both_original_projects_generations_leases_225_prompts_receipts_costs_unchanged_no_resume
+  remaining_gates: External_provider_failures_and_invoice_reconciliation_separate_no_full_film_claim
 
 cloud_status_2026_10_07:
   checkpoint: V2-09
