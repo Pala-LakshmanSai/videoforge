@@ -1,12 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Check,
   CheckCircle2,
   Clock3,
   Download,
-  FileText,
   Headphones,
   Library,
   LoaderCircle,
@@ -35,6 +34,8 @@ type StandaloneVoiceoverJob = {
   title?: string | null;
   failure_code?: string | null;
   audio_url?: string | null;
+  download_url?: string | null;
+  created_at?: string;
   script?: string;
   duration_ms?: number | null;
   content_length?: number | null;
@@ -140,13 +141,14 @@ function readableDuration(durationMs: number | null | undefined, script: string)
 }
 
 function stateLabel(state: string): string {
-  if (state === "WAITING") return "Waiting for capacity";
+  if (state === "WAITING") return "Queued";
   if (state === "SUBMITTING") return "Starting generation";
   if (state === "PROCESSING") return "Generating MP3";
   if (state === "ARCHIVING") return "Finalizing MP3";
   if (READY_STATES.has(state)) return "Voiceover ready";
   if (state === "UNKNOWN_NO_RETRY") return "Needs a status check";
   if (state === "FAILED") return "Generation failed";
+  if (state === "ARCHIVE_FAILED") return "Audio needs attention";
   return state.replaceAll("_", " ").toLowerCase();
 }
 
@@ -177,6 +179,17 @@ export function StandaloneVoiceover() {
     false,
   );
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const recent = useQuery({
+    queryKey: ["voiceover-library", "studio", identity?.email],
+    queryFn: () =>
+      voiceoverJson<{ voiceovers: StandaloneVoiceoverJob[]; total?: number }>(
+        "/api/v2/voiceovers/library?page=0",
+      ),
+    enabled: Boolean(identity?.email),
+    refetchInterval: 5_000,
+    refetchOnWindowFocus: true,
+  });
   const titleTouched = useHostedCreateDraftRef("standalone-voiceover-title-touched", false);
   const alive = useRef(true);
   const request = useHostedCreateDraftRef<StandaloneVoiceoverRequest | null>(
@@ -198,6 +211,16 @@ export function StandaloneVoiceover() {
     hydrated.current = true;
     const saved = readDraft(identity.email);
     if (!saved) return;
+    if (saved.job && saved.job.state !== "UNKNOWN_NO_RETRY") {
+      setTitle("");
+      setScript("");
+      setVoiceId(saved.voiceId);
+      setJob(null);
+      request.current = null;
+      setUnconfirmed(false);
+      removeDraft();
+      return;
+    }
     if (!title) setTitle(saved.title);
     if (!script) setScript(saved.script);
     if (saved.voiceId) {
@@ -240,60 +263,36 @@ export function StandaloneVoiceover() {
     if (preferred) setVoiceId(preferred.voice_id);
   }, [voiceId, voices.data]);
 
-  const active = Boolean(job && ACTIVE_STATES.has(job.state));
-  const locked = busy || active || unconfirmed;
+  const locked = busy || unconfirmed;
   const filename = useMemo(() => filenameForTitle(title), [title]);
-  const audioUrl = job && READY_STATES.has(job.state) ? (job.audio_url ?? null) : null;
-  const downloadUrl = audioUrl
-    ? `${audioUrl}${audioUrl.includes("?") ? "&" : "?"}download=1`
-    : null;
   const selectedVoice = voices.data?.voices.find((voice) => voice.voice_id === voiceId);
   const scriptReady = Boolean(script.trim()) && script.length <= MAX_SCRIPT_LENGTH;
   const canGenerate =
     !busy &&
-    !active &&
     (unconfirmed ? Boolean(request.current) : scriptReady && Boolean(voiceId) && !voices.isPending);
-
-  const activeJobId = job && ACTIVE_STATES.has(job.state) ? job.id : null;
-  const activeJobState = job && ACTIVE_STATES.has(job.state) ? job.state : null;
-  const status = useMemo(
-    () => (activeJobId ? { id: activeJobId, state: activeJobState } : null),
-    [activeJobId, activeJobState],
-  );
-
-  useEffect(() => {
-    if (!status) return;
-    let cancelled = false;
-    let timer: number | null = null;
-    const poll = async () => {
-      try {
-        const result = await voiceoverJson<JobResponse>(
-          `/api/v2/voiceovers/jobs/${encodeURIComponent(status.id)}`,
-        );
-        if (!cancelled && result.job) {
-          setJob(result.job);
-          if (result.job.state === "UNKNOWN_NO_RETRY") {
-            setUnconfirmed(true);
-          }
-        }
-      } catch (pollError) {
-        if (!cancelled) setError(errorText(pollError));
-      } finally {
-        if (!cancelled) timer = window.setTimeout(() => void poll(), 3_000);
-      }
-    };
-    void poll();
-    return () => {
-      cancelled = true;
-      if (timer !== null) window.clearTimeout(timer);
-    };
-  }, [status]);
+  const savedJobs = recent.data?.voiceovers ?? [];
+  const queueJobs =
+    job && !savedJobs.some((item) => item.id === job.id) ? [job, ...savedJobs] : savedJobs;
+  const activeCount = queueJobs.filter((item) => ACTIVE_STATES.has(item.state)).length;
+  const readyCount = queueJobs.filter(
+    (item) => READY_STATES.has(item.state) && item.audio_url,
+  ).length;
 
   useEffect(() => {
-    if (job && READY_STATES.has(job.state)) {
-      void queryClient.invalidateQueries({ queryKey: ["voiceover-library"] });
-    }
-  }, [job, queryClient]);
+    if (job && savedJobs.some((item) => item.id === job.id)) setJob(null);
+  }, [job, recent.data]);
+
+  function acceptJob(accepted: StandaloneVoiceoverJob) {
+    setJob(accepted);
+    setNotice(`“${accepted.title || title || "Voiceover"}” added to your queue.`);
+    setTitle("");
+    setScript("");
+    titleTouched.current = false;
+    setUnconfirmed(false);
+    request.current = null;
+    removeDraft();
+    void queryClient.invalidateQueries({ queryKey: ["voiceover-library"] });
+  }
 
   function clearResult() {
     setJob(null);
@@ -378,9 +377,10 @@ export function StandaloneVoiceover() {
           `/api/v2/voiceovers/jobs/${encodeURIComponent(saved.id)}`,
         );
         if (result.job) {
-          setJob(result.job);
-          setUnconfirmed(result.job.state === "UNKNOWN_NO_RETRY");
-          return;
+          if (result.job.state !== "WAITING") {
+            acceptJob(result.job);
+            return;
+          }
         }
       } catch (checkError) {
         if (errorStatus(checkError) !== 404) throw checkError;
@@ -391,8 +391,7 @@ export function StandaloneVoiceover() {
       body: saved.body,
       signal: AbortSignal.timeout(45_000),
     });
-    setJob(result.job);
-    setUnconfirmed(result.job.state === "UNKNOWN_NO_RETRY");
+    acceptJob(result.job);
   }
 
   async function generate() {
@@ -428,22 +427,12 @@ export function StandaloneVoiceover() {
     }
   }
 
-  const statusState = job?.state;
-  const statusIcon =
-    statusState && READY_STATES.has(statusState) ? (
-      <CheckCircle2 aria-hidden="true" />
-    ) : statusState === "FAILED" ? (
-      <AlertTriangle aria-hidden="true" />
-    ) : (
-      <LoaderCircle className="is-spinning" aria-hidden="true" />
-    );
-
   return (
     <div className="page standalone-voiceover-page">
       <PageHeader
         eyebrow="Voiceover studio"
         title="Turn your script into a voiceover"
-        description="Choose a voice, paste your script, and get a ready-to-use MP3 in one step."
+        description="Add your scripts. We’ll make the voiceovers. Come back when they’re ready."
         actions={
           <Link to="/voiceovers" className="button button-secondary">
             <Library size={16} aria-hidden="true" />
@@ -465,7 +454,8 @@ export function StandaloneVoiceover() {
               <Headphones size={22} />
             </span>
             <div>
-              <h2>New voiceover</h2>
+              <h2>Create a voiceover</h2>
+              <p>Choose a voice, add your script, and keep going.</p>
             </div>
           </div>
 
@@ -517,7 +507,6 @@ export function StandaloneVoiceover() {
                   event.target.value = "";
                 }}
               />
-              <span className="helper">Plain text up to 100,000 characters</span>
             </label>
           </div>
 
@@ -556,7 +545,7 @@ export function StandaloneVoiceover() {
 
           <div className="standalone-submit-row">
             <span className="standalone-submit-hint">
-              {selectedVoice ? `${selectedVoice.name} · ${filename}` : "Choose a voice to continue"}
+              {selectedVoice ? `${selectedVoice.name} · MP3` : "Choose a voice to continue"}
             </span>
             <button
               className="button button-primary standalone-submit"
@@ -568,90 +557,157 @@ export function StandaloneVoiceover() {
               ) : (
                 <WandSparkles size={17} aria-hidden="true" />
               )}
-              {busy ? "Preparing…" : unconfirmed ? "Check generation" : "Create voiceover"}
+              {busy ? "Adding…" : unconfirmed ? "Check generation" : "Add to queue"}
             </button>
           </div>
         </form>
 
-        <aside className="standalone-voiceover-result" aria-live="polite">
+        <aside className="standalone-voiceover-result" aria-label="Voiceover queue">
           <div className="standalone-result-heading">
             <div>
-              <p className="eyebrow">Output</p>
-              <h2>Your voiceover</h2>
+              <p className="eyebrow">Your workspace</p>
+              <h2>Voiceover queue</h2>
             </div>
-            <span className="standalone-result-format">MP3</span>
-          </div>
-
-          {!job ? (
-            <div className="standalone-result-empty">
-              <span className="standalone-result-empty-icon" aria-hidden="true">
-                <FileText size={22} />
-              </span>
-              <strong>Your generated audio will appear here</strong>
-              <p>Preview it, then download the MP3 for your next project.</p>
-            </div>
-          ) : (
-            <div
-              className={`standalone-job standalone-job-${statusState?.toLowerCase() ?? "unknown"}`}
+            <button
+              type="button"
+              className="button button-ghost standalone-queue-refresh"
+              aria-label="Refresh voiceover queue"
+              onClick={() => void recent.refetch()}
             >
-              <div className="standalone-job-status">
-                <span className="standalone-job-status-icon">{statusIcon}</span>
-                <div>
-                  <strong>{stateLabel(statusState ?? "")}</strong>
-                  <span>{job.title || title || "Untitled voiceover"}</span>
-                </div>
-              </div>
-              {ACTIVE_STATES.has(statusState ?? "") ? (
-                <p className="standalone-job-copy">
-                  You can keep this page open while J1TTS prepares your audio.
-                </p>
-              ) : null}
-              {statusState === "UNKNOWN_NO_RETRY" ? (
-                <p className="standalone-job-copy">
-                  No second provider request was started. Check generation to reconcile this
-                  request.
-                </p>
-              ) : null}
-              {statusState === "FAILED" ? (
-                <p className="standalone-job-copy">
-                  {job.failure_code ?? "J1TTS could not create this voiceover."}
-                </p>
-              ) : null}
-              {audioUrl ? (
-                <div className="standalone-ready-audio">
-                  <audio
-                    controls
-                    preload="metadata"
-                    src={audioUrl}
-                    aria-label="Generated voiceover preview"
-                  />
-                  <div className="standalone-ready-meta">
-                    <span>{job.voice_name || selectedVoice?.name || "Selected voice"}</span>
-                    <span>
-                      {readableDuration(job.duration_ms, script)} · {job.filename}
-                    </span>
-                  </div>
-                  <a
-                    className="button button-primary standalone-download"
-                    href={downloadUrl ?? audioUrl}
-                    download={job.filename}
-                  >
-                    <Download size={16} aria-hidden="true" /> Download MP3
-                  </a>
-                </div>
-              ) : null}
-              {READY_STATES.has(statusState ?? "") && !audioUrl ? (
-                <p className="standalone-job-copy">
-                  Audio is ready. Try again in a moment if the preview does not load.
-                </p>
-              ) : null}
-            </div>
-          )}
-
-          <div className="standalone-result-tip">
-            <Check size={15} aria-hidden="true" />
-            <span>Voiceovers stay available in your Library after creation.</span>
+              <RefreshCcw size={17} aria-hidden="true" />
+            </button>
           </div>
+          <p className="standalone-queue-intro">
+            Keep adding scripts. Everything continues in the background.
+          </p>
+          <div className="standalone-queue-summary">
+            <span>
+              <i className="standalone-status-dot" />
+              {activeCount} in progress
+            </span>
+            <span>
+              <Check size={14} aria-hidden="true" />
+              {readyCount} ready
+            </span>
+          </div>
+          {notice ? (
+            <p className="standalone-queue-notice" role="status">
+              <CheckCircle2 size={16} aria-hidden="true" />
+              {notice}
+            </p>
+          ) : null}
+          {recent.isError ? (
+            <p role="alert" className="standalone-queue-error">
+              Queue couldn’t refresh. Your saved work is safe.{" "}
+              <button type="button" onClick={() => void recent.refetch()}>
+                Try again
+              </button>
+            </p>
+          ) : null}
+          {recent.isPending && !queueJobs.length ? (
+            <p className="standalone-queue-intro" role="status">
+              Loading your voiceovers…
+            </p>
+          ) : null}
+          {!recent.isPending && !queueJobs.length ? (
+            <div className="standalone-result-empty">
+              <span className="standalone-result-empty-icon">
+                <Headphones size={25} aria-hidden="true" />
+              </span>
+              <strong>Your next voiceover starts here</strong>
+              <p>Add a script to the queue. Finished MP3s stay here and in your Library.</p>
+            </div>
+          ) : null}
+          <ol className="standalone-queue-list">
+            {queueJobs.map((item) => {
+              const ready = READY_STATES.has(item.state) && Boolean(item.audio_url);
+              const active = ACTIVE_STATES.has(item.state);
+              const name = item.title || item.filename || "Untitled voiceover";
+              return (
+                <li
+                  key={item.id}
+                  className={`standalone-queue-item ${ready ? "is-ready" : active ? "is-active" : "needs-attention"}`}
+                >
+                  <div className="standalone-queue-item-header">
+                    <span className="standalone-queue-item-icon" aria-hidden="true">
+                      {ready ? (
+                        <CheckCircle2 size={18} />
+                      ) : item.state === "WAITING" ? (
+                        <Clock3 size={18} />
+                      ) : active ? (
+                        <LoaderCircle size={18} className="is-spinning" />
+                      ) : (
+                        <AlertTriangle size={18} />
+                      )}
+                    </span>
+                    <div>
+                      <h3>{name}</h3>
+                      <p>
+                        {item.voice_name || "Selected voice"}
+                        {item.duration_ms ? ` · ${readableDuration(item.duration_ms, "")}` : ""}
+                      </p>
+                    </div>
+                    <span className="standalone-queue-state">{stateLabel(item.state)}</span>
+                  </div>
+                  {ready ? (
+                    <div className="standalone-queue-audio">
+                      <audio
+                        controls
+                        preload="none"
+                        src={item.audio_url!}
+                        aria-label={`Listen to ${name}`}
+                      />
+                      <a
+                        className="button button-secondary"
+                        href={
+                          item.download_url ||
+                          `${item.audio_url}${item.audio_url?.includes("?") ? "&" : "?"}download=1`
+                        }
+                        aria-label={`Download ${name}`}
+                      >
+                        <Download size={16} aria-hidden="true" />
+                        <span>MP3</span>
+                      </a>
+                    </div>
+                  ) : null}
+                  {item.state === "UNKNOWN_NO_RETRY" ? (
+                    <p className="standalone-job-copy">
+                      Generation needs a status check. This request won’t be submitted twice.{" "}
+                      <button
+                        type="button"
+                        className="standalone-inline-retry"
+                        onClick={() => {
+                          void voiceoverJson<JobResponse>(
+                            `/api/v2/voiceovers/jobs/${encodeURIComponent(item.id)}`,
+                          )
+                            .then(() =>
+                              queryClient.invalidateQueries({ queryKey: ["voiceover-library"] }),
+                            )
+                            .catch((checkError: unknown) => setError(errorText(checkError)));
+                        }}
+                      >
+                        Check status
+                      </button>
+                    </p>
+                  ) : null}
+                  {item.state === "FAILED" || item.state === "ARCHIVE_FAILED" ? (
+                    <p className="standalone-job-copy">
+                      We couldn’t finish this voiceover. Its details are saved in your Library.
+                    </p>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ol>
+          {(recent.data?.total ?? 0) > savedJobs.length ? (
+            <p className="standalone-queue-intro">
+              Showing your latest {savedJobs.length} voiceovers. Your full history is in Library.
+            </p>
+          ) : null}
+          <Link to="/library" className="standalone-queue-library">
+            <Library size={16} aria-hidden="true" />
+            Open Library <span aria-hidden="true">↗</span>
+          </Link>
         </aside>
       </div>
     </div>

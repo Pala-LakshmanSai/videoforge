@@ -6,6 +6,24 @@ import { canViewCentralizedLibrary } from "./centralized-library";
 import { serveHostedVideo } from "./serve-video";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+const MAX_VOICEOVER_DOWNLOAD_STEM = 140;
+
+function voiceoverDownloadFilename(title: unknown): string {
+  const source = typeof title === "string" ? title.trim() : "";
+  const safe = Array.from(source, (character) => {
+    const codePoint = character.codePointAt(0) ?? 0;
+    return character === "/" ||
+      character === "\\" ||
+      codePoint < 0x20 ||
+      codePoint === 0x7f ||
+      (codePoint >= 0xd800 && codePoint <= 0xdfff)
+      ? "_"
+      : character;
+  }).join("");
+  const stem = Array.from(safe).slice(0, MAX_VOICEOVER_DOWNLOAD_STEM).join("").trim();
+  return `${stem || "voiceover"}.mp3`;
+}
+
 export interface VoiceoverLibraryRow {
   id: string;
   title: string;
@@ -163,7 +181,7 @@ export async function handleVoiceoverLibrary(
           voiceover_filename: row.filename,
         },
         url.searchParams.get("download") !== "1",
-        row.filename,
+        voiceoverDownloadFilename(row.title),
       );
     }
     return response({

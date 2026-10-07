@@ -11,6 +11,15 @@ Checkpoint V2-09 / VF-10-09. User authorizes design, implementation, testing and
 - Centralized Library uses the same toggle and only the existing verified, admitted demo9 identity can inspect or delete cross-account outputs. Ordinary accounts remain private.
 - Generation reload/recovery, admission changes, errors, duplicate submissions, tenant denial, range playback and deletion retries are covered. Desktop/mobile Chrome verifies visual and functional behavior.
 
+## Queue and usability follow-up — 7 October 2026
+
+- Submit successive scripts without waiting for earlier MP3s. A successful queue response means the request is durable and its background observer is confirmed.
+- Reset the composer after confirmed acceptance, retain the selected voice, and show a persistent private queue with live status, recent results, listen/download and Library access.
+- Keep an uncertain submission tied to its original request ID until reconciled; never silently resubmit a paid request.
+- Reuse existing database FIFO/capacity claims and background Workflow; no schema or video-pipeline change unless verified necessary.
+- Download names derive from the entered title, preserving readable spaces/Unicode and removing unsafe filename characters. Applies to existing outputs too.
+- Verify multiple queued jobs, returning later, error/reload behavior, title-based downloads and desktop/mobile presentation.
+
 ## Scope and release
 
 Use existing components, APIs and database security patterns. No new provider, video processing path, or paid GPU. Parent audits all Luna worker changes before release. Preserve the dirty primary checkout and all concurrent production changes. Release only qualified source and additive migration with exact baseline/readback. Paid live canary requires a bounded existing-plan operation; no subscription/top-up or arbitrary retries.

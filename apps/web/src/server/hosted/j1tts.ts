@@ -11,6 +11,7 @@ import {
 import { sha256 } from "./crypto";
 import { providerRetryAfterMs } from "../providers/provider-throttle";
 import type { VoiceoverAsset } from "./voiceover-archive";
+import { ensureHostedContinuationDriver } from "./pair-observer-guard";
 
 async function archiveStandaloneVoiceover(
   env: HostedRuntimeEnvironment,
@@ -23,6 +24,7 @@ async function archiveStandaloneVoiceover(
 const BASE = "https://api.j1tts.com";
 const ID = /^[A-Za-z0-9_-]{1,160}$/u;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+const LIVE_OBSERVER_STATES = new Set(["queued", "running", "waiting"]);
 export interface J1Voice {
   imported?: boolean;
   voice_id: string;
@@ -264,14 +266,50 @@ async function ensureVoiceoverObserver(
   accountId: string,
   workspaceId: string,
   jobId: string,
-) {
+  required = false,
+): Promise<void> {
+  const workflow = env.HOSTED_CONTINUATION_WORKFLOW;
+  if (!workflow) {
+    if (required) throw new J1Error("VOICEOVER_SCHEDULING_UNAVAILABLE");
+    return;
+  }
   try {
-    await env.HOSTED_CONTINUATION_WORKFLOW?.create({
-      id: `voiceover-${jobId}`,
-      params: { reason: "voiceover-observer", voiceover: { accountId, workspaceId, jobId } },
-    });
-  } catch {
-    /* The exact job remains saved; reads and the periodic driver also reconcile it. */
+    // The dedicated observer is the fast path; the shared driver is the recovery path when a
+    // request loses the workflow-create acknowledgement or the observer later reaches its bound.
+    await ensureHostedContinuationDriver(env);
+    const id = `voiceover-${jobId}`;
+    try {
+      const created = await workflow.create({
+        id,
+        params: { reason: "voiceover-observer", voiceover: { accountId, workspaceId, jobId } },
+      });
+      if (created.id !== id) throw new J1Error("VOICEOVER_SCHEDULING_IDENTITY_INVALID");
+      return;
+    } catch (error) {
+      // Cloudflare reports an idempotent create race as an error. Confirm the exact instance before
+      // treating that as success; an unknown create failure must remain visible to the caller.
+      if (error instanceof J1Error && error.code === "VOICEOVER_SCHEDULING_IDENTITY_INVALID")
+        throw error;
+      try {
+        const existing = await workflow.get(id);
+        const status = await existing.status();
+        const state =
+          typeof status === "object" && status !== null && !Array.isArray(status)
+            ? (status as { readonly status?: unknown }).status
+            : null;
+        if (typeof state !== "string" || !LIVE_OBSERVER_STATES.has(state.toLowerCase()))
+          throw new Error("workflow observer is not active");
+        return;
+      } catch {
+        throw new J1Error("VOICEOVER_SCHEDULING_UNAVAILABLE");
+      }
+    }
+  } catch (error) {
+    // Legacy project narration still performs its immediate observation below. Its durable request
+    // is enough recovery evidence, so a missing observer must not change that established path.
+    if (!required) return;
+    if (error instanceof J1Error) throw error;
+    throw new J1Error("VOICEOVER_SCHEDULING_UNAVAILABLE");
   }
 }
 export async function handleJ1Voiceover(
@@ -554,8 +592,23 @@ export async function handleJ1Voiceover(
           409,
         );
       }
-      await ensureVoiceoverObserver(env, scope.account_id, scope.workspace_id, b.id);
+      const terminal = ["COMPLETED", "FAILED", "CANCELLED"].includes(started?.job?.state ?? "");
+      // A replay of a terminal identity is already durably resolved. Requiring a fresh Workflow
+      // handle here would turn a safe idempotent POST into a false scheduling failure.
+      if (b.title === undefined || !terminal)
+        await ensureVoiceoverObserver(
+          env,
+          scope.account_id,
+          scope.workspace_id,
+          b.id,
+          b.title !== undefined,
+        );
       if (!started?.claimed) return response({ job: await publicJob(started?.job ?? null) }, 200);
+      if (b.title !== undefined) {
+        // Standalone requests are durable queue entries. The Workflow observer owns provider
+        // submission after this response, so closing the page cannot strand or replay the request.
+        return response({ job: await publicJob(await read(b.id)) }, 202);
+      }
       await observeJ1Voiceover(
         { ...env, DATABASE_URL: config.neon.databaseUrl },
         { accountId: scope.account_id, workspaceId: scope.workspace_id, jobId: b.id },
@@ -606,6 +659,20 @@ export async function handleJ1Voiceover(
       if (
         ["WAITING", "SUBMITTING", "PROCESSING", "UNKNOWN_NO_RETRY", "COMPLETED"].includes(job.state)
       ) {
+        if (job.state === "WAITING" && env.HOSTED_CONTINUATION_WORKFLOW) {
+          const standalone = await sql<VoiceoverAsset | null>(
+            "SELECT public.videoforge_read_voiceover_library_asset($1,$2,$3) AS value",
+            [...owner, job.id],
+          );
+          if (standalone && !standalone.deleted_at)
+            await ensureVoiceoverObserver(
+              env,
+              scope.account_id,
+              scope.workspace_id,
+              job.id,
+              true,
+            );
+        }
         await observeJ1Voiceover(
           { ...env, DATABASE_URL: config.neon.databaseUrl },
           { accountId: scope.account_id, workspaceId: scope.workspace_id, jobId: job.id },
@@ -622,7 +689,9 @@ export async function handleJ1Voiceover(
         error: {
           code: error instanceof J1Error ? error.code : "VOICEOVER_UNAVAILABLE",
           message: path.includes("/jobs")
-            ? "Unable to reach voice generation. Your saved request will not be submitted again."
+            ? error instanceof J1Error && error.code.startsWith("VOICEOVER_SCHEDULING_")
+              ? "Your request is saved, but background scheduling is temporarily unavailable. Retry this same request."
+              : "Unable to reach voice generation. Your saved request will not be submitted again."
             : "Unable to load voices. Try again in a moment.",
         },
       },
