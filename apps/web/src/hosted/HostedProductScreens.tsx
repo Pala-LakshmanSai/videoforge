@@ -71,6 +71,8 @@ export const HOSTED_UPLOAD_TIMEOUT_MS = 300_000;
 const HOSTED_CREATE_SCHEMA = "videoforge-hosted-project-create/v5";
 const VIDEO_COVERAGE_PRESETS = [0, 7, 15, 25, 50, 75, 100] as const;
 const VOICEOVER_TYPES = new Set(["audio/mpeg", "audio/wav"]);
+const EMPTY_VOICEOVER_MESSAGE =
+  "This voiceover file is empty (0 bytes). Choose a complete WAV or MP3 file.";
 const MAX_HOSTED_VOICEOVER_FILENAME = 160;
 export const HOSTED_SHA256_CHUNK_BYTES = 4 * 1024 * 1024;
 
@@ -2469,6 +2471,7 @@ function validateAudioDurationMs(value: number): number {
 }
 
 export async function audioDurationMs(file: File): Promise<number> {
+  if (file.size === 0) throw new Error(EMPTY_VOICEOVER_MESSAGE);
   if (file.type === "audio/wav" || /\.wav$/iu.test(file.name)) {
     const parsed = parseWavDurationMs(
       await readBlobBytes(file.slice(0, Math.min(file.size, 1024 * 1024))),
@@ -3006,6 +3009,9 @@ export function HostedCreateProjectScreen() {
     if (!selected) {
       setVoiceover(null);
       setError(FILE_ACCESS_HINT);
+    } else if (selected.size === 0) {
+      setVoiceover(null);
+      setError(EMPTY_VOICEOVER_MESSAGE);
     } else if (!VOICEOVER_TYPES.has(contentTypeForVoiceover(selected))) {
       setVoiceover(null);
       setError("Use a WAV or MP3 voiceover for hosted generation.");

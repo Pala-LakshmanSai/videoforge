@@ -695,11 +695,25 @@ test("Create keeps the configurable AI opening separate from whole-video coverag
   await expect(opening).toBeChecked();
   await expect(minutes).toHaveValue("3");
   await page.getByRole("textbox", { name: "Video title" }).fill("Opening control proof");
-  await page.getByLabel("Final voiceover").setInputFiles({
+  const voiceoverInput = page.getByLabel("Final voiceover");
+  await voiceoverInput.setInputFiles({
+    name: "garden-3min-voiceover.mp3",
+    mimeType: "audio/mpeg",
+    buffer: Buffer.alloc(0),
+  });
+  await expect(page.getByRole("alert")).toHaveText(
+    "This voiceover file is empty (0 bytes). Choose a complete WAV or MP3 file.",
+  );
+  await expect(create).toBeDisabled();
+  await expect(page.getByText(/ready to check/u)).not.toBeVisible();
+  expect(unexpectedWrites).toEqual([]);
+
+  await voiceoverInput.setInputFiles({
     name: "opening-proof.wav",
     mimeType: "audio/wav",
     buffer: voiceover,
   });
+  await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(create).toBeEnabled();
   await minutes.fill("2.5");
   await coverage.fill("23");

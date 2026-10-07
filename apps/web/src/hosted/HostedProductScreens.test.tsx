@@ -4083,6 +4083,52 @@ describe("hosted product journey", () => {
     expect(screen.getByRole("button", { name: "Create video" })).toBeEnabled();
   });
 
+  it.each(["mp3", "wav"])(
+    "rejects an empty %s before attempting duration decoding",
+    async (extension) => {
+      await expect(audioDurationMs(new File([], `empty.${extension}`))).rejects.toThrow(
+        "This voiceover file is empty (0 bytes). Choose a complete WAV or MP3 file.",
+      );
+    },
+  );
+
+  it.each(["picker", "drop"])(
+    "rejects an empty voiceover through %s and clears stale readiness",
+    async (source) => {
+      const fetchMock = vi.fn(async () =>
+        Response.json({
+          avatars: [{ profile_id: "p1", version_id: "a1", name: "Owner", version_number: 1 }],
+          styles: [{ style_id: "s1", version_id: "sv1", name: "Documentary", version_number: 1 }],
+          media_worker_state: "ONLINE",
+          gpu_transport: "DISABLED_UNQUALIFIED",
+          gpu_readiness: gpuReadiness,
+        }),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      renderHosted(<HostedCreateProjectScreen />);
+      const input = await screen.findByLabelText("Final voiceover");
+      fireEvent.change(input, { target: { files: [new File(["audio"], "original.mp3")] } });
+      const create = screen.getByRole("button", { name: "Create video" });
+      expect(create).toBeEnabled();
+      fireEvent.change(screen.getByLabelText("Video title"), { target: { value: "My title" } });
+      const empty = new File([], "garden-3min-voiceover.mp3", { type: "audio/mpeg" });
+      if (source === "picker") fireEvent.change(input, { target: { files: [empty] } });
+      else fireEvent.drop(input.closest("label")!, { dataTransfer: { files: [empty] } });
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "This voiceover file is empty (0 bytes). Choose a complete WAV or MP3 file.",
+      );
+      expect(create).toBeDisabled();
+      expect(screen.queryByText(/ready to check/u)).not.toBeInTheDocument();
+      expect(screen.queryByText("original.mp3")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Video title")).toHaveValue("My title");
+      fireEvent.click(create);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      fireEvent.change(input, { target: { files: [new File(["audio"], "replacement.mp3")] } });
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(create).toBeEnabled();
+    },
+  );
+
   it("imports a dropped voiceover through the hosted picker", async () => {
     vi.stubGlobal(
       "fetch",
