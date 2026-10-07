@@ -76,6 +76,28 @@ const jsonResponse = (value: unknown, status = 200, headers?: HeadersInit) =>
   new Response(JSON.stringify(value), { status, headers });
 
 describe("Runware Luna prompt transport", () => {
+  it("calls the platform fetch without a client receiver", async () => {
+    const fetcher = vi.fn(function (this: unknown) {
+      if (this !== undefined) throw new TypeError("Illegal invocation");
+      return Promise.resolve(jsonResponse(complete()));
+    });
+    vi.stubGlobal("fetch", fetcher);
+    try {
+      const transport = new RunwareLunaPromptHttpTransport({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        ledger: new RunwareSpendLedger(0.25),
+        maximumRequestCostUsd: 0.25,
+      });
+      await expect(transport.dispatch(await makeRequest())).resolves.toMatchObject({
+        status: "succeeded",
+        costUsd: 0.000014,
+      });
+      expect(fetcher).toHaveBeenCalledOnce();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("builds exact Chat Completions JSON-schema bytes from the sealed envelope", async () => {
     const request = await makeRequest();
     const wire = await buildRunwareLunaPromptWireRequest(request);

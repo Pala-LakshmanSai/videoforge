@@ -276,7 +276,9 @@ export class RunwareLunaPromptHttpTransport implements RunwarePromptTransport {
 
     let response: Response;
     try {
-      response = await this.fetcher(this.endpoint, {
+      // Workers fetch rejects a transport instance as its receiver.
+      const fetcher = this.fetcher;
+      response = await fetcher(this.endpoint, {
         method: "POST",
         headers: {
           authorization: `Bearer ${this.options.apiKey}`,
