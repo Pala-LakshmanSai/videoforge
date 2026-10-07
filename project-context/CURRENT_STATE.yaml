@@ -1,14 +1,23 @@
 standalone_voiceovers_2026_10_07:
   checkpoint: V2-09
   selected_task: VF-10-09
-  status: QUALIFIED_AWAITING_PUBLICATION
-  baseline_source: 02244e044cf8392d95e36ae899485e6fbe74593b
+  read_profile: v2_09_standalone_voiceovers
+  brief: VOICEOVERS_PLAN.md
+  status: PRODUCTION_AND_LIVE_MP3_VERIFIED
+  executable_commit: eb67f1c37f612b46b7d92a8c931b9e92bcbd09f3
+  worker_version: 948b333c-4edd-4aaa-bab6-1788310a70af
+  traffic_percent: 100
+  native_migration: 289
   release_branch: codex/standalone-voiceovers
-  scope: Dedicated_script_to_MP3_and_private_and_demo9_centralized_libraries
-  validation: Web3254_pass1skip_native_rollback_runtime_tenant_guards_types_lint_both_builds_context_secrets_PASS
-  provider_spend: No_new_provider_generation_or_compute_started
-  paid_compute_shutdown: No_compute_started_or_mutated_existing_work_preserved
-  remaining_gates: Production_publication_and_live_MP3_acceptance_inherited_broadCI_formatting
+  scope: Dedicated_script_to_MP3_private_library_and_exact_demo9_centralized_library
+  validation: Web3254pass1skip_finalUI5_Chrome_desktop_mobile_reload_native_runtime_tenant_types_lint_builds_context_secrets_PASS
+  deployed_checks: Public37_assets_SHA_private401_55bindings27secrets_existing_Workflow_IDs_and_runtime_pins_preserved
+  live_audio: One92character_J1TTS_7_755465seconds_125013bytes_Chrome_ended_checksum_full_decode_HTTP_attachment_range206_PASS
+  access_delete: Own_and_central_cards_nonowner403_foreign404_anonymous401_crossorigin403_confirmed_test_delete_PASS
+  provider_spend: One_J1TTS_generation_invoice_charge_unverified_no_other_new_provider_work
+  paid_compute_shutdown: No_GPU_started_or_mutated_existing_video_and_Workflow_instances_preserved_test_output_deleted
+  remaining_gates: Inherited_broadCI_formatting_and_provider_invoice_precision_native_Chrome_download_file_location_unconfirmed
+  evidence: evidence/acceptance/VF-10-09/2026-10-07-standalone-voiceovers.md
 
 cost_accuracy_2026_10_07:
   checkpoint: V2-09
