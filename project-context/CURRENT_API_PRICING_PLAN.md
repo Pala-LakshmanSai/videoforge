@@ -1,0 +1,37 @@
+# V2-09 / VF-10-09: current provider cost calculator
+
+User2026-10-07 requests calculator rates reflecting Runware GPT-6 Luna and all
+present APIs. Continue the already authorized qualified production-publication
+workflow, without new inference/media/compute or replay. Baseline context3d6fd1f8,
+executable4b2c9f7d / Workerc10de8bb at100%, native286. Preserve primary unrelated edits.
+
+## Scope and evidence
+
+Verify current configured provider rates from primary public pages and authorized
+read-only configured pricing endpoints. OpenAI direct pricing is reference; Runware
+is the prompt billing provider. Check Kie z-image, Fal FlashHead audio route and
+Z-Image replacement, Runware scene video/context, and narration. Cloud uses each
+actual rental's recorded hourly rate. Preset analysis and shared infrastructure
+are separate from per-video generation; do not invent allocations or per-call
+narration prices from monthly plans.
+
+Trace both projected API cost and incurred totals. Current media-only forecast
+omits text; Luna tagged token estimates are incorrectly shown as reported money.
+Fal's public output-second approximation must not masquerade as a compute-second
+invoice. Retain partial totals where actual usage/charges are unavailable. Never
+reprice historical events, alter immutable requests/model pins/budgets, or create
+paid work to test a cost display. Keep output/reasoning tokens counted once.
+
+## Acceptance and completion
+
+Small fixes in shared calculator/read-only projection, explicit verified-rate
+metadata and honest estimated/unconfirmed copy. Regressions cover tagged Luna vs
+legacy costs, actual-rate math/units, no reservation double count, plan-rate pins,
+missing narration/Fal usage, tenant isolation and UI partial totals. Types/lint,
+builds/quarantine/context/secrets and native runtime-role readback must pass.
+Verify actual signed-in production project; no Create or provider dispatch.
+Preserve bindings/secrets/native pins and active jobs. Register qualified Workflow code preserving existing IDs; adopt the singleton only
+when the existing durable idle guard permits it;
+never restart active user work for a read-only cost display. Document remaining
+invoice/account-usage uncertainty and inherited broadCI gates. Update repository
+and existing GPT Space evidence after qualified publication.

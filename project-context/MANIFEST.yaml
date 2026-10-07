@@ -4,8 +4,8 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-10-07"
 source_of_truth: project-context
 
-current_selected_profile: v2_09_voiceover_empty_file
-current_selected_brief: VOICEOVER_EMPTY_FILE_PLAN.md
+current_selected_profile: v2_09_current_api_pricing
+current_selected_brief: CURRENT_API_PRICING_PLAN.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -25,6 +25,11 @@ conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
 target_profile_word_budget: 15000
 
 read_profiles:
+  v2_09_current_api_pricing:
+    - CURRENT_API_PRICING_PLAN.md
+    - CLOUD_COMPUTE_COST_PLAN.md
+    - 11_COST_SPEED_BUDGET.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
   v2_09_voiceover_empty_file:
     - VOICEOVER_EMPTY_FILE_PLAN.md
     - 19_IMPLEMENTATION_PLAYBOOK.md

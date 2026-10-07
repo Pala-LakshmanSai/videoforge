@@ -825,6 +825,9 @@ interface HostedCost {
     readonly fal_avatar_seconds: number;
     readonly fal_usd: number;
     readonly pricing_checked_at: string;
+    readonly text_cost_so_far_usd?: number;
+    readonly text_cost_pending?: boolean;
+    readonly pricing_incomplete?: boolean;
     readonly seedance_seconds?: number;
     readonly seedance_usd?: number;
     readonly seedance_reported_usd?: number;
@@ -2515,6 +2518,28 @@ export function hostedPreflightEstimateText(
     return `Estimated variable cost ${formatUsd(estimate.projected_usd)}`;
   }
   return "Estimate pending";
+}
+
+function hostedApiEstimateDetail(estimate: NonNullable<HostedCost["api_estimate"]>): string {
+  const parts = [
+    `${estimate.kie_images} Kie images + ${estimate.fal_avatar_seconds.toFixed(1)}s Fal avatar`,
+  ];
+  if (estimate.seedance_seconds !== undefined) {
+    parts.push(
+      `${estimate.seedance_seconds.toFixed(1)}s scene footage${estimate.seedance_coverage_percent === undefined ? "" : ` (up to ${estimate.seedance_coverage_percent}%${estimate.seedance_required_opening_seconds ? ` after ${formatMilliseconds(estimate.seedance_required_opening_seconds * 1000)}` : ""})`}`,
+    );
+  }
+  if (typeof estimate.text_cost_so_far_usd === "number" && estimate.text_cost_so_far_usd > 0) {
+    const amount = estimate.text_cost_so_far_usd;
+    const formatted =
+      amount < 0.0001 ? "<$0.0001" : amount < 0.01 ? `$${amount.toFixed(4)}` : formatUsd(amount);
+    parts.push(`${formatted} text`);
+  }
+  parts.push("published-rate estimate");
+  if (estimate.text_cost_pending) parts.push("text generation incomplete");
+  if (estimate.pricing_incomplete) parts.push("partial estimate");
+  parts.push("excludes Cloud compute");
+  return parts.join(" · ");
 }
 
 function formatMilliseconds(value: number | null | undefined): string {
@@ -6891,7 +6916,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               detail={
                 query.data.generation_provider === "KIE_FAL"
                   ? cost?.api_estimate
-                    ? `${cost.api_estimate.kie_images} Kie images + ${cost.api_estimate.fal_avatar_seconds.toFixed(1)}s Fal avatar${cost.api_estimate.seedance_seconds === undefined ? "" : ` + ${cost.api_estimate.seedance_seconds.toFixed(1)}s scene footage${cost.api_estimate.seedance_coverage_percent === undefined ? "" : ` (up to ${cost.api_estimate.seedance_coverage_percent}%${cost.api_estimate.seedance_required_opening_seconds ? ` after ${formatMilliseconds(cost.api_estimate.seedance_required_opening_seconds * 1000)}` : ""})`}`} · published-rate estimate · excludes Cloud compute`
+                    ? hostedApiEstimateDetail(cost.api_estimate)
                     : "Calculated when planning finishes"
                   : cost?.cap_usd == null
                     ? undefined

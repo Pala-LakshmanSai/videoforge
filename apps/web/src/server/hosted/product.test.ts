@@ -3554,6 +3554,7 @@ describe("hosted product route contract", () => {
           stages: { id: string; status: string; detail: string; progress_percent: number }[];
           cost: {
             api_estimate: {
+              seedance_usd_per_second: number;
               seedance_actual_coverage_percent: number;
               seedance_fallback_count: number;
               seedance_reported_usd: number;
@@ -3562,6 +3563,7 @@ describe("hosted product route contract", () => {
         };
         const stage = body.stages.find((stage) => stage.id === "video-generation")!;
         expect(stage.status).toBe(expectedStatus);
+        expect(body.cost.api_estimate.seedance_usd_per_second).toBe(0.01336);
         expect(body.cost.api_estimate.seedance_actual_coverage_percent).toBeCloseTo(coverage);
         expect(body.cost.api_estimate.seedance_fallback_count).toBe(fallbackCount);
         expect(body.cost.api_estimate.seedance_reported_usd).toBeCloseTo(
@@ -3712,6 +3714,131 @@ describe("hosted product route contract", () => {
       }
     },
   );
+
+  it("adds incurred context and scene-prompt charges, leaves remaining prompts pending, and uses the sealed Seedance rate", async () => {
+    const priorQuery = testState.query.getMockImplementation()!;
+    const priorProject = testState.projectRows[0]!;
+    let acceptedScenes = 1;
+    let narrationUnknown = true;
+    let videoPlanPresent = true;
+    testState.projectRows[0] = { ...priorProject, generation_provider: "KIE_FAL" };
+    testState.query.mockImplementation(async (sql, params) => {
+      if (sql.includes("WITH project_prompt_cost AS"))
+        return {
+          rows: [
+            { label: "Context analysis", usd: "0.000073", unconfirmed: false, estimated: true },
+            {
+              label: "Scene prompts (GPT-6 Luna)",
+              usd: "0.0005",
+              unconfirmed: false,
+              estimated: true,
+            },
+            ...(narrationUnknown
+              ? [{ label: "Generated narration", usd: null, unconfirmed: true, estimated: false }]
+              : []),
+          ],
+          affectedRows: narrationUnknown ? 3 : 2,
+        };
+      if (sql.includes("FROM hosted_prompt_runs AS run"))
+        return {
+          rows: [
+            {
+              state: acceptedScenes === 2 ? "SUCCEEDED" : "DISPATCHING",
+              accepted_scenes: acceptedScenes,
+              total_scenes: 2,
+            },
+          ],
+          affectedRows: 1,
+        };
+      if (sql.includes("FROM hosted_video_plans"))
+        return {
+          rows: videoPlanPresent
+            ? [
+                {
+                  planned_at: "2026-10-07T00:00:00Z",
+                  price_per_second_usd: "0.0134",
+                  selections: [{ durationSeconds: 10 }],
+                },
+              ]
+            : [],
+          affectedRows: videoPlanPresent ? 1 : 0,
+        };
+      if (sql.includes("SELECT plan.id, plan.canonical_document_hash"))
+        return {
+          rows: [
+            {
+              final_frame_count: 3000,
+              image_scene_count: 2,
+              avatar_frame_count: 30,
+              planned_tasks: 3,
+              completed_tasks: 0,
+              failed_tasks: 0,
+              prompt_task_state: acceptedScenes === 2 ? "COMPLETE" : "RUNNING",
+            },
+          ],
+          affectedRows: 1,
+        };
+      return priorQuery(sql, params);
+    });
+    try {
+      const result = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+        {},
+        stagingConfig,
+        executionContext,
+      );
+      expect(result?.status).toBe(200);
+      const body = (await result!.json()) as {
+        cost: {
+          projected_usd: number;
+          provider: string;
+          api_estimate: {
+            kie_usd: number;
+            fal_usd: number;
+            fal_pricing_basis: string;
+            seedance_usd_per_second: number;
+            seedance_usd: number;
+            text_cost_so_far_usd: number;
+            text_cost_pending: boolean;
+            pricing_incomplete: boolean;
+          };
+        };
+      };
+      expect(body.cost.api_estimate).toMatchObject({
+        kie_usd: 0.008,
+        fal_usd: 0.005,
+        fal_pricing_basis: "OUTPUT_SECOND_PROXY_ESTIMATE",
+        seedance_usd_per_second: 0.0134,
+        seedance_usd: 0.134,
+        text_cost_so_far_usd: 0.000573,
+        text_cost_pending: true,
+        pricing_incomplete: true,
+      });
+      expect(body.cost.projected_usd).toBeCloseTo(0.147573);
+      expect(body.cost.provider).toBe("kie+fal+runware");
+
+      acceptedScenes = 2;
+      narrationUnknown = false;
+      videoPlanPresent = false;
+      const completed = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+        {},
+        stagingConfig,
+        executionContext,
+      );
+      const completedBody = (await completed!.json()) as typeof body;
+      expect(completedBody.cost.api_estimate).toMatchObject({
+        text_cost_so_far_usd: 0.000573,
+        text_cost_pending: false,
+        pricing_incomplete: false,
+      });
+      expect(completedBody.cost.projected_usd).toBeCloseTo(0.013573);
+      expect(completedBody.cost.provider).toBe("kie+fal+runware");
+    } finally {
+      testState.query.mockImplementation(priorQuery);
+      testState.projectRows[0] = priorProject;
+    }
+  });
 
   it("keeps project progress, prompt rows, and batch progress on one latest revision", () => {
     const source = readFileSync(resolve(process.cwd(), "src/server/hosted/product.ts"), "utf8");

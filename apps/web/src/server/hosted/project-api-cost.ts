@@ -6,14 +6,18 @@ import type { ProjectApiCost } from "../../lib/cloud-compute";
 export const PROJECT_API_COST_SQL = `
 WITH project_prompt_cost AS (
   SELECT event.attempt_id,
-         CASE WHEN task.task_key LIKE 'prompt:voiceover-context:%'
-              THEN 'Context analysis' ELSE 'Scene prompts' END AS label,
+         CASE WHEN task.task_key LIKE 'prompt:voiceover-context:%' THEN 'Context analysis'
+              WHEN bool_or(event.event_type IN ('REPORTED','SETTLED','RELEASED')
+                           AND event.details->>'rate_version'='runware-air-gpt-6-luna-standard-2026-10-06')
+                THEN 'Scene prompts (GPT-6 Luna)'
+              ELSE 'Scene prompts' END AS label,
          COALESCE(sum(event.amount_micro_usd) FILTER (WHERE event.event_type='SETTLED'),
                   max(event.amount_micro_usd) FILTER (WHERE event.event_type='REPORTED'),
                   0)::numeric / 1000000
            - COALESCE(sum(event.amount_micro_usd) FILTER (WHERE event.event_type='REFUNDED'),0)::numeric / 1000000 AS usd,
          NOT bool_or(event.event_type IN ('SETTLED','RELEASED')) AS unconfirmed,
-         false AS estimated
+         bool_or(event.details->>'cost_basis'='PINNED_RATE_ESTIMATE'
+                 AND event.details->>'invoice_verified' IS DISTINCT FROM 'true') AS estimated
     FROM cost_events event
     JOIN project_revisions revision ON revision.account_id=event.account_id
       AND revision.workspace_id=event.workspace_id AND revision.id=event.owner_id

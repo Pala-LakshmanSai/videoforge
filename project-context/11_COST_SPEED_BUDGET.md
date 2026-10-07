@@ -7,8 +7,9 @@ This is a published-rate estimate, not observed account debit. Existing video ge
 and historical attempt cost records remain separate.
 
 Fresh API generation decision (2026-09-24): Kie z-image lists 0.8 credits, approximately
-$0.004 per image. On 2026-09-25 the public Fal FlashHead model page listed $0.005 per output
-second. The earlier authenticated audio-route quote was $0.00125 per billable compute second;
+$0.004 per image. On 2026-10-07 the public Fal FlashHead model page still lists $0.005 per second;
+the public page does not specify output versus compute seconds. Expected audio duration
+times this rate is a planning approximation, not an invoice. The earlier authenticated audio-route quote was $0.00125 per billable compute second;
 the audio route's actual debit remains unverified because its billing endpoint returned 403.
 Use the higher public rate for a conservative finite-action cap and check actual provider usage
 when accessible. The RunPod rates and formulas below apply to existing attempts and retained volumes.
@@ -30,7 +31,46 @@ Progress shows each project rental once, confirmed uptime and its recorded actua
 
 User target:40 completed30–40minute Cloud videos/day with minimal shared-API waiting. Four hours/video is an estimate, not an accepted benchmark. Additional independent Kie/Fal accounts are acceptable only without extra fees or increased effective generation cost; Runware remains unchanged. Keep model, quality, scene counts and paid identity fixed. Validate purchased-credit tiers/bonuses, pending-versus-processing limits and total infrastructure overhead before claiming same cost. API_CAPACITY_PLAN.md owns measured32.888minute sample counts/timings, burst sizing, staged1/2/7 qualification and24hour daily acceptance. No new paid benchmark is authorized or completed by this planning decision.
 
-## Current planning references
+## Current ordinary API references — checked 2026-10-07
+
+- Scene prompts: Runware `openai:gpt@6-luna`. Runware publicly lists $0.10/M input.
+  OpenAI Standard reference rates are $0.10/M uncached input, $0.01/M cached input,
+  $0.125/M cache writes and $0.50/M output. Runware's output/cache rates and account
+  invoice are not independently verified. Existing token receipts use the pinned
+  `runware-air-gpt-6-luna-standard-2026-10-06` estimate; reasoning is already included
+  in output and is never counted twice. Label these amounts as estimates.
+- Voiceover context: Runware `google:gemma@4-31b`, publicly $0.102/M input,
+  $0.297/M output and $0.012/M cached input. The stage uses provider-reported cost,
+  not a new calculation against today's rates.
+- Kie Z-Image: 0.8 credits, approximately $0.004/image. Account top-up bonuses can
+  change effective USD; no account-specific discount is assumed.
+- Fal FlashHead audio-to-video: public $0.005/second; billing unit/account debit
+  remains unverified. Duration-based estimates remain explicitly estimates.
+- Fal Z-Image Turbo replacement: $0.005/megapixel; 1280×720 is $0.004608 before
+  provider rounding. Preset analysis is separate from per-video costs.
+- Runware Seedance 1.0 Pro Fast `bytedance:2@2`, 1248×704: public 720p16:9 price
+  rounds to $0.0134/second. Preserve the exact sealed plan quote ($0.01336/second
+  for existing plans); reported provider cost takes precedence for incurred totals.
+- Optional J1TTS narration: monthly plans do not establish a per-request price.
+  Missing monetary receipts remain unknown/partial, never zero.
+
+Projected API cost includes incurred context/scene-prompt spend plus planned media.
+Remaining text is unknown until generated, so the projection stays partial while
+text is pending or a charge is unconfirmed. Budget reservations are not estimated
+usage. Failed and repair attempts remain in project totals; historical monetary
+records and model/rate pins are never repriced. Cloud uses recorded actual rental
+rates and confirmed uptime; shared infrastructure is reported separately.
+
+Sources: [Runware pricing](https://runware.ai/pricing),
+[Luna reference](https://developers.openai.com/api/docs/models/gpt-6-luna),
+[Gemma](https://runware.ai/docs/models/google-gemma-4-31b),
+[Kie Z-Image](https://kie.ai/z-image),
+[Fal FlashHead](https://fal.ai/models/fal-ai/flashhead),
+[Fal pricing](https://fal.ai/pricing),
+[Seedance](https://runware.ai/docs/models/bytedance-seedance-1-0-pro-fast),
+[J1](https://j1tts.com/).
+
+## Historical planning references
 
 RunPod Serverless pricing pages list Flex billing by the second for startup, execution, and idle time,
 rounded to whole seconds. Current planning examples checked for this V2 reset:
@@ -48,7 +88,7 @@ endpoint, not a reservation and not a promise of availability.
 
 Other planning references:
 
-- Runware DeepSeek V4 Flash: `$0.076/M` input, `$0.153/M` output, `$0.014/M` cached input.
+- Superseded prompt writer Runware DeepSeek V4 Flash: `$0.076/M` input, `$0.153/M` output, `$0.014/M` cached input.
 - Runware Gemini 3.5 Flash style analyzer: `$1.50/M` input and `$9.00/M` output/thinking below
   200k, used only when explicitly analyzing a new draft style.
 - Cloudflare R2 Standard: first 10 GB-month free, then `$0.015/GB-month`; direct egress free under
@@ -128,9 +168,11 @@ Flex rate must be measured again.
 
 ## Prompt, style, and preset cost
 
-Production prompt writing remains small relative to GPU work. Existing DeepSeek qualification kept a
+Historical DeepSeek qualification kept a
 40-scene accepted run at `$0.00085053` and all development attempts for that task at `$0.00243598`.
-Retain a conservative `$0.005-$0.015` 30-minute prompt allowance until production usage replaces it.
+Those historical measurements are not a current Luna forecast. Luna is calculated from
+actual token usage with the pinned reference estimate above; adaptive corrections and failed
+attempts remain chargeable and included.
 
 A ready published Image Style adds no Gemini call to ordinary generation. Creating/analyzing a new
 style is a separate user-triggered action with its own estimate, idempotency, and cost owner. Existing
