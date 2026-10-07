@@ -680,9 +680,8 @@ function requireLunaCompletion(
 }
 
 /**
- * This projection must stay byte-for-byte compatible with the document hashed
- * by `hostedPromptBatchPlanDocument` during preparation. It intentionally
- * includes every grouping and sizing field, not only the flattened scene IDs.
+ * Preparation, dispatch and recovery share this exact projection. Optional
+ * per-scene budgets are sealed when present; historical plans retain their bytes.
  */
 export function hostedPromptBatchPlanDocument(plan: PromptBatchPlan): Record<string, unknown> {
   return {

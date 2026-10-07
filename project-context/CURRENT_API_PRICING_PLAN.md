@@ -3,7 +3,11 @@
 User2026-10-07 requests calculator rates reflecting Runware GPT-6 Luna and all
 present APIs. Continue the already authorized qualified production-publication
 workflow, without new inference/media/compute or replay. Baseline context3d6fd1f8,
-executable4b2c9f7d / Workerc10de8bb at100%, native286. Preserve primary unrelated edits.
+original executable4b2c9f7d / Workerc10de8bb, native286. A concurrent qualified
+production release bcc51708 / Worker1d029955 / native287 landed before upload.
+Merge context2f0aa522 and preserve its canonical serializer and safe manual Retry
+byte-exactly. Publish only the calculator delta relative to that current baseline;
+no schema application or prompt retry. Preserve primary unrelated edits.
 
 ## Scope and evidence
 

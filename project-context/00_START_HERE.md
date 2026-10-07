@@ -2029,3 +2029,5 @@ decisions: `15_DECISIONS_AND_OPEN_GATES.md`; architecture: `06_SYSTEM_ARCHITECTU
 `22_PROJECT_COMPLETION_CHECKPOINTS.md`; copy-ready prompts:
 `templates/CHECKPOINT_CHAT_PROMPTS.md`; maintenance: `16_CONTEXT_MAINTENANCE.md`.
 Create-to-queue handoff is locally green; publication pending. Read `creation_queue_handoff_2026_10_03` in CURRENT_STATE.yaml. The exact job remains durable; shared continuation checking no longer delays browser admission.
+
+Prompt binding repair: see `PROMPT_PLAN_BINDING_PLAN.md` and CURRENT_STATE.

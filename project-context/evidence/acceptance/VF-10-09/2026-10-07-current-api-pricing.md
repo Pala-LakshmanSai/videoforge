@@ -57,9 +57,23 @@ sealed .01336 stays exact. J1 monthly plans do not prove per-request cost, so
 missing narration remains unknown. Shared infrastructure/preset analysis is
 separate; Cloud retains recorded actual rates and confirmed uptime.
 
+## Concurrent publication reconciliation
+
+The initial release guard rejected live baseline drift before writing any upload
+intent: bcc51708 / Worker1d029955 had replaced4b2c9f7d. The parallel prompt-binding
+repair is now native287 and includes cancellation-compatible zero-claim manual
+Retry. Merge2f0aa522 preserves that entire release. Prompt modules/tests, Retry
+route, migration and native tests are byte-identical to that production source;
+only seven calculator code/test files differ. No migration is applied by this task,
+no retry resumes, and active/unknown work remains owned by its separate audit.
+The stale local release plan/authority is archived as superseded (zero upload
+intents); release-v2 captures a fresh exact baseline and requalifies the combined
+source. Existing correct coordinator runtime must remain uninterrupted while busy.
+
 ## Qualification
 
-- 509 tests across project-api-cost, product, screens and CloudCompute passed.
+- Combined merged605 tests across calculator, screens/Cloud and prompt
+  preparation/dispatch/manual Retry passed. Earlier509 calculator checks pass.
 - Additional96 prompt route/run/Luna transport checks passed, including legacy
   goldens and new preparation-binding regression. Final builds/types/lint and
   bundle quarantine passed again after this source change.

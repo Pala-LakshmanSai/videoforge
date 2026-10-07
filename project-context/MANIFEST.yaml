@@ -30,6 +30,11 @@ read_profiles:
     - CLOUD_COMPUTE_COST_PLAN.md
     - 11_COST_SPEED_BUDGET.md
     - 19_IMPLEMENTATION_PLAYBOOK.md
+
+  v2_09_prompt_plan_binding:
+    - PROMPT_PLAN_BINDING_PLAN.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
+    - 10_DATA_AND_API_CONTRACTS.md
   v2_09_voiceover_empty_file:
     - VOICEOVER_EMPTY_FILE_PLAN.md
     - 19_IMPLEMENTATION_PLAYBOOK.md

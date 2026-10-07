@@ -574,3 +574,5 @@ scene's successful full clip and translate only the effective overall renderer c
 interpret that derived ceiling as the user's remaining coverage choice. Legacy v1/v2/v3 readers,
 receipts and immutable outputs remain. Primary budget and fallback rules live in the scheduler
 domain; additive migration0267 and its production readback are tracked in CURRENT_STATE.yaml.
+
+Prompt binding/Retry contract: see `PROMPT_PLAN_BINDING_PLAN.md` (2026-10-07).

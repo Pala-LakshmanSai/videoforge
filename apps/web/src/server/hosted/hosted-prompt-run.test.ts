@@ -5,8 +5,8 @@ import { promptStyleTreatmentPositiveSuffix } from "@videoforge/pipeline/prompts
 import * as promptRuntime from "@videoforge/pipeline/prompts";
 import { buildKieScenePrompt } from "../providers/kie-image-prompt";
 import { sha256 } from "./crypto";
-import { describe, expect, it, vi } from "vitest";
 import { canonicalJson } from "./submission";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   buildPromptBatch,
@@ -357,63 +357,72 @@ describe("versioned prompt request recovery", () => {
     ).toBe(true);
   });
 
-  it("uses the preparation hash for v39 scene budgets before claiming and rejects changed caps", async () => {
-    const planned = hostedPromptBatchPlan(authorityFor(true), "runware-luna-grounded-v2");
-    const preparationHash = await sha256(canonicalJson(hostedPromptBatchPlanDocument(planned)));
-    expect(preparationHash).toBe(await hostedPromptBatchPlanHash(planned));
-    const binding = {
-      plannedBatchCount: planned.batchCount,
-      plannedSceneCount: planned.totalScenes,
-      batchPlanHash: preparationHash,
-    };
-    const claim = vi.fn(async () => false);
-    const fetcher = vi.fn();
-    const result = await dispatchOneHostedPromptBatch({
-      apiKey: "runware-test-key-at-least-twenty-characters",
-      plan: planned,
-      persistedBinding: binding,
-      batchOrdinal: 0,
-      remainingReservationMicroUsd: 2_000_000,
-      claim,
-      recordResult: async () => undefined,
-      fetcher,
-    });
-    expect(result).toBeNull();
-    expect(claim).toHaveBeenCalledTimes(1);
-    expect(fetcher).not.toHaveBeenCalled();
-
-    const first = planned.batches[0]!;
-    const scene = first.batch.scenes[0]!;
-    const originalLimit = first.batch.literalCharacterLimits![scene.sceneId]!;
-    const changedCaps = {
-      ...first.batch.literalCharacterLimits,
-      [scene.sceneId]: originalLimit + 1,
-    };
-    const tampered = {
-      ...planned,
-      batches: planned.batches.map((entry, index) =>
-        index === 0
-          ? { ...entry, batch: { ...entry.batch, literalCharacterLimits: changedCaps } }
-          : entry,
-      ),
-    };
-    const rejectedClaim = vi.fn(async () => false);
-    const rejectedFetch = vi.fn();
-    await expect(
-      dispatchOneHostedPromptBatch({
-        apiKey: "runware-test-key-at-least-twenty-characters",
-        plan: tampered,
-        persistedBinding: binding,
-        batchOrdinal: 0,
-        remainingReservationMicroUsd: 2_000_000,
-        claim: rejectedClaim,
-        recordResult: async () => undefined,
-        fetcher: rejectedFetch,
-      }),
-    ).rejects.toMatchObject({ problemCode: "HOSTED_PROMPT_INPUT_INVALID" });
-    expect(rejectedClaim).not.toHaveBeenCalled();
-    expect(rejectedFetch).not.toHaveBeenCalled();
-  });
+  it.each(["runware-luna-grounded-v2", "runware-luna-grounded-v1", "legacy"] as const)(
+    "dispatches a %s plan with the exact database preparation hash",
+    async (policy) => {
+      const authority = authorityFor(true);
+      const planned = hostedPromptBatchPlan(authority, policy);
+      // The route persists this document hash, not the writer's own hash helper.
+      const binding = {
+        plannedBatchCount: planned.batchCount,
+        plannedSceneCount: planned.totalScenes,
+        batchPlanHash: await sha256(canonicalJson(hostedPromptBatchPlanDocument(planned))),
+      };
+      const claim = vi.fn(async () => false);
+      const fetcher = vi.fn<typeof fetch>();
+      await expect(
+        dispatchOneHostedPromptBatch({
+          apiKey: "runware-test-key-at-least-twenty-characters",
+          plan: planned,
+          persistedBinding: binding,
+          batchOrdinal: 0,
+          remainingReservationMicroUsd: 2_000_000,
+          claim,
+          recordResult: async () => {},
+          fetcher,
+        }),
+      ).resolves.toBeNull();
+      expect(claim).toHaveBeenCalledTimes(1);
+      expect(fetcher).not.toHaveBeenCalled();
+      expect(await hostedPromptBatchPlanHash(planned)).toBe(binding.batchPlanHash);
+      expect(await recoverHostedPromptBatchPlan(authority, binding)).toEqual(planned);
+      if (policy !== "runware-luna-grounded-v2") return;
+      const first = planned.batches[0]!;
+      const sceneId = first.sceneIds[0]!;
+      const changed = {
+        ...planned,
+        batches: [
+          {
+            ...first,
+            batch: {
+              ...first.batch,
+              literalCharacterLimits: {
+                ...first.batch.literalCharacterLimits,
+                [sceneId]: first.batch.literalCharacterLimits![sceneId]! + 1,
+              },
+            },
+          },
+          ...planned.batches.slice(1),
+        ],
+      };
+      expect(await hostedPromptBatchPlanHash(changed)).not.toBe(binding.batchPlanHash);
+      claim.mockClear();
+      await expect(
+        dispatchOneHostedPromptBatch({
+          apiKey: "runware-test-key-at-least-twenty-characters",
+          plan: changed,
+          persistedBinding: binding,
+          batchOrdinal: 0,
+          remainingReservationMicroUsd: 2_000_000,
+          claim,
+          recordResult: async () => {},
+          fetcher,
+        }),
+      ).rejects.toMatchObject({ problemCode: "HOSTED_PROMPT_INPUT_INVALID" });
+      expect(claim).not.toHaveBeenCalled();
+      expect(fetcher).not.toHaveBeenCalled();
+    },
+  );
 
   it("dispatches, repairs, recovers, compiles and hands off a full 152-scene Luna stage without replay", async () => {
     const roles = [
@@ -465,7 +474,7 @@ describe("versioned prompt request recovery", () => {
     const binding = {
       plannedBatchCount: batchPlan.batchCount,
       plannedSceneCount: batchPlan.totalScenes,
-      batchPlanHash: await hostedPromptBatchPlanHash(batchPlan),
+      batchPlanHash: await sha256(canonicalJson(hostedPromptBatchPlanDocument(batchPlan))),
     };
     expect(batchPlan.requestPolicy).toBe("runware-luna-grounded-v2");
     expect(batchPlan.batches).toHaveLength(16);
