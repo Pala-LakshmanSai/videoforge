@@ -1,0 +1,7 @@
+# V2-09 / VF-10-09: accurate project cost presentation
+
+The user requests accurate API plus compute totals using actual requests, image/avatar/video counts, machine identity and rental duration. Continue authorized production repair without starting new inference or compute. Reuse the clean attached worktree and preserve the completed prompt repair and unrelated primary edits.
+
+Trace the screenshot project through saved API attempts, monetary receipts, pinned rates and scoped rental lifecycle evidence. Keep forecasts separate from incurred totals. Use consistent display precision and visibly reconciling components; retain full precision for accounting. Show provider/model, submitted/completed requests, relevant duration/rate and receipt-versus-estimate basis. Count earlier attempts and paid failures; preserve missing and uncertain costs. Do not present fallback rates or placement intervals as provider invoices.
+
+Own the shared cost read projection, existing Progress/compute components and focused regressions. Avoid changes to generation, immutable historical rates, resource lifecycle or paid-request retry behavior. Prove native tenant read parity, arithmetic/rounding, unknown/refund/retry cases, focused types/lint/builds, and real Chrome display. Publish the qualified source preserving runtime configuration and active work. Update existing project memory with verified evidence and honest invoice limits. No paid test or GPU launch is authorized.

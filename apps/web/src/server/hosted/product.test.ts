@@ -1290,7 +1290,7 @@ describe("hosted product route contract", () => {
           ],
           affectedRows: 1,
         };
-      if (sql.includes("WITH project_prompt_cost AS"))
+      if (sql.includes("project_prompt_cost AS ("))
         return {
           rows: [{ label: "Generated images", usd: "1.16", unconfirmed: false, estimated: true }],
           affectedRows: 1,
@@ -1325,8 +1325,7 @@ describe("hosted product route contract", () => {
       ]);
       expect(JSON.stringify(body.cost)).not.toContain("private-provider");
       for (const [sql, params] of testState.query.mock.calls.filter(
-        ([sql]) =>
-          sql.includes("r.actual_hourly_usd") || sql.includes("WITH project_prompt_cost AS"),
+        ([sql]) => sql.includes("r.actual_hourly_usd") || sql.includes("project_prompt_cost AS ("),
       )) {
         expect(sql).toContain("account_id=$1");
         expect(sql).toContain("workspace_id=$2");
@@ -3512,7 +3511,7 @@ describe("hosted product route contract", () => {
           };
         if (
           sql.includes("FROM hosted_video_jobs job") &&
-          !sql.includes("WITH project_prompt_cost AS")
+          !sql.includes("project_prompt_cost AS (")
         ) {
           expect(sql).toContain("videoforge_hosted_video_static_fallback");
           expect(sql).toContain("source.id=job.source_api_job_id");
@@ -3723,7 +3722,7 @@ describe("hosted product route contract", () => {
     let videoPlanPresent = true;
     testState.projectRows[0] = { ...priorProject, generation_provider: "KIE_FAL" };
     testState.query.mockImplementation(async (sql, params) => {
-      if (sql.includes("WITH project_prompt_cost AS"))
+      if (sql.includes("project_prompt_cost AS ("))
         return {
           rows: [
             { label: "Context analysis", usd: "0.000073", unconfirmed: false, estimated: true },

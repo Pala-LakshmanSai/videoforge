@@ -6,6 +6,7 @@ import {
 } from "./HostedCreateDraft";
 import { ScriptProjectFields } from "./VoiceoverHub";
 import { HostedCloudCompute } from "./HostedCloudCompute";
+import { apiCostValue, formatCostUsd } from "../lib/cost-display";
 import {
   cloudComputeNeedsPolling,
   type CloudComputeSnapshot,
@@ -6903,24 +6904,20 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               tone="info"
             />
             <Metric
-              label="Projected cost"
+              label={cost?.api_cost_so_far ? "API cost so far" : "Estimated API cost"}
               value={
-                query.data.generation_provider === "KIE_FAL"
-                  ? cost?.projected_usd == null
+                cost?.api_cost_so_far
+                  ? apiCostValue(cost.api_cost_so_far)
+                  : cost?.projected_usd == null
                     ? "After scene plan"
-                    : formatUsd(cost.projected_usd)
-                  : (cost?.projected_usd ?? 0) > 0
-                    ? formatUsd(cost?.projected_usd)
-                    : "No provider charge"
+                    : formatCostUsd(cost.projected_usd)
               }
               detail={
-                query.data.generation_provider === "KIE_FAL"
-                  ? cost?.api_estimate
+                cost?.api_cost_so_far
+                  ? `Recorded requests, including earlier attempts · ${cost.api_cost_so_far.unconfirmed ? "partial estimate" : cost.api_cost_so_far.estimated ? "estimate" : "provider-reported charges"} · excludes Cloud compute`
+                  : cost?.api_estimate
                     ? hostedApiEstimateDetail(cost.api_estimate)
                     : "Calculated when planning finishes"
-                  : cost?.cap_usd == null
-                    ? undefined
-                    : `${formatUsd(cost.cap_usd)} maximum`
               }
               tone="success"
             />
@@ -6946,6 +6943,16 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               <HostedCloudCompute
                 snapshot={cost.cloud_compute}
                 apiCost={cost.api_cost_so_far}
+                forecast={
+                  cost.projected_usd == null
+                    ? undefined
+                    : {
+                        usd: cost.projected_usd,
+                        detail: cost.api_estimate
+                          ? hostedApiEstimateDetail(cost.api_estimate)
+                          : "Planned API work; excludes Cloud compute",
+                      }
+                }
                 showCompute={
                   query.data.project.media_execution_backend === "RUNPOD_POD" ||
                   cost.cloud_compute.rentals.length > 0

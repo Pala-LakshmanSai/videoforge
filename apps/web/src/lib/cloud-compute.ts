@@ -21,6 +21,18 @@ export interface ProjectApiCost {
     readonly usd: number | null;
     readonly estimated: boolean;
     readonly unconfirmed?: boolean;
+    readonly usage?: readonly {
+      readonly provider: string;
+      readonly model: string;
+      readonly submittedRequests: number;
+      readonly completedRequests: number;
+      readonly failedRequests: number;
+      readonly uncertainRequests: number;
+      readonly requestedSeconds: number | null;
+      readonly pinnedRateUsd: number | null;
+      readonly rateUnit: "request" | "second";
+      readonly costBasis: "PINNED_RATE_ESTIMATE" | "PROVIDER_REPORTED";
+    }[];
   }[];
 }
 

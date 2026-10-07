@@ -2365,7 +2365,7 @@ it.each(["KIE_FAL", "RUNPOD"] as const)(
       generationProvider === "KIE_FAL" ? "2m 00s" : "—",
     );
     if (generationProvider === "KIE_FAL") {
-      expect(screen.getByText("$0.03")).toBeInTheDocument();
+      expect(screen.getByText("$0.029000")).toBeInTheDocument();
       expect(
         screen.getByText(
           "2 Kie images + 3.0s Fal avatar · $0.0060 text · published-rate estimate · text generation incomplete · partial estimate · excludes Cloud compute",
@@ -7417,7 +7417,7 @@ describe("hosted product journey", () => {
     ).toHaveLength(2);
     await waitFor(() => expect(dispatches).toBe(1));
     expect(screen.queryByText(/Generation start could not be confirmed/u)).not.toBeInTheDocument();
-    expect(screen.getByText("Projected cost")).toBeInTheDocument();
+    expect(screen.getByText("Estimated API cost")).toBeInTheDocument();
   });
 
   it("shows independent progress when images run while avatar waits for GPU", async () => {
@@ -9129,4 +9129,61 @@ it("retains hosted Create fields and the selected audio across dock remounts, sc
   expect(await screen.findByLabelText("Video title")).toHaveValue("");
   expect(screen.queryByText("draft-narration.mp3")).not.toBeInTheDocument();
   expect(screen.getByRole("radio", { name: "Local" })).toBeChecked();
+});
+
+it("reconciles incurred API and compute costs while keeping the plan forecast separate", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        project: {
+          id: "cost-proof",
+          title: "Cost proof",
+          revision_id: "revision",
+          revision_state: "LOCKED",
+          media_execution_backend: "RUNPOD_POD",
+        },
+        generation_provider: "KIE_FAL",
+        attempts: [],
+        generation: null,
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: gpuReadiness,
+        stages: [{ id: "render", name: "Assemble final video", status: "COMPLETE" }],
+        cost: {
+          projected_usd: 0.05,
+          api_estimate: {
+            kie_images: 7,
+            kie_usd: 0.028,
+            fal_avatar_seconds: 7.06,
+            fal_usd: 0.0353,
+          },
+          api_cost_so_far: { usd: 0.0645394, estimated: true, unconfirmed: false, breakdown: [] },
+          cloud_compute: {
+            observed_at: "2026-10-07T08:00:00Z",
+            rentals: [
+              {
+                id: "rental",
+                machine: "RTX PRO 4500",
+                hourly_usd: 0.7338888889,
+                started_at: "2026-10-07T07:00:00Z",
+                stopped_at: "2026-10-07T07:02:31.099Z",
+                status: "STOPPED",
+              },
+            ],
+          },
+        },
+      }),
+    ),
+  );
+  renderHosted(<HostedProjectScreen projectId="cost-proof" />);
+  const api = await screen.findByText("API cost so far");
+  expect(within(api.parentElement!).getByText("$0.064539")).toBeInTheDocument();
+  expect(
+    within(screen.getByText("GPU cost so far").parentElement!).getByText("$0.030803"),
+  ).toBeInTheDocument();
+  expect(
+    within(screen.getByText("Total cost so far").parentElement!).getByText("$0.095342"),
+  ).toBeInTheDocument();
+  expect(screen.getByText(/API forecast.*\$0.050000/)).toBeInTheDocument();
+  expect(screen.queryByText("Projected cost")).not.toBeInTheDocument();
 });
