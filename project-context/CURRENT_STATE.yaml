@@ -7834,7 +7834,7 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/prompt-plan-binding
+  branch: codex/gpt6-luna-prompt-writer
   branch_upstream: none
   branch_published: false
   current_source_head: "69175135c0402ce0fdcbfdbbf12abf5d60c06628"
