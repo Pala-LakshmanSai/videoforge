@@ -44,3 +44,10 @@ no new provider generation, GPU rental or other compute was started.
 
 Private receipts: `.videoforge/voiceover-queue-20261007/` native-proof-291.json,
 migration-291-verified-private.json, title-proof.json and release-final/verified-private.json.
+
+## Bounded queue follow-up
+
+The desktop list had a580px ceiling (390px on shorter screens), but the mobile rule removed
+its ceiling entirely. Use one240–360px viewport-responsive limit at every breakpoint, native
+vertical scrolling, stable scrollbar gutter, non-shrinking rows and keyboard focus. Heading,
+counts and Library access remain outside the list. No job/media/database/provider behavior changes.

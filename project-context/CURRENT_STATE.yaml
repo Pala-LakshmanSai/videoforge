@@ -4,6 +4,7 @@ voiceover_queue_2026_10_07:
   selected_task: VF-10-09
   read_profile: v2_09_standalone_voiceovers
   brief: VOICEOVERS_PLAN.md
+  queue_overflow_followup: Implemented_bounded_scroll_pending_browser_and_publication
   status: PRODUCTION_VERIFIED
   executable_commit: 6140c6576dca2e68db9b5e8749234740cfb41902
   worker_version: 4a3303d6-db32-4730-844b-7f1aaaefb9eb
@@ -3383,7 +3384,7 @@ updated_at: "2026-10-07T08:28:51Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: Prevent_generated_image_text
+current_milestone: Bound_voiceover_queue
 current_task: VF-10-09
 current_wave: v2_09_image_no_text
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -10298,15 +10299,15 @@ provider_authority: &v2_09_provider_authority_current
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: Prevent_generated_image_text
+  milestone: Bound_voiceover_queue
   status: IN_PROGRESS
-  dependency_status: Production_14c1907b_verified_existing_film_active_preserved
-  authorization_status: User_requested_no_text_repair_parallel_verification_and_production_no_paid_QA_authority_yet
+  dependency_status: Production_6140c657_verified_existing_jobs_preserved
+  authorization_status: User_requested_queue_overflow_fix_existing_production_authority_no_paid_work
   task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current
-  read_profile: v2_09_image_no_text
-  task_brief: IMAGE_NO_TEXT_PLAN.md
-  goal: Repair_fresh_prompts_prepare_fail_closed_QA_verify_and_publish
+  read_profile: v2_09_standalone_voiceovers
+  task_brief: VOICEOVERS_PLAN.md
+  goal: Bound_desktop_mobile_queue_verify_and_publish
   provider_mode: fixture
   provider_calls_authorized: true
   read_only_provider_calls_authorized: true

@@ -18,6 +18,7 @@ Checkpoint V2-09 / VF-10-09. User authorizes design, implementation, testing and
 - Keep an uncertain submission tied to its original request ID until reconciled; never silently resubmit a paid request.
 - Reuse existing database FIFO/capacity claims and background Workflow; no schema or video-pipeline change unless verified necessary.
 - Download names derive from the entered title, preserving readable spaces/Unicode and removing unsafe filename characters. Applies to existing outputs too.
+- Keep the queue list bounded and independently scrollable on desktop and mobile; retain visible heading, counts and Library access. Keyboard users can focus and scroll the list.
 - Verify multiple queued jobs, returning later, error/reload behavior, title-based downloads and desktop/mobile presentation.
 
 ## Scope and release

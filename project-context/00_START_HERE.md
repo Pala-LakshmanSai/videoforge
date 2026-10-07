@@ -1,3 +1,5 @@
+Current follow-up: bound the standalone voiceover queue on desktop/mobile. V2-09/VF-10-09; read `VOICEOVERS_PLAN.md` and `voiceover_queue_2026_10_07` in CURRENT_STATE.yaml. Existing provider jobs and image-QA release remain unchanged.
+
 Image text repair is in progress on `codex/image-no-text`. See `image_no_text_2026_10_07` in CURRENT_STATE.yaml and `IMAGE_NO_TEXT_PLAN.md`. Caption-like prompt fields caused the reproduced failures; per-image QA is locally implemented but not yet funded or activated. Existing user generation remains unchanged.
 
 Current selected task: prompt transport Cloudflare runtime repair, V2-09/VF-10-09. Read `PROMPT_RUNTIME_FETCH_PLAN.md` and `prompt_runtime_fetch_2026_10_07` in CURRENT_STATE.yaml. User authorizes careful parallel audit, real full-stage verification, production and USD2 total new spend. Exact original request reproduces zero outbound calls from the invalid fetch receiver; use runtime acceptance before publication. Older original gardening project remains paused.
