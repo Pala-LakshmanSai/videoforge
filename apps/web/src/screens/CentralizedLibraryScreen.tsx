@@ -19,6 +19,11 @@ import {
   X,
 } from "lucide-react";
 import { Button, EmptyState } from "../components/ui";
+import {
+  LibraryMediaToggle,
+  type LibraryMediaTab,
+  VoiceoverLibrary,
+} from "../components/VoiceoverLibrary";
 import { useHostedIdentity } from "../hosted/HostedIdentity";
 import "../styles/features/centralized-library.css";
 
@@ -173,6 +178,7 @@ export function CentralizedLibraryScreen() {
   const queryClient = useQueryClient();
   const identity = useHostedIdentity();
   const allowed = identity?.canViewCentralizedLibrary === true;
+  const [mediaTab, setMediaTab] = useState<LibraryMediaTab>("videos");
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({ search: "", creator: "", page: 0 });
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -211,7 +217,7 @@ export function CentralizedLibraryScreen() {
   }, [search, filters.search]);
   const query = useQuery({
     queryKey: ["centralized-library", identity?.email, filters],
-    enabled: allowed,
+    enabled: allowed && mediaTab === "videos",
     retry: false,
     placeholderData: keepPreviousData,
     refetchInterval: 15_000,
@@ -250,6 +256,13 @@ export function CentralizedLibraryScreen() {
         body="Centralized Library is available only to the designated studio owner."
       />
     );
+  if (mediaTab === "voiceovers")
+    return (
+      <section className="central-library">
+        <LibraryMediaToggle value={mediaTab} onChange={setMediaTab} />
+        <VoiceoverLibrary centralized />
+      </section>
+    );
   return (
     <section className="central-library">
       <header className="central-hero">
@@ -285,6 +298,7 @@ export function CentralizedLibraryScreen() {
           </div>
         </div>
       </header>
+      <LibraryMediaToggle value={mediaTab} onChange={setMediaTab} />
       <div className="central-toolbar">
         <label className="central-search">
           <Search size={18} aria-hidden="true" />

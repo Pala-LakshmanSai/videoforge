@@ -3,9 +3,15 @@ import type { VideoDetails } from "../lib/library-video-details";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, Download, Library, Play, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { CompositionPreview } from "../components/CompositionPreview";
 import { isLocalVideoArtifact, MediaArtifactPreview } from "../components/MediaArtifactPreview";
 import { PageHeader } from "../components/PageHeader";
+import {
+  LibraryMediaToggle,
+  type LibraryMediaTab,
+  VoiceoverLibrary,
+} from "../components/VoiceoverLibrary";
 import { Badge, Button, Disclosure, EmptyState, Panel } from "../components/ui";
 import { api } from "../lib/api";
 import { currentScenario } from "../lib/scenario";
@@ -34,11 +40,13 @@ async function hostedLibrary(): Promise<HostedLibraryResponse> {
 }
 
 function HostedLibraryScreen() {
+  const [mediaTab, setMediaTab] = useState<LibraryMediaTab>("videos");
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: ["hosted-library"],
     queryFn: hostedLibrary,
     refetchInterval: 5_000,
+    enabled: mediaTab === "videos",
   });
   const remove = useMutation({
     mutationFn: async (attemptId: string) => {
@@ -51,34 +59,56 @@ function HostedLibraryScreen() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hosted-library"] }),
   });
 
+  const header = (
+    <>
+      <PageHeader title="Library" />
+      <LibraryMediaToggle value={mediaTab} onChange={setMediaTab} />
+    </>
+  );
+
+  if (mediaTab === "voiceovers") {
+    return (
+      <>
+        {header}
+        <VoiceoverLibrary />
+      </>
+    );
+  }
+
   if (query.isPending) {
     return (
-      <Panel heading="Loading library">
-        <div className="empty-state" aria-busy="true">
-          <span className="spinner" aria-hidden="true" />
-          <p>Loading your finished videos…</p>
-        </div>
-      </Panel>
+      <>
+        {header}
+        <Panel heading="Loading library">
+          <div className="empty-state" aria-busy="true">
+            <span className="spinner" aria-hidden="true" />
+            <p>Loading your finished videos…</p>
+          </div>
+        </Panel>
+      </>
     );
   }
   if (query.isError) {
     return (
-      <EmptyState
-        icon={<AlertTriangle />}
-        title="Library unavailable"
-        body="Your finished videos could not be loaded. Try again."
-        action={
-          <Button variant="secondary" onClick={() => void query.refetch()}>
-            Retry load
-          </Button>
-        }
-      />
+      <>
+        {header}
+        <EmptyState
+          icon={<AlertTriangle />}
+          title="Library unavailable"
+          body="Your finished videos could not be loaded. Try again."
+          action={
+            <Button variant="secondary" onClick={() => void query.refetch()}>
+              Retry load
+            </Button>
+          }
+        />
+      </>
     );
   }
 
   return (
     <>
-      <PageHeader title="Library" />
+      {header}
       {query.data.outputs.length === 0 ? (
         <EmptyState
           icon={<Library />}
@@ -165,39 +195,61 @@ export function LibraryScreen() {
 }
 
 function FixtureLibraryScreen() {
+  const [mediaTab, setMediaTab] = useState<LibraryMediaTab>("videos");
   const scenario = currentScenario();
   const query = useQuery({
     queryKey: ["projects", scenario],
     queryFn: () => api.projects(scenario),
+    enabled: mediaTab === "videos",
   });
   const approvedProjects = (query.data ?? []).filter((project) => project.status === "APPROVED");
+  const header = (
+    <>
+      <PageHeader title="Library" />
+      <LibraryMediaToggle value={mediaTab} onChange={setMediaTab} />
+    </>
+  );
+  if (mediaTab === "voiceovers") {
+    return (
+      <>
+        {header}
+        <VoiceoverLibrary />
+      </>
+    );
+  }
   if (query.isPending) {
     return (
-      <Panel eyebrow="Approved outputs" heading="Loading library">
-        <div className="empty-state" aria-busy="true">
-          <span className="spinner" aria-hidden="true" />
-          <p>Loading approved revisions…</p>
-        </div>
-      </Panel>
+      <>
+        {header}
+        <Panel eyebrow="Approved outputs" heading="Loading library">
+          <div className="empty-state" aria-busy="true">
+            <span className="spinner" aria-hidden="true" />
+            <p>Loading approved revisions…</p>
+          </div>
+        </Panel>
+      </>
     );
   }
   if (query.isError) {
     return (
-      <EmptyState
-        icon={<AlertTriangle />}
-        title="Library unavailable"
-        body="Approved output data could not be loaded."
-        action={
-          <Button variant="secondary" onClick={() => void query.refetch()}>
-            Retry load
-          </Button>
-        }
-      />
+      <>
+        {header}
+        <EmptyState
+          icon={<AlertTriangle />}
+          title="Library unavailable"
+          body="Approved output data could not be loaded."
+          action={
+            <Button variant="secondary" onClick={() => void query.refetch()}>
+              Retry load
+            </Button>
+          }
+        />
+      </>
     );
   }
   return (
     <>
-      <PageHeader title="Library" />
+      {header}
       {approvedProjects.length === 0 ? (
         <EmptyState
           icon={<Library />}

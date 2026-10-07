@@ -21,7 +21,7 @@ vi.mock("./hosted-product-route-common", async () => {
     ),
   };
 });
-import { handleJ1Voiceover } from "./j1tts";
+import { handleJ1Voiceover, observeJ1Voiceover } from "./j1tts";
 const origin = "https://videoforge.test",
   config = {
     publicOrigin: origin,
@@ -29,6 +29,7 @@ const origin = "https://videoforge.test",
   } as HostedRuntimeConfiguration;
 const id = "11111111-1111-4111-8111-111111111111";
 let calls: string[] = [];
+let failProcessingFinish = false;
 function req(path = "/jobs", body?: unknown, source = origin) {
   return new Request(
     origin + "/api/v2/voiceovers" + path,
@@ -55,6 +56,8 @@ beforeEach(() => {
   state.account = "account-a";
   state.authenticated = true;
   calls = [];
+  failProcessingFinish = false;
+  state.query.mockClear();
   environment = {
     J1TTS_API_KEY: crypto.randomUUID(),
     J1TTS_LIBRARY_OWNER_ACCOUNT_ID: "account-a",
@@ -105,6 +108,10 @@ beforeEach(() => {
     } else if (sql.includes("finish_voiceover_submission")) {
       const job = state.jobs.get(String(j));
       if (job && job.account_id === a && job.submit_claim_id === args[3]) {
+        if (args[4] === "PROCESSING" && failProcessingFinish) {
+          failProcessingFinish = false;
+          throw new Error("finish database response lost");
+        }
         Object.assign(job, {
           state: args[4],
           provider_job_id: args[5],
@@ -201,6 +208,80 @@ it("holds ambiguous request without repeating POST", async () => {
   await handleJ1Voiceover(req("/jobs", body), environment, config, context);
   expect(calls.filter((x) => x === "/v1/tts")).toHaveLength(1);
 });
+it("retains a known provider identity when the first PROCESSING receipt fails", async () => {
+  failProcessingFinish = true;
+  const first = await handleJ1Voiceover(req("/jobs", body), environment, config, context);
+  expect(first.status).toBe(202);
+  expect(state.jobs.get(id)).toMatchObject({
+    state: "UNKNOWN_NO_RETRY",
+    provider_job_id: "provider-job",
+  });
+  expect(calls.filter((path) => path === "/v1/tts")).toHaveLength(1);
+
+  const recovered = await handleJ1Voiceover(req("/jobs/" + id), environment, config, context);
+  expect(recovered.status).toBe(200);
+  expect(state.jobs.get(id)?.state).toBe("COMPLETED");
+  expect(calls.filter((path) => path === "/v1/tts")).toHaveLength(1);
+});
+it("does not submit a waiting job when a GET only observes its status", async () => {
+  state.jobs.set(id, {
+    id,
+    account_id: "account-a",
+    workspace_id: "workspace",
+    request_hash: "sha256:waiting",
+    script: body.script,
+    voice_id: body.voice_id,
+    filename: body.filename,
+    state: "WAITING",
+    provider_job_id: null,
+    failure_code: null,
+    created_at: new Date().toISOString(),
+  });
+  const result = await handleJ1Voiceover(req("/jobs/" + id), environment, config, context);
+  expect(result.status).toBe(200);
+  expect(((await result.json()) as { job: { state: string } }).job.state).toBe("WAITING");
+  expect(state.jobs.get(id)?.state).toBe("WAITING");
+  expect(calls).toEqual([]);
+  expect(
+    state.query.mock.calls.some(([sql]) => String(sql).includes("claim_voiceover_submission")),
+  ).toBe(false);
+});
+it("keeps ordinary completed narration free of archive storage and provider work", async () => {
+  state.jobs.set(id, {
+    id,
+    account_id: "account-a",
+    workspace_id: "workspace",
+    request_hash: "sha256:ordinary",
+    script: body.script,
+    voice_id: body.voice_id,
+    filename: body.filename,
+    state: "COMPLETED",
+    provider_job_id: "ordinary-provider-job",
+    failure_code: null,
+    created_at: new Date().toISOString(),
+  });
+  const bucket = {
+    head: vi.fn(),
+    get: vi.fn(),
+    put: vi.fn(),
+    list: vi.fn(),
+    delete: vi.fn(),
+  };
+  const result = await handleJ1Voiceover(
+    req("/jobs/" + id),
+    { ...environment, PRIVATE_ARTIFACTS: bucket as never },
+    config,
+    context,
+  );
+  expect(result.status).toBe(200);
+  expect(((await result.json()) as { job: { state: string } }).job.state).toBe("COMPLETED");
+  expect(calls).toEqual([]);
+  expect(bucket.head).not.toHaveBeenCalled();
+  expect(bucket.get).not.toHaveBeenCalled();
+  expect(bucket.put).not.toHaveBeenCalled();
+  expect(bucket.list).not.toHaveBeenCalled();
+  expect(bucket.delete).not.toHaveBeenCalled();
+});
 it("hides owner imported voices and jobs from other tenants", async () => {
   await handleJ1Voiceover(req("/jobs", body), environment, config, context);
   state.account = "account-b";
@@ -249,7 +330,11 @@ it("persists confirmed 429 as waiting and retries only after the saved due time"
   expect(calls.filter((x) => x === "/v1/tts")).toHaveLength(1);
   state.jobs.get(id)!.next_attempt_at = new Date(0).toISOString();
   reject = false;
-  await handleJ1Voiceover(req("/jobs/" + id), environment, config, context);
+  await observeJ1Voiceover(environment, {
+    accountId: "account-a",
+    workspaceId: "workspace",
+    jobId: id,
+  });
   expect(state.jobs.get(id)?.state).toBe("PROCESSING");
   expect(calls.filter((x) => x === "/v1/tts")).toHaveLength(2);
 });

@@ -202,7 +202,7 @@ export class HostedContinuationWorkflow extends WorkflowEntrypoint<
             }
           },
         );
-        if (!["WAITING", "SUBMITTING", "PROCESSING"].includes(state)) return { state };
+        if (!["WAITING", "SUBMITTING", "PROCESSING", "ARCHIVING"].includes(state)) return { state };
         await step.sleep(`voiceover wait ${tick}`, "15 seconds");
       }
       return { state: "OBSERVATION_DEADLINE" };

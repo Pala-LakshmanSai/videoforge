@@ -10,6 +10,15 @@ import {
 } from "./hosted-product-route-common";
 import { sha256 } from "./crypto";
 import { providerRetryAfterMs } from "../providers/provider-throttle";
+import type { VoiceoverAsset } from "./voiceover-archive";
+
+async function archiveStandaloneVoiceover(
+  env: HostedRuntimeEnvironment,
+  target: { accountId: string; workspaceId: string; jobId: string },
+) {
+  const archive = await import("./voiceover-archive");
+  return archive.archiveStandaloneVoiceover(env, target);
+}
 
 const BASE = "https://api.j1tts.com";
 const ID = /^[A-Za-z0-9_-]{1,160}$/u;
@@ -42,7 +51,7 @@ export async function j1Fetch(
       ...init,
       redirect: "manual",
       headers: { Authorization: `Bearer ${key}`, "User-Agent": "VideoForge/1.0", ...init.headers },
-      signal: AbortSignal.timeout(path.endsWith("/download") ? 300_000 : 30_000),
+      signal: init.signal ?? AbortSignal.timeout(path.endsWith("/download") ? 300_000 : 30_000),
     });
     if (result.status >= 300 && result.status < 400)
       throw new J1Error("J1TTS_REDIRECT_REJECTED", init.method === "POST");
@@ -127,6 +136,7 @@ export function publicVoiceoverJob(job: Job | null) {
 export async function observeJ1Voiceover(
   env: HostedRuntimeEnvironment,
   target: { accountId: string; workspaceId: string; jobId: string },
+  allowSubmission = true,
 ): Promise<string> {
   const pool = createNeonPool(env.DATABASE_URL!);
   try {
@@ -138,7 +148,27 @@ export async function observeJ1Voiceover(
       )
     ).rows[0]?.job;
     if (!job) return "MISSING";
+    const archiveCompleted = async () => {
+      let asset = (
+        await pool.query<{ value: VoiceoverAsset | null }>(
+          "WITH bound AS (SELECT set_config('videoforge.account_id',($1::uuid)::text,true)) SELECT public.videoforge_read_voiceover_library_asset($1,$2,$3) AS value FROM bound",
+          args,
+        )
+      ).rows[0]?.value;
+      if (!asset || asset.deleted_at) return "COMPLETED";
+      await archiveStandaloneVoiceover(env, target);
+      asset = (
+        await pool.query<{ value: VoiceoverAsset | null }>(
+          "WITH bound AS (SELECT set_config('videoforge.account_id',($1::uuid)::text,true)) SELECT public.videoforge_read_voiceover_library_asset($1,$2,$3) AS value FROM bound",
+          args,
+        )
+      ).rows[0]?.value;
+      return asset && !asset.deleted_at && !asset.object_key && !asset.archive_failure_code
+        ? "ARCHIVING"
+        : "COMPLETED";
+    };
     if (job.state === "WAITING") {
+      if (!allowSubmission) return "WAITING";
       const claimId = crypto.randomUUID();
       const claimed = (
         await pool.query<{ job: Job | null }>(
@@ -160,6 +190,7 @@ export async function observeJ1Voiceover(
           )
         ).rows[0]?.job;
       // The durable claim precedes the network call. A crash never authorizes replay.
+      let observedProviderId: string | null = null;
       try {
         const result = plainRecord(
           await (
@@ -176,6 +207,7 @@ export async function observeJ1Voiceover(
         );
         if (!result || typeof result.id !== "string" || !ID.test(result.id))
           throw new J1Error("J1TTS_INVALID_RESPONSE", true);
+        observedProviderId = result.id;
         job = (await finish("PROCESSING", result.id, null)) ?? claimed;
       } catch (error) {
         const limited =
@@ -184,7 +216,7 @@ export async function observeJ1Voiceover(
         job =
           (await finish(
             limited ? "WAITING" : uncertain ? "UNKNOWN_NO_RETRY" : "FAILED",
-            null,
+            observedProviderId,
             error instanceof J1Error ? error.code : "J1TTS_NETWORK_UNCERTAIN",
             limited ? error.retryAfterMs : null,
           )) ?? claimed;
@@ -209,7 +241,7 @@ export async function observeJ1Voiceover(
             state === "FAILED" ? "J1TTS_GENERATION_FAILED" : null,
           ],
         );
-        return state;
+        return state === "COMPLETED" ? await archiveCompleted() : state;
       }
     }
     if (
@@ -222,7 +254,7 @@ export async function observeJ1Voiceover(
       );
       return "UNKNOWN_NO_RETRY";
     }
-    return job.state;
+    return job.state === "COMPLETED" ? await archiveCompleted() : job.state;
   } finally {
     await pool.end();
   }
@@ -400,13 +432,45 @@ export async function handleJ1Voiceover(
         ...owner,
         id,
       ])) ?? null;
+    const publicJob = async (job: Job | null) => {
+      if (!job) return null;
+      const asset = await sql<VoiceoverAsset | null>(
+        "SELECT public.videoforge_read_voiceover_library_asset($1,$2,$3) AS value",
+        [...owner, job.id],
+      );
+      if (!asset) return publicVoiceoverJob(job);
+      if (asset.deleted_at) return null;
+      return {
+        ...publicVoiceoverJob(job),
+        title: asset.title,
+        voice_name: asset.voice_name,
+        duration_ms: asset.duration_ms,
+        content_length: asset.content_length,
+        state: asset.archive_failure_code
+          ? "ARCHIVE_FAILED"
+          : job.state === "COMPLETED" && !asset.object_key
+            ? "ARCHIVING"
+            : job.state,
+        failure_code: asset.archive_failure_code ?? job.failure_code,
+        audio_url: asset.object_key ? `/api/v2/voiceovers/library/${job.id}/audio` : null,
+      };
+    };
     if (path === "/api/v2/voiceovers/jobs" && request.method === "POST") {
       const parsed = await parseHostedJson(request, "SCRIPT_INVALID", 450_000);
       if (parsed instanceof Response) return parsed;
       const b = plainRecord(parsed);
       if (
         !b ||
-        Object.keys(b).sort().join() !== "filename,id,script,voice_id" ||
+        !["filename,id,script,voice_id", "filename,id,script,title,voice_id"].includes(
+          Object.keys(b).sort().join(),
+        ) ||
+        (b.title !== undefined &&
+          (typeof b.title !== "string" ||
+            !b.title.trim() ||
+            b.title.trim().length > 240 ||
+            // Titles must reject control characters at the API boundary.
+            // eslint-disable-next-line no-control-regex
+            /[\u0000-\u001f]/u.test(b.title))) ||
         typeof b.id !== "string" ||
         !UUID.test(b.id) ||
         typeof b.script !== "string" ||
@@ -427,17 +491,53 @@ export async function handleJ1Voiceover(
           },
           400,
         );
+      if (b.title !== undefined && (!env.PRIVATE_ARTIFACTS || !env.HOSTED_CONTINUATION_WORKFLOW))
+        return response(
+          {
+            error: {
+              code: "VOICEOVER_STORAGE_UNAVAILABLE",
+              message: "Voiceover generation is temporarily unavailable.",
+            },
+          },
+          503,
+        );
       const hash = await sha256(JSON.stringify([b.script, b.voice_id, b.filename]));
       const existing = await read(b.id);
+      const previousAsset =
+        b.title !== undefined && existing
+          ? await sql<VoiceoverAsset | null>(
+              "SELECT public.videoforge_read_voiceover_library_asset($1,$2,$3) AS value",
+              [...owner, b.id],
+            )
+          : null;
+      const selectedVoice =
+        !existing || (b.title !== undefined && !previousAsset)
+          ? (await voices(key)).find((v) => v.voice_id === b.voice_id && permitted(v))
+          : undefined;
       // The DB also checks request hash on an idempotent lookup; no provider call precedes it.
-      if (!existing && !(await voices(key)).some((v) => v.voice_id === b.voice_id && permitted(v)))
-        return response({ error: { code: "VOICE_NOT_FOUND" } }, 400);
+      if (!existing && !selectedVoice) return response({ error: { code: "VOICE_NOT_FOUND" } }, 400);
       let started: { claimed: boolean; job: Job } | undefined;
       try {
-        started = await sql(
-          "SELECT public.videoforge_queue_voiceover_job($1,$2,$3,$4,$5,$6,$7) AS value",
-          [...owner, b.id, hash, b.script, b.voice_id, b.filename],
-        );
+        started =
+          b.title === undefined
+            ? await sql(
+                "SELECT public.videoforge_queue_voiceover_job($1,$2,$3,$4,$5,$6,$7) AS value",
+                [...owner, b.id, hash, b.script, b.voice_id, b.filename],
+              )
+            : await sql(
+                "SELECT public.videoforge_queue_standalone_voiceover($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) AS value",
+                [
+                  ...owner,
+                  scope.user_id,
+                  b.id,
+                  hash,
+                  b.script,
+                  b.voice_id,
+                  b.filename,
+                  String(b.title).trim(),
+                  previousAsset?.voice_name ?? selectedVoice?.name ?? String(b.voice_id),
+                ],
+              );
       } catch (e) {
         const message = e instanceof Error ? e.message : "";
         return response(
@@ -455,13 +555,12 @@ export async function handleJ1Voiceover(
         );
       }
       await ensureVoiceoverObserver(env, scope.account_id, scope.workspace_id, b.id);
-      if (!started?.claimed)
-        return response({ job: publicVoiceoverJob(started?.job ?? null) }, 200);
+      if (!started?.claimed) return response({ job: await publicJob(started?.job ?? null) }, 200);
       await observeJ1Voiceover(
         { ...env, DATABASE_URL: config.neon.databaseUrl },
         { accountId: scope.account_id, workspaceId: scope.workspace_id, jobId: b.id },
       );
-      return response({ job: publicVoiceoverJob(await read(b.id)) }, 202);
+      return response({ job: await publicJob(await read(b.id)) }, 202);
     }
     if (request.method === "GET" && (path === "/api/v2/voiceovers/jobs" || match)) {
       let job = await read(match?.[1] ?? null);
@@ -470,6 +569,21 @@ export async function handleJ1Voiceover(
           ? response({ error: { code: "VOICEOVER_NOT_FOUND" } }, 404)
           : response({ job: null });
       if (match?.[2]) {
+        const asset = await sql<VoiceoverAsset | null>(
+          "SELECT public.videoforge_read_voiceover_library_asset($1,$2,$3) AS value",
+          [...owner, job.id],
+        );
+        if (asset) {
+          if (asset.deleted_at || !asset.object_key)
+            return response({ error: { code: "VOICEOVER_NOT_READY" } }, 404);
+          return Response.redirect(
+            new URL(
+              `/api/v2/voiceovers/library/${job.id}/audio?download=1`,
+              request.url,
+            ).toString(),
+            307,
+          );
+        }
         if (job.state !== "COMPLETED" || !job.provider_job_id)
           return response({ error: { code: "VOICEOVER_NOT_READY" } }, 409);
         const audio = await j1Fetch(
@@ -489,14 +603,17 @@ export async function handleJ1Voiceover(
           },
         });
       }
-      if (["WAITING", "SUBMITTING", "PROCESSING", "UNKNOWN_NO_RETRY"].includes(job.state)) {
+      if (
+        ["WAITING", "SUBMITTING", "PROCESSING", "UNKNOWN_NO_RETRY", "COMPLETED"].includes(job.state)
+      ) {
         await observeJ1Voiceover(
           { ...env, DATABASE_URL: config.neon.databaseUrl },
           { accountId: scope.account_id, workspaceId: scope.workspace_id, jobId: job.id },
+          false,
         );
         job = (await read(job.id)) ?? job;
       }
-      return response({ job: publicVoiceoverJob(job) });
+      return response({ job: await publicJob(job) });
     }
     return response({ error: { code: "VOICEOVER_NOT_FOUND" } }, 404);
   } catch (error) {
@@ -537,5 +654,7 @@ export async function reconcilePendingVoiceovers(env: HostedRuntimeEnvironment):
       /* A retrieval failure cannot authorize a replacement submission. */
     }
   }
+  const { reconcileVoiceoverArchives } = await import("./voiceover-archive");
+  await reconcileVoiceoverArchives(env);
   return jobs.length;
 }

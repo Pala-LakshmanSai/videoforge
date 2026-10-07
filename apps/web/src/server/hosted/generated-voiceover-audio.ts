@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { parseMp3Frame } from "./audio-validation";
 
 /** Count actual MPEG frames while streaming. Memory does not grow with narration length. */
-export function generatedVoiceoverAudio() {
+export function generatedVoiceoverAudio(minimumSeconds = 10) {
   const digest = createHash("sha256");
   let pending = new Uint8Array(0),
     skip = 0,
@@ -92,7 +92,7 @@ export function generatedVoiceoverAudio() {
     flush() {
       if (first || skip || pending.length || frames < 2) invalid();
       seconds -= paddingSamples / sampleRate;
-      if (seconds < 10 || seconds > 3600) throw new Error("VOICEOVER_DURATION_INVALID");
+      if (seconds < minimumSeconds || seconds > 3600) throw new Error("VOICEOVER_DURATION_INVALID");
     },
   });
   return {

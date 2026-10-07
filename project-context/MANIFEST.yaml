@@ -25,6 +25,12 @@ conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
 target_profile_word_budget: 15000
 
 read_profiles:
+  v2_09_standalone_voiceovers:
+    - VOICEOVERS_PLAN.md
+    - 01_PRODUCT_REQUIREMENTS.md
+    - 05_UI_UX_SPEC.md
+    - 08_MODELS_AND_PROVIDERS.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
   v2_09_cost_accuracy:
     - COST_ACCURACY_PLAN.md
     - CLOUD_COMPUTE_COST_PLAN.md

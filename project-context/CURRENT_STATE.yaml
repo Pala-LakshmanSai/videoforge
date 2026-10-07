@@ -1,3 +1,15 @@
+standalone_voiceovers_2026_10_07:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  status: QUALIFIED_AWAITING_PUBLICATION
+  baseline_source: 02244e044cf8392d95e36ae899485e6fbe74593b
+  release_branch: codex/standalone-voiceovers
+  scope: Dedicated_script_to_MP3_and_private_and_demo9_centralized_libraries
+  validation: Web3254_pass1skip_native_rollback_runtime_tenant_guards_types_lint_both_builds_context_secrets_PASS
+  provider_spend: No_new_provider_generation_or_compute_started
+  paid_compute_shutdown: No_compute_started_or_mutated_existing_work_preserved
+  remaining_gates: Production_publication_and_live_MP3_acceptance_inherited_broadCI_formatting
+
 cost_accuracy_2026_10_07:
   checkpoint: V2-09
   selected_task: VF-10-09
@@ -23,7 +35,7 @@ prompt_runtime_fetch_2026_10_07:
   selected_task: VF-10-09
   read_profile: v2_09_prompt_runtime_fetch
   brief: PROMPT_RUNTIME_FETCH_PLAN.md
-  branch: codex/prompt-plan-binding
+  branch: codex/standalone-voiceovers
   baseline_executable: bcc5170869bf84616f6648c32eaef225cc2f6f98
   status: PRODUCTION_FULL_ORIGINAL_FILM_VERIFIED_ALL_COMPUTE_CLEAN
   authority: User_requests_parallel_audit_full_stage_verification_and_production_USD2_new_total_cap
@@ -64,7 +76,7 @@ prompt_plan_binding_2026_10_07:
   selected_task: VF-10-09
   read_profile: v2_09_prompt_plan_binding
   brief: PROMPT_PLAN_BINDING_PLAN.md
-  branch: codex/prompt-plan-binding
+  branch: codex/standalone-voiceovers
   baseline_executable: 4b2c9f7dc9570d7d729cbbc9f68f0c587d07dd18
   status: PRODUCTION_ACTIVE_EXACT_ASSETS_NATIVE287_COORDINATOR_CHROME_PAUSED_PROJECT_PRESERVED
   executable_commit: bcc5170869bf84616f6648c32eaef225cc2f6f98
@@ -7876,7 +7888,7 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/prompt-plan-binding
+  branch: codex/standalone-voiceovers
   branch_upstream: none
   branch_published: false
   current_source_head: "69175135c0402ce0fdcbfdbbf12abf5d60c06628"

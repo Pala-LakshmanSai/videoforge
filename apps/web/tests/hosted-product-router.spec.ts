@@ -253,6 +253,266 @@ test("hosted auth mounts the product router and account-owned worker surfaces", 
   await expect.poll(() => cancelled).toBe(true);
 });
 
+test("standalone voiceover stays polished from creation through library deletion", async ({
+  page,
+}) => {
+  const voiceoverId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const submitted: Record<string, string>[] = [];
+  let deleted = false;
+  const viewports = [
+    { name: "desktop", width: 1280, height: 900 },
+    { name: "mobile", width: 390, height: 844 },
+  ] as const;
+
+  await page.route("**/api/v2/voiceovers/voices", (route) =>
+    route.fulfill({
+      json: {
+        voices: [
+          {
+            voice_id: "alice",
+            name: "Alice",
+            tags: "Warm narration",
+            languages: "us",
+            saved: true,
+            starred: true,
+            preview_url: null,
+          },
+        ],
+      },
+    }),
+  );
+  await page.route("**/api/v2/voiceovers/jobs", async (route) => {
+    if (route.request().method() === "POST") {
+      const body = route.request().postDataJSON() as Record<string, string>;
+      submitted.push(body);
+      return route.fulfill({
+        status: 202,
+        json: {
+          job: {
+            id: body.id,
+            state: "PROCESSING",
+            filename: body.filename,
+            title: body.title,
+            voice_id: body.voice_id,
+            audio_url: null,
+          },
+        },
+      });
+    }
+    return route.fulfill({ json: { job: null } });
+  });
+  await page.route("**/api/v2/voiceovers/jobs/*", (route) => {
+    const id = submitted.at(-1)?.id ?? voiceoverId;
+    return route.fulfill({
+      json: {
+        job: {
+          id,
+          state: "COMPLETED",
+          filename: "Field_notes.mp3",
+          title: "Field notes",
+          voice_id: "alice",
+          voice_name: "Alice",
+          audio_url: `/api/v2/voiceovers/library/${id}/audio`,
+          duration_ms: 8_000,
+          content_length: 12_000,
+        },
+      },
+    });
+  });
+  await page.route("**/api/v2/voiceovers/library**", (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (request.method() === "POST" && path.endsWith("/delete")) {
+      deleted = true;
+      return route.fulfill({ status: 204 });
+    }
+    const item = {
+      id: submitted.at(-1)?.id ?? voiceoverId,
+      title: "Field notes",
+      voice_name: "Alice",
+      voice_id: "alice",
+      state: "COMPLETED",
+      filename: "Field_notes.mp3",
+      created_at: "2026-10-07T10:00:00.000Z",
+      script: "A short field recording script.",
+      character_count: 33,
+      duration_ms: 8_000,
+      content_length: 12_000,
+      creator_id: "owner",
+      creator_name: "Owner",
+      creator_email: "owner@example.test",
+      audio_url: `/api/v2/voiceovers/library/${submitted.at(-1)?.id ?? voiceoverId}/audio`,
+      download_url: `/api/v2/voiceovers/library/${submitted.at(-1)?.id ?? voiceoverId}/audio?download=1`,
+    };
+    return route.fulfill({
+      json: {
+        voiceovers: deleted ? [] : [item],
+        creators: [{ id: "owner", name: "Owner", email: "owner@example.test" }],
+        total: deleted ? 0 : 1,
+        total_voiceovers: deleted ? 0 : 1,
+        total_bytes: deleted ? 0 : 12_000,
+        page: 0,
+        page_size: 48,
+      },
+    });
+  });
+  await page.route("**/api/v2/voiceovers/library/*/delete", (route) => {
+    if (route.request().method() === "POST") {
+      deleted = true;
+      return route.fulfill({ status: 200, json: { deleted: true } });
+    }
+    return route.continue();
+  });
+
+  for (const viewport of viewports) {
+    if (submitted.length > 0) {
+      await page.evaluate(() => window.sessionStorage.clear());
+    }
+    deleted = false;
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto("/create-voiceover");
+    await expect(
+      page.getByRole("heading", { name: "Turn your script into a voiceover" }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Script voice")).toHaveValue("Alice");
+    await page.getByLabel("Voiceover title").fill("Field notes");
+    await page.getByLabel("Voiceover script").fill("A short field recording script.");
+    await page.evaluate(() => window.scrollTo(0, 0));
+    if (viewport.width === 1280) {
+      const [submitBox, dockBox] = await Promise.all([
+        page.getByRole("button", { name: "Create voiceover" }).boundingBox(),
+        page.locator(".bottom-nav-dock").boundingBox(),
+      ]);
+      expect(submitBox).not.toBeNull();
+      expect(dockBox).not.toBeNull();
+      expect(submitBox!.y + submitBox!.height).toBeLessThanOrEqual(dockBox!.y);
+    }
+    await page.screenshot({
+      path: `/tmp/videoforge-standalone-create-${viewport.name}.png`,
+      fullPage: true,
+    });
+
+    await page.getByRole("button", { name: "Create voiceover" }).click();
+    await expect(page.getByText("Voiceover ready")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Download MP3" })).toHaveAttribute(
+      "href",
+      /download=1$/u,
+    );
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({
+      path: `/tmp/videoforge-standalone-ready-${viewport.name}.png`,
+      fullPage: true,
+    });
+    expect(submitted.at(-1)).toMatchObject({
+      title: "Field notes",
+      script: "A short field recording script.",
+      voice_id: "alice",
+      filename: "Field_notes.mp3",
+    });
+    expect(submitted.at(-1)?.id).toMatch(/^[0-9a-f-]{36}$/u);
+
+    await page.getByRole("link", { name: "Library", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Library" })).toBeVisible();
+    await page
+      .getByRole("group", { name: "Library media type" })
+      .getByRole("button", { name: "Voiceovers", exact: true })
+      .click();
+    await expect(page.getByRole("heading", { name: "Voiceovers." })).toBeVisible();
+    await expect(page.getByText("Field notes", { exact: true })).toBeVisible();
+    await expect(page.getByText("Created by Owner", { exact: true })).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({
+      path: `/tmp/videoforge-standalone-library-${viewport.name}.png`,
+      fullPage: true,
+    });
+
+    await page.getByRole("button", { name: "Delete Field notes", exact: true }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Delete this voiceover?" })).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({
+      path: `/tmp/videoforge-standalone-delete-${viewport.name}.png`,
+      fullPage: true,
+    });
+    await page.getByRole("dialog").getByRole("button", { name: "Delete voiceover" }).click();
+    await expect(page.getByRole("heading", { name: "No voiceovers yet" })).toBeVisible();
+    expect(deleted).toBe(true);
+
+    await page.getByRole("link", { name: "Voices", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Voiceover Hub" })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      viewport.width,
+    );
+  }
+
+  expect(submitted).toHaveLength(2);
+});
+
+test("standalone reload checks the admitted voiceover id without a second POST", async ({
+  page,
+}) => {
+  const submitted: Record<string, string>[] = [];
+  let statusChecks = 0;
+
+  await page.route("**/api/v2/voiceovers/voices", (route) =>
+    route.fulfill({
+      json: {
+        voices: [
+          {
+            voice_id: "alice",
+            name: "Alice",
+            tags: "Warm narration",
+            languages: "us",
+            saved: true,
+            starred: true,
+            preview_url: null,
+          },
+        ],
+      },
+    }),
+  );
+  await page.route("**/api/v2/voiceovers/jobs", async (route) => {
+    if (route.request().method() === "POST") {
+      submitted.push(route.request().postDataJSON() as Record<string, string>);
+      return route.abort("failed");
+    }
+    return route.fulfill({ json: { job: null } });
+  });
+  await page.route("**/api/v2/voiceovers/jobs/*", async (route) => {
+    statusChecks += 1;
+    const id = submitted[0]?.id ?? "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    return route.fulfill({
+      json: {
+        job: {
+          id,
+          state: "COMPLETED",
+          filename: "Reloaded_notes.mp3",
+          title: "Reloaded notes",
+          voice_id: "alice",
+          voice_name: "Alice",
+          audio_url: `/api/v2/voiceovers/library/${id}/audio`,
+          duration_ms: 4_000,
+          content_length: 7_000,
+        },
+      },
+    });
+  });
+
+  await page.goto("/create-voiceover");
+  await expect(page.getByLabel("Script voice")).toHaveValue("Alice");
+  await page.getByLabel("Voiceover title").fill("Reloaded notes");
+  await page.getByLabel("Voiceover script").fill("Recover this admitted request.");
+  await page.getByRole("button", { name: "Create voiceover" }).click();
+  await expect(page.getByRole("button", { name: "Check generation" })).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Check generation" })).toBeVisible();
+  await page.getByRole("button", { name: "Check generation" }).click();
+  await expect(page.getByText("Voiceover ready")).toBeVisible();
+  expect(submitted).toHaveLength(1);
+  expect(statusChecks).toBe(1);
+});
+
 test("Stage 5 feels live and keeps every accepted prompt in a bounded scrollable viewer", async ({
   page,
 }) => {

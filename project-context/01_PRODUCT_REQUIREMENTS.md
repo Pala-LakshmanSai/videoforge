@@ -159,3 +159,9 @@ DEC_VOICEOVER_001 adds J1TTS script generation alongside the default final-audio
 ## Historical short voiceover compatibility — 2026-10-04
 
 The historical V4 rollout selected `scheduler-v4` for voiceovers longer than15seconds and at most30seconds, extending the established20–24% short-clip avatar envelope while preserving exact `scheduler-v2` and `scheduler-v3` configurations/hashes and all historical revision pins. V3 still selects for10–15seconds; longer-than30seconds selects V2's21–22%. Whole-word cuts, continuous source coverage,3–7second image scenes, bounded avatar scenes, immutable work-plan provenance and output grammar remain. The real19.087second J1TTS canary has no word boundary in V2's4.00–4.20second avatar window; preserve that failed revision and use a fresh V4 revision for acceptance. Regression data is de-identified in `packages/pipeline/tests/fixtures/j1tts-short-transcript.json`.
+
+## Standalone voiceovers — 2026-10-07
+
+Voiceovers accepts a title, script (paste or UTF-8 text, ≤100,000 characters) and catalog voice. Existing J1TTS identity/admission produces a verified private MP3 without video stages. Short speech bypasses video's 10-second minimum; one-hour/1GiB limits remain. Checksum-verified R2 storage survives provider expiry.
+
+Both libraries provide Videos/Voiceovers tabs, metadata/script details, playback, download and confirmed deletion. Cross-account access remains exclusive to the admitted verified demo9 owner. Provider identity and uncertainty survive deletion.

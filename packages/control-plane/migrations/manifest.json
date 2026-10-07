@@ -1506,6 +1506,12 @@
       "name": "hosted_prompt_single_batch_correction_headroom",
       "filename": "0288_hosted_prompt_single_batch_correction_headroom.sql",
       "sha256": "sha256:3bc71117f6c46e188c532910fd646a2ec362f6f8d08e2251d3c5d373a4eaa43c"
+    },
+    {
+      "version": 289,
+      "name": "hosted_voiceover_library",
+      "filename": "0289_hosted_voiceover_library.sql",
+      "sha256": "sha256:9480e3ab4b122133428d14c69f7cce7deefa3d383494280af0e1cff5ee7d3f79"
     }
   ]
 }

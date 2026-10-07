@@ -15,6 +15,7 @@ import { Route as StylesRouteImport } from './routes/styles'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as LibraryRouteImport } from './routes/library'
+import { Route as CreateVoiceoverRouteImport } from './routes/create-voiceover'
 import { Route as CentralizedLibraryRouteImport } from './routes/centralized-library'
 import { Route as AvatarsRouteImport } from './routes/avatars'
 import { Route as AccessRouteImport } from './routes/access'
@@ -53,6 +54,11 @@ const ProjectsRoute = ProjectsRouteImport.update({
 const LibraryRoute = LibraryRouteImport.update({
   id: '/library',
   path: '/library',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateVoiceoverRoute = CreateVoiceoverRouteImport.update({
+  id: '/create-voiceover',
+  path: '/create-voiceover',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CentralizedLibraryRoute = CentralizedLibraryRouteImport.update({
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/access': typeof AccessRoute
   '/avatars': typeof AvatarsRouteWithChildren
   '/centralized-library': typeof CentralizedLibraryRoute
+  '/create-voiceover': typeof CreateVoiceoverRoute
   '/library': typeof LibraryRoute
   '/projects': typeof ProjectsRouteWithChildren
   '/settings': typeof SettingsRoute
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   '/access': typeof AccessRoute
   '/avatars': typeof AvatarsRouteWithChildren
   '/centralized-library': typeof CentralizedLibraryRoute
+  '/create-voiceover': typeof CreateVoiceoverRoute
   '/library': typeof LibraryRoute
   '/projects': typeof ProjectsRouteWithChildren
   '/settings': typeof SettingsRoute
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   '/access': typeof AccessRoute
   '/avatars': typeof AvatarsRouteWithChildren
   '/centralized-library': typeof CentralizedLibraryRoute
+  '/create-voiceover': typeof CreateVoiceoverRoute
   '/library': typeof LibraryRoute
   '/projects': typeof ProjectsRouteWithChildren
   '/settings': typeof SettingsRoute
@@ -160,6 +169,7 @@ export interface FileRouteTypes {
     | '/access'
     | '/avatars'
     | '/centralized-library'
+    | '/create-voiceover'
     | '/library'
     | '/projects'
     | '/settings'
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | '/access'
     | '/avatars'
     | '/centralized-library'
+    | '/create-voiceover'
     | '/library'
     | '/projects'
     | '/settings'
@@ -194,6 +205,7 @@ export interface FileRouteTypes {
     | '/access'
     | '/avatars'
     | '/centralized-library'
+    | '/create-voiceover'
     | '/library'
     | '/projects'
     | '/settings'
@@ -212,6 +224,7 @@ export interface RootRouteChildren {
   AccessRoute: typeof AccessRoute
   AvatarsRoute: typeof AvatarsRouteWithChildren
   CentralizedLibraryRoute: typeof CentralizedLibraryRoute
+  CreateVoiceoverRoute: typeof CreateVoiceoverRoute
   LibraryRoute: typeof LibraryRoute
   ProjectsRoute: typeof ProjectsRouteWithChildren
   SettingsRoute: typeof SettingsRoute
@@ -262,6 +275,13 @@ declare module '@tanstack/react-router' {
       path: '/library'
       fullPath: '/library'
       preLoaderRoute: typeof LibraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create-voiceover': {
+      id: '/create-voiceover'
+      path: '/create-voiceover'
+      fullPath: '/create-voiceover'
+      preLoaderRoute: typeof CreateVoiceoverRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/centralized-library': {
@@ -382,6 +402,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccessRoute: AccessRoute,
   AvatarsRoute: AvatarsRouteWithChildren,
   CentralizedLibraryRoute: CentralizedLibraryRoute,
+  CreateVoiceoverRoute: CreateVoiceoverRoute,
   LibraryRoute: LibraryRoute,
   ProjectsRoute: ProjectsRouteWithChildren,
   SettingsRoute: SettingsRoute,

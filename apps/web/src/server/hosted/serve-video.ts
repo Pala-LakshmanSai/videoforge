@@ -17,7 +17,9 @@ export async function serveHostedVideo(
       }
     | undefined,
   inline: boolean,
+  audioFilename?: string,
 ): Promise<Response> {
+  const contentType = audioFilename ? "audio/mpeg" : "video/mp4";
   const size = Number(artifact?.content_length);
   if (
     !artifact ||
@@ -31,7 +33,7 @@ export async function serveHostedVideo(
   if (
     !head ||
     head.size !== size ||
-    head.httpMetadata?.contentType !== "video/mp4" ||
+    head.httpMetadata?.contentType !== contentType ||
     !(await verifyHostedPreviewChecksum(
       bucket,
       artifact.object_key,
@@ -65,7 +67,7 @@ export async function serveHostedVideo(
   if (
     !object?.body ||
     object.size !== size ||
-    object.httpMetadata?.contentType !== "video/mp4" ||
+    object.httpMetadata?.contentType !== contentType ||
     (head.etag && object.etag !== head.etag)
   )
     return response({ error: { code: "COMPLETED_RENDER_UNAVAILABLE" } }, 503);
@@ -76,11 +78,13 @@ export async function serveHostedVideo(
       ...(range
         ? { "content-range": `bytes ${range.offset}-${range.offset + range.length - 1}/${size}` }
         : {}),
-      "content-type": "video/mp4",
+      "content-type": contentType,
       "content-length": String(range?.length ?? size),
       "content-disposition": inline
-        ? 'inline; filename="videoforge-output.mp4"'
-        : hostedDownloadDisposition(voiceoverVideoDownloadFilename(artifact.voiceover_filename)),
+        ? `inline; filename="${audioFilename ? "voiceover.mp3" : "videoforge-output.mp4"}"`
+        : hostedDownloadDisposition(
+            audioFilename ?? voiceoverVideoDownloadFilename(artifact.voiceover_filename),
+          ),
       "cache-control": "private, no-store",
       "x-content-type-options": "nosniff",
       "x-videoforge-artifact-sha256": artifact.checksum_sha256,

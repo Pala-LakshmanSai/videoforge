@@ -99,9 +99,11 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // origin/cookie-lifecycle guards: measured +13,623 production / +13,596 staging bytes.
 // Batch verification/pruning adds exactly479 bytes per closure and replaces sequential database lookups.
 // No dependency, provider/fixture/native quarantine or CPU-bound exception is introduced.
+// Standalone voiceover library adds exactly 314 production / 301 staging bytes for lazy
+// routing, migration identity and ARCHIVING workflow state. Provider/archive/UI code stays dynamic.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_847_332,
-  "wrangler.staging.jsonc": 2_849_224,
+  "wrangler.production.jsonc": 2_847_646,
+  "wrangler.staging.jsonc": 2_849_525,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",

@@ -9,8 +9,8 @@ function mp3(frames = 600) {
   audio.set([84, 65, 71], audio.length - 128);
   return audio;
 }
-async function inspect(bytes: Uint8Array, chunk = 997) {
-  const measured = generatedVoiceoverAudio();
+async function inspect(bytes: Uint8Array, chunk = 997, minimumSeconds = 10) {
+  const measured = generatedVoiceoverAudio(minimumSeconds);
   let offset = 0;
   await new ReadableStream<Uint8Array>({
     pull(controller) {
@@ -60,4 +60,13 @@ it("excludes the Xing metadata frame and declared encoder delay/padding", async 
   bytes.set([0x24, 0x03, 0xc0], start + 8 + 21); // 576 delay + 960 padding samples.
   const result = await inspect(bytes, 31);
   expect(result.duration_ms).toBe(Math.round(((599 * 1152 - 1536) / 44100) * 1000));
+});
+
+it("accepts short standalone speech without relaxing video narration validation", async () => {
+  const bytes = mp3(40);
+  expect((await inspect(bytes, 997, 0.01)).duration_ms).toBeGreaterThan(1000);
+  await expect(inspect(bytes)).rejects.toThrow("VOICEOVER_DURATION_INVALID");
+  await expect(inspect(new Uint8Array(), 997, 0.01)).rejects.toThrow(
+    "GENERATED_VOICEOVER_INVALID_MP3",
+  );
 });
