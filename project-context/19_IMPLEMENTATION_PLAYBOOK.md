@@ -136,6 +136,12 @@ continue without another question unless scope, rate, cap, or capacity changes.
 No earlier CP/VF authority transfers. No provider mutation occurs because an architecture document
 was approved.
 
+## Cloudflare Workflow release activation gate
+
+Worker deploy does not refresh Workflow links. Preserve existing Workflow IDs, resources, and pins; explicitly register the qualified Worker code and read back each ID/version. Verify the Worker target where exposed; if the API exposes no pointer, mark linkage inferred until runtime-version readback proves adoption. Refresh the existing singleton only at a durable idle boundary with no DUE work or active provider workload; preserve uncertain receipts and never restart user jobs. Read back the runtime version before release. Do not create replacement Workflow instances.
+
+For scheduled cleanup, separate poll timestamps/fingerprints from immutable identity and cost fields. Preserve the raw before-image or a typed stable projection when exact row-delta proof may be needed; never infer cleanup completion or zero provider HTTP from a changed hash alone. Preserve uncertain outcomes.
+
 ## Provider-free fixture matrix
 
 Keep deterministic two-account fixtures for:
