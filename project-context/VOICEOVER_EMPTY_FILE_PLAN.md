@@ -28,6 +28,18 @@ source, preserving55bindings27secret names/three Workflow IDs/native286 and nati
 Cloud/Desktop0.1.52 pins. Compare server bundle against the published predecessor;
 no Workflow registration/runtime restart if server bytes are identical.
 
-Read back production assets/traffic and real Brave empty-file rejection plus valid
+Read back production assets/traffic and real signed-in original Chrome empty-file rejection plus valid
 MP3 estimate without Create submission. No paid inference/media/compute authorized
 or needed. Record release and remaining independent gates in CURRENT_STATE/evidence.
+
+## Verified outcome
+
+Published executable4b2c9f7d / Workerc10de8bb at100%. Exact server bundle equals
+8d0d334f;55bindings27secret names/six resources/three Workflow IDs and versions,
+native286 and native pins remain. All36public hashes and private401 pass. Actual
+original Chrome rejects empty MP3 immediately; valid179.985669s MP3 reads, original
+settings are restored and Create is enabled without a click. All272screen tests,
+installed Chrome, types/lint/builds/context/secrets and independent review pass.
+Canonical verify still fails116existing formatting files and Python lint. No new
+provider/media/compute/Workflow instance; no runtime restart. Acceptance and private
+proof pointers are in evidence/acceptance/VF-10-09/2026-10-07-empty-voiceover.md.

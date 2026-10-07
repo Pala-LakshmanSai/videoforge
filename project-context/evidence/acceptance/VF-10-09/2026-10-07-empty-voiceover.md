@@ -40,12 +40,40 @@ its empty form. This automation failure is not an application defect.
 
 ## Release and separate gates
 
-Production publication pending at this source commit. Fresh private publisher must
-prove server bundle byte equality with executable8d0d334f, preserve55bindings/
-27secret names/six resource bindings/three Workflow identities+versions/native286/
-Cloud and Desktop0.1.52 pins. No Workflow registration or singleton restart is
-needed when executable bytes/config behavior match. Upload/deploy each once with
-durable intents; unknown outcomes reconcile by GET only.
+Production is published at executable `4b2c9f7dc9570d7d729cbbc9f68f0c587d07dd18` /
+Worker `c10de8bb-afe8-45f5-accd-bde96d86a429`,100% traffic. All36public assets match
+size/SHA-256 across37build entries (`.assetsignore` is not publicly exposed).
+Anonymous private projects return401.55bindings27secret names/six resources,
+three Workflow IDs and registered versions, native286/Cloud/Desktop0.1.52 pins
+remain exact. No Workflow registration or singleton restart.
+
+Server bundle SHA-256 `e1f1f6e8587a3e70d9e97bdbfb1351c66e509d481f57bfc69f040f97cb275531`
+is byte-identical to the published8d0d334f bundle. A first local preparation failed
+because esbuild used a different working directory in109source-comment prefixes;
+restoring the original build working directory achieves strict byte equality, no
+comparison guard weakening. Failed local preparation is preserved privately.
+The first Cloudflare GET401 was resolved through existing Wrangler authentication
+refresh, before any publication. Upload and deployment each ran once with sealed
+source/config/proof authority and durable intents; no uncertain replay.
+
+Signed-in original Chrome reloads the published assets. Empty-file selection from
+an otherwise ready form immediately shows the specific zero-byte alert, clears
+readiness and disables Create. The valid complete MP3 clears the alert and reads
+11.22s preliminary coverage; Create re-enables. Original title, French womenVersion1,
+Natural DocumentaryVersion1, Cloud, AvatarOn, opening0.1minute and3% coverage are
+restored. Zero browser console errors. No Create click or new media upload.
+
+Private proofs under `.videoforge/voiceover-empty-20261007/` in the primary checkout:
+- `release/readback-private.json`, SHA-256 `0fa03ee96b2f9471d3eb5caa04451185c0e9c2ab28e9fb2a63f4d639243754a0`.
+- `browser/browser-proof-private.json`, SHA-256 `dcebf24c24e8c423fafe2ad66d5169d8f9eeb2d33f05c932d5ece5a1e3756389`.
+- `browser/production-empty-rejected.png` and `browser/production-valid-ready.png`.
+- `release/qualification-private.json`, source manifest, publication authority,
+  intents/ACKs, asset manifest and dry-run proof.
+
+Canonical `CI=1 TURBO_FORCE=true pnpm verify` was run once: static phase still fails
+116existing formatting files and Python lint. Touched source/tests format clean.
+Full CI and entire fresh-film qualification are not claimed green. The owned Chrome
+fixture server exited; port4173 has no listener at final shutdown check.
 
 New inference/media/compute spendUSD0; no new compute start/stop, project or Workflow
 instance. Historical cleanup, broadCI, installed Local/full-film/provider/editorial/
