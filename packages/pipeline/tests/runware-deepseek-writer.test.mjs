@@ -423,6 +423,65 @@ test("Luna projects generic store/name-brand categories only when no physical ma
   assert.match(RUNWARE_LUNA_UNMARKED_PRODUCT_INSTRUCTION, /even when narration describes it/u);
 });
 
+test("v41 constrains exact original and corrective scene counts without changing v40 bytes", () => {
+  const base = makeBatch(10);
+  const batch = {
+    ...base,
+    literalCharacterLimits: Object.fromEntries(base.scenes.map((scene) => [scene.sceneId, 300])),
+  };
+  const old = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v3",
+  );
+  const fresh = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v4",
+  );
+  assert.equal(fresh.requestVersion, "runware-gpt-6-luna-prompt-request-v41");
+  assert.notEqual(fresh.request.taskUUID, old.request.taskUUID);
+  assert.deepEqual(fresh.request.settings, old.request.settings);
+  assert.deepEqual(fresh.request.messages, old.request.messages);
+  assert.equal(fresh.request.model, old.request.model);
+  const schema = fresh.request.jsonSchema.schema.properties.scenes;
+  assert.equal(schema.minItems, 10);
+  assert.equal(schema.maxItems, 10);
+  assert.equal(old.request.jsonSchema.schema.properties.scenes.minItems, undefined);
+  const source = output(fresh, {
+    change: (rows) =>
+      rows.map((row, index) =>
+        index === 3 ? { ...row, literal_subject: "A visible caption." } : row,
+      ),
+  });
+  const correction = buildRunwarePromptCorrection(batch, source, "runware-luna-grounded-v4");
+  assert.deepEqual(correction.failedSceneIds, [batch.scenes[3].sceneId]);
+  const retry = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    2,
+    fresh.requestSha256,
+    1,
+    "runware-luna-grounded-v4",
+    false,
+    correction,
+  );
+  const retrySchema = retry.request.jsonSchema.schema.properties.scenes;
+  assert.equal(retrySchema.minItems, 1);
+  assert.equal(retrySchema.maxItems, 1);
+  assert.deepEqual(retrySchema.items.properties.scene_id.enum, correction.failedSceneIds);
+  assert.deepEqual(
+    buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "runware-luna-grounded-v3"),
+    old,
+  );
+});
+
 test("v40 replaces caption-like action guidance without increasing requests or changing sealed v39", () => {
   const base = makeBatch(10);
   const batch = {

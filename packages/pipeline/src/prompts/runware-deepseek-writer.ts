@@ -47,6 +47,8 @@ export const RUNWARE_LUNA_SCENE_BUDGET_PROMPT_REQUEST_VERSION =
   "runware-gpt-6-luna-prompt-request-v39" as const;
 export const RUNWARE_LUNA_PHOTOGRAPHIC_PROMPT_REQUEST_VERSION =
   "runware-gpt-6-luna-prompt-request-v40" as const;
+export const RUNWARE_LUNA_COMPACT_PROMPT_REQUEST_VERSION =
+  "runware-gpt-6-luna-prompt-request-v41" as const;
 export const RUNWARE_LUNA_PROMPT_MAX_OUTPUT_TOKENS = 6_144 as const;
 export type PromptWriterModel = typeof RUNWARE_PROMPT_MODEL | typeof RUNWARE_LUNA_PROMPT_MODEL;
 // v24: compact batch instructions without removing grounding, quality or output constraints.
@@ -64,15 +66,23 @@ export type PromptRequestPolicy =
   | "grounded-scenes-v1"
   | "runware-luna-grounded-v1"
   | "runware-luna-grounded-v2"
-  | "runware-luna-grounded-v3";
+  | "runware-luna-grounded-v3"
+  | "runware-luna-grounded-v4";
 export const isRunwareLunaPromptPolicy = (
   policy: PromptRequestPolicy | undefined,
-): policy is "runware-luna-grounded-v1" | "runware-luna-grounded-v2" | "runware-luna-grounded-v3" =>
+): policy is
+  | "runware-luna-grounded-v1"
+  | "runware-luna-grounded-v2"
+  | "runware-luna-grounded-v3"
+  | "runware-luna-grounded-v4" =>
   policy === "runware-luna-grounded-v1" ||
   policy === "runware-luna-grounded-v2" ||
-  policy === "runware-luna-grounded-v3";
+  policy === "runware-luna-grounded-v3" ||
+  policy === "runware-luna-grounded-v4";
 const usesLunaPerSceneBudget = (policy: PromptRequestPolicy): boolean =>
-  policy === "runware-luna-grounded-v2" || policy === "runware-luna-grounded-v3";
+  policy === "runware-luna-grounded-v2" ||
+  policy === "runware-luna-grounded-v3" ||
+  policy === "runware-luna-grounded-v4";
 export const GROUNDED_SCENES_PROMPT_REQUEST_VERSION =
   "runware-gemini-3.5-flash-prompt-request-v32" as const;
 export const VALIDATED_SCENES_PROMPT_REQUEST_VERSION =
@@ -96,6 +106,7 @@ type PromptRequestVersion =
   | typeof RUNWARE_LUNA_PROMPT_REQUEST_VERSION
   | typeof RUNWARE_LUNA_SCENE_BUDGET_PROMPT_REQUEST_VERSION
   | typeof RUNWARE_LUNA_PHOTOGRAPHIC_PROMPT_REQUEST_VERSION
+  | typeof RUNWARE_LUNA_COMPACT_PROMPT_REQUEST_VERSION
   | typeof VALIDATED_SCENES_PROMPT_REQUEST_VERSION
   | typeof ASYNC_NO_GRAPHICS_PROMPT_REQUEST_VERSION
   | typeof NO_GRAPHICS_V2_PROMPT_REQUEST_VERSION
@@ -692,13 +703,16 @@ const validatedScenesResponseSchema = (
 const openAiStrictScenesResponseSchema = (
   batchId: string,
   scenes: readonly PromptSceneInput[],
+  exactCardinality = false,
 ): Readonly<Record<string, unknown>> => {
   const schema = JSON.parse(JSON.stringify(responseSchema(batchId, scenes))) as {
     properties: { batch_id: unknown; scenes: Record<string, unknown> };
   };
   schema.properties.batch_id = { type: "string", enum: [batchId] };
-  delete schema.properties.scenes.minItems;
-  delete schema.properties.scenes.maxItems;
+  if (!exactCardinality) {
+    delete schema.properties.scenes.minItems;
+    delete schema.properties.scenes.maxItems;
+  }
   const items = schema.properties.scenes.items as {
     properties: Record<string, Record<string, unknown>> & {
       scene_id: unknown;
@@ -964,6 +978,7 @@ export function buildRunwarePromptRequest(
       "runware-luna-grounded-v1",
       "runware-luna-grounded-v2",
       "runware-luna-grounded-v3",
+      "runware-luna-grounded-v4",
     ].includes(requestPolicy)
   )
     fail("Prompt request policy is invalid.", ["requestPolicy"]);
@@ -1025,35 +1040,37 @@ export function buildRunwarePromptRequest(
   const validatedScenes = requestPolicy === "validated-scenes-v1" || groundedScenes;
   const asyncDelivery = requestPolicy === "no-graphics-async-v1" || validatedScenes;
   const requestVersion: PromptRequestVersion =
-    requestPolicy === "runware-luna-grounded-v3"
-      ? RUNWARE_LUNA_PHOTOGRAPHIC_PROMPT_REQUEST_VERSION
-      : lunaModel
-        ? usesLunaPerSceneBudget(requestPolicy)
-          ? RUNWARE_LUNA_SCENE_BUDGET_PROMPT_REQUEST_VERSION
-          : RUNWARE_LUNA_PROMPT_REQUEST_VERSION
-        : groundedScenes
-          ? GROUNDED_SCENES_PROMPT_REQUEST_VERSION
-          : validatedScenes
-            ? VALIDATED_SCENES_PROMPT_REQUEST_VERSION
-            : asyncDelivery
-              ? ASYNC_NO_GRAPHICS_PROMPT_REQUEST_VERSION
-              : contentRepair === "no-text-v2" && requestPolicy !== "no-graphics-v2"
-                ? "runware-prompt-content-repair-v2"
-                : contentRepair &&
-                    requestPolicy !== "no-graphics-v1" &&
-                    requestPolicy !== "no-graphics-v2"
-                  ? "runware-prompt-content-repair-v1"
-                  : requestPolicy === "no-graphics-v2"
-                    ? NO_GRAPHICS_V2_PROMPT_REQUEST_VERSION
-                    : requestPolicy === "no-graphics-v1"
-                      ? NO_GRAPHICS_PROMPT_REQUEST_VERSION
-                      : requestPolicy === "physical-placement-v2"
-                        ? PHYSICAL_PLACEMENT_V2_PROMPT_REQUEST_VERSION
-                        : requestPolicy === "physical-placement-v1"
-                          ? PHYSICAL_PLACEMENT_PROMPT_REQUEST_VERSION
-                          : natural
-                            ? NATURAL_DOCUMENTARY_PROMPT_REQUEST_VERSION
-                            : RUNWARE_PROMPT_REQUEST_VERSION;
+    requestPolicy === "runware-luna-grounded-v4"
+      ? RUNWARE_LUNA_COMPACT_PROMPT_REQUEST_VERSION
+      : requestPolicy === "runware-luna-grounded-v3"
+        ? RUNWARE_LUNA_PHOTOGRAPHIC_PROMPT_REQUEST_VERSION
+        : lunaModel
+          ? usesLunaPerSceneBudget(requestPolicy)
+            ? RUNWARE_LUNA_SCENE_BUDGET_PROMPT_REQUEST_VERSION
+            : RUNWARE_LUNA_PROMPT_REQUEST_VERSION
+          : groundedScenes
+            ? GROUNDED_SCENES_PROMPT_REQUEST_VERSION
+            : validatedScenes
+              ? VALIDATED_SCENES_PROMPT_REQUEST_VERSION
+              : asyncDelivery
+                ? ASYNC_NO_GRAPHICS_PROMPT_REQUEST_VERSION
+                : contentRepair === "no-text-v2" && requestPolicy !== "no-graphics-v2"
+                  ? "runware-prompt-content-repair-v2"
+                  : contentRepair &&
+                      requestPolicy !== "no-graphics-v1" &&
+                      requestPolicy !== "no-graphics-v2"
+                    ? "runware-prompt-content-repair-v1"
+                    : requestPolicy === "no-graphics-v2"
+                      ? NO_GRAPHICS_V2_PROMPT_REQUEST_VERSION
+                      : requestPolicy === "no-graphics-v1"
+                        ? NO_GRAPHICS_PROMPT_REQUEST_VERSION
+                        : requestPolicy === "physical-placement-v2"
+                          ? PHYSICAL_PLACEMENT_V2_PROMPT_REQUEST_VERSION
+                          : requestPolicy === "physical-placement-v1"
+                            ? PHYSICAL_PLACEMENT_PROMPT_REQUEST_VERSION
+                            : natural
+                              ? NATURAL_DOCUMENTARY_PROMPT_REQUEST_VERSION
+                              : RUNWARE_PROMPT_REQUEST_VERSION;
   const legacySystemPrompt = natural
     ? naturalDocumentaryWriterSystemPrompt(
         usesLunaPerSceneBudget(requestPolicy) ? 720 : (batch.literalCharacterLimit ?? 0),
@@ -1071,7 +1088,7 @@ export function buildRunwarePromptRequest(
         ? `${legacySystemPrompt} ${PHYSICAL_PLACEMENT_WRITER_INSTRUCTION}`
         : legacySystemPrompt;
   const systemPrompt =
-    requestPolicy === "runware-luna-grounded-v3"
+    requestPolicy === "runware-luna-grounded-v3" || requestPolicy === "runware-luna-grounded-v4"
       ? photographicLunaSystemPrompt(versionedSystemPrompt)
       : versionedSystemPrompt;
   const payload = Object.freeze({
@@ -1145,7 +1162,11 @@ export function buildRunwarePromptRequest(
             name: "response",
             strict: true,
             schema: lunaModel
-              ? openAiStrictScenesResponseSchema(batch.batchId, batch.scenes)
+              ? openAiStrictScenesResponseSchema(
+                  batch.batchId,
+                  requestPolicy === "runware-luna-grounded-v4" ? scenes : batch.scenes,
+                  requestPolicy === "runware-luna-grounded-v4",
+                )
               : validatedScenesResponseSchema(batch.batchId, scenes),
           },
         }

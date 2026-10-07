@@ -3110,7 +3110,7 @@ describe("hosted product route contract", () => {
     expect(hostedPromptRecoveryDisposition(input)).toBe(expected);
   });
 
-  it.each([9, 10])(
+  it.each([9, 10, 11])(
     "keeps unresolved Luna profile %i claims from automatic replay",
     (profileRevision) => {
       const input = {

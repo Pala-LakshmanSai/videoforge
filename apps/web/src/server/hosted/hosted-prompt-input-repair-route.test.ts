@@ -172,7 +172,7 @@ it("manual Retry submits the exact original repair proof and reaches guarded dis
   const payload = JSON.parse(String(prepareCalls()[0]![1][0]));
   expect(payload).toMatchObject({
     redispatch: true,
-    request_policy: "runware-luna-grounded-v3",
+    request_policy: "runware-luna-grounded-v4",
     input_repair_redispatch: true,
     original_run_id: identity.runId,
     original_input_hash: pinned.input_hash,
@@ -399,6 +399,28 @@ it.each([false, true])(
       });
       expect(terminal).toBe(true);
       expect(currentPlan.existing_run_state).toBe("FAILED");
+      expect(console.warn).toHaveBeenCalledWith(
+        "hosted_prompt_output_validation_failed",
+        expect.objectContaining({
+          project_id: projectId,
+          phase: "correction_recovery",
+          validation_category: "scene_quality",
+          validation_reason: "scene_quality",
+          requested_scene_count: 3,
+          unresolved_scene_count: 3,
+        }),
+      );
+      const diagnostics = vi
+        .mocked(console.warn)
+        .mock.calls.filter(([event]) => event === "hosted_prompt_output_validation_failed");
+      expect(diagnostics.map(([, value]) => value.phase)).toEqual([
+        "received_output",
+        "original_recovery",
+        "received_output",
+        "correction_recovery",
+      ]);
+      expect(JSON.stringify(diagnostics)).not.toContain("Seedlings");
+      expect(JSON.stringify(diagnostics)).not.toContain("sourceOutputText");
       expect((await run(true)).status).toBe(409);
       expect(fetcher).toHaveBeenCalledTimes(2);
       expect(progress).toHaveLength(0);

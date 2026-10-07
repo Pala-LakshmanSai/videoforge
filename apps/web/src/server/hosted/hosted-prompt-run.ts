@@ -355,7 +355,7 @@ export const HOSTED_LUNA_PROMPT_BATCH_MAX_OUTPUT_TOKENS = 6_144 as const;
  */
 export function hostedPromptBatchPlan(
   authority: PromptExecutionAuthority,
-  requestPolicy: PromptRequestPolicy = "runware-luna-grounded-v3",
+  requestPolicy: PromptRequestPolicy = "runware-luna-grounded-v4",
 ): PromptBatchPlan {
   let literalCharacterLimit: number | undefined;
   let literalCharacterLimits: Readonly<Record<string, number>> | undefined;
@@ -391,14 +391,21 @@ export function hostedPromptBatchPlan(
           ),
         ),
       );
-    } else if (requestPolicy === "runware-luna-grounded-v2" || requestPolicy === "runware-luna-grounded-v3") {
+    } else if (
+      requestPolicy === "runware-luna-grounded-v2" ||
+      requestPolicy === "runware-luna-grounded-v3" ||
+      requestPolicy === "runware-luna-grounded-v4"
+    ) {
       literalCharacterLimits = Object.freeze(
         Object.fromEntries(
           authority.scenes.map((scene) => [
             scene.sceneId,
             kieScenePromptLiteralCharacterLimit(
               compileImagePrompt({
-                compilerPolicy: "local-evidence-v1",
+                compilerPolicy:
+                  requestPolicy === "runware-luna-grounded-v4"
+                    ? "local-evidence-v2"
+                    : "local-evidence-v1",
                 writerOutput: {
                   scene_id: scene.sceneId,
                   literal_subject: "x",
@@ -431,7 +438,9 @@ export function hostedPromptBatchPlan(
         "The pinned image style leaves too little Kie prompt room for a grounded scene.",
       );
     if (
-      (requestPolicy === "runware-luna-grounded-v2" || requestPolicy === "runware-luna-grounded-v3") &&
+      (requestPolicy === "runware-luna-grounded-v2" ||
+        requestPolicy === "runware-luna-grounded-v3" ||
+        requestPolicy === "runware-luna-grounded-v4") &&
       (!literalCharacterLimits ||
         Object.values(literalCharacterLimits).some(
           (limit) => !Number.isSafeInteger(limit) || limit < 90,
@@ -469,6 +478,7 @@ export async function recoverHostedPromptBatchPlan(
   binding: HostedPromptBatchPlanBinding,
 ): Promise<PromptBatchPlan> {
   for (const policy of [
+    "runware-luna-grounded-v4",
     "runware-luna-grounded-v3",
     "runware-luna-grounded-v2",
     "runware-luna-grounded-v1",
@@ -575,10 +585,12 @@ export async function runHostedPromptExecution(input: {
   const authority = {
     ...input.authority,
     compilerPolicy:
-      input.batchPlan.requestPolicy === "grounded-scenes-v1" ||
-      isRunwareLunaPromptPolicy(input.batchPlan.requestPolicy)
-        ? ("local-evidence-v1" as const)
-        : undefined,
+      input.batchPlan.requestPolicy === "runware-luna-grounded-v4"
+        ? ("local-evidence-v2" as const)
+        : input.batchPlan.requestPolicy === "grounded-scenes-v1" ||
+            isRunwareLunaPromptPolicy(input.batchPlan.requestPolicy)
+          ? ("local-evidence-v1" as const)
+          : undefined,
   };
   const persistBatch = async (accepted: HostedAcceptedPromptBatch) => {
     await compileAndPersistHostedPromptBatch(authority, accepted, input.persistBatch);

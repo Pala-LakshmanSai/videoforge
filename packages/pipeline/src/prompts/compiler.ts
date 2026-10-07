@@ -1,9 +1,14 @@
-import { NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH } from "./natural-documentary-style.js";
+import {
+  NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH,
+  NATURAL_DOCUMENTARY_STYLE_POSITIVE_SUFFIX,
+} from "./natural-documentary-style.js";
 import {
   naturalDocumentaryRequiredPrompt,
   naturalDocumentaryCropGuidance,
   naturalDocumentaryShotRoleGuidance,
   groundedShotRoleGuidance,
+  compactDocumentaryCropGuidance,
+  compactGroundedShotRoleGuidance,
 } from "./natural-documentary-prompt-policy.js";
 import { createHash } from "node:crypto";
 
@@ -300,6 +305,9 @@ function isNonTextMention(
   }
   if (kind === "marking") return !isTextualMarkingContext(clause, start, end);
   if (kind === "screen") {
+    // British automotive screen-wash is a physical cleaning fluid, not a display.
+    // Anchor to this exact occurrence so a nearby electronic screen stays forbidden.
+    if (/^(?:[-\u2010-\u2015]|\s)+wash\b/iu.test(clause.slice(end))) return true;
     const context = `${clause.slice(Math.max(0, start - 24), start)} ${clause.slice(start, end)} ${clause.slice(end, end + 24)}`;
     return NON_TEXT_SCREEN_CONTEXT.test(context);
   }
@@ -479,6 +487,8 @@ const join = (parts: readonly (string | null)[]): string => {
 
 const COMPACT_DOCUMENTARY_STYLE_POSITIVE =
   "authentic documentary photo, candid and unposed, on location, practical light, true-to-life color, soft contrast, realistic skin/material textures, natural imperfections, consumer framing, photojournalistic, everyday life, photorealistic, no glossy or AI look";
+const COMPACT_NATURAL_DOCUMENTARY_STYLE_POSITIVE =
+  "Authentic documentary/editorial photo; physically believable, unretouched texture, no commercial polish; eye-level or practical angle, useful surroundings; daylight or practical indoor light, natural color, local reflections";
 const COMPACT_DOCUMENTARY_STYLE_NEGATIVE =
   "illustration/CGI, fantasy/surrealism, plastic/waxy skin, HDR, glamour/studio lighting, staged pose, bad anatomy, duplicate subjects, unrealistic perfection";
 const BUILT_IN_DOCUMENTARY_STYLE_POSITIVE =
@@ -595,6 +605,9 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
       "writerOutput",
     ]);
   const style = validatePromptStyleComponents(request.style);
+  const compact =
+    request.compilerPolicy === "local-evidence-v2" &&
+    request.styleProfileHash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH;
   const extra = normalizeExtra(request.extraPromptKeywords, request.applyExtraPromptKeywords);
   const sceneFields = [
     normalize(output.literal_subject, 240, "Literal subject", ["writerOutput", "literal_subject"]),
@@ -640,17 +653,23 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
     expected.layout === "IMAGE_FULL" ? style.fullImageGuidance : style.splitImageGuidance;
   const components = Object.freeze({
     literalContent: plainGeometry(literalContent),
-    continuityAndShotRole:
-      request.compilerPolicy === "local-evidence-v1"
+    continuityAndShotRole: compact
+      ? compactGroundedShotRoleGuidance(expected.inImageShotRole)
+      : request.compilerPolicy === "local-evidence-v1" ||
+          request.compilerPolicy === "local-evidence-v2"
         ? groundedShotRoleGuidance(expected.inImageShotRole)
         : request.styleProfileHash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH
           ? naturalDocumentaryShotRoleGuidance(expected.inImageShotRole)
           : plainGeometry(continuityAndShotRole),
-    cropGuidance:
-      request.styleProfileHash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH
+    cropGuidance: compact
+      ? compactDocumentaryCropGuidance(expected.layout)
+      : request.styleProfileHash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH
         ? naturalDocumentaryCropGuidance(expected.layout)
         : compactCropGuidance(plainGeometry(cropGuidance)),
-    stylePositiveSuffix: compactBuiltInStylePositive(plainGeometry(style.positiveSuffix)),
+    stylePositiveSuffix:
+      compact && style.positiveSuffix === NATURAL_DOCUMENTARY_STYLE_POSITIVE_SUFFIX
+        ? COMPACT_NATURAL_DOCUMENTARY_STYLE_POSITIVE
+        : compactBuiltInStylePositive(plainGeometry(style.positiveSuffix)),
     extraPromptKeywords: extra === null ? extra : plainGeometry(extra),
     permanentPositiveGuardrail: PERMANENT_POSITIVE_GUARDRAIL,
     styleNegativeSuffix: compactBuiltInStyleNegative(plainGeometry(style.negativeSuffix)),
@@ -675,7 +694,7 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
   const natural = request.styleProfileHash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH;
   if (natural) {
     try {
-      naturalDocumentaryRequiredPrompt(components);
+      naturalDocumentaryRequiredPrompt(components, { compact });
     } catch (error) {
       fail(
         "PROMPT_INPUT_INVALID",
@@ -686,9 +705,11 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
   }
   return Object.freeze({
     promptCompilerVersion: natural
-      ? request.compilerPolicy === "local-evidence-v1"
-        ? "prompt-compiler-v5"
-        : "prompt-compiler-v4"
+      ? compact
+        ? "prompt-compiler-v6"
+        : request.compilerPolicy === "local-evidence-v1"
+          ? "prompt-compiler-v5"
+          : "prompt-compiler-v4"
       : "prompt-compiler-v3",
     scenePromptWriterVersion: SCENE_PROMPT_WRITER_VERSION,
     sceneId: expected.sceneId,

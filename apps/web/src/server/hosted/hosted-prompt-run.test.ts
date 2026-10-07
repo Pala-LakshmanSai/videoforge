@@ -325,6 +325,7 @@ describe("versioned prompt request recovery", () => {
       // Exercises an actual planner budget rejection, not an invented provider error.
       expect(await recoverHostedPromptBatchPlan(authority, binding)).toEqual(legacy);
       expect(seen).toEqual([
+        "runware-luna-grounded-v4",
         "runware-luna-grounded-v3",
         "runware-luna-grounded-v2",
         "runware-luna-grounded-v1",
@@ -351,9 +352,17 @@ describe("versioned prompt request recovery", () => {
 
   it("selects Luna for fresh plans with the preserved ten-scene and output ceilings", () => {
     const planned = hostedPromptBatchPlan(authorityFor(true));
-    expect(planned.requestPolicy).toBe("runware-luna-grounded-v3");
+    expect(planned.requestPolicy).toBe("runware-luna-grounded-v4");
     const pinnedV39 = hostedPromptBatchPlan(authorityFor(true), "runware-luna-grounded-v2");
-    expect(planned.batches.map((entry) => entry.batch.literalCharacterLimits)).toEqual(
+    for (const [index, entry] of planned.batches.entries()) {
+      for (const scene of entry.batch.scenes) {
+        expect(entry.batch.literalCharacterLimits![scene.sceneId]!).toBeGreaterThan(
+          pinnedV39.batches[index]!.batch.literalCharacterLimits![scene.sceneId]!,
+        );
+      }
+    }
+    const pinnedV40 = hostedPromptBatchPlan(authorityFor(true), "runware-luna-grounded-v3");
+    expect(pinnedV40.batches.map((entry) => entry.batch.literalCharacterLimits)).toEqual(
       pinnedV39.batches.map((entry) => entry.batch.literalCharacterLimits),
     );
     expect(planned.batches.map((entry) => entry.maxOutputTokens)).toEqual(
@@ -367,72 +376,80 @@ describe("versioned prompt request recovery", () => {
     ).toBe(true);
   });
 
-  it.each(["runware-luna-grounded-v3", "runware-luna-grounded-v2", "runware-luna-grounded-v1", "legacy"] as const)(
-    "dispatches a %s plan with the exact database preparation hash",
-    async (policy) => {
-      const authority = authorityFor(true);
-      const planned = hostedPromptBatchPlan(authority, policy);
-      // The route persists this document hash, not the writer's own hash helper.
-      const binding = {
-        plannedBatchCount: planned.batchCount,
-        plannedSceneCount: planned.totalScenes,
-        batchPlanHash: await sha256(canonicalJson(hostedPromptBatchPlanDocument(planned))),
-      };
-      const claim = vi.fn(async () => false);
-      const fetcher = vi.fn<typeof fetch>();
-      await expect(
-        dispatchOneHostedPromptBatch({
-          apiKey: "runware-test-key-at-least-twenty-characters",
-          plan: planned,
-          persistedBinding: binding,
-          batchOrdinal: 0,
-          remainingReservationMicroUsd: 2_000_000,
-          claim,
-          recordResult: async () => {},
-          fetcher,
-        }),
-      ).resolves.toBeNull();
-      expect(claim).toHaveBeenCalledTimes(1);
-      expect(fetcher).not.toHaveBeenCalled();
-      expect(await hostedPromptBatchPlanHash(planned)).toBe(binding.batchPlanHash);
-      expect(await recoverHostedPromptBatchPlan(authority, binding)).toEqual(planned);
-      if (policy !== "runware-luna-grounded-v2" && policy !== "runware-luna-grounded-v3") return;
-      const first = planned.batches[0]!;
-      const sceneId = first.sceneIds[0]!;
-      const changed = {
-        ...planned,
-        batches: [
-          {
-            ...first,
-            batch: {
-              ...first.batch,
-              literalCharacterLimits: {
-                ...first.batch.literalCharacterLimits,
-                [sceneId]: first.batch.literalCharacterLimits![sceneId]! + 1,
-              },
+  it.each([
+    "runware-luna-grounded-v4",
+    "runware-luna-grounded-v3",
+    "runware-luna-grounded-v2",
+    "runware-luna-grounded-v1",
+    "legacy",
+  ] as const)("dispatches a %s plan with the exact database preparation hash", async (policy) => {
+    const authority = authorityFor(true);
+    const planned = hostedPromptBatchPlan(authority, policy);
+    // The route persists this document hash, not the writer's own hash helper.
+    const binding = {
+      plannedBatchCount: planned.batchCount,
+      plannedSceneCount: planned.totalScenes,
+      batchPlanHash: await sha256(canonicalJson(hostedPromptBatchPlanDocument(planned))),
+    };
+    const claim = vi.fn(async () => false);
+    const fetcher = vi.fn<typeof fetch>();
+    await expect(
+      dispatchOneHostedPromptBatch({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        plan: planned,
+        persistedBinding: binding,
+        batchOrdinal: 0,
+        remainingReservationMicroUsd: 2_000_000,
+        claim,
+        recordResult: async () => {},
+        fetcher,
+      }),
+    ).resolves.toBeNull();
+    expect(claim).toHaveBeenCalledTimes(1);
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(await hostedPromptBatchPlanHash(planned)).toBe(binding.batchPlanHash);
+    expect(await recoverHostedPromptBatchPlan(authority, binding)).toEqual(planned);
+    if (
+      policy !== "runware-luna-grounded-v2" &&
+      policy !== "runware-luna-grounded-v3" &&
+      policy !== "runware-luna-grounded-v4"
+    )
+      return;
+    const first = planned.batches[0]!;
+    const sceneId = first.sceneIds[0]!;
+    const changed = {
+      ...planned,
+      batches: [
+        {
+          ...first,
+          batch: {
+            ...first.batch,
+            literalCharacterLimits: {
+              ...first.batch.literalCharacterLimits,
+              [sceneId]: first.batch.literalCharacterLimits![sceneId]! + 1,
             },
           },
-          ...planned.batches.slice(1),
-        ],
-      };
-      expect(await hostedPromptBatchPlanHash(changed)).not.toBe(binding.batchPlanHash);
-      claim.mockClear();
-      await expect(
-        dispatchOneHostedPromptBatch({
-          apiKey: "runware-test-key-at-least-twenty-characters",
-          plan: changed,
-          persistedBinding: binding,
-          batchOrdinal: 0,
-          remainingReservationMicroUsd: 2_000_000,
-          claim,
-          recordResult: async () => {},
-          fetcher,
-        }),
-      ).rejects.toMatchObject({ problemCode: "HOSTED_PROMPT_INPUT_INVALID" });
-      expect(claim).not.toHaveBeenCalled();
-      expect(fetcher).not.toHaveBeenCalled();
-    },
-  );
+        },
+        ...planned.batches.slice(1),
+      ],
+    };
+    expect(await hostedPromptBatchPlanHash(changed)).not.toBe(binding.batchPlanHash);
+    claim.mockClear();
+    await expect(
+      dispatchOneHostedPromptBatch({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        plan: changed,
+        persistedBinding: binding,
+        batchOrdinal: 0,
+        remainingReservationMicroUsd: 2_000_000,
+        claim,
+        recordResult: async () => {},
+        fetcher,
+      }),
+    ).rejects.toMatchObject({ problemCode: "HOSTED_PROMPT_INPUT_INVALID" });
+    expect(claim).not.toHaveBeenCalled();
+    expect(fetcher).not.toHaveBeenCalled();
+  });
 
   it("dispatches, repairs, recovers, compiles and hands off a full 152-scene Luna stage without replay", async () => {
     const roles = [
@@ -486,7 +503,7 @@ describe("versioned prompt request recovery", () => {
       plannedSceneCount: batchPlan.totalScenes,
       batchPlanHash: await sha256(canonicalJson(hostedPromptBatchPlanDocument(batchPlan))),
     };
-    expect(batchPlan.requestPolicy).toBe("runware-luna-grounded-v3");
+    expect(batchPlan.requestPolicy).toBe("runware-luna-grounded-v4");
     expect(batchPlan.batches).toHaveLength(16);
     expect(
       new Set(
@@ -1465,7 +1482,7 @@ describe("versioned prompt request recovery", () => {
         };
         const recoveredPlan = await recoverHostedPromptBatchPlan(authority, binding);
         expect(recoveredPlan).toEqual(planned);
-        expect(hostedPromptBatchPlan(authority).requestPolicy).toBe("runware-luna-grounded-v3");
+        expect(hostedPromptBatchPlan(authority).requestPolicy).toBe("runware-luna-grounded-v4");
         const fetcher = successfulPromptFetcher();
         const results: Parameters<
           NonNullable<Parameters<typeof dispatchOneHostedPromptBatch>[0]["recordResult"]>

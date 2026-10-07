@@ -1,3 +1,5 @@
+Current task: audit and repair fresh prompt-stage failures on two accounts. Read `PROMPT_STAGE_AUDIT_PLAN.md` and `prompt_stage_audit_2026_10_07` in CURRENT_STATE.yaml. User authorizes multi-agent investigation, production publication and USD3 combined new verification.
+
 Current task: repair held Cloud stage and historical machine status. Use `v2_09_cloud_status` / `CLOUD_STATUS_PLAN.md`; preserve completed276 prompts, the downstream hold and published CPU headroom.
 
 Current voice import repair: V2-09/VF-10-09. Read `VOICE_IMPORT_REPAIR_PLAN.md` and `voice_import_repair_2026_10_07` in CURRENT_STATE.yaml. Already available provider voices must save privately without another import; uncertain acceptance is reconciled by exact ID. User authorizes repair, functional verification and production release; no new paid generation/compute.

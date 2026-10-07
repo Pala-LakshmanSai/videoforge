@@ -21,17 +21,36 @@ export function groundedShotRoleGuidance(role: PromptSceneInput["inImageShotRole
     : naturalDocumentaryShotRoleGuidance(role);
 }
 
+/** Compiler v6 only: leave room for scene facts without changing framing or exclusions. */
+export function compactDocumentaryCropGuidance(layout: PromptSceneInput["layout"]): string {
+  return layout === "IMAGE_FULL"
+    ? "One horizontal photo; evidence in central 80%; useful surroundings"
+    : "One photo; evidence large in middle half of width, clear of edges";
+}
+
+export function compactGroundedShotRoleGuidance(role: PromptSceneInput["inImageShotRole"]): string {
+  return role === "HUMAN_MEDIUM"
+    ? "Same subject/setting/state; medium view of complete stated subject"
+    : `Same subject/setting/state; viewpoint: ${role.toLowerCase().replaceAll("_", " ")}`;
+}
+
 export const NATURAL_DOCUMENTARY_PERMANENT_EXCLUSIONS =
   "No visible text/pseudo-text, labels, logos, watermarks, captions, overlays, graphics, borders or motion graphics; unmarked surfaces";
 
+const COMPACT_DOCUMENTARY_PERMANENT_EXCLUSIONS =
+  "No text/pseudo-text, labels, logos, watermarks, captions, overlays, graphics, borders or motion graphics; surfaces unmarked";
+
 /** A new immutable policy only; legacy provider prompts must never pass through it. */
-export function naturalDocumentaryRequiredPrompt(parts: {
-  readonly literalContent: string;
-  readonly cropGuidance: string;
-  readonly stylePositiveSuffix: string;
-  readonly continuityAndShotRole: string;
-  readonly extraPromptKeywords: string | null;
-}): string {
+export function naturalDocumentaryRequiredPrompt(
+  parts: {
+    readonly literalContent: string;
+    readonly cropGuidance: string;
+    readonly stylePositiveSuffix: string;
+    readonly continuityAndShotRole: string;
+    readonly extraPromptKeywords: string | null;
+  },
+  options: { readonly compact?: boolean } = {},
+): string {
   const literal = parts.literalContent.trim();
   if (!literal) throw new RangeError("Natural Documentary needs a literal scene.");
   const humanMedium =
@@ -42,7 +61,9 @@ export function naturalDocumentaryRequiredPrompt(parts: {
   for (const value of [
     parts.cropGuidance,
     parts.stylePositiveSuffix,
-    NATURAL_DOCUMENTARY_PERMANENT_EXCLUSIONS,
+    options.compact
+      ? COMPACT_DOCUMENTARY_PERMANENT_EXCLUSIONS
+      : NATURAL_DOCUMENTARY_PERMANENT_EXCLUSIONS,
     humanMedium ? "same subject/setting/state" : parts.continuityAndShotRole,
     parts.extraPromptKeywords ?? "",
   ]) {

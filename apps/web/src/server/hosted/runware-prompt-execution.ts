@@ -864,6 +864,7 @@ async function validatePlanBeforeDispatch(
       // v39 and v40 requests seal per-scene limits instead, including during final acceptance.
       ...(plan.requestPolicy === "runware-luna-grounded-v2" ||
       plan.requestPolicy === "runware-luna-grounded-v3" ||
+      plan.requestPolicy === "runware-luna-grounded-v4" ||
       batch.literalCharacterLimit === undefined
         ? {}
         : { literalCharacterLimit: batch.literalCharacterLimit }),

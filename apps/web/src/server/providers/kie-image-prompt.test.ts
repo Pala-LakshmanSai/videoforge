@@ -1,6 +1,6 @@
 import type { CompiledImagePrompt } from "@videoforge/pipeline";
 import { describe, expect, it } from "vitest";
-import { buildKieScenePrompt } from "./kie-image-prompt";
+import { buildKieScenePrompt, kieScenePromptLiteralCharacterLimit } from "./kie-image-prompt";
 
 const cases = [
   [
@@ -28,6 +28,52 @@ function compiled(subject: string, action: string, environment: string): Compile
   } as CompiledImagePrompt;
 }
 describe("fresh photographic image wire policy", () => {
+  it("keeps v4/v5 wire bytes exact and gives v6 its full bounded literal allowance", () => {
+    const source = compiled("A worker", "tightens a bolt", "A garage");
+    const original = JSON.stringify(source);
+    const legacy =
+      "subject: A worker, action: tightens a bolt, environment: A garage. " +
+      "One continuous horizontal photograph. Natural documentary photograph, available light. " +
+      "No visible text/pseudo-text, labels, logos, watermarks, captions, overlays, graphics, borders or motion graphics; unmarked surfaces. " +
+      "same subject/setting/state. Avoid: illustration, CGI";
+    for (const promptCompilerVersion of ["prompt-compiler-v4", "prompt-compiler-v5"] as const)
+      expect(buildKieScenePrompt({ ...source, promptCompilerVersion })).toBe(legacy);
+    const fresh = { ...source, promptCompilerVersion: "prompt-compiler-v6" } as CompiledImagePrompt;
+    const options = { requiredOnly: true };
+    const budget = kieScenePromptLiteralCharacterLimit(fresh, options);
+    expect(budget).toBeGreaterThan(kieScenePromptLiteralCharacterLimit(source, options));
+    const action = "tightens a bolt";
+    const environment = "A garage";
+    const subject = "A worker".padEnd(budget - action.length - environment.length, "x");
+    const boundary = {
+      ...fresh,
+      components: {
+        ...fresh.components,
+        literalContent: `subject: ${subject}, action: ${action}, environment: ${environment}`,
+      },
+    };
+    expect(buildKieScenePrompt(boundary, options)).toHaveLength(800);
+    const photographic = buildKieScenePrompt(boundary, {
+      ...options,
+      wirePolicy: "photographic-v1",
+    });
+    for (const fact of [subject, action, environment]) expect(photographic).toContain(fact);
+    expect(photographic.length).toBeLessThanOrEqual(800);
+    expect(() =>
+      buildKieScenePrompt(
+        {
+          ...boundary,
+          components: {
+            ...boundary.components,
+            literalContent: boundary.components.literalContent + "x",
+          },
+        },
+        options,
+      ),
+    ).toThrow("INPUT_INVALID");
+    expect(JSON.stringify(source)).toBe(original);
+  });
+
   it.each(cases)(
     "removes caption-like fields for %s without losing scene facts",
     (subject, action, environment) => {

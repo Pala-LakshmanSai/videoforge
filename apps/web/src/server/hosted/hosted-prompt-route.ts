@@ -42,6 +42,27 @@ import { readRunwareCreditBalance } from "../providers/runware-http-transport";
 import type { RunwareCapacityRefusal } from "../providers/runware-http-transport";
 import { RunwareLunaRejectedError } from "../providers/runware-luna-prompt-transport";
 
+function reportPromptOutputValidation(
+  projectId: string,
+  runId: string,
+  phase: "received_output" | "original_recovery" | "correction_recovery",
+  error: HostedPromptArchivedOutputInvalidError,
+): void {
+  const diagnostic = error.validationDiagnostic;
+  // Project/run identity and categorical counts only; paid response text stays in its private receipt.
+  console.warn("hosted_prompt_output_validation_failed", {
+    project_id: projectId,
+    run_id: runId,
+    phase,
+    validation_category: diagnostic?.category ?? null,
+    validation_reason: diagnostic?.reason ?? null,
+    requested_scene_count: diagnostic?.requestedSceneCount ?? null,
+    returned_scene_count: diagnostic?.returnedSceneCount ?? null,
+    locally_valid_scene_count: diagnostic?.locallyValidSceneCount ?? null,
+    unresolved_scene_count: diagnostic?.unresolvedSceneCount ?? null,
+  });
+}
+
 async function pausePromptCapacity(
   pool: ReturnType<typeof createNeonPool>,
   accountId: string,
@@ -744,6 +765,13 @@ export async function writeProjectPrompts(
           )
             throw error;
           const invalidClaim = original.claim;
+          if (error instanceof HostedPromptArchivedOutputInvalidError)
+            reportPromptOutputValidation(
+              projectId,
+              saved.id,
+              invalidClaim.retry_of_request_hash ? "correction_recovery" : "original_recovery",
+              error,
+            );
           if (
             !invalidClaim.retry_of_request_hash &&
             saved.reserved_cost_micro_usd -
@@ -854,10 +882,12 @@ export async function writeProjectPrompts(
                   ? original.claim?.provider_task_uuid
                   : undefined,
               ),
-            ["grounded-scenes-v1"].includes(batchPlan.requestPolicy ?? "legacy") ||
-              isRunwareLunaPromptPolicy(batchPlan.requestPolicy)
-              ? "local-evidence-v1"
-              : undefined,
+            batchPlan.requestPolicy === "runware-luna-grounded-v4"
+              ? "local-evidence-v2"
+              : ["grounded-scenes-v1"].includes(batchPlan.requestPolicy ?? "legacy") ||
+                  isRunwareLunaPromptPolicy(batchPlan.requestPolicy)
+                ? "local-evidence-v1"
+                : undefined,
           );
         if (acceptedBatch && saved.accepted_batch_count + 1 === saved.planned_batch_count)
           return await completeAcceptedRun();
@@ -1094,10 +1124,12 @@ export async function writeProjectPrompts(
         authority,
         firstBatch,
         (batch) => recordHostedPromptBatch(pool, scope.account_id, persistedRunId, batch),
-        ["grounded-scenes-v1"].includes(batchPlan.requestPolicy ?? "legacy") ||
-          isRunwareLunaPromptPolicy(batchPlan.requestPolicy)
-          ? "local-evidence-v1"
-          : undefined,
+        batchPlan.requestPolicy === "runware-luna-grounded-v4"
+          ? "local-evidence-v2"
+          : ["grounded-scenes-v1"].includes(batchPlan.requestPolicy ?? "legacy") ||
+              isRunwareLunaPromptPolicy(batchPlan.requestPolicy)
+            ? "local-evidence-v1"
+            : undefined,
       );
     return response(
       {
@@ -1112,6 +1144,7 @@ export async function writeProjectPrompts(
     );
   } catch (error) {
     if (error instanceof HostedPromptArchivedOutputInvalidError && runId) {
+      reportPromptOutputValidation(projectId, runId, "received_output", error);
       // The exact billed response is already durable. The next continuation validates it and
       // either makes one targeted correction or adjudicates the failed correction as terminal.
       return response(

@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
 import {
+  assertNoHardPromptConflict,
   hasLegacyPhysicalBorderConflict,
   hasPreGrammarBorderConflict,
 } from "../dist/src/prompts/compiler.js";
+import { NATURAL_DOCUMENTARY_STYLE_POSITIVE_SUFFIX } from "../dist/src/prompts/natural-documentary-style.js";
 
 import {
   DeterministicFixturePromptWriter,
@@ -26,6 +28,27 @@ import {
 } from "../dist/src/index.js";
 
 const digest = `sha256:${"a".repeat(64)}`;
+
+test("screen-wash physical compounds never exempt another screen or graphic request", () => {
+  for (const compound of ["screen-wash", "screenwash", "screen wash"]) {
+    const physical = `A plain emergency funnel beside a car’s open ${compound} reservoir.`;
+    assert.doesNotThrow(() => assertNoHardPromptConflict(physical, []));
+    for (const forbidden of [
+      " An electronic screen displays instructions.",
+      " A caption appears beside it.",
+      " Add graphic overlays.",
+      " and a screen mounted beside it.",
+    ])
+      assert.throws(
+        () => assertNoHardPromptConflict(physical + forbidden, []),
+        PipelineDomainError,
+      );
+  }
+  assert.throws(
+    () => assertNoHardPromptConflict("A car dashboard screen displays a warning.", []),
+    PipelineDomainError,
+  );
+});
 const layouts = ["IMAGE_FULL", "SPLIT_RIGHT_IMAGE"];
 
 function scenes(count) {
@@ -1021,4 +1044,96 @@ test("fresh grounded medium framing preserves objects and legacy compiled prompt
     verifyCompiledImagePrompt(fresh);
     assert.deepEqual(compileImagePrompt(input), old);
   }
+});
+
+test("compiler v6 reserves more scene room while preserving v5 bytes and custom style treatment", () => {
+  const expected = { ...scenes(1)[0], inImageShotRole: "HUMAN_MEDIUM" };
+  const input = {
+    expectedScene: expected,
+    writerOutput: {
+      scene_id: expected.sceneId,
+      literal_subject: "A worker with visible torso and connected arm holding a cotton cloth.",
+      action: "Wipes dust from the wooden shelf with the cloth.",
+      environment: "Beside an open cupboard, viewed from behind the worker.",
+      in_image_shot_role: expected.inImageShotRole,
+      lighting_context: "Daylight.",
+      continuity_tags: [],
+      prompt_core: "A worker cleans a shelf.",
+    },
+    style: {
+      ...style(),
+      positiveSuffix: NATURAL_DOCUMENTARY_STYLE_POSITIVE_SUFFIX,
+      negativeSuffix: "",
+    },
+    styleProfileHash: NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH,
+    extraPromptKeywords: null,
+    applyExtraPromptKeywords: false,
+  };
+  const small = {
+    ...input,
+    expectedScene: { ...expected, sceneId: "incident" },
+    writerOutput: {
+      ...input.writerOutput,
+      scene_id: "incident",
+      literal_subject: "A man.",
+      action: "Holds a filter.",
+      environment: "Beside a car.",
+    },
+  };
+  const old = compileImagePrompt({ ...small, compilerPolicy: "local-evidence-v1" });
+  assert.equal(
+    old.positivePromptSha256,
+    "sha256:d8ac9880a540ad4abfa6427849a785056d358467bd4e5603957643a3afab60a7",
+  );
+  const compact = compileImagePrompt({ ...small, compilerPolicy: "local-evidence-v2" });
+  assert.ok(
+    naturalDocumentaryRequiredPrompt(old.components).length -
+      naturalDocumentaryRequiredPrompt(compact.components, { compact: true }).length >=
+      100,
+  );
+  const fresh = compileImagePrompt({ ...input, compilerPolicy: "local-evidence-v2" });
+  assert.equal(fresh.promptCompilerVersion, "prompt-compiler-v6");
+  const wire = naturalDocumentaryRequiredPrompt(fresh.components, { compact: true });
+  for (const value of [
+    input.writerOutput.literal_subject,
+    input.writerOutput.action,
+    input.writerOutput.environment,
+  ])
+    assert.ok(wire.includes(value));
+  for (const term of [
+    "text/pseudo-text",
+    "labels",
+    "logos",
+    "watermarks",
+    "captions",
+    "overlays",
+    "graphics",
+    "borders",
+    "motion graphics",
+    "unmarked",
+    "unretouched",
+    "natural color",
+    "local reflections",
+  ])
+    assert.ok(wire.includes(term), term);
+  assert.ok(wire.length <= 800);
+  verifyCompiledImagePrompt(fresh);
+  assert.throws(
+    () =>
+      compileImagePrompt({
+        ...input,
+        compilerPolicy: "local-evidence-v2",
+        applyExtraPromptKeywords: true,
+        extraPromptKeywords: "soft light ".repeat(40),
+      }),
+    PipelineDomainError,
+  );
+  const customSuffix = "warm documentary photography with gentle side lighting";
+  const custom = compileImagePrompt({
+    ...input,
+    compilerPolicy: "local-evidence-v2",
+    style: { ...input.style, positiveSuffix: customSuffix },
+  });
+  assert.equal(custom.components.stylePositiveSuffix, customSuffix);
+  assert.deepEqual(compileImagePrompt({ ...small, compilerPolicy: "local-evidence-v1" }), old);
 });

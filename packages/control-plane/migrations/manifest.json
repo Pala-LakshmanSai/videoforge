@@ -1542,6 +1542,12 @@
       "name": "runware_luna_photographic_v3",
       "filename": "0294_runware_luna_photographic_v3.sql",
       "sha256": "sha256:a852d7939f9041a44c8ebb4e9de70869d87a24b6ca9f0ec17aabd754bdb52965"
+    },
+    {
+      "version": 295,
+      "name": "runware_luna_compact_v4",
+      "filename": "0295_runware_luna_compact_v4.sql",
+      "sha256": "sha256:c2665e61e8d5ee3b1eb3e40c8a8683cdc5528f84b1b3323284eab0ef16e6dfb6"
     }
   ]
 }

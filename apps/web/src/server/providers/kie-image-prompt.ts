@@ -84,10 +84,15 @@ export function buildKieScenePrompt(
   const c = compiled.components;
   const handAnatomy =
     options.handAnatomy === true && /\bviewpoint:\s*hands action\b/iu.test(c.continuityAndShotRole);
-  if (["prompt-compiler-v4", "prompt-compiler-v5"].includes(compiled.promptCompilerVersion)) {
+  if (
+    ["prompt-compiler-v4", "prompt-compiler-v5", "prompt-compiler-v6"].includes(
+      compiled.promptCompilerVersion,
+    )
+  ) {
     try {
       let prompt = naturalDocumentaryRequiredPrompt(
         handAnatomy ? { ...c, continuityAndShotRole: KIE_HAND_ANATOMY_GUIDANCE } : c,
+        { compact: compiled.promptCompilerVersion === "prompt-compiler-v6" },
       );
       let addedNegative = false;
       for (const term of options.requiredOnly
