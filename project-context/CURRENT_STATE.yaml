@@ -4,9 +4,18 @@ asr_startup_player_2026_10_07:
   read_profile: v2_09_asr_startup_player
   brief: ASR_STARTUP_PLAYER_PLAN.md
   branch: codex/asr-failure-voiceover-player
-  status: QUALIFIED_PENDING_PRODUCTION
+  status: PRODUCTION_PLAYER_AND_CONTROLLER_VERIFIED_PAID_RETRY_PENDING_APPROVAL
   baseline_executable: d4b4a5166e6e5cc32c84ff2f3ac842756afc77ef
   baseline_worker: 31b8f412-f883-4607-8d66-33244320f787
+  executable_commit: 327fa6e644c6299cabbc7130f09e6adb2aed636f
+  worker_version: 8d2f1f98-54fa-48f3-aa95-8c28b245fb4c
+  traffic_percent: 100
+  continuation_registration: f01ca766-93fe-4399-8d63-3bfb1007dba3
+  controller_adoption: Same_idle_instance_running_successful_tick_dispatch0_observers0_cloud1_error_null_stable_preimages
+  live_audio: Owner200_range206_exact22_894_131bytes_SHA256_full1430_883188s_decode_Chrome_play_pause_seek377s_PASS
+  generated_audio: Existing_J1TTS_COMPLETE_MP3_12_622_366bytes_intake_and_receipt_SHA_match_generic200_range206_source_unchanged
+  access: Anonymous401_seven_foreign_scopes404
+  deployed_readback: Public37_asset_SHA_55bindings27secrets_native294_QAfalse_3existingWorkflowIDs_and_pins_preserved
   cause: Controller_expires_STARTING_after300s_runtime_startup_allows600s_no_first_heartbeat
   underlying_startup_cause: Unproven_deleted_Pod_logs_unavailable
   scope: STARTING600s_active300s_existing_deadlines_private_accepted_audio_player_below_costs_above_bar
@@ -15,7 +24,7 @@ asr_startup_player_2026_10_07:
   broad_CI: Non_green_inherited134format_files_and_missing_uv0_8_13
   provider_spend: No_new_paid_work
   paid_compute_shutdown: Original_rental_CLEAN_deleted404_complete_inventory_zero_Pods
-  remaining_gates: Combined_builds_production_Workflow_adoption_authenticated_Chrome_audio_and_separate_paid_retry_approval
+  remaining_gates: Separate_paid_ASR_context_planning_retry_approval_unobserved_container_startup_error_inherited_broad_CI
   evidence: evidence/acceptance/VF-10-09/2026-10-07-asr-startup-player.md
 
 voiceover_queue_2026_10_07:
@@ -7987,24 +7996,23 @@ repository:
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
   branch: codex/asr-failure-voiceover-player
-  branch_upstream: none
-  branch_published: false
-  current_source_head: "69175135c0402ce0fdcbfdbbf12abf5d60c06628"
+  branch_upstream: origin/codex/asr-failure-voiceover-player
+  branch_published: true
+  current_source_head: "327fa6e644c6299cabbc7130f09e6adb2aed636f"
   current_source_head_semantics: executable_release_identity_recorded_after_publication_evidence_commits_follow
   repository_head_rule: "The auditor must resolve git rev-parse HEAD; documentation/evidence handoff commits intentionally follow the deployed executable source and are not self-pinned here."
-  current_source_head_note: "Executable69175135 / Worker453a1c95 at100%, native282 unchanged; account-menu helper text removed, auth behavior retained. All browser-profile accounts preload before admission UI; zero menu auth requests, one set-active POST and zero document requests. Common navigation caches warm after admission; cookie expiry checks batch native token lookups. Real Chrome/Brave switch and inactive removal prove independent sessions, not owner/IP linkage. Original Chrome owner restored, Brave owner-only; latest prompt/assembly and qualified Cloud/Desktop0.1.52 pins preserved."
+  current_source_head_note: "Executable327fa6e / Worker8d2f1f98 at100%, native294 unchanged. Shared startup allowance600s, active heartbeat300s and rental deadlines preserved. Private current narration player is live below costs/above progress; exact accepted audio checksum/full decode, real Chrome playback/seek and tenant denial verified. Same idle coordinator adoptedf01ca766 with healthy tick and stable durable preimages. No new paid work; original failed/cleaned attempt preserved. Fresh ASR retry awaits separateUSD1 approval; deleted-container startup error remains unavailable."
   v2_07_latest_local_repair: "Commit 1283a23248c9b79832b6fb331b00474e1df70f81 fixes asynchronous post-cancel drain while preserving full liability and paid-work fencing on persistent nonzero health. Independent audit found no P0/P1; full web tests passed 713 with one skipped and TypeScript passed."
   last_good_commit: "e673527b7ac3dbb4db64f66a19a766cf1cf1d422"
   last_good_commit_note: "V2-06 final live closure proves positive/negative tenant isolation, personal-worker ASR/render, authenticated durable delete, exact R2 inventory restoration, disposable cleanup, rollback/restore, migration 0036, Mac/Windows lifecycle, and zero new spend."
   working_tree_expected: clean_isolated_account_switching_after_handoff_commit;primary_unrelated_changes_preserved
   start_rule: "Preserve current HEAD; Git history is the archive and retired planning must not return to the working tree."
-
 live_development:
   expected_url: "http://localhost:4173"
-  server_state: running
-  dev_server_pid: 41455
+  server_state: stopped_after_owned_fixture_acceptance
+  dev_server_pid: null
   owner_task_id: VF-10-09
-  health_checked_at: "2026-10-05T08:05:17Z"
+  health_checked_at: "2026-10-07T12:23:00Z"
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
