@@ -249,9 +249,13 @@ function textResult(item: NativeData): {
   const totalTokens = safeInteger(usage?.totalTokens);
   const cachedInputTokens = safeInteger(usage?.cachedInputTokens ?? 0);
   const completionDetails = record(usage?.completionTokensDetails);
-  const reasoningValues = [usage?.reasoningTokens, usage?.thinkingTokens, completionDetails?.reasoningTokens]
-    .filter((value) => value !== undefined);
-  const reasoningTokens = reasoningValues.length === 0 ? undefined : safeInteger(reasoningValues[0]);
+  const reasoningValues = [
+    usage?.reasoningTokens,
+    usage?.thinkingTokens,
+    completionDetails?.reasoningTokens,
+  ].filter((value) => value !== undefined);
+  const reasoningTokens =
+    reasoningValues.length === 0 ? undefined : safeInteger(reasoningValues[0]);
   const invalidReasoning =
     reasoningValues.length > 0 &&
     (reasoningTokens === null ||

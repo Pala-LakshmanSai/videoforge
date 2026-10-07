@@ -205,9 +205,9 @@ describe("Runware server HTTP transport", () => {
       usage: { reasoningTokens: 7 },
     });
     expect(fetcher).toHaveBeenCalledTimes(1);
-    expect(fetcher.mock.calls.map((call) => JSON.parse(String(call[1]?.body))[0].taskType)).toEqual([
-      "getResponse",
-    ]);
+    expect(fetcher.mock.calls.map((call) => JSON.parse(String(call[1]?.body))[0].taskType)).toEqual(
+      ["getResponse"],
+    );
   });
 
   it("distinguishes exact terminal redacted archives with verified known cost from generated output", async () => {
