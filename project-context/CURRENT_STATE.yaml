@@ -4,12 +4,16 @@ voiceover_queue_2026_10_07:
   selected_task: VF-10-09
   read_profile: v2_09_standalone_voiceovers
   brief: VOICEOVERS_PLAN.md
-  status: QUALIFIED_PENDING_PRODUCTION
+  status: PRODUCTION_VERIFIED
+  executable_commit: 6140c6576dca2e68db9b5e8749234740cfb41902
+  worker_version: 4a3303d6-db32-4730-844b-7f1aaaefb9eb
+  traffic_percent: 100
   scope: Durable_waiting_backlog_background_ack_reset_composer_persistent_queue_title_based_MP3_downloads
-  native_migration: 291_pending
+  native_migration: 291_verified
   provider_spend: Provider_free_tests_only_no_new_paid_generation
   paid_compute_shutdown: No_compute_started_existing_projects_untouched
-  remaining_gates: Final_tests_publication_live_Chrome_readback
+  validation: Web3296pass1skip_SQL8_Chrome3_types_builds_context_secrets_live_playback_HTTP_title_37_asset_hashes_PASS
+  remaining_gates: Native_browser_download_file_save_blocked_by_client_no_fresh_paid_multijob_canary
   evidence: evidence/acceptance/VF-10-09/2026-10-07-voiceover-queue.md
 image_no_text_2026_10_07:
   checkpoint: V2-09
