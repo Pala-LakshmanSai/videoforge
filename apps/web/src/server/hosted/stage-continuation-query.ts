@@ -103,7 +103,9 @@ WITH revision AS (
     (SELECT count(*) FROM public.generation_requests request
       WHERE request.project_revision_id = revision.revision_id AND request.state = 'ACTIVE') AS active_generation_requests,
     (SELECT count(*) FROM public.generation_requests request
-      WHERE request.project_revision_id = revision.revision_id AND request.state = 'WAITING') AS waiting_generation_requests,
+      WHERE request.project_revision_id = revision.revision_id
+        AND (request.state = 'WAITING'
+          OR (request.state = 'RETRY_WAIT' AND request.available_at <= now()))) AS waiting_generation_requests,
     (SELECT count(*) FROM public.hosted_api_generation_jobs job
       WHERE job.project_revision_id = revision.revision_id) AS api_jobs
   FROM revision

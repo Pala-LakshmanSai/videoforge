@@ -4,12 +4,13 @@ cloud_status_2026_10_07:
   read_profile: v2_09_cloud_status
   brief: CLOUD_STATUS_PLAN.md
   branch: codex/prompt-output-reliability
-  status: PRODUCTION_PUBLISHED_BROWSER_RECONNECT_AND_CONTINUATION_APPROVAL_PENDING
+  status: PRODUCTION_STATUS_VERIFIED_EXACT_CONTINUATION_AUTHORIZED
   baseline_executable: 3b4ea5550097bfd7172ec659ccab15f3247355cb
   baseline_worker: a259ef3d-2571-4b96-96b5-ca922121069e
   native_migration: 294
-  cause: Infinite_generation_hold_omitted_from_queue_projection_and_missing_attempt_shown_as_cloud_wait
+  cause: Infinite_hold_missing_from_UI_and_eligible_RETRY_WAIT_omitted_from_automatic_dispatch
   capacity_audit: Eighteen_ranked_GPU_types_plus_dynamic_NVIDIA_all_eligible_secure_regions_157tests_PASS
+  user_direction: Finish_exact_project_no_new_per_project_limits_ordinary_billing_preserved
   provider_spend_usd: 0
   paid_compute_shutdown: No_new_rental_or_provider_work_existing_hold_preserved
   validations: UI283_API241_Fallback157_types_builds_lint_format_PASS
@@ -19,7 +20,8 @@ cloud_status_2026_10_07:
   worker: 54e5829c-dd3f-44de-a564-4bac3cde5fb0
   release_checks: Assets37_private401_bindings55_secrets27_native294_CPU300000_PASS
   retained_coordinator: d72a382a_source_and_config_unchanged_healthy_new_ticks_no_restart
-  remaining_gates: Browser_connection_lost_owner_HTTP_and_new_USD25_full_video_cap_approval_pending
+  continuation_fix: Eligible_RETRY_WAIT_due_query_regression_red_then38tests_types_builds_PASS_no_budget_changes
+  remaining_gates: Publish_continuation_fix_adopt_idle_controller_release_exact_hold_full_film_verification
 
 prompt_output_reliability_2026_10_07:
   checkpoint: V2-09

@@ -219,7 +219,8 @@ async function seededDatabase(context: {
       id uuid PRIMARY KEY, run_id uuid NOT NULL, batch_ordinal integer NOT NULL DEFAULT 0
     );
     CREATE TABLE public.generation_requests (
-      id uuid PRIMARY KEY, project_revision_id uuid NOT NULL, state text NOT NULL
+      id uuid PRIMARY KEY, project_revision_id uuid NOT NULL, state text NOT NULL,
+      available_at timestamptz NOT NULL DEFAULT now()
     );
     CREATE TABLE public.hosted_api_generation_jobs (
       id uuid PRIMARY KEY, project_revision_id uuid NOT NULL,
@@ -337,18 +338,38 @@ it("retries one queued or admitted API generation only before any span or provid
          now(),now(),NULL,0,1);
     `);
     expect(await nextSteps(database)).toEqual(["dispatch"]);
-    await database.exec(`INSERT INTO public.generation_requests VALUES
+    await database.exec(`INSERT INTO public.generation_requests (id,project_revision_id,state) VALUES
       ('66666666-6666-4666-8666-666666666666','${revisionId}','WAITING')`);
     expect(await nextSteps(database)).toEqual(["dispatch"]);
+    await database.exec(
+      "UPDATE public.generation_requests SET state='RETRY_WAIT',available_at=now()",
+    );
+    expect(await nextSteps(database)).toEqual(["dispatch"]);
+    await database.exec(
+      "UPDATE public.generation_requests SET available_at=now()+interval '1 hour'",
+    );
+    expect(await nextSteps(database)).toEqual([]);
+    await database.exec("UPDATE public.generation_requests SET available_at='infinity'");
+    expect(await nextSteps(database)).toEqual([]);
     await database.exec("UPDATE public.generation_requests SET state='ACTIVE'");
     expect(await nextSteps(database)).toEqual(["dispatch"]);
     await database.exec(`INSERT INTO public.hosted_api_generation_jobs VALUES
       ('77777777-7777-4777-8777-777777777777','${revisionId}')`);
     expect(await nextSteps(database)).toEqual([]);
+    await database.exec(
+      "UPDATE public.generation_requests SET state='RETRY_WAIT',available_at=now()",
+    );
+    expect(await nextSteps(database)).toEqual([]);
+    await database.exec("UPDATE public.generation_requests SET state='ACTIVE'");
     await database.exec(`DELETE FROM public.hosted_api_generation_jobs;
       INSERT INTO public.hosted_cpu_job_attempts VALUES
       ('88888888-8888-4888-8888-888888888888','${revisionId}','SPAN_AUDIO','OUTBOXED',now())`);
     expect(await nextSteps(database)).toEqual([]);
+    await database.exec(
+      "UPDATE public.generation_requests SET state='RETRY_WAIT',available_at=now()",
+    );
+    expect(await nextSteps(database)).toEqual([]);
+    await database.exec("UPDATE public.generation_requests SET state='ACTIVE'");
     await database.exec(`DELETE FROM public.hosted_cpu_job_attempts WHERE kind='SPAN_AUDIO';
       UPDATE public.projects SET generation_provider='RUNPOD'`);
     expect(await nextSteps(database)).toEqual([]);
@@ -356,7 +377,7 @@ it("retries one queued or admitted API generation only before any span or provid
       UPDATE public.generation_requests SET state='FAILED'`);
     expect(await nextSteps(database)).toEqual([]);
     await database.exec(`UPDATE public.generation_requests SET state='ACTIVE';
-      INSERT INTO public.generation_requests VALUES
+      INSERT INTO public.generation_requests (id,project_revision_id,state) VALUES
       ('99999999-9999-4999-8999-999999999999','${revisionId}','FAILED')`);
     expect(await nextSteps(database)).toEqual([]);
   } finally {
@@ -376,7 +397,7 @@ it("resumes capacity-waiting saved media but excludes ambiguous, failed and canc
       INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}');
       INSERT INTO public.hosted_prompt_runs (id,project_revision_id,state,acceptance_fingerprint_hash,created_at,started_at,problem_code,redispatch_count,planned_batch_count) VALUES
         ('55555555-5555-4555-8555-555555555555','${revisionId}','SUCCEEDED','accepted',now(),now(),NULL,0,1);
-      INSERT INTO public.generation_requests VALUES
+      INSERT INTO public.generation_requests (id,project_revision_id,state) VALUES
         ('66666666-6666-4666-8666-666666666666','${revisionId}','ACTIVE');
       INSERT INTO public.hosted_api_generation_jobs VALUES
         ('77777777-7777-4777-8777-777777777777','${revisionId}','PREPARED');
@@ -414,7 +435,7 @@ it("recovers unfinished saved footage after all image/avatar jobs finish, withou
       INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}');
       INSERT INTO public.hosted_prompt_runs (id,project_revision_id,state,acceptance_fingerprint_hash,created_at,started_at,problem_code,redispatch_count,planned_batch_count) VALUES
         ('55555555-5555-4555-8555-555555555555','${revisionId}','SUCCEEDED','accepted',now(),now(),NULL,0,1);
-      INSERT INTO public.generation_requests VALUES
+      INSERT INTO public.generation_requests (id,project_revision_id,state) VALUES
         ('66666666-6666-4666-8666-666666666666','${revisionId}','ACTIVE');
       INSERT INTO public.hosted_cpu_job_attempts VALUES
         ('88888888-8888-4888-8888-888888888888','${revisionId}','SPAN_AUDIO','SUCCEEDED',now());
@@ -469,7 +490,7 @@ it.each([false, true])(
       INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444', '${revisionId}');
       INSERT INTO public.hosted_prompt_runs (id,project_revision_id,state,acceptance_fingerprint_hash,created_at,started_at,problem_code,redispatch_count,planned_batch_count) VALUES
         ('55555555-5555-4555-8555-555555555555','${revisionId}','SUCCEEDED','accepted',now(),now(),NULL,0,1);
-      INSERT INTO public.generation_requests VALUES
+      INSERT INTO public.generation_requests (id,project_revision_id,state) VALUES
         ('66666666-6666-4666-8666-666666666666','${revisionId}','ACTIVE');
       INSERT INTO public.hosted_api_generation_jobs VALUES
         ('77777777-7777-4777-8777-777777777777','${revisionId}','SUCCEEDED');
@@ -800,7 +821,7 @@ describe("hosted continuation sweep stage-3 recovery", () => {
         userId,
       ]);
       expect(wrongRevision.rows).toEqual([]);
-      await database.exec(`INSERT INTO public.generation_requests VALUES
+      await database.exec(`INSERT INTO public.generation_requests (id,project_revision_id,state) VALUES
         ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','${revisionId}','ACTIVE')`);
       expect(await nextSteps(database)).toEqual(["prompts"]);
       await database.exec(`UPDATE public.generation_requests SET state='FAILED'`);
@@ -866,7 +887,7 @@ it.each([
         (id,run_id,batch_ordinal,provider_task_uuid,request_hash)
       VALUES ('66666666-6666-4666-8666-666666666666','${runId}',0,'${taskUuid}','${requestHash}');
       ${testCase.replacement ? `INSERT INTO public.hosted_prompt_batch_replacements (claim_id,provider_task_uuid,request_hash,replacement_index) VALUES ('66666666-6666-4666-8666-666666666666','chatcmpl-correction','sha256:1111111111111111111111111111111111111111111111111111111111111111',1);` : ""}
-      INSERT INTO public.generation_requests VALUES
+      INSERT INTO public.generation_requests (id,project_revision_id,state) VALUES
         ('77777777-7777-4777-8777-777777777777','${revisionId}','ACTIVE');
       ${testCase.receipt ? `INSERT INTO public.prompt_response_receipts VALUES ('${taskUuid}','${requestHash}','{}'::jsonb);` : ""}
     `);
@@ -920,7 +941,7 @@ it("continues a fresh saved Luna receipt immediately without borrowing an origin
       VALUES ('${runId}','${revisionId}','DISPATCHING',NULL,now(),now(),NULL,0,1,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
       INSERT INTO public.hosted_prompt_batch_claims (id,run_id,batch_ordinal,provider_task_uuid,request_hash)
       VALUES ('${claimId}','${runId}',0,'chatcmpl-test','${requestHash}');
-      INSERT INTO public.generation_requests VALUES ('77777777-7777-4777-8777-777777777777','${revisionId}','ACTIVE');
+      INSERT INTO public.generation_requests (id,project_revision_id,state) VALUES ('77777777-7777-4777-8777-777777777777','${revisionId}','ACTIVE');
     `);
     expect(await nextSteps(database)).toEqual([]);
     await database.exec(
@@ -960,7 +981,7 @@ it("does not borrow an older run's missing-receipt claim when the latest run has
         ('99999999-9999-4999-8999-999999999999','${revisionId}','UNKNOWN',NULL,now(),now(),'HOSTED_PROMPT_EXECUTION_UNKNOWN',0,1,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
       INSERT INTO public.hosted_prompt_batch_claims (id,run_id,batch_ordinal)
       VALUES ('66666666-6666-4666-8666-666666666666','55555555-5555-4555-8555-555555555555',0);
-      INSERT INTO public.generation_requests VALUES
+      INSERT INTO public.generation_requests (id,project_revision_id,state) VALUES
         ('77777777-7777-4777-8777-777777777777','${revisionId}','ACTIVE');
     `);
     expect(await nextSteps(database)).toEqual(["prompts"]);
