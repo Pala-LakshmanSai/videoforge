@@ -462,3 +462,52 @@ test("0289 standalone voiceover library preserves identity, tenancy, archive fen
     );
   });
 });
+
+test("standalone queue retains successive scripts and advances in FIFO order without browser polling", async () => {
+  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+    const member = await admit(executor, 10, "voiceover-queue@example.test");
+    const first = uuid(2_890_100),
+      second = uuid(2_890_101);
+    const scope = [member.account_id, member.workspace_id];
+    await executor.query(
+      "UPDATE provider_api_policies SET max_inflight=1,min_start_interval_ms=0,next_start_at='-infinity',cooldown_until='-infinity' WHERE provider='J1_TTS'",
+    );
+    assert.equal((await queue(executor, member, first, "first")).job.state, "WAITING");
+    assert.equal((await queue(executor, member, second, "second")).job.state, "WAITING");
+    const claim = (id) =>
+      tenantCall(executor, "videoforge_claim_voiceover_submission", [
+        ...scope,
+        id,
+        uuid(2_890_102),
+      ]);
+    assert.equal(await claim(second), null);
+    assert.equal((await claim(first)).state, "SUBMITTING");
+    await tenantCall(executor, "videoforge_record_voiceover_job", [
+      ...scope,
+      first,
+      "PROCESSING",
+      "provider-first",
+      null,
+    ]);
+    assert.equal(await claim(second), null);
+    const saved = await tokenCall(executor, "videoforge_read_voiceover_library", [
+      member.token,
+      false,
+      null,
+      "",
+      null,
+      0,
+    ]);
+    assert.equal(saved.voiceovers.length, 2);
+    assert.equal(saved.voiceovers.find((row) => row.id === second).state, "WAITING");
+    await tenantCall(executor, "videoforge_record_voiceover_job", [
+      ...scope,
+      first,
+      "COMPLETED",
+      "provider-first",
+      null,
+    ]);
+    assert.equal((await claim(second)).state, "SUBMITTING");
+    assert.equal(await claim(second), null);
+  });
+});

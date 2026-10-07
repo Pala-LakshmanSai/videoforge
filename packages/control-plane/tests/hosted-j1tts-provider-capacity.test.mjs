@@ -48,7 +48,8 @@ test("shared J1 claims: queue fairness, exact rejection retry and uncertainty oc
       cb = uuid(411002);
     assert.equal((await start(a, ja)).job.state, "WAITING");
     await start(b, jb);
-    await assert.rejects(start(a, uuid(410003)), /VOICEOVER_CAPACITY_BUSY/);
+    assert.equal((await start(a, uuid(410003))).job.state, "WAITING");
+    assert.equal(await claim(a, uuid(410003), uuid(410006)), null);
     assert.equal((await claim(a, ja, ca)).state, "SUBMITTING");
     assert.equal(await claim(a, ja, uuid(410004)), null);
     assert.equal(await claim(b, jb, cb), null);

@@ -2,10 +2,15 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { HostedRuntimeConfiguration, HostedRuntimeEnvironment } from "./configuration";
 const state = vi.hoisted(() => ({
   jobs: new Map<string, Record<string, unknown>>(),
+  assets: new Map<string, Record<string, unknown>>(),
   saved: new Map<string, unknown[]>(),
   account: "account-a",
   authenticated: true,
   query: vi.fn(),
+  workflow: {
+    create: vi.fn(),
+    get: vi.fn(),
+  },
 }));
 vi.mock("./neon", () => ({ createNeonPool: () => ({ query: state.query, end: vi.fn() }) }));
 vi.mock("./hosted-product-route-common", async () => {
@@ -52,42 +57,57 @@ let environment: HostedRuntimeEnvironment;
 const context = { waitUntil: vi.fn() };
 beforeEach(() => {
   state.jobs.clear();
+  state.assets.clear();
   state.saved.clear();
   state.account = "account-a";
   state.authenticated = true;
   calls = [];
   failProcessingFinish = false;
   state.query.mockClear();
+  state.workflow.create.mockReset().mockImplementation(async (options?: { id?: string }) => ({
+    id: options?.id ?? "observer",
+  }));
+  state.workflow.get.mockReset().mockResolvedValue({
+    status: vi.fn(async () => ({ status: "running" })),
+    sendEvent: vi.fn(async () => undefined),
+  });
   environment = {
     J1TTS_API_KEY: crypto.randomUUID(),
     J1TTS_LIBRARY_OWNER_ACCOUNT_ID: "account-a",
-    HOSTED_CONTINUATION_WORKFLOW: { create: vi.fn(async () => ({ id: "observer" })) } as never,
+    PRIVATE_ARTIFACTS: {} as never,
+    HOSTED_CONTINUATION_WORKFLOW: state.workflow as never,
   };
   state.query.mockImplementation(async (sql: string, args: unknown[] = []) => {
     let value: unknown = null;
     const [a, w, j] = args;
+    const standaloneQueue = sql.includes("queue_standalone_voiceover");
+    const jobId = standaloneQueue ? args[3] : j;
     if (sql.includes("saved_voices")) value = state.saved.get(String(a)) ?? [];
-    else if (sql.includes("queue_voiceover_job")) {
-      const previous = state.jobs.get(String(j));
+    else if (standaloneQueue || sql.includes("queue_voiceover_job")) {
+      const previous = state.jobs.get(String(jobId));
+      const hash = standaloneQueue ? args[4] : args[3];
+      const script = standaloneQueue ? args[5] : args[4];
+      const voiceId = standaloneQueue ? args[6] : args[5];
+      const filename = standaloneQueue ? args[7] : args[6];
       if (previous) {
-        if (previous.account_id !== a || previous.request_hash !== args[3])
+        if (previous.account_id !== a || previous.request_hash !== hash)
           throw Error("VOICEOVER_REQUEST_CONFLICT");
         value = { claimed: false, job: previous };
       } else {
         const job = {
-          id: j,
+          id: jobId,
           account_id: a,
           workspace_id: w,
-          request_hash: args[3],
-          script: args[4],
-          voice_id: args[5],
-          filename: args[6],
+          request_hash: hash,
+          script,
+          voice_id: voiceId,
+          filename,
           state: "WAITING",
           provider_job_id: null,
           failure_code: null,
           created_at: new Date().toISOString(),
         };
-        state.jobs.set(String(j), job);
+        state.jobs.set(String(jobId), job);
         value = { claimed: true, job };
       }
     } else if (sql.includes("claim_voiceover_submission")) {
@@ -120,6 +140,8 @@ beforeEach(() => {
         });
         value = job;
       }
+    } else if (sql.includes("read_voiceover_library_asset")) {
+      value = state.assets.get(String(j)) ?? null;
     } else if (sql.includes("read_voiceover_job")) {
       const job = j ? state.jobs.get(String(j)) : [...state.jobs.values()].at(-1);
       value = job?.account_id === a ? job : null;
@@ -192,6 +214,168 @@ it("persists one request before submission and reuses its exact provider identit
   expect(audio.status).toBe(200);
   expect(calls.at(-1)).toBe("/v1/tts/provider-job/download");
   expect(calls).not.toContain("/steal-key");
+});
+it("returns queued standalone requests before provider submission and schedules each exact job", async () => {
+  const first = {
+    ...body,
+    id: "22222222-2222-4222-8222-222222222222",
+    title: "Morning brief",
+  };
+  const second = {
+    ...body,
+    id: "33333333-3333-4333-8333-333333333333",
+    title: "Evening brief",
+  };
+  expect((await handleJ1Voiceover(req("/jobs", first), environment, config, context)).status).toBe(
+    202,
+  );
+  expect((await handleJ1Voiceover(req("/jobs", second), environment, config, context)).status).toBe(
+    202,
+  );
+  expect(state.jobs.get(first.id)?.state).toBe("WAITING");
+  expect(state.jobs.get(second.id)?.state).toBe("WAITING");
+  expect(calls.filter((path) => path === "/v1/tts")).toHaveLength(0);
+  expect(state.workflow.create).toHaveBeenCalledWith(
+    expect.objectContaining({ id: `voiceover-${first.id}` }),
+  );
+  expect(state.workflow.create).toHaveBeenCalledWith(
+    expect.objectContaining({ id: `voiceover-${second.id}` }),
+  );
+});
+it("accepts an idempotent observer-create conflict only after confirming its exact instance", async () => {
+  state.workflow.create.mockImplementation(async (options?: { id?: string }) => {
+    if (options?.id?.startsWith("voiceover-")) throw new Error("workflow already exists");
+    return { id: options?.id ?? "observer" };
+  });
+  const result = await handleJ1Voiceover(
+    req("/jobs", {
+      ...body,
+      id: "44444444-4444-4444-8444-444444444444",
+      title: "Existing observer",
+    }),
+    environment,
+    config,
+    context,
+  );
+  expect(result.status).toBe(202);
+  expect(state.workflow.get).toHaveBeenCalledWith(
+    "voiceover-44444444-4444-4444-8444-444444444444",
+  );
+  expect(calls.filter((path) => path === "/v1/tts")).toHaveLength(0);
+});
+it("surfaces unknown observer scheduling failure while retaining the saved request", async () => {
+  state.workflow.create.mockRejectedValue(new Error("workflow unavailable"));
+  state.workflow.get.mockRejectedValue(new Error("workflow missing"));
+  const result = await handleJ1Voiceover(
+    req("/jobs", {
+      ...body,
+      id: "55555555-5555-4555-8555-555555555555",
+      title: "Needs retry",
+    }),
+    environment,
+    config,
+    context,
+  );
+  expect(result.status).toBe(503);
+  expect(await result.json()).toMatchObject({
+    error: { code: "VOICEOVER_SCHEDULING_UNAVAILABLE" },
+  });
+  expect(state.jobs.get("55555555-5555-4555-8555-555555555555")?.state).toBe("WAITING");
+  expect(calls.filter((path) => path === "/v1/tts")).toHaveLength(0);
+});
+it("does not accept a terminal observer as a live scheduling acknowledgement", async () => {
+  state.workflow.create.mockImplementation(async (options?: { id?: string }) => {
+    if (options?.id?.startsWith("voiceover-")) throw new Error("workflow already exists");
+    return { id: options?.id ?? "observer" };
+  });
+  state.workflow.get.mockResolvedValue({
+    status: vi.fn(async () => ({ status: "errored" })),
+    sendEvent: vi.fn(async () => undefined),
+  });
+  const result = await handleJ1Voiceover(
+    req("/jobs", {
+      ...body,
+      id: "66666666-6666-4666-8666-666666666666",
+      title: "Terminal observer",
+    }),
+    environment,
+    config,
+    context,
+  );
+  expect(result.status).toBe(503);
+  expect(await result.json()).toMatchObject({
+    error: { code: "VOICEOVER_SCHEDULING_UNAVAILABLE" },
+  });
+  expect(state.jobs.get("66666666-6666-4666-8666-666666666666")?.state).toBe("WAITING");
+});
+it("does not accept a completed observer as a live acknowledgement for a pending job", async () => {
+  state.workflow.create.mockImplementation(async (options?: { id?: string }) => {
+    if (options?.id?.startsWith("voiceover-")) throw new Error("workflow already exists");
+    return { id: options?.id ?? "observer" };
+  });
+  state.workflow.get.mockResolvedValue({
+    status: vi.fn(async () => ({ status: "complete" })),
+    sendEvent: vi.fn(async () => undefined),
+  });
+  const result = await handleJ1Voiceover(
+    req("/jobs", {
+      ...body,
+      id: "77777777-7777-4777-8777-777777777777",
+      title: "Completed observer",
+    }),
+    environment,
+    config,
+    context,
+  );
+  expect(result.status).toBe(503);
+  expect(await result.json()).toMatchObject({
+    error: { code: "VOICEOVER_SCHEDULING_UNAVAILABLE" },
+  });
+  expect(state.jobs.get("77777777-7777-4777-8777-777777777777")?.state).toBe("WAITING");
+});
+it("returns a completed standalone identity without requiring a fresh observer", async () => {
+  const standalone = {
+    ...body,
+    id: "88888888-8888-4888-8888-888888888888",
+    title: "Already complete",
+  };
+  expect((await handleJ1Voiceover(req("/jobs", standalone), environment, config, context)).status).toBe(
+    202,
+  );
+  const job = state.jobs.get(standalone.id);
+  expect(job).toBeTruthy();
+  job!.state = "COMPLETED";
+  state.workflow.create.mockClear();
+  state.workflow.get.mockClear();
+  const result = await handleJ1Voiceover(req("/jobs", standalone), environment, config, context);
+  expect(result.status).toBe(200);
+  expect(((await result.json()) as { job: { state: string } }).job.state).toBe("COMPLETED");
+  expect(state.workflow.create).not.toHaveBeenCalled();
+  expect(state.workflow.get).not.toHaveBeenCalled();
+});
+it("re-establishes a missing standalone observer on a waiting-job GET", async () => {
+  const standaloneId = "99999999-9999-4999-8999-999999999999";
+  state.jobs.set(standaloneId, {
+    id: standaloneId,
+    account_id: "account-a",
+    workspace_id: "workspace",
+    request_hash: "sha256:waiting",
+    script: body.script,
+    voice_id: body.voice_id,
+    filename: body.filename,
+    state: "WAITING",
+    provider_job_id: null,
+    failure_code: null,
+    created_at: new Date().toISOString(),
+  });
+  state.assets.set(standaloneId, { deleted_at: null });
+  const result = await handleJ1Voiceover(req("/jobs/" + standaloneId), environment, config, context);
+  expect(result.status).toBe(200);
+  expect(((await result.json()) as { job: { state: string } }).job.state).toBe("WAITING");
+  expect(state.workflow.create).toHaveBeenCalledWith(
+    expect.objectContaining({ id: `voiceover-${standaloneId}` }),
+  );
+  expect(calls.filter((path) => path === "/v1/tts")).toHaveLength(0);
 });
 it("holds ambiguous request without repeating POST", async () => {
   vi.stubGlobal(

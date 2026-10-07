@@ -380,7 +380,7 @@ test("standalone voiceover stays polished from creation through library deletion
     await page.evaluate(() => window.scrollTo(0, 0));
     if (viewport.width === 1280) {
       const [submitBox, dockBox] = await Promise.all([
-        page.getByRole("button", { name: "Create voiceover" }).boundingBox(),
+        page.getByRole("button", { name: "Add to queue" }).boundingBox(),
         page.locator(".bottom-nav-dock").boundingBox(),
       ]);
       expect(submitBox).not.toBeNull();
@@ -392,9 +392,9 @@ test("standalone voiceover stays polished from creation through library deletion
       fullPage: true,
     });
 
-    await page.getByRole("button", { name: "Create voiceover" }).click();
-    await expect(page.getByText("Voiceover ready")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Download MP3" })).toHaveAttribute(
+    await page.getByRole("button", { name: "Add to queue" }).click();
+    await expect(page.getByText("Voiceover ready", { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Download Field notes" })).toHaveAttribute(
       "href",
       /download=1$/u,
     );
@@ -502,15 +502,81 @@ test("standalone reload checks the admitted voiceover id without a second POST",
   await expect(page.getByLabel("Script voice")).toHaveValue("Alice");
   await page.getByLabel("Voiceover title").fill("Reloaded notes");
   await page.getByLabel("Voiceover script").fill("Recover this admitted request.");
-  await page.getByRole("button", { name: "Create voiceover" }).click();
+  await page.getByRole("button", { name: "Add to queue" }).click();
   await expect(page.getByRole("button", { name: "Check generation" })).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole("button", { name: "Check generation" })).toBeVisible();
   await page.getByRole("button", { name: "Check generation" }).click();
-  await expect(page.getByText("Voiceover ready")).toBeVisible();
+  await expect(page.getByText("Voiceover ready", { exact: true }).first()).toBeVisible();
   expect(submitted).toHaveLength(1);
   expect(statusChecks).toBe(1);
+});
+
+test("standalone queue accepts successive scripts and survives leaving the studio", async ({
+  page,
+}) => {
+  const jobs: Record<string, unknown>[] = [];
+  let complete = false;
+  await page.route("**/api/v2/voiceovers/voices", (route) =>
+    route.fulfill({
+      json: {
+        voices: [
+          {
+            voice_id: "alice",
+            name: "Alice",
+            saved: true,
+            starred: true,
+            languages: "us",
+            tags: "Warm",
+            preview_url: null,
+          },
+        ],
+      },
+    }),
+  );
+  await page.route("**/api/v2/voiceovers/jobs", async (route) => {
+    const body = route.request().postDataJSON();
+    jobs.push({
+      ...body,
+      state: "WAITING",
+      voice_name: "Alice",
+      created_at: new Date().toISOString(),
+    });
+    await route.fulfill({ status: 202, json: { job: jobs.at(-1) } });
+  });
+  await page.route("**/api/v2/voiceovers/library**", (route) =>
+    route.fulfill({
+      json: {
+        voiceovers: jobs.map((job) => ({
+          ...job,
+          state: complete ? "COMPLETED" : "WAITING",
+          audio_url: complete ? `/api/v2/voiceovers/library/${job.id}/audio` : null,
+          download_url: complete ? `/api/v2/voiceovers/library/${job.id}/audio?download=1` : null,
+        })),
+        total: jobs.length,
+      },
+    }),
+  );
+  await page.goto("/create-voiceover");
+  for (const title of ["Morning notes", "Evening notes"]) {
+    await page.getByLabel("Voiceover title").fill(title);
+    await page.getByLabel("Voiceover script").fill(`The script for ${title}.`);
+    await page.getByRole("button", { name: "Add to queue" }).click();
+    await expect(page.getByLabel("Voiceover script")).toHaveValue("");
+    await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
+  }
+  expect(jobs).toHaveLength(2);
+  expect(jobs[0]!.id).not.toBe(jobs[1]!.id);
+  await expect(page.getByText("2 in progress", { exact: true })).toBeVisible();
+  await page.goto("/voiceovers");
+  complete = true;
+  await page.goto("/create-voiceover");
+  await expect(page.getByText("2 ready", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Download Morning notes" })).not.toHaveAttribute(
+    "download",
+  );
+  expect(jobs).toHaveLength(2);
 });
 
 test("Stage 5 feels live and keeps every accepted prompt in a bounded scrollable viewer", async ({

@@ -225,8 +225,40 @@ describe("hosted voiceover library route", () => {
     );
     expect(download.status).toBe(200);
     expect(download.headers.get("content-disposition")).toBe(
-      'attachment; filename="morning-brief.mp3"',
+      'attachment; filename="Morning brief.mp3"',
     );
+  });
+
+  it("derives a bounded Unicode title filename without path or header characters", async () => {
+    const title = `Café / morning\\brief\n${"x".repeat(240)}`;
+    const fixture = deps({
+      read: vi.fn(async () => ({
+        voiceovers: [{ ...row, title, filename: "legacy-upload-name.mp3" }],
+        creators: [],
+        total: 1,
+      })),
+    });
+    const response = await handleVoiceoverLibrary(
+      new Request(
+        `https://studio.example.test/api/v2/voiceovers/library/${row.id}/audio?download=1`,
+      ),
+      fixture,
+    );
+
+    expect(response.status).toBe(200);
+    const disposition = response.headers.get("content-disposition");
+    const expectedStem = Array.from(`Café _ morning_brief_${"x".repeat(240)}`)
+      .slice(0, 140)
+      .join("");
+    const asciiStem = expectedStem.replace(/[^\x20-\x7e]|["\\]/gu, "_");
+    const encodedStem = encodeURIComponent(expectedStem).replace(
+      /[!'()*]/gu,
+      (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+    );
+    expect(disposition).toContain(`attachment; filename="${asciiStem}.mp3"`);
+    expect(disposition).toContain(`filename*=UTF-8''${encodedStem}.mp3`);
+    expect(disposition).not.toMatch(/[\r\n/\\]/u);
+    expect(disposition).not.toContain("legacy-upload-name");
   });
 
   it("never finalizes deletion when post-delete head verification fails, then allows retry", async () => {

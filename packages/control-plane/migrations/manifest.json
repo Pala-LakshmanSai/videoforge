@@ -1512,6 +1512,12 @@
       "name": "hosted_voiceover_library",
       "filename": "0289_hosted_voiceover_library.sql",
       "sha256": "sha256:9480e3ab4b122133428d14c69f7cce7deefa3d383494280af0e1cff5ee7d3f79"
+    },
+    {
+      "version": 290,
+      "name": "hosted_voiceover_queue",
+      "filename": "0290_hosted_voiceover_queue.sql",
+      "sha256": "sha256:ae9786f6627720d351f584ca9cce83170cb7bdd6d9c3f76d88a4afd8ceadb489"
     }
   ]
 }

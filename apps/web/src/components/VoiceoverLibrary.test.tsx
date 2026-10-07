@@ -61,6 +61,10 @@ describe("VoiceoverLibrary", () => {
       "href",
       voiceover.download_url,
     );
+    expect(within(card).getByRole("link", { name: "Download Morning brief" })).toHaveAttribute(
+      "download",
+      "",
+    );
     expect(within(card).getByRole("button", { name: "Delete Morning brief" })).toBeEnabled();
   });
 

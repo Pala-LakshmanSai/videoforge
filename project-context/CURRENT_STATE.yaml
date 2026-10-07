@@ -1,3 +1,16 @@
+voiceover_queue_2026_10_07:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  read_profile: v2_09_standalone_voiceovers
+  brief: VOICEOVERS_PLAN.md
+  status: QUALIFIED_PENDING_PRODUCTION
+  scope: Durable_waiting_backlog_background_ack_reset_composer_persistent_queue_title_based_MP3_downloads
+  native_migration: 290_pending
+  provider_spend: Provider_free_tests_only_no_new_paid_generation
+  paid_compute_shutdown: No_compute_started_existing_projects_untouched
+  remaining_gates: Final_tests_publication_live_Chrome_readback
+  evidence: evidence/acceptance/VF-10-09/2026-10-07-voiceover-queue.md
+
 avatar_preview_2026_10_07:
   checkpoint: V2-09
   selected_task: VF-10-09
