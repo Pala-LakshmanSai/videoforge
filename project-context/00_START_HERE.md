@@ -1,3 +1,5 @@
+Current voice import repair: V2-09/VF-10-09. Read `VOICE_IMPORT_REPAIR_PLAN.md` and `voice_import_repair_2026_10_07` in CURRENT_STATE.yaml. Already available provider voices must save privately without another import; uncertain acceptance is reconciled by exact ID. User authorizes repair, functional verification and production release; no new paid generation/compute.
+
 Current prompt output validation repair: V2-09/VF-10-09. Read `PROMPT_OUTPUT_RELIABILITY_PLAN.md` and `prompt_output_reliability_2026_10_07` in CURRENT_STATE.yaml. Exact original and correction falsely reject the physical verb “borders”; preserve saved prompts and current production features. User authorizes publication and USD2 new prompt verification.
 
 Current ASR startup/player follow-up: V2-09/VF-10-09. Read `ASR_STARTUP_PLAYER_PLAN.md` and `asr_startup_player_2026_10_07` in CURRENT_STATE.yaml. Preserve accepted audio and the original failed/cleaned attempt; paid verification requires its own finite approval. The confirmed five-minute controller timeout conflicts with the pinned runtime's ten-minute startup allowance; deleted-container startup logs are unavailable.

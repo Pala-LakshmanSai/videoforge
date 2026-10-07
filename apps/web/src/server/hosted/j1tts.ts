@@ -92,8 +92,8 @@ export function parseJ1Voices(value: unknown): J1Voice[] {
   });
 }
 let cached: { key: string; until: number; voices: J1Voice[] } | undefined;
-export async function voices(key: string) {
-  if (cached?.key === key && cached.until > Date.now()) return cached.voices;
+export async function voices(key: string, refresh = false) {
+  if (!refresh && cached?.key === key && cached.until > Date.now()) return cached.voices;
   const [global, imported] = await Promise.all([
     j1Fetch(key, "/v1/voices").then((r) => r.json()),
     j1Fetch(key, "/v1/my-voices").then((r) => r.json()),
@@ -377,13 +377,21 @@ export async function handleJ1Voiceover(
           },
           400,
         );
-      await j1Fetch(key, "/v1/voices/import", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ voice_ids: body.voice_id }),
-      });
-      cached = undefined;
-      const voice = (await voices(key)).find((v) => v.voice_id === body.voice_id);
+      let voice = (await voices(key, true)).find((v) => v.voice_id === body.voice_id);
+      if (!voice) {
+        try {
+          await j1Fetch(key, "/v1/voices/import", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ voice_ids: body.voice_id }),
+          });
+        } catch (error) {
+          // Reconcile duplicate or uncertain acceptance without submitting the import again.
+          voice = (await voices(key, true)).find((v) => v.voice_id === body.voice_id);
+          if (!voice) throw error;
+        }
+        voice ??= (await voices(key, true)).find((v) => v.voice_id === body.voice_id);
+      }
       if (!voice)
         return response(
           {
@@ -692,7 +700,9 @@ export async function handleJ1Voiceover(
             ? error instanceof J1Error && error.code.startsWith("VOICEOVER_SCHEDULING_")
               ? "Your request is saved, but background scheduling is temporarily unavailable. Retry this same request."
               : "Unable to reach voice generation. Your saved request will not be submitted again."
-            : "Unable to load voices. Try again in a moment.",
+            : path === "/api/v2/voiceovers/import"
+              ? "Unable to import this voice. Check the voice ID and try again."
+              : "Unable to load voices. Try again in a moment.",
         },
       },
       503,

@@ -522,3 +522,88 @@ it("persists confirmed 429 as waiting and retries only after the saved due time"
   expect(state.jobs.get(id)?.state).toBe("PROCESSING");
   expect(calls.filter((x) => x === "/v1/tts")).toHaveLength(2);
 });
+
+it("saves an existing provider voice without importing it again", async () => {
+  await handleJ1Voiceover(req("/voices"), environment, config, context);
+  calls = [];
+  vi.mocked(fetch).mockImplementation(async (url) => {
+    const path = new URL(String(url)).pathname;
+    calls.push(path);
+    if (path === "/v1/voices") return Response.json({ voices: [] });
+    if (path === "/v1/my-voices")
+      return Response.json({ voices: [{ voice_id: "lxYfHSkYm1EzQzGhdbfc", name: "Jessica" }] });
+    return Response.json({ failed: [{ error: "already_imported" }] }, { status: 400 });
+  });
+  state.account = "account-b";
+  const result = await handleJ1Voiceover(
+    req("/import", { voice_id: "lxYfHSkYm1EzQzGhdbfc" }),
+    environment,
+    config,
+    context,
+  );
+  expect(result.status).toBe(200);
+  expect(await result.json()).toEqual({ voice_id: "lxYfHSkYm1EzQzGhdbfc" });
+  expect(calls).not.toContain("/v1/voices/import");
+  expect(state.query).toHaveBeenCalledWith(expect.stringContaining("videoforge_import_voice"), [
+    "account-b",
+    "workspace",
+    "lxYfHSkYm1EzQzGhdbfc",
+  ]);
+});
+
+it.each(["success", "duplicate", "uncertain"])(
+  "reconciles a new %s import by exact ID",
+  async (outcome) => {
+    let available = false;
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const path = new URL(String(url)).pathname;
+      calls.push(path);
+      if (path === "/v1/voices") return Response.json({ voices: [] });
+      if (path === "/v1/my-voices")
+        return Response.json({ voices: available ? [{ voice_id: "new", name: "New" }] : [] });
+      available = true;
+      if (outcome === "uncertain") throw new TypeError("connection lost after acceptance");
+      return Response.json(
+        { ok: outcome === "success" },
+        { status: outcome === "success" ? 200 : 400 },
+      );
+    });
+    const result = await handleJ1Voiceover(
+      req("/import", { voice_id: "new" }),
+      environment,
+      config,
+      context,
+    );
+    expect(result.status).toBe(200);
+    expect(await result.json()).toEqual({ voice_id: "new" });
+    expect(calls.filter((path) => path === "/v1/voices/import")).toHaveLength(1);
+    expect(state.query).toHaveBeenCalledWith(expect.stringContaining("videoforge_import_voice"), [
+      "account-a",
+      "workspace",
+      "new",
+    ]);
+  },
+);
+
+it("does not save a failed import or substitute another voice", async () => {
+  vi.mocked(fetch).mockImplementation(async (url) => {
+    const path = new URL(String(url)).pathname;
+    calls.push(path);
+    if (path === "/v1/voices") return Response.json({ voices: [] });
+    if (path === "/v1/my-voices")
+      return Response.json({ voices: [{ voice_id: "other", name: "Other" }] });
+    return Response.json({ failed: [{ error: "not_found" }] }, { status: 400 });
+  });
+  const result = await handleJ1Voiceover(
+    req("/import", { voice_id: "missing" }),
+    environment,
+    config,
+    context,
+  );
+  expect(result.status).toBe(503);
+  expect(await result.json()).toMatchObject({ error: { message: expect.stringContaining("import") } });
+  expect(calls.filter((path) => path === "/v1/voices/import")).toHaveLength(1);
+  expect(state.query.mock.calls.some(([sql]) => sql.includes("videoforge_import_voice"))).toBe(
+    false,
+  );
+});
