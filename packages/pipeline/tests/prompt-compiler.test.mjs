@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
+import { hasLegacyPhysicalBorderConflict } from "../dist/src/prompts/compiler.js";
 
 import {
   DeterministicFixturePromptWriter,
@@ -440,6 +441,90 @@ test("compiler rejects forbidden content in structured scene facts", () => {
       }),
     );
   }
+});
+
+test("compiler distinguishes physical boundaries from each decorative border mention", () => {
+  const input = batch(1);
+  const compileAction = (action) =>
+    compileImagePrompt({
+      writerOutput: {
+        scene_id: input.scenes[0].sceneId,
+        literal_subject: "a cultivated field",
+        action,
+        environment: "a rural landscape",
+        in_image_shot_role: input.scenes[0].inImageShotRole,
+        lighting_context: "soft morning light",
+        continuity_tags: [],
+        prompt_core: "legacy provider prose is ignored by the compiler",
+      },
+      expectedScene: input.scenes[0],
+      style: style(),
+      extraPromptKeywords: null,
+      applyExtraPromptKeywords: false,
+    });
+  for (const action of [
+    "A field borders a natural grassland area.",
+    "A cultivated parcel borders natural land.",
+    "A meadow borders the forest.",
+    "A road borders a field.",
+    "Travelers pass through a border crossing.",
+    "A rural border checkpoint stands beside the road.",
+    "Workers repair a border fence.",
+    "A hedge marks the border between two countries.",
+    "A farmer walks beside the national border.",
+    "Trees grow along the country border.",
+    "Flowers grow along the garden border.",
+    "The landscape border is lined with trees.",
+    "A flower border planted with shrubs.",
+    "A photo of a garden border planted with flowers.",
+    "A field borders grassland with no decorative border.",
+  ]) {
+    assert.doesNotThrow(() => compileAction(action), action);
+  }
+  for (const action of [
+    "A field borders grassland with a decorative border.",
+    "A field borders grassland and a red border surrounds the image.",
+    "A field borders grassland. Add a border.",
+    "A road borders a field. Add a thin black border.",
+    "A road borders a field; add a thin black border.",
+    "A field borders grassland, add an image border.",
+    "A decorative garden border.",
+    "A graphic landscape border lined with trees.",
+    "A garden border surrounds the photograph.",
+    "Add a flower border.",
+    "Add a garden border.",
+    "A border surrounds a cultivated field.",
+    "A field borders the image.",
+    "A field borders natural land with visible text.",
+    "A field borders natural land with a watermark.",
+    "A field borders natural land with motion graphics.",
+    "A garden border planted with flowers and a caption.",
+    "A border crossing appears with a decorative border.",
+    "A border between two countries with a thin black border.",
+    "A decorative national border.",
+    "A map of the national border.",
+    "An image border crossing the photograph.",
+    "A border crossing the photograph.",
+  ]) {
+    expectCode("PROMPT_CONFLICT", () => compileAction(action));
+  }
+});
+
+test("historical correction eligibility is limited to the physical-border false positive", () => {
+  for (const value of [
+    "A field borders a natural grassland area.",
+    "A cultivated parcel borders natural land.",
+    "Flowers grow along the garden border.",
+  ])
+    assert.equal(hasLegacyPhysicalBorderConflict(value), true, value);
+  for (const value of [
+    "A field adjoins natural land.",
+    "No borders.",
+    "A field borders grassland with a decorative border.",
+    "A field borders grassland with visible text.",
+    "Add a flower border.",
+  ])
+    assert.equal(hasLegacyPhysicalBorderConflict(value), false, value);
 });
 
 test("keeps described products relatable without allowing text or branding", () => {

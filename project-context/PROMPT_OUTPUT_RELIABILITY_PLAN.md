@@ -1,0 +1,9 @@
+# V2-09 / VF-10-09: physical boundary prompt validation
+
+The user reports a fresh Dutch farming project stopped after 107 of 276 accepted prompts with HOSTED_PROMPT_OUTPUT_INVALID. They authorize a careful parallel audit, repair, production publication, and at most USD2 of new verification spend. Baseline executable327fa6e / evidence d4c306ba, native294, writer v40/profile10. Preserve ASR/player, prompt-only no-text policy, costs, immutable saved requests and accepted prompts.
+
+Trace the exact original and correction through request binding, response validation, shared compiler, durable acceptance and terminal recovery. Reproduce offline before changing code. Current evidence identifies the action verb “borders” describing adjoining farmland as a forbidden decorative border. Repair the shared guard at individual mentions; preserve the ban on decorative borders and prevent a safe mention from concealing a forbidden one.
+
+Ownership: compiler/tests delegated; exact offline replay delegated; service/recovery audit delegated; main owns context, integration, release and paid actions. No agent may dispatch paid requests. Validate saved original/correction, historical successful batches, forbidden-output negatives, affected tests, types/builds and production Chrome. Preserve saved request and acceptance hashes.
+
+Prefer saved-response recovery with zero provider POSTs. After qualification, any prompt-stage-only verification stays within USD2 total. Do not resume a long film into paid downstream media/compute without proving a hold. Preserve cancelled/archived work and uncertain paid identities. Publication is explicitly authorized. Record costs, release identity and remaining gates. External model availability and arbitrary future output cannot be guaranteed.

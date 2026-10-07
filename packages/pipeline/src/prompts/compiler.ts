@@ -35,6 +35,7 @@ type ForbiddenMentionKind =
   | "marking"
   | "screen"
   | "brand"
+  | "border"
   | "chart";
 
 /**
@@ -50,8 +51,9 @@ const FORBIDDEN_MENTIONS: readonly {
   {
     kind: "always",
     pattern:
-      /\b(?:caption(?:s)?|subtitle(?:s)?|title(?:s)?|text|price[- ]tags?|receipts?|logo(?:s)?|watermark(?:s)?|border(?:s)?|lower[- ]third(?:s)?|infographic(?:s)?|ui|web ?page|arrow(?:s)?|graphic overlays?|motion graphics?|decorative transitions?|avatar on (?:the )?right|image on (?:the )?left)\b/giu,
+      /\b(?:caption(?:s)?|subtitle(?:s)?|title(?:s)?|text|price[- ]tags?|receipts?|logo(?:s)?|watermark(?:s)?|lower[- ]third(?:s)?|infographic(?:s)?|ui|web ?page|arrow(?:s)?|graphic overlays?|motion graphics?|decorative transitions?|avatar on (?:the )?right|image on (?:the )?left)\b/giu,
   },
+  { kind: "border", pattern: /\bborders?\b/giu },
   {
     kind: "writing",
     pattern:
@@ -217,6 +219,53 @@ function isNonTextMention(
   start: number,
   end: number,
 ): boolean {
+  if (kind === "border") {
+    const prefix = clause.slice(0, start);
+    const suffix = clause.slice(end);
+    // Check this mention's adjacent physical subject/object, never a land word
+    // elsewhere in the clause: a field may border grassland and still request
+    // a forbidden decorative border later in the same sentence.
+    if (
+      /\b(?:decorative|graphic|ornamental)(?:\s+[\p{L}-]+){0,2}\s+$|\b(?:map|chart|diagram)(?:\s+[\p{L}-]+){0,4}\s+$|\b(?:image|photo|picture|frame)\s+$/iu.test(
+        prefix,
+      )
+    )
+      return false;
+    if (
+      /^\s+crossing\s+(?:(?:a|an|the)\s+)?(?:image|photo(?:graph)?|picture|frame)\b/iu.test(suffix)
+    )
+      return false;
+    if (/^\s+(?:crossings?|checkpoints?|fences?)\b/iu.test(suffix)) return true;
+    if (
+      /^\s+between\s+(?:(?:the|two|neighboring|adjacent)\s+){0,2}(?:countries|nations|fields|gardens|farms|parcels)\b/iu.test(
+        suffix,
+      )
+    )
+      return true;
+    if (
+      /\b(?:country|national|international)\s+$/iu.test(prefix) &&
+      /^\s*(?:[.!?]|$)/u.test(suffix)
+    )
+      return true;
+    if (
+      !/\b(?:field|parcel|pasture|meadow|grassland|woodland|forest|garden|flower|land|farmland|river|stream|road|path|farm|hedge|landscape)s?\s+$/iu.test(
+        prefix,
+      )
+    )
+      return false;
+    return (
+      /^\s+(?:(?:a|an|the)\s+)?(?:(?:natural|cultivated|grassy|open|neighboring|adjacent|rural|wild|green)\s+){0,3}(?:field|parcel|pasture|meadow|grassland|woodland|forest|garden|land|farmland|river|stream|road|path|farm|hedge)(?:s)?\b/iu.test(
+        suffix,
+      ) ||
+      (/\b(?:along|beside|across)\s+(?:the\s+)?(?:field|garden|flower|landscape)\s+$/iu.test(
+        prefix,
+      ) &&
+        /^\s*(?:[.!?]|$)/u.test(suffix)) ||
+      /^\s+(?:(?:is|are)\s+)?(?:planted|lined|covered)\s+with\s+(?:flowers?|grass|plants?|shrubs?|trees?|stones?)\b/iu.test(
+        suffix,
+      )
+    );
+  }
   if (kind === "marking") return !isTextualMarkingContext(clause, start, end);
   if (kind === "screen") {
     const context = `${clause.slice(Math.max(0, start - 24), start)} ${clause.slice(start, end)} ${clause.slice(end, end + 24)}`;
@@ -250,6 +299,25 @@ export function assertNoHardPromptConflict(value: string, path: readonly string[
       }
     }
   }
+}
+
+/** Only reconstruct an already sealed correction for the former physical-border false positive. */
+export function hasLegacyPhysicalBorderConflict(value: string): boolean {
+  try {
+    assertNoHardPromptConflict(value, ["historicalCorrection"]);
+  } catch (error) {
+    if (error instanceof PipelineDomainError) return false;
+    throw error;
+  }
+  for (const clause of value.split(/[;,]/u).map((part) => part.trim())) {
+    for (const match of clause.matchAll(/\bborders?\b/giu)) {
+      const start = match.index;
+      const end = start + match[0].length;
+      if (isNonTextMention("border", clause, start, end) && !isNegatedMention(clause, start, end))
+        return true;
+    }
+  }
+  return false;
 }
 
 export function validatePromptStyleComponents(style: PromptStyleComponents): PromptStyleComponents {

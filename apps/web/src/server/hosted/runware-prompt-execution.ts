@@ -11,6 +11,7 @@ import {
   NO_GRAPHICS_V2_WRITER_INSTRUCTION,
   buildRunwarePromptRequest,
   buildRunwarePromptCorrection,
+  recoverRunwarePromptCorrection,
   isRunwareLunaPromptPolicy,
   planPromptBatches,
   runwarePromptValidationDiagnostic,
@@ -512,7 +513,14 @@ function sealedCorrection(
   if (!Array.isArray(body) || body.length !== 1) throw invalidPlanBinding();
   const user = body[0]?.messages?.find((message) => message.role === "user");
   if (!user) throw invalidPlanBinding();
-  const payload = JSON.parse(user.content) as { correction?: { source_output_text?: unknown } };
+  const payload = JSON.parse(user.content) as {
+    correction?: {
+      source_output_text?: unknown;
+      source_response_sha256?: unknown;
+      failed_scene_ids?: unknown;
+      failures?: unknown;
+    };
+  };
   if (!payload.correction) return null;
   if (
     (!["validated-scenes-v1", "grounded-scenes-v1"].includes(plan.requestPolicy ?? "legacy") &&
@@ -522,9 +530,36 @@ function sealedCorrection(
     throw invalidPlanBinding();
   if (sourceResult && sourceResult.outputText !== payload.correction.source_output_text)
     throw invalidPlanBinding();
-  const correction = buildRunwarePromptCorrection(
+  if (
+    typeof payload.correction.source_response_sha256 !== "string" ||
+    !SHA256.test(payload.correction.source_response_sha256) ||
+    !Array.isArray(payload.correction.failed_scene_ids) ||
+    payload.correction.failed_scene_ids.some((id) => typeof id !== "string") ||
+    !Array.isArray(payload.correction.failures) ||
+    payload.correction.failures.some(
+      (failure) =>
+        !failure ||
+        typeof failure !== "object" ||
+        typeof failure.scene_id !== "string" ||
+        typeof failure.field !== "string" ||
+        typeof failure.reason !== "string",
+    )
+  )
+    throw invalidPlanBinding();
+  const sealed: RunwarePromptCorrection = {
+    sourceOutputText: payload.correction.source_output_text,
+    sourceResponseSha256: payload.correction.source_response_sha256 as Sha256Digest,
+    failedSceneIds: payload.correction.failed_scene_ids,
+    failures: payload.correction.failures.map((failure) => ({
+      sceneId: failure.scene_id,
+      field: failure.field,
+      reason: failure.reason,
+    })),
+  };
+  const correction = recoverRunwarePromptCorrection(
     batch,
     payload.correction.source_output_text,
+    sealed,
     plan.requestPolicy,
   );
   if (!correction) throw invalidPlanBinding();
@@ -827,7 +862,8 @@ async function validatePlanBeforeDispatch(
       styleProfileHash: batch.styleProfileHash,
       // The durable authority service retains the historical Natural Documentary scalar.
       // v39 and v40 requests seal per-scene limits instead, including during final acceptance.
-      ...(plan.requestPolicy === "runware-luna-grounded-v2" || plan.requestPolicy === "runware-luna-grounded-v3" ||
+      ...(plan.requestPolicy === "runware-luna-grounded-v2" ||
+      plan.requestPolicy === "runware-luna-grounded-v3" ||
       batch.literalCharacterLimit === undefined
         ? {}
         : { literalCharacterLimit: batch.literalCharacterLimit }),

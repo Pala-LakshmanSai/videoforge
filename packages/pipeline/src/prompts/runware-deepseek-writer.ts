@@ -10,7 +10,11 @@ import {
 
 import { PipelineDomainError } from "../errors.js";
 import { validatePromptStyleTreatment, validatePromptWriterOutput } from "./batch.js";
-import { assertNoHardPromptConflict, plainGeometry } from "./compiler.js";
+import {
+  assertNoHardPromptConflict,
+  hasLegacyPhysicalBorderConflict,
+  plainGeometry,
+} from "./compiler.js";
 import {
   projectRunwareLunaPhysicalProductCategory,
   projectTextFreePhysicalSurfaces,
@@ -984,7 +988,12 @@ export function buildRunwarePromptRequest(
   const validatedCorrection =
     correction === undefined
       ? undefined
-      : buildRunwarePromptCorrection(batch, correction.sourceOutputText, requestPolicy);
+      : recoverRunwarePromptCorrection(
+          batch,
+          correction.sourceOutputText,
+          correction,
+          requestPolicy,
+        );
   if (
     correction !== undefined &&
     ((requestPolicy !== "validated-scenes-v1" &&
@@ -2847,6 +2856,31 @@ export function buildRunwarePromptCorrection(
   outputText: string,
   requestPolicy: PromptRequestPolicy = "legacy",
 ): RunwarePromptCorrection | null {
+  return deriveRunwarePromptCorrection(batch, outputText, requestPolicy, false);
+}
+
+/** Recover only an exact previously sealed corrective contract, never fresh correction authority. */
+export function recoverRunwarePromptCorrection(
+  batch: PromptBatch,
+  outputText: string,
+  sealed: RunwarePromptCorrection,
+  requestPolicy: PromptRequestPolicy = "legacy",
+): RunwarePromptCorrection | null {
+  const current = buildRunwarePromptCorrection(batch, outputText, requestPolicy);
+  if (current && canonicalizeJson(current) === canonicalizeJson(sealed)) return current;
+  if (!isRunwareLunaPromptPolicy(requestPolicy)) return null;
+  const historical = deriveRunwarePromptCorrection(batch, outputText, requestPolicy, true);
+  return historical && canonicalizeJson(historical) === canonicalizeJson(sealed)
+    ? historical
+    : null;
+}
+
+function deriveRunwarePromptCorrection(
+  batch: PromptBatch,
+  outputText: string,
+  requestPolicy: PromptRequestPolicy,
+  legacyPhysicalBorders: boolean,
+): RunwarePromptCorrection | null {
   try {
     const evaluated = evaluateOutput(
       batch,
@@ -2856,11 +2890,28 @@ export function buildRunwarePromptCorrection(
       true,
       requestPolicy,
     );
-    if (evaluated.unresolved.length === 0) return null;
     const parsed = asRecord(parseJsonStrict(stripCodeFence(outputText)))!;
     const rows = (parsed.scenes as JsonValue[]).map((candidate) => asRecord(candidate)!);
+    const historicalBorderConflict = (value: string) =>
+      legacyPhysicalBorders &&
+      [
+        stripProviderControls(value.normalize("NFKC")),
+        removeProviderControls(value.normalize("NFKC")),
+      ].some(hasLegacyPhysicalBorderConflict);
+    const unresolved = batch.scenes.filter((scene) => {
+      if (evaluated.unresolved.some((candidate) => candidate.sceneId === scene.sceneId))
+        return true;
+      const row = rows.find((candidate) => candidate.scene_id === scene.sceneId);
+      return (
+        row &&
+        (["literal_subject", "action", "environment"] as const).some((field) =>
+          historicalBorderConflict(projectLunaPhysicalField(row[field] as string)),
+        )
+      );
+    });
+    if (unresolved.length === 0) return null;
     const failures: RunwarePromptSceneFailure[] = [];
-    for (const scene of evaluated.unresolved) {
+    for (const scene of unresolved) {
       const row = rows.find((candidate) => candidate.scene_id === scene.sceneId)!;
       const before = failures.length;
       const lunaGraphicFields = isRunwareLunaPromptPolicy(requestPolicy)
@@ -2881,7 +2932,11 @@ export function buildRunwarePromptCorrection(
         const normalized = stripProviderControls(value.normalize("NFKC"))
           .replace(/\s+/gu, " ")
           .trim();
-        if (lunaGraphicFields.has(field) || hasHardPromptConflict(value))
+        if (
+          lunaGraphicFields.has(field) ||
+          hasHardPromptConflict(value) ||
+          historicalBorderConflict(value)
+        )
           failures.push(Object.freeze({ sceneId: scene.sceneId, field, reason: "hard_conflict" }));
         else if (
           isRunwareLunaPromptPolicy(requestPolicy) &&
@@ -2925,7 +2980,7 @@ export function buildRunwarePromptCorrection(
     return Object.freeze({
       sourceResponseSha256: hash(outputText),
       sourceOutputText: outputText,
-      failedSceneIds: Object.freeze(evaluated.unresolved.map((scene) => scene.sceneId)),
+      failedSceneIds: Object.freeze(unresolved.map((scene) => scene.sceneId)),
       failures: Object.freeze(failures),
     });
   } catch (error) {
@@ -3230,9 +3285,10 @@ export class RunwarePromptWriter implements PromptWriterPort {
         retryOfRequestSha256 === null
       )
         fail("Correction requires a distinct validated-scenes replacement.", ["correction"]);
-      const correction = buildRunwarePromptCorrection(
+      const correction = recoverRunwarePromptCorrection(
         batch,
         this.#correction.sourceOutputText,
+        this.#correction,
         this.#requestPolicy,
       );
       if (correction === null) return fail("Correction source is not repairable.", ["correction"]);
