@@ -1,3 +1,5 @@
+Current instruction supersedes paid QA: user wants no extra detection cost. Disable future initial/replacement checks (migration293); retain existing prompt-writer bans and fresh physical-scene formatting. No new paid tests or image generation. Prior qualification remains historical evidence only.
+
 # V2-09 image text prevention — 2026-10-07
 
 User scope: diagnose captions painted into generated images, repair shared causes with parallel agents, verify functionality and publish production. The user approved up to8 existing-image QA checks underUSD0.20 and ongoing billed checks for future images; seven checks qualified atUSD0.002334.

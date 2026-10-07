@@ -1530,6 +1530,12 @@
       "name": "enable_generated_image_text_qa",
       "filename": "0292_enable_generated_image_text_qa.sql",
       "sha256": "sha256:4a2c6b08589424f20d3add660670e79cf8894dbe8103707906c312f9323c0ca7"
+    },
+    {
+      "version": 293,
+      "name": "disable_generated_image_text_qa",
+      "filename": "0293_disable_generated_image_text_qa.sql",
+      "sha256": "sha256:715bf0177984d949ce29cecd11731124a4c2925c847378a6acb1b98646232571"
     }
   ]
 }

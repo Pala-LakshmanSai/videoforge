@@ -63,6 +63,20 @@ test("image QA preserves historical work, charges once, binds pixels, isolates t
       assert.equal((await db.query(`SELECT image_text_qa_required FROM ${table} WHERE id=$1`,[workspace])).rows[0].image_text_qa_required,true);
       await assert.rejects(db.query(`UPDATE ${table} SET state='SUCCEEDED',output_sha256=$1 WHERE id=$2`,[hash,workspace]),/PASS receipt/);
     }
+    const retained = (await db.query("SELECT * FROM hosted_image_text_qa_runs ORDER BY id")).rows;
+    await db.exec(readFileSync(new URL("../migrations/0293_disable_generated_image_text_qa.sql", import.meta.url), "utf8"));
+    for (const table of ["hosted_api_generation_jobs","hosted_api_image_regeneration_jobs"]) {
+      await db.exec(`INSERT INTO ${table}(id,account_id,workspace_id,project_id,provider_task_id,
+        state,output_object_key,lane) VALUES('${run}','${account}','${workspace}',
+        '${project}','prompt-only-id','SUBMITTED','prompt-only-${table}','IMAGE')`);
+      assert.equal((await db.query(`SELECT image_text_qa_required FROM ${table} WHERE id=$1`,[run])).rows[0].image_text_qa_required,false);
+      const result = (await db.query("SELECT videoforge_claim_image_text_qa($1,$2,$3,true) value",[`prompt-only-${table}`,hash,run])).rows[0].value;
+      assert.equal(result.state,"HISTORICAL");
+      assert.notEqual(result.dispatch,true);
+      await db.query(`UPDATE ${table} SET state='SUCCEEDED',output_sha256=$1 WHERE id=$2`,[hash,run]);
+    }
+    assert.deepEqual((await db.query("SELECT * FROM hosted_image_text_qa_runs ORDER BY id")).rows,retained);
+
 
   } finally { await db.close(); }
 });
