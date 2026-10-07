@@ -8,7 +8,7 @@ Saved Kie prompts contain standalone labeled action sentences. The rescue-worker
 
 Fresh provider prompts must describe one physical photograph without caption-like field labels. Existing saved requests, paid task IDs, accepted artifacts and immutable styles remain exact. Initial generation and Fal regeneration share output validation.
 
-Separate generated-image QA is being prepared locally using existing Runware image inference. It must bind a durable receipt to exact image checksum, distinguish rejected from unknown output, prevent repeated paid submissions and block acceptance without PASS when required. Reference style analysis remains explicit-only. API cost projection must include QA costs truthfully. No probabilistic model can guarantee perfect detection.
+Separate generated-image QA uses existing Runware image inference. It must bind a durable receipt to exact image checksum, distinguish rejected from unknown output, prevent repeated paid submissions and block acceptance without PASS when required. Reference style analysis remains explicit-only. API cost projection must include QA costs truthfully. No probabilistic model can guarantee perfect detection.
 
 ## Acceptance
 
@@ -17,7 +17,7 @@ Separate generated-image QA is being prepared locally using existing Runware ima
 - Native tenant and checksum boundaries, duplicate observers, ambiguous provider outcomes and actual cost projection tested.
 - Existing paid tasks remain unreplayed; active video and compute lifecycle preserved.
 - Production source/configuration and existing Workflow identities preserved; backend adoption only at safe idle boundary.
-- Live QA qualification requires a separate finite spend proposal before calls or activation.
+- Live QA qualification used the user-approved finite proposal; ongoing activation has separate explicit consent.
 
 Current progress and final evidence live in CURRENT_STATE.yaml. Worktree base: 14c1907b3840b8e80dcc6c37897dbf5d29a0ea65. Private prompt evidence stays outside Git under the primary checkout .videoforge/image-no-text-20261007.
 
@@ -27,10 +27,10 @@ Web suite: 226 files, 3,284 passed, one skipped. Web/Worker TypeScript, changed-
 
 The first live rollback rehearsal deadlocked while upgrading a SHARE ROW EXCLUSIVE lock during concurrent work; rollback was independently confirmed. The harness now takes ACCESS EXCLUSIVE at the start in fixed initial/regeneration order with a five-second lock timeout; the second rehearsal passed without modifying user work.
 
-Production publication is authorized. Paid pixel QA remains disabled until safe runtime adoption and migration292 activation. The approved proposal permits up to8 existing-image checks underUSD0.20, then one billed check per future image; seven checks are complete. It authorizes no new image generation or automatic regeneration. Current accepted images and saved prompts remain unchanged.
+Production publication is authorized. Paid pixel QA is active after safe runtime adoption and migration292 activation. The approved proposal permits up to8 existing-image checks underUSD0.20, then one billed check per future image; seven checks are complete. It authorizes no new image generation or automatic regeneration. Current accepted images and saved prompts remain unchanged.
 
 ## Published evidence
 
-Production source3ce1bbd6 / Worker77d7ae03 at100%, native290 inactive defaults. See [acceptance](evidence/acceptance/VF-10-09/2026-10-07-image-no-text.md). Combined6140c657/4a3303d6 preserves this code and adds voiceover queuing. Chrome and live QA qualification now pass; safe coordinator adoption and native292 activation remain open.
+Production source3ce1bbd6 / Worker77d7ae03 at100%, native290 inactive defaults. See [acceptance](evidence/acceptance/VF-10-09/2026-10-07-image-no-text.md). Combined6140c657/4a3303d6 preserves this code and adds voiceover queuing. Chrome and live QA qualification now pass; safe coordinator adoption and native292 activation now pass.
 
-User approved the pending proposal on7October2026: up to8 existing-image vision checks underUSD0.20, then one billed check per future generated/replacement image. Model/rates/reservation as recorded in CURRENT_STATE.yaml; no new image generation, automatic regeneration or GPU. Seven actual checks pass all expected labels (three text, four clean), costUSD0.002334. Native292 rollback preserves all historical records; safe runtime adoption still precedes activation.
+User approved the pending proposal on7October2026: up to8 existing-image vision checks underUSD0.20, then one billed check per future generated/replacement image. Model/rates/reservation as recorded in CURRENT_STATE.yaml; no new image generation, automatic regeneration or GPU. Seven actual checks pass all expected labels (three text, four clean), costUSD0.002334. Native292 rollback preserves all historical records; safe runtime adoption and activation completed, preserving existing records.

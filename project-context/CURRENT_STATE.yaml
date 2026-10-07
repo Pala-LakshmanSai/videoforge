@@ -17,10 +17,12 @@ image_no_text_2026_10_07:
   read_profile: v2_09_image_no_text
   brief: IMAGE_NO_TEXT_PLAN.md
   branch: codex/image-no-text
-  status: QA_LIVE7_PASS_AWAITING_SAFE_RUNTIME_ACTIVATION
+  status: PRODUCTION_ACTIVE_QA_QUALIFIED_CHROME_PASS
   baseline_executable: 14c1907b3840b8e80dcc6c37897dbf5d29a0ea65
-  executable_commit: 3ce1bbd6816a3dbfcde770df2c78e763ca6ff7ee
-  worker_version: 77d7ae03-6ec5-4e8d-93a2-9ce067540014
+  executable_commit: 6140c6576dca2e68db9b5e8749234740cfb41902
+  feature_commit: 3ce1bbd6816a3dbfcde770df2c78e763ca6ff7ee
+  activation_commit: c8007419
+  worker_version: 4a3303d6-db32-4730-844b-7f1aaaefb9eb
   traffic_percent: 100
   evidence: evidence/acceptance/VF-10-09/2026-10-07-image-no-text.md
   cause: Saved_labeled_action_sentence_painted_verbatim_despite_intact_no_text_exclusions_no_pixel_acceptance_gate
@@ -31,13 +33,14 @@ image_no_text_2026_10_07:
   qa_reservation_per_image_usd: 0.02
   qa_stop_conditions: Eight_calls_or_USD0_20_unknown_identity_price_or_qualification_failure
   qa_exclusions: No_new_image_generation_automatic_regeneration_or_GPU_rental
-  paid_compute_shutdown: No_new_compute_or_resource_mutation_existing_video_continues
+  paid_compute_shutdown: No_new_compute_user_render_finished_GPU_released_before_idle_adoption_historical_cleanup_retained
   validation: Web3284pass1skip_types_lint_web_Cloudflare_staging_builds_native290_rollback_tenant_checksum_no_replay_metadata6_context_firewall_secrets_PASS
-  native_migration: 290_defaults_false_no_paid_activation
+  native_migration: 292_future_initial_and_regeneration_defaults_true_historical_rows_exact
   production_readback: Source37_asset_hashes_private401_55bindings27secret_names_all3Workflow_IDs_preserved
-  continuation_registration: 651973de-b72a-4dcd-8d6d-7a5bf7799b7f
-  existing_continuation: Healthy_9a87cf6d_previous_code_active_user_work_prevents_restart
-  remaining_gates: Combined_release_registration_existing_Workflow_adoption_future_policy_activation
+  continuation_registration: 89fa873a-dfab-4d91-bb60-c0f8983507f1
+  existing_continuation: Same_instance_adopted_89fa873a_at_idle_healthy_tick_dispatch0_observers0_error_null_stable_preimages_preserved
+  remaining_gates: Probabilistic_detection_fresh_full_film_and_invoice_evidence_existing_images_unchanged
+  qualification_authority: Seven_of_up_to8_used_USD0_002334_unused_finite_allowance_retired_future_checks_authorized
   live_qa: Seven_calls_3TEXT_4PASS_all_expected_USD0_002334
   postrelease_Chrome: Signed_in_queue_progress_308_image_gallery_navigation_PASS
 
@@ -10319,14 +10322,14 @@ recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
   milestone: Prevent_generated_image_text
-  status: IN_PROGRESS
+  status: COMPLETE
   dependency_status: Production_14c1907b_verified_existing_film_active_preserved
   authorization_status: User_requested_no_text_repair_parallel_verification_and_production_approved_USD0_20_QA_and_future_checks
   task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current
   read_profile: v2_09_image_no_text
   task_brief: IMAGE_NO_TEXT_PLAN.md
-  goal: Repair_fresh_prompts_prepare_fail_closed_QA_verify_and_publish
+  goal: Preserve_active_no_text_policy_and_exact_paid_identity
   provider_mode: production
   provider_calls_authorized: true
   read_only_provider_calls_authorized: false

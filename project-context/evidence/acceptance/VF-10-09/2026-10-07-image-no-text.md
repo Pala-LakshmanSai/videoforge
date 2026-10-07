@@ -19,7 +19,7 @@ A separate checksum-bound text-inspection gate is implemented for initial and re
 - One Worker upload and one deployment; public propagation reconciled by GET only. Source/100% routing,37 asset SHA/size checks, private401 and55bindings/27secret names verified. Existing workflow resource IDs and configuration preserved.
 - New registrations: video `010fa998-acf3-47d0-aa90-024d6ea4d2a8`, pair `5352f62d-2595-4ec3-939b-b9e74ce84878`, continuation `651973de-b72a-4dcd-8d6d-7a5bf7799b7f`.
 
-## Remaining gates and spend
+## Initial publication gates and spend (superseded below)
 
 Paid pixel inspection is **disabled**. Pending proposal: at most eight vision checks of existing images, USD0.20 total, followed by consent to one billed check per future generated/replacement image. No new image generation or automatic regeneration is included. Enable fresh defaults only after approval, live qualification and safe runtime adoption. Existing accepted images and already saved prompts are not repaired or replayed.
 
@@ -41,4 +41,14 @@ Chrome reconnected: signed-in Queue, current project Progress, live cost breakdo
 
 Concurrent release6140c657/Worker4a3303d6 preserved exact QA/prompt code and added voiceover queue/native291. It was merged into this branch without reverting changes. Combined registrations preserve all IDs/configuration: video99b4c266, pair2f2630e5, continuation89fa873a. No running instance restarted yet.
 
-Candidate migration292 enables only future defaults; six QA/metadata checks and native291 rollback proof pass with exact historical rows. Runtime adoption and live292 application still wait for the user's active final render and cleanup.
+Candidate migration292 enables only future defaults; six QA/metadata checks and native291 rollback proof pass with exact historical rows. Runtime adoption and live292 application initially waited for the user's active final render and cleanup; they are completed below.
+
+## Active production acceptance
+
+The user's existing film completed and Chrome showed100% complete/GPU released before adoption. Fresh native guard: zero active requests/leases/CPU/provider waiters/current DUE/voiceovers/archive/script/regeneration/QA; historical unknown rows remained positively quarantined. One restart of the existing idle continuation instance adopted combined registration89fa873a. A successful tick reported dispatched0/observers0/cloud1/error-null; all stable native/task/claim/cost/receipt preimages remained equal, with only known cleanup poll timestamps excluded. The historical unknown cleanup was not declared resolved.
+
+Migration292, sourcec8007419, was applied once after the successful adopted tick. Independent native readback confirms292 and both defaults true; complete old image-job rows are byte-equivalent, zero historical records upgraded, QA table still empty because no new image generation was submitted. Hash `4a2c6b08589424f20d3add660670e79cf8894dbe8103707906c312f9323c0ca7`. Application remains concurrent combined6140c657 / Worker4a3303d6 at100%; no source rollback or redundant Worker deployment.
+
+Future initial and replacement images must receive a durable exact-checksum PASS. Text/uncertain results are blocked without automatic regeneration; interrupted responses retain the same UUID and cannot re-submit. Qualification used seven calls/2334microUSD of the approved200000microUSD cap; unused finite test authority is retired. User-approved ongoing per-image billing remains. No new media, GPU, video instance, or current-user-job restart was created.
+
+Remaining limits: existing captioned images/films are unchanged; no new full film was purchased for this qualification. A probabilistic detector cannot guarantee every future mark will be found. Account invoice precision, inherited broad CI and unrelated historical cleanup remain separate.

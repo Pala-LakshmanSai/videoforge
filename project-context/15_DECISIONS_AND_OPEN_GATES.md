@@ -5,7 +5,7 @@ Read when: a requirement seems ambiguous or a model/architecture change is propo
 
 ## Approved decisions
 
-User reaffirmation 2026-10-07: the permanent no-text image rule applies to generated lettering as well as application overlays. Fix caption-inducing prompt formatting and prepare pixel rejection before acceptance; preserve existing paid identities. Production app publication is authorized. New paid QA qualification and ongoing per-image QA activation remain pending explicit spending consent; do not claim they are active. See `04_VISUAL_IDENTITY_AND_PROMPTS.md` and `IMAGE_NO_TEXT_PLAN.md`.
+User reaffirmation 2026-10-07: the permanent no-text image rule applies to generated lettering as well as application overlays. Fix caption-inducing prompt formatting and prepare pixel rejection before acceptance; preserve existing paid identities. Production app publication is authorized. The user subsequently approved up to8 existing-image checks underUSD0.20 and ongoing per-image checks. Seven checks qualified atUSD0.002334; native292 future defaults and the combined coordinator are now active after a verified idle boundary. Existing images remain unchanged and detection is probabilistic. See `04_VISUAL_IDENTITY_AND_PROMPTS.md` and `IMAGE_NO_TEXT_PLAN.md`.
 
 User extension 2026-10-07: DEC_VOICEOVER_001 includes dedicated script-to-MP3 creation, verified private permanent audio storage, and Videos/Voiceovers toggles in both libraries. DEC_LIBRARY_001 extends the same exact demo9-only cross-account exception to standalone narration and its displayed script/voice/creator details. No video stages run for standalone jobs. Provider identity, no-replay and shared workload caps remain unchanged.
 
