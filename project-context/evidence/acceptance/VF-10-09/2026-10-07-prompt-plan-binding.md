@@ -77,6 +77,36 @@ work and unchanged historical liabilities. Never create a replacement instance o
 restart project media. Worker rollback is the retained c10de8bb version; additive287
 keeps old rows and remains harmless with predecessor code.
 
-New inference/media/compute spend isUSD0 at qualification. Production traffic,
-asset hashes, native readback, coordinator adoption, real Chrome and any separately
-approved original-project paid completion remain delivery gates until recorded.
+## Production verified
+
+Executable `bcc5170869bf84616f6648c32eaef225cc2f6f98` is pushed and active as Worker
+`1d029955-1423-40ef-a2f5-f4b7fb4249be` at100% traffic. Native287 is committed;
+all checked prompt/profile/generation-request fingerprints, historical journal,
+forced RLS and capability permissions remain exact. All36public assets match
+size/SHA256 and anonymous private access returns401. All55bindings/27secret names,
+six resource bindings and qualified Cloud/Desktop0.1.52 pins are preserved.
+
+The three existing Workflow IDs remain; changed registrations are video03e4249f,
+pairaa8b4d8c and continuationef82327a. The existing singleton is adopted at a proven
+sleep boundary with the original parameters. An immediate restart read temporarily
+reports a different version; later GET-only reconciliation verifies exactef82327a
+and a successful tick: dispatched0,observers0,cloud1,error-null. Restart is not
+repeated. Cloud1 is the pre-existing historical cleanup path, whose settlement
+remains separate; no project/media restart or new instance occurs.
+
+Actual signed-in Chrome reloads the original Progress page with35scenes/fourbatches,
+Retry visible, original failed attempt unchanged and no console errors. Create
+controls and Queue/Library navigation load. Retained Library video decodes1920x1080
+with readyState4/error-null; play was initiated but sustained time advancement is
+not claimed. These read-only checks do not establish fresh media completion.
+
+User explicitly selects **publish the fix and leave the project paused**. No Retry,
+Create, regeneration, image/avatar/footage request or paid compute start is made.
+Final native fingerprints match postmigration records exactly; original prompt
+claim count stays0, and its ASR rental remainsCLEAN. New paid inference/media/compute
+spendUSD0. Broad CI, paid original Retry/full-film, provider availability, visual/
+editorial quality, invoices and historical cleanup remain separate.
+
+Private final proof: `verified-private.json`, `registered-private.json`,
+`adoption-reconcile-private.json`, `final-preservation-private.json`,
+`native-release-committed-private.json`, and `production-paused-viewport.png`.
