@@ -1494,6 +1494,12 @@
       "name": "hosted_prompt_profile_revision_read",
       "filename": "0286_hosted_prompt_profile_revision_read.sql",
       "sha256": "sha256:2769934a3536a5f8ec0ed4890203b146db42ef968546f92a0ef102912343425d"
+    },
+    {
+      "version": 287,
+      "name": "hosted_prompt_provider_free_input_repair",
+      "filename": "0287_hosted_prompt_provider_free_input_repair.sql",
+      "sha256": "sha256:dcad7528cca7995f46c8efbf7db06b855ec6b6c0a5b64edec792316ab0e743fb"
     }
   ]
 }

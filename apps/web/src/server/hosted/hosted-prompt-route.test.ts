@@ -65,6 +65,26 @@ describe("hostedPromptRedispatchable", () => {
     existing_run_redispatch_count: 0,
   } as Record<string, unknown>;
 
+  it("allows an input-repair candidate only on manual Retry before native zero-dispatch proof", () => {
+    const failed = {
+      ...failedProviderRun,
+      existing_run_state: "FAILED",
+      existing_run_problem_code: "HOSTED_PROMPT_INPUT_INVALID",
+    };
+    expect(hostedPromptRedispatchable(failed)).toBe(false);
+    expect(hostedPromptRedispatchable(failed, false, true)).toBe(true);
+    for (const change of [
+      { existing_run_state: "UNKNOWN" },
+      { existing_run_state: "DISPATCHING" },
+      { existing_run_provider_may_have_charged: true },
+      { existing_run_has_accepted_set: true },
+      { existing_run_redispatch_count: 29 },
+      { existing_run_problem_code: "HOSTED_PROMPT_OUTPUT_INVALID" },
+    ]) {
+      expect(hostedPromptRedispatchable({ ...failed, ...change }, false, true)).toBe(false);
+    }
+  });
+
   it("grants a redispatch when the provider failed and nothing was accepted", () => {
     expect(hostedPromptRedispatchable(failedProviderRun)).toBe(true);
   });

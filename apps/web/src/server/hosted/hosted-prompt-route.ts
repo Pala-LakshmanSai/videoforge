@@ -346,6 +346,7 @@ export const HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES = new Set([
 export function hostedPromptRedispatchable(
   planRecord: Record<string, unknown>,
   staleInFlight = false,
+  manualInputRepair = false,
 ): boolean {
   const state = planRecord.existing_run_state;
   // A stranded request may have reached Runware before its Worker invocation ended. A missing
@@ -362,7 +363,12 @@ export function hostedPromptRedispatchable(
       : "";
   // A stale in-flight run records no problem code at all: its batch request died before the provider
   // answered, which is the same provider-side class the retryable set exists for.
-  if (!staleInFlight && !HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES.has(problemCode)) return false;
+  if (
+    !staleInFlight &&
+    !HOSTED_PROMPT_RETRYABLE_PROBLEM_CODES.has(problemCode) &&
+    !(manualInputRepair && state === "FAILED" && problemCode === "HOSTED_PROMPT_INPUT_INVALID")
+  )
+    return false;
   const redispatchesSoFar = Number(planRecord.existing_run_redispatch_count ?? 0);
   return (
     Number.isInteger(redispatchesSoFar) &&
@@ -880,7 +886,8 @@ export async function writeProjectPrompts(
     const staleInFlight =
       Number.isFinite(runStartedAtMs) && Date.now() - runStartedAtMs > HOSTED_PROMPT_STALE_RUN_MS;
     const redispatchApproved =
-      existingState !== null && hostedPromptRedispatchable(planRecord, staleInFlight);
+      existingState !== null &&
+      hostedPromptRedispatchable(planRecord, staleInFlight, internalScope === undefined);
     if (existingState !== null && !redispatchApproved)
       return response(
         {
@@ -912,6 +919,7 @@ export async function writeProjectPrompts(
     });
     // A provider-free redispatch retains its original immutable request policy/profile.
     let requestPolicy: Parameters<typeof hostedPromptBatchPlan>[1];
+    let inputRepairProof: Record<string, unknown> | null = null;
     if (redispatchApproved) {
       const pinned = await createNeonExecutor(pool).transaction(async (transaction) => {
         await transaction.query("SELECT set_config($1,$2,true)", [
@@ -920,6 +928,7 @@ export async function writeProjectPrompts(
         ]);
         const rows = await transaction.query<{
           identity: HostedPromptIdentity;
+          input_hash: string;
           reserved_cost_micro_usd: number;
           planned_batch_count: number;
           planned_scene_count: number;
@@ -930,7 +939,7 @@ export async function writeProjectPrompts(
                     'executionProfileId',run.execution_profile_id,
                     'reservationCostEventId',run.id,'claimTokenHash',run.claim_token_hash) AS identity,
                   run.reserved_cost_micro_usd::integer AS reserved_cost_micro_usd,
-                  run.planned_batch_count,run.planned_scene_count,run.batch_plan_hash
+                  run.planned_batch_count,run.planned_scene_count,run.batch_plan_hash,run.input_hash
              FROM public.hosted_prompt_runs run
             WHERE run.account_id=$1 AND run.workspace_id=$2 AND run.project_id=$3
               AND run.project_revision_id=$4 AND run.state=$5 LIMIT 1`,
@@ -960,6 +969,26 @@ export async function writeProjectPrompts(
             batchPlanHash: pinned.batch_plan_hash,
           })
         ).requestPolicy ?? "legacy";
+      if (planRecord.existing_run_problem_code === "HOSTED_PROMPT_INPUT_INVALID") {
+        if (pinnedAuthority.recordedInputHash !== pinned.input_hash)
+          throw new HostedPromptExecutionError(
+            "HOSTED_PROMPT_INPUT_INVALID",
+            "FAILED",
+            false,
+            null,
+          );
+        // Native preparation repeats the zero-dispatch and financial checks under the run lock.
+        // The corrected serializer must match the immutable original plan before any new claim.
+        inputRepairProof = {
+          input_repair_redispatch: true,
+          original_run_id: pinned.identity.runId,
+          original_input_hash: pinned.input_hash,
+          original_batch_plan_hash: pinned.batch_plan_hash,
+          original_planned_batch_count: pinned.planned_batch_count,
+          original_planned_scene_count: pinned.planned_scene_count,
+          original_reserved_cost_micro_usd: pinned.reserved_cost_micro_usd,
+        };
+      }
     }
     const batchPlan = hostedPromptBatchPlan(ceilingAuthority, requestPolicy);
     if (redispatchApproved && plan.runReservedCostMicroUsd === null)
@@ -1007,6 +1036,7 @@ export async function writeProjectPrompts(
             // Only ever true when the provider-failure gate above approved replacing an attempt that
             // produced no accepted prompt set; the claim function refuses otherwise.
             redispatch: redispatchApproved,
+            ...inputRepairProof,
           }),
         ],
       );
