@@ -6,8 +6,8 @@ voiceover_queue_2026_10_07:
   brief: VOICEOVERS_PLAN.md
   queue_overflow_followup: Implemented_bounded_scroll_pending_browser_and_publication
   status: PRODUCTION_VERIFIED
-  executable_commit: 6140c6576dca2e68db9b5e8749234740cfb41902
-  worker_version: 4a3303d6-db32-4730-844b-7f1aaaefb9eb
+  executable_commit: d4b4a5166e6e5cc32c84ff2f3ac842756afc77ef
+  worker_version: 31b8f412-f883-4607-8d66-33244320f787
   traffic_percent: 100
   scope: Durable_waiting_backlog_background_ack_reset_composer_persistent_queue_title_based_MP3_downloads
   native_migration: 291_verified
@@ -22,7 +22,7 @@ image_no_text_2026_10_07:
   read_profile: v2_09_image_no_text
   brief: IMAGE_NO_TEXT_PLAN.md
   branch: codex/image-no-text
-  status: QUALIFIED_PROMPT_V40_PENDING_PRODUCTION
+  status: PRODUCTION_PROMPT_V40_ZERO_EXTRA_CALLS_VERIFIED
   baseline_executable: 14c1907b3840b8e80dcc6c37897dbf5d29a0ea65
   executable_commit: 6140c6576dca2e68db9b5e8749234740cfb41902
   feature_commit: 3ce1bbd6816a3dbfcde770df2c78e763ca6ff7ee
@@ -43,14 +43,14 @@ image_no_text_2026_10_07:
   qa_exclusions: No_new_image_generation_automatic_regeneration_or_GPU_rental
   paid_compute_shutdown: No_new_compute_user_render_finished_GPU_released_before_idle_adoption_historical_cleanup_retained
   validation: Web3301pass1skip_writer134_native_profile_matrix_metadata15_types_lint_web_Cloudflare_staging_context_dispatch_firewall_secrets_native294_rollback_PASS
-  native_migration: 293_both_QA_defaults_false_zero_required_image_jobs_zero_receipts_historical_exact
+  native_migration: 294_profile10_v40_historical_rows_permissions_exact_QA_defaults_false_required0_receipts0
   production_readback: Source37_asset_hashes_private401_55bindings27secret_names_all3Workflow_IDs_preserved
-  continuation_registration: 89fa873a-dfab-4d91-bb60-c0f8983507f1
-  existing_continuation: Same_instance_adopted_89fa873a_at_idle_healthy_tick_dispatch0_observers0_error_null_stable_preimages_preserved
-  remaining_gates: Production_publication_native294_application_idle_coordinator_adoption_Chrome_readback
+  continuation_registration: 36c19a8c-6c11-440f-a0df-49499deef45d
+  existing_continuation: Same_instance_adopted_36c19a8c_at_idle_healthy_tick_dispatch0_observers0_error_null_stable_preimages_preserved
+  remaining_gates: None_for_cost_neutral_prompt_repair_probabilistic_quality_unmeasured_no_paid_qualification_existing_broad_CI_exclusions_retained
   qualification_authority: Seven_tests_USD0_002334_historical_all_future_paid_QA_authority_revoked
   live_qa: Seven_calls_3TEXT_4PASS_all_expected_USD0_002334
-  postrelease_Chrome: Signed_in_queue_progress_308_image_gallery_navigation_PASS
+  postrelease_Chrome: Signed_in_queue_completed_progress_308_image_gallery_next_image_final_video_review_PASS_no_Generate_Regenerate
 
 avatar_preview_2026_10_07:
   checkpoint: V2-09
@@ -10321,7 +10321,7 @@ recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
   milestone: Prevent_generated_image_text
-  status: IN_PROGRESS
+  status: COMPLETE
   dependency_status: Production_14c1907b_verified_existing_film_active_preserved
   authorization_status: User_requested_no_text_repair_parallel_verification_and_production_prompt_only_user_revoked_all_future_QA_charges
   task_stage: bounded_mutation
