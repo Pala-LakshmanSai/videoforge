@@ -407,6 +407,38 @@ describe("RunPod exact inventory and placement", () => {
   });
 });
 describe("durable cloud create reconciliation", () => {
+  it("allows the runtime's bounded ten-minute startup before the first worker heartbeat", async () => {
+    reservation.state="STARTING";
+    reservation.launch_outcome="CONFIRMED";
+    reservation.pod_id="fixture-pod";
+    reservation.last_heartbeat_at=new Date(Date.now()-301_445).toISOString();
+    reservation.verified_at=reservation.last_heartbeat_at;
+    expect(await runCloudMediaObservation(environment,config,scope)).toMatchObject({state:"STARTING"});
+    expect(attempt.state).toBe("RUNNING");
+    expect(fixture.transport).not.toHaveBeenCalled();
+  });
+  it.each([["STARTING",600_000,"CLOUD_MEDIA_STARTUP_TIMEOUT"],
+    ["DOWNLOADING",300_000,"CLOUD_MEDIA_HEARTBEAT_TIMEOUT"],
+    ["RENDERING",300_000,"CLOUD_MEDIA_HEARTBEAT_TIMEOUT"]])(
+    "stops stale %s work with a specific failure and confirmed cleanup",async (state,elapsed,code)=>{
+      reservation.state=state;
+      reservation.launch_outcome="CONFIRMED";
+      reservation.pod_id="fixture-pod";
+      reservation.last_heartbeat_at=new Date(Date.now()-Number(elapsed)).toISOString();
+      expect(await runCloudMediaObservation(environment,config,scope)).toMatchObject({state:"FAILED"});
+      expect(attempt.failure_code).toBe(code);
+      expect(reservation.state).toBe("CLEAN");
+      expect(fixture.transport.mock.calls.every(([,options])=>options.method!=="POST")).toBe(true);
+    });
+  it("keeps an earlier rental deadline authoritative during startup",async ()=>{
+    reservation.state="STARTING";
+    reservation.launch_outcome="CONFIRMED";
+    reservation.last_heartbeat_at=new Date(Date.now()-301_445).toISOString();
+    reservation.deadline_at=new Date(Date.now()-1).toISOString();
+    expect(await runCloudMediaObservation(environment,config,scope)).toMatchObject({state:"FAILED"});
+    expect(attempt.failure_code).toBe("CLOUD_MEDIA_DEADLINE_EXCEEDED");
+    expect(reservation.state).toBe("CLEAN");
+  });
   it.each(["enabled","disabled","unknown","cpu-unknown","incomplete"])("reaches CPU fallback only after confirmed GPU refusal: %s", async mode => {
     Object.assign(environment,{VIDEOFORGE_CLOUD_MEDIA_CPU_FALLBACK_ENABLED:mode==="disabled"?"false":"true"});
     const posts: Row[]=[];

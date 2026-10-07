@@ -1,4 +1,5 @@
 import { serveHostedVideo } from "./serve-video";
+import { readProjectVoiceover } from "./project-voiceover";
 import { HOSTED_COMPLETED_RENDER_SQL } from "./completed-render";
 import { readCloudCompute } from "./cloud-compute";
 import { readProjectApiCost } from "./project-api-cost";
@@ -8520,6 +8521,7 @@ async function projectDetail(
       );
       return {
         project: project.rows[0],
+        voiceover: await readProjectVoiceover(transaction, scope, projectId),
         localWorker:
           project.rows[0].media_execution_backend === "PERSONAL_WORKER"
             ? await qualifiedPersonalWorkers(
@@ -9552,6 +9554,15 @@ async function projectDetail(
     return response({
       schema_version: "videoforge-hosted-project-detail/v1",
       voiceover_generation: scriptIntake ? scriptProjectStatus(scriptIntake) : null,
+      voiceover_audio:
+        detail.voiceover && detail.voiceover.revision_id === detail.project.revision_id
+          ? {
+              audio_url: `/api/v2/hosted/projects/${projectId}/voiceover`,
+              filename:
+                detail.voiceover.voiceover_filename ??
+                `voiceover.${detail.voiceover.content_type === "audio/wav" ? "wav" : "mp3"}`,
+            }
+          : null,
       project: detail.project,
       local_worker: detail.localWorker ? { state: detail.localWorker.state } : null,
       attempts,
@@ -9644,6 +9655,41 @@ async function projectDetail(
       quality_flags: qualityFlags,
       manifest_url: manifestUrl,
     });
+  } finally {
+    await pool.end();
+  }
+}
+
+async function playProjectVoiceover(
+  request: Request,
+  projectId: string,
+  environment: HostedRuntimeEnvironment,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!UUID.test(projectId)) return response({ error: { code: "PROJECT_NOT_FOUND" } }, 404);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const artifact = await createNeonExecutor(pool).transaction(async (transaction) => {
+      await transaction.query("SELECT set_config('videoforge.account_id',$1,true)", [
+        scope.account_id,
+      ]);
+      return readProjectVoiceover(transaction, scope, projectId);
+    });
+    if (!artifact) return response({ error: { code: "VOICEOVER_NOT_READY" } }, 404);
+    const bucket = environment.PRIVATE_ARTIFACTS;
+    if (!bucket) return response({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
+    return serveHostedVideo(
+      request,
+      bucket,
+      artifact,
+      true,
+      artifact.voiceover_filename ||
+        `voiceover.${artifact.content_type === "audio/wav" ? "wav" : "mp3"}`,
+      artifact.content_type,
+    );
   } finally {
     await pool.end();
   }
@@ -9922,6 +9968,9 @@ export async function handleHostedProductRequest(
   const download = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/download$/u.exec(url.pathname);
   if (request.method === "GET" && download)
     return downloadApprovedRender(request, download[1]!, environment, config, executionContext);
+  const voiceover = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/voiceover$/u.exec(url.pathname);
+  if (request.method === "GET" && voiceover)
+    return playProjectVoiceover(request, voiceover[1]!, environment, config, executionContext);
   const manifest = /^\/api\/v2\/hosted\/projects\/([0-9a-f-]+)\/manifest$/u.exec(url.pathname);
   if (request.method === "GET" && manifest)
     return projectManifest(request, manifest[1]!, config, executionContext);

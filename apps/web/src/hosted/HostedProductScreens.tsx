@@ -774,7 +774,11 @@ export function transcriptionFailureMessage(
             ? "Cloud transcription returned a result that failed validation."
             : code === "MEDIA_EXECUTION_TIMEOUT"
               ? "Cloud transcription reached its time limit."
-              : "Cloud transcription stopped before its result could be accepted.";
+              : code === "CLOUD_MEDIA_STARTUP_TIMEOUT"
+                ? "Cloud transcription could not start before its startup time limit."
+                : code === "CLOUD_MEDIA_HEARTBEAT_TIMEOUT"
+                  ? "Cloud transcription stopped reporting progress before its result could be accepted."
+                  : "Cloud transcription stopped before its result could be accepted.";
     return `${cause} Your project and voiceover are saved. Check the failure details before retrying.`;
   }
   if (code === "MEDIA_EXECUTION_SUBPROCESS_FAILED") {
@@ -1238,6 +1242,10 @@ interface HostedReviewSnapshot {
 }
 
 interface ProjectDetailResponse {
+  readonly voiceover_audio?: {
+    readonly audio_url: string;
+    readonly filename?: string | null;
+  } | null;
   readonly voiceover_generation?: {
     script?: string;
     state: string;
@@ -5330,9 +5338,6 @@ function NarrationDetails({
     <Panel className="narration-details-panel" eyebrow="Voiceover" heading="Narration details">
       <p className="helper">Voice · {narration.voice_name}</p>
       <p role={stopped ? "alert" : "status"}>{narrationMessage(narration)}</p>
-      {narration.audio_url ? (
-        <audio controls preload="none" src={narration.audio_url} aria-label="Generated voiceover" />
-      ) : null}
       {narration.script ? (
         <details>
           <summary>View script</summary>
@@ -5340,6 +5345,39 @@ function NarrationDetails({
         </details>
       ) : null}
     </Panel>
+  );
+}
+
+function HostedVoiceoverPlayer({ audioUrl, generated }: { audioUrl: string; generated: boolean }) {
+  const [failed, setFailed] = useState(false);
+  const [playbackAttempt, setPlaybackAttempt] = useState(0);
+  return (
+    <div className="progress-voiceover-player" role="group" aria-label="Listen to voiceover">
+      <p className="eyebrow">Listen to voiceover</p>
+      <audio
+        key={playbackAttempt}
+        controls
+        preload="none"
+        src={audioUrl}
+        aria-label={generated ? "Generated voiceover" : "Voiceover audio"}
+        onError={() => setFailed(true)}
+        onLoadedMetadata={() => setFailed(false)}
+      />
+      {failed ? (
+        <div className="validation validation-warning" role="alert">
+          <p>Voiceover audio could not be loaded.</p>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setFailed(false);
+              setPlaybackAttempt((attempt) => attempt + 1);
+            }}
+          >
+            <RefreshCw size={15} /> Retry playback
+          </Button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -5911,6 +5949,15 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         }
       />
     );
+  const voiceoverAudioUrl =
+    query.data.voiceover_audio?.audio_url ?? query.data.voiceover_generation?.audio_url;
+  const voiceoverPlayer = voiceoverAudioUrl ? (
+    <HostedVoiceoverPlayer
+      key={`${projectId}:${voiceoverAudioUrl}`}
+      audioUrl={voiceoverAudioUrl}
+      generated={Boolean(query.data.voiceover_generation)}
+    />
+  ) : null;
   if (query.data.voiceover_generation && query.data.voiceover_generation.state !== "COMPLETE") {
     const narration = query.data.voiceover_generation;
     const narrationStatus: ProjectStage["status"] =
@@ -5999,6 +6046,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
                 detail="includes narration and waits"
               />
             </div>
+            {voiceoverPlayer}
             <ProgressBar value={0} label="Overall video progress" />
           </div>
         </section>
@@ -6974,6 +7022,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               query.data.local_worker,
             )}
           </p>
+          {voiceoverPlayer}
           {cloudFinalPhasePending ? null : (
             <ProgressBar value={overallProgress} label="Overall video progress" />
           )}
@@ -7390,7 +7439,11 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           {asrHandoff.isError && !failedStageIds.has("transcription") ? (
             <span>{asrHandoff.error.message}</span>
           ) : null}
-          <span>Retry it from stage 02 above.</span>
+          <span>
+            {displayedStages.some((stage) => stage.id === "transcription")
+              ? `Retry it from stage ${String(displayedStages.findIndex((stage) => stage.id === "transcription") + 1).padStart(2, "0")} above.`
+              : "Retry it from Transcribe voiceover above."}
+          </span>
         </div>
       ) : null}
       {asr?.state === "SUCCEEDED" && !contextComplete ? (

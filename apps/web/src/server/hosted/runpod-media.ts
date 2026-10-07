@@ -514,13 +514,20 @@ async function observeCloudMedia(environment: HostedRuntimeEnvironment, config: 
       if(!await updateReservation(config,r,"STOPPING","CLOUD_MEDIA_DEADLINE_EXCEEDED")) return {state:"RECONCILING",delaySeconds:30};
       r={...r,failure_code:"CLOUD_MEDIA_DEADLINE_EXCEEDED"};
     }
+    // Placement verification starts the rental clock, before the container can report progress.
+    // Match runpod_job._fetch_spec's 600-second startup bound; active work keeps its 300-second lease.
+    const heartbeatExpired = r.last_heartbeat_at &&
+      Date.parse(String(r.last_heartbeat_at)) + (r.state === "STARTING" ? 600_000 : 300_000) <= Date.now();
+    const deadlineExpired = r.deadline_at && Date.parse(String(r.deadline_at)) <= Date.now();
     if (TERMINAL.includes(String(a.state)) || a.state === "CANCEL_REQUESTED" ||
-      (r.deadline_at && Date.parse(String(r.deadline_at)) <= Date.now()) ||
+      deadlineExpired ||
       r.authority_enabled===false || (r.authority_expires_at && Date.parse(String(r.authority_expires_at))<=Date.now()) ||
-      (r.last_heartbeat_at && Date.parse(String(r.last_heartbeat_at)) + 300_000 <= Date.now()) || r.state === "STOPPING") {
+      heartbeatExpired || r.state === "STOPPING") {
       phase="ATTEMPT_TERMINATION";
-      if(r.authority_enabled===false || (r.authority_expires_at && Date.parse(String(r.authority_expires_at))<=Date.now()))
+      if(deadlineExpired || r.authority_enabled===false || (r.authority_expires_at && Date.parse(String(r.authority_expires_at))<=Date.now()))
         r={...r,failure_code:"CLOUD_MEDIA_DEADLINE_EXCEEDED"};
+      else if(heartbeatExpired && !r.failure_code)
+        r={...r,failure_code:r.state === "STARTING" ? "CLOUD_MEDIA_STARTUP_TIMEOUT" : "CLOUD_MEDIA_HEARTBEAT_TIMEOUT"};
       if (!TERMINAL.includes(String(a.state))) await finishAttempt(config,r,a.state === "CANCEL_REQUESTED" ? "CANCELLED" : "FAILED");
       phase="CLEANUP";
       const clean = r.state === "CLEAN" || await cleanupCloudReservation(client,config,r);

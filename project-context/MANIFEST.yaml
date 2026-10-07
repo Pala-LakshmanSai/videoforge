@@ -4,8 +4,8 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-10-07"
 source_of_truth: project-context
 
-current_selected_profile: v2_09_image_no_text
-current_selected_brief: IMAGE_NO_TEXT_PLAN.md
+current_selected_profile: v2_09_asr_startup_player
+current_selected_brief: ASR_STARTUP_PLAYER_PLAN.md
 
 mandatory_read:
   - 00_START_HERE.md
@@ -25,6 +25,10 @@ conflict_policy: stop_and_reconcile_in_same_task_never_choose_silently
 target_profile_word_budget: 15000
 
 read_profiles:
+  v2_09_asr_startup_player:
+    - ASR_STARTUP_PLAYER_PLAN.md
+    - tasks/VF-10-09.md
+    - 19_IMPLEMENTATION_PLAYBOOK.md
   v2_09_image_no_text:
     - IMAGE_NO_TEXT_PLAN.md
     - 04_VISUAL_IDENTITY_AND_PROMPTS.md

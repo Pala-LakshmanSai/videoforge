@@ -438,12 +438,27 @@ it.each([
   "ASR_RESULT_INVALID",
   "MEDIA_EXECUTION_TIMEOUT",
   "CLOUD_MEDIA_PROVIDER_REJECTED",
+  "CLOUD_MEDIA_STARTUP_TIMEOUT",
+  "CLOUD_MEDIA_HEARTBEAT_TIMEOUT",
+  "CLOUD_MEDIA_FAILED",
 ])("explains Cloud transcription failure %s without desktop repair guidance", (code) => {
   const message = transcriptionFailureMessage(code, "RUNPOD_POD");
   expect(message).toMatch(/^Cloud transcription/);
   expect(message).toContain("Your project and voiceover are saved.");
   expect(message).not.toMatch(/computer|personal media worker|update|automatically/i);
   expect(message).not.toContain(code);
+});
+
+it("distinguishes Cloud startup timeout from lost progress and retains historical failure fallback", () => {
+  expect(transcriptionFailureMessage("CLOUD_MEDIA_STARTUP_TIMEOUT", "RUNPOD_POD")).toContain(
+    "could not start before its startup time limit",
+  );
+  expect(transcriptionFailureMessage("CLOUD_MEDIA_HEARTBEAT_TIMEOUT", "RUNPOD_POD")).toContain(
+    "stopped reporting progress",
+  );
+  expect(transcriptionFailureMessage("CLOUD_MEDIA_FAILED", "RUNPOD_POD")).toContain(
+    "stopped before its result could be accepted",
+  );
 });
 
 it.each([false, true])("uses persisted Cloud span retry state: %s", (retrying) => {
@@ -517,6 +532,8 @@ it.each([
       );
       expect(screen.getByText(message)).toBeInTheDocument();
       expect(message.startsWith("Cloud")).toBe(cloud);
+      expect(screen.getByText("Retry it from stage 01 above.")).toBeInTheDocument();
+      expect(screen.queryByText("Retry it from stage 02 above.")).not.toBeInTheDocument();
     } else {
       const heading = screen.getByRole("heading", { name: "Avatar audio stopped" });
       const panel = heading.closest("section");
@@ -8997,11 +9014,13 @@ it.each(["WAITING", "GENERATING", "PREPARING", "FAILED", "UNKNOWN_NO_RETRY"])(
     expect(screen.getByText("Waiting for first visual")).toBeInTheDocument();
     expect(screen.getByText("Voice · Alice")).toBeVisible();
     expect(screen.getByText("Every river begins with a single drop.")).toBeInTheDocument();
-    if (state === "PREPARING")
-      expect(screen.getByLabelText("Generated voiceover")).toHaveAttribute(
+    if (state === "PREPARING") {
+      expect(within(hero).getByLabelText("Generated voiceover")).toHaveAttribute(
         "src",
         "/api/v2/voiceovers/jobs/saved/audio",
       );
+      expect(screen.getAllByLabelText("Generated voiceover")).toHaveLength(1);
+    } else expect(screen.queryByRole("group", { name: "Listen to voiceover" })).toBeNull();
     expect(
       fetcher.mock.calls.every(
         (call) =>
@@ -9042,11 +9061,57 @@ it("keeps the voiceover and script available after video stages begin", async ()
   renderHosted(<HostedProjectScreen projectId="narration-complete" />);
   expect(await screen.findByRole("region", { name: "Live video progress" })).toBeInTheDocument();
   expect(screen.getByText("Voice · Alice")).toBeInTheDocument();
-  expect(screen.getByLabelText("Generated voiceover")).toHaveAttribute(
-    "src",
-    "/api/v2/voiceovers/jobs/saved/audio",
-  );
+  expect(
+    within(screen.getByRole("region", { name: "Live video progress" })).getByLabelText(
+      "Generated voiceover",
+    ),
+  ).toHaveAttribute("src", "/api/v2/voiceovers/jobs/saved/audio");
   expect(screen.getByText("The dunes begin to hum.")).toBeInTheDocument();
+});
+
+it("shows accepted uploaded voiceover after progress refresh and retries playback without restarting work", async () => {
+  const snapshot = {
+    project: {
+      id: "audio-progress",
+      title: "Accepted uploaded narration",
+      revision_id: "revision",
+      revision_state: "LOCKED",
+      created_at: new Date().toISOString(),
+    },
+    attempts: [],
+    generation: null,
+    gpu_transport: "DISABLED_UNQUALIFIED",
+    gpu_readiness: gpuReadiness,
+    stages: stageList({ transcription: "FAILED" }),
+    voiceover_audio: null as null | { audio_url: string },
+  };
+  const fetcher = vi.fn(async () => Response.json(snapshot));
+  vi.stubGlobal("fetch", fetcher);
+  const { client } = renderHosted(<HostedProjectScreen projectId="audio-progress" />);
+  const hero = await screen.findByRole("region", { name: "Live video progress" });
+  expect(within(hero).queryByRole("group", { name: "Listen to voiceover" })).toBeNull();
+  snapshot.voiceover_audio = { audio_url: "/api/v2/hosted/projects/audio-progress/voiceover" };
+  await act(() => client.invalidateQueries({ queryKey: ["hosted-project", "audio-progress"] }));
+  const player = within(hero).getByLabelText("Voiceover audio");
+  expect(player).toHaveAttribute("src", snapshot.voiceover_audio.audio_url);
+  expect(player).toHaveAttribute("controls");
+  expect(player).toHaveAttribute("preload", "none");
+  expect(player).not.toHaveAttribute("autoplay");
+  const progress = within(hero.querySelector(".progress-hero-body")!).getByRole("progressbar", {
+    name: "Overall video progress",
+  });
+  expect(player.compareDocumentPosition(progress) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  const requests = fetcher.mock.calls.length;
+  fireEvent.error(player);
+  expect(within(hero).getByRole("alert")).toHaveTextContent("Voiceover audio could not be loaded.");
+  fireEvent.click(within(hero).getByRole("button", { name: "Retry playback" }));
+  expect(within(hero).queryByRole("alert")).toBeNull();
+  expect(within(hero).getByLabelText("Voiceover audio")).not.toBe(player);
+  expect(within(hero).getByLabelText("Voiceover audio")).toHaveAttribute(
+    "src",
+    snapshot.voiceover_audio.audio_url,
+  );
+  expect(fetcher.mock.calls).toHaveLength(requests);
 });
 
 it("turns avatars off without a preset and keeps opening and coverage independent", async () => {
@@ -9156,6 +9221,7 @@ it("reconciles incurred API and compute costs while keeping the plan forecast se
         gpu_transport: "DISABLED_UNQUALIFIED",
         gpu_readiness: gpuReadiness,
         stages: [{ id: "render", name: "Assemble final video", status: "COMPLETE" }],
+        voiceover_audio: { audio_url: "/api/v2/hosted/projects/cost-proof/voiceover" },
         cost: {
           projected_usd: 0.05,
           api_estimate: {
@@ -9193,4 +9259,17 @@ it("reconciles incurred API and compute costs while keeping the plan forecast se
   ).toBeInTheDocument();
   expect(screen.getByText(/API forecast.*\$0.050000/)).toBeInTheDocument();
   expect(screen.queryByText("Projected cost")).not.toBeInTheDocument();
+  const hero = screen.getByRole("region", { name: "Live video progress" });
+  const player = within(hero).getByLabelText("Voiceover audio");
+  expect(
+    screen.getByText("Total cost so far").compareDocumentPosition(player) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  expect(
+    player.compareDocumentPosition(
+      within(hero.querySelector(".progress-hero-body")!).getByRole("progressbar", {
+        name: "Overall video progress",
+      }),
+    ) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
 });

@@ -18,8 +18,9 @@ export async function serveHostedVideo(
     | undefined,
   inline: boolean,
   audioFilename?: string,
+  audioContentType: "audio/mpeg" | "audio/wav" = "audio/mpeg",
 ): Promise<Response> {
-  const contentType = audioFilename ? "audio/mpeg" : "video/mp4";
+  const contentType = audioFilename ? audioContentType : "video/mp4";
   const size = Number(artifact?.content_length);
   if (
     !artifact ||
@@ -81,7 +82,7 @@ export async function serveHostedVideo(
       "content-type": contentType,
       "content-length": String(range?.length ?? size),
       "content-disposition": inline
-        ? `inline; filename="${audioFilename ? "voiceover.mp3" : "videoforge-output.mp4"}"`
+        ? `inline; filename="${audioFilename ? (contentType === "audio/wav" ? "voiceover.wav" : "voiceover.mp3") : "videoforge-output.mp4"}"`
         : hostedDownloadDisposition(
             audioFilename ?? voiceoverVideoDownloadFilename(artifact.voiceover_filename),
           ),

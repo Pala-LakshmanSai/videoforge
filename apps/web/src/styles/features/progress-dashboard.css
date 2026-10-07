@@ -56,8 +56,24 @@
 
 .page:has(.progress-dashboard) .progress-hero-body > .cloud-compute,
 .page:has(.progress-dashboard) .progress-hero-body > .progress-root,
+.page:has(.progress-dashboard) .progress-hero-body > .progress-voiceover-player,
 .page:has(.progress-dashboard) .progress-hero-body > .muted {
   grid-column: 1 / -1;
+}
+
+.progress-voiceover-player {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.progress-voiceover-player > .eyebrow {
+  margin: 0;
+}
+
+.progress-voiceover-player audio {
+  width: 100%;
+  min-width: 0;
 }
 
 .page:has(.progress-dashboard) .progress-metrics {

@@ -27,6 +27,7 @@ const testState = vi.hoisted(() => {
   ];
   const projectDetailAttemptRows: Record<string, unknown>[] = [];
   const approvedDownloadRows: Record<string, unknown>[] = [];
+  const projectVoiceoverRows: Record<string, unknown>[] = [];
   const projectDetailMediaRows: Record<string, unknown>[] = [];
   const projectDetailPromptRows: Record<string, unknown>[] = [];
   const createReplayRows: Record<string, unknown>[] = [];
@@ -65,6 +66,8 @@ const testState = vi.hoisted(() => {
       return { rows: rateLimitRows, affectedRows: 1 };
     if (sql.includes("videoforge_hosted_session_scope"))
       return { rows: scopeRows, affectedRows: 1 };
+    if (sql.includes("SELECT revision.id::text AS revision_id, receipt.object_key"))
+      return { rows: projectVoiceoverRows, affectedRows: projectVoiceoverRows.length };
     if (
       sql.includes(
         "SELECT authority.object_key, authority.issued_content_length AS content_length",
@@ -179,6 +182,7 @@ const testState = vi.hoisted(() => {
     projectRows,
     projectDetailAttemptRows,
     approvedDownloadRows,
+    projectVoiceoverRows,
     projectDetailMediaRows,
     projectDetailPromptRows,
     createReplayRows,
@@ -200,6 +204,116 @@ const testState = vi.hoisted(() => {
     pool,
     executor,
   };
+});
+
+describe("accepted project voiceover playback", () => {
+  const path = `/api/v2/hosted/projects/${PROJECT_ID}/voiceover`;
+  const bytes = new TextEncoder().encode("retained-voiceover-bytes");
+  const checksum = `sha256:${"a".repeat(64)}`;
+  const key = `tenant/owned/project/${PROJECT_ID}/voiceover`;
+  const source = (contentType: "audio/mpeg" | "audio/wav") => ({
+    revision_id: "22222222-2222-4222-8222-222222222222",
+    object_key: key,
+    content_length: bytes.length,
+    checksum_sha256: checksum,
+    content_type: contentType,
+    voiceover_filename: contentType === "audio/wav" ? "episode.wav" : "episode.mp3",
+  });
+  it.each(["audio/mpeg", "audio/wav"] as const)(
+    "serves the exact accepted %s source with seeking and a stable detail URL",
+    async (contentType) => {
+      testState.projectVoiceoverRows.push(source(contentType));
+      const head = vi.fn(async () => ({
+        size: bytes.length,
+        etag: "project-voiceover",
+        httpMetadata: { contentType },
+        checksums: { sha256: Uint8Array.from(Buffer.from("a".repeat(64), "hex")).buffer },
+      }));
+      const get = vi.fn(async () => ({
+        size: bytes.length,
+        etag: "project-voiceover",
+        httpMetadata: { contentType },
+        body: new ReadableStream({
+          start(controller) {
+            controller.enqueue(bytes.slice(2, 6));
+            controller.close();
+          },
+        }),
+      }));
+      try {
+        const req = request(path + "?object_key=https://foreign.invalid/audio", "GET");
+        req.headers.set("range", "bytes=2-5");
+        const result = await handleHostedProductRequest(
+          req,
+          { PRIVATE_ARTIFACTS: { head, get } } as unknown as HostedRuntimeEnvironment,
+          config,
+          executionContext,
+        );
+        expect(result?.status).toBe(206);
+        expect(result?.headers.get("content-type")).toBe(contentType);
+        expect(result?.headers.get("content-range")).toBe(`bytes 2-5/${bytes.length}`);
+        expect(result?.headers.get("cache-control")).toBe("private, no-store");
+        expect(result?.headers.get("content-disposition")).toBe(
+          contentType === "audio/wav"
+            ? 'inline; filename="voiceover.wav"'
+            : 'inline; filename="voiceover.mp3"',
+        );
+        expect(Array.from(new Uint8Array(await result!.arrayBuffer()))).toEqual(
+          Array.from(bytes.slice(2, 6)),
+        );
+        expect(get).toHaveBeenCalledWith(key, { range: { offset: 2, length: 4 } });
+        const detail = await handleHostedProductRequest(
+          request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+          {} as HostedRuntimeEnvironment,
+          config,
+          executionContext,
+        );
+        expect(((await detail!.json()) as Record<string, unknown>).voiceover_audio).toEqual({
+          audio_url: path,
+          filename: source(contentType).voiceover_filename,
+        });
+      } finally {
+        testState.projectVoiceoverRows.length = 0;
+      }
+    },
+  );
+  it("does not expose or fetch absent/foreign sources and rejects changed checksum", async () => {
+    const head = vi.fn(async () => ({
+      size: bytes.length,
+      httpMetadata: { contentType: "audio/mpeg" },
+      checksums: { sha256: new Uint8Array(32).buffer },
+    }));
+    const get = vi.fn();
+    const env = { PRIVATE_ARTIFACTS: { head, get } } as unknown as HostedRuntimeEnvironment;
+    const missing = await handleHostedProductRequest(
+      request(path, "GET"),
+      env,
+      config,
+      executionContext,
+    );
+    expect(missing?.status).toBe(404);
+    expect(head).not.toHaveBeenCalled();
+    const detail = await handleHostedProductRequest(
+      request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+      env,
+      config,
+      executionContext,
+    );
+    expect(((await detail!.json()) as Record<string, unknown>).voiceover_audio).toBeNull();
+    testState.projectVoiceoverRows.push(source("audio/mpeg"));
+    try {
+      const mismatch = await handleHostedProductRequest(
+        request(path, "GET"),
+        env,
+        config,
+        executionContext,
+      );
+      expect(mismatch?.status).toBe(503);
+      expect(get).not.toHaveBeenCalled();
+    } finally {
+      testState.projectVoiceoverRows.length = 0;
+    }
+  });
 });
 
 describe("completed final MP4 download", () => {

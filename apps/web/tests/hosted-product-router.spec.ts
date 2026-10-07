@@ -3,6 +3,135 @@ import { expect, test } from "@playwright/test";
 const attemptId = "11111111-1111-4111-8111-111111111111";
 const promptProjectId = "66666666-6666-4666-8666-666666666666";
 
+test("Progress voiceover appears after polling and supports playback retry without paid POSTs", async ({
+  page,
+}) => {
+  const projectId = "12121212-1212-4212-8212-121212121212";
+  const audioUrl = `/api/v2/hosted/projects/${projectId}/voiceover`;
+  const mutations: string[] = [];
+  let reads = 0;
+  let audioReads = 0;
+  let failAudio = true;
+  const bytes = Buffer.alloc(44 + 12 * 32000);
+  bytes.write("RIFF", 0);
+  bytes.writeUInt32LE(bytes.length - 8, 4);
+  bytes.write("WAVEfmt ", 8);
+  bytes.writeUInt32LE(16, 16);
+  bytes.writeUInt16LE(1, 20);
+  bytes.writeUInt16LE(1, 22);
+  bytes.writeUInt32LE(16000, 24);
+  bytes.writeUInt32LE(32000, 28);
+  bytes.writeUInt16LE(2, 32);
+  bytes.writeUInt16LE(16, 34);
+  bytes.write("data", 36);
+  bytes.writeUInt32LE(bytes.length - 44, 40);
+  page.on("request", (request) => {
+    if (request.url().includes("/api/") && request.method() !== "GET")
+      mutations.push(`${request.method()} ${new URL(request.url()).pathname}`);
+  });
+  await page.route(`**${audioUrl}`, async (route) => {
+    audioReads += 1;
+    if (failAudio) return route.fulfill({ status: 503, body: "Fixture playback unavailable" });
+    const range = /^bytes=(\d+)-(\d*)$/.exec(route.request().headers().range ?? "");
+    const start = range ? Number(range[1]) : 0;
+    const end = range?.[2] ? Math.min(Number(range[2]), bytes.length - 1) : bytes.length - 1;
+    return route.fulfill({
+      status: range ? 206 : 200,
+      contentType: "audio/wav",
+      headers: {
+        "Accept-Ranges": "bytes",
+        "Content-Length": String(end - start + 1),
+        ...(range ? { "Content-Range": `bytes ${start}-${end}/${bytes.length}` } : {}),
+      },
+      body: bytes.subarray(start, end + 1),
+    });
+  });
+  await page.route(`**/api/v2/hosted/projects/${projectId}`, (route) => {
+    reads += 1;
+    return route.fulfill({
+      json: {
+        project: {
+          id: projectId,
+          title: "Saved narration playback proof",
+          revision_id: "revision",
+          revision_state: "LOCKED",
+          media_execution_backend: "RUNPOD_POD",
+          created_at: "2026-10-07T07:00:00Z",
+        },
+        attempts: [],
+        generation: null,
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: { state: "DISABLED_UNQUALIFIED", lanes: [] },
+        stages: [
+          {
+            id: "transcription",
+            name: "Transcribe voiceover",
+            status: reads === 1 ? "RUNNING" : "FAILED",
+          },
+        ],
+        voiceover_audio: reads === 1 ? null : { audio_url: audioUrl },
+        cost: {
+          api_cost_so_far: { usd: 0, estimated: true, unconfirmed: false, breakdown: [] },
+          cloud_compute: {
+            observed_at: "2026-10-07T07:05:04Z",
+            rentals: [
+              {
+                id: "fixture-rental",
+                machine: "RTX PRO 4500",
+                hourly_usd: 0.734,
+                started_at: "2026-10-07T07:00:00Z",
+                stopped_at: "2026-10-07T07:05:04Z",
+                status: "STOPPED",
+              },
+            ],
+          },
+        },
+      },
+    });
+  });
+  await page.goto(`/projects/${projectId}`);
+  const hero = page.getByRole("region", { name: "Live video progress" });
+  await expect(hero.getByText("Total cost so far", { exact: true })).toBeVisible();
+  await expect(hero.getByRole("group", { name: "Listen to voiceover" })).toHaveCount(0);
+  const player = hero.getByLabel("Voiceover audio", { exact: true });
+  await expect(player).toBeVisible({ timeout: 6_000 });
+  expect(reads).toBeGreaterThanOrEqual(2);
+  await expect(page.locator("audio")).toHaveCount(1);
+  await expect(player).toHaveAttribute("controls", "");
+  await expect(player).toHaveAttribute("preload", "none");
+  await expect(player).not.toHaveAttribute("autoplay", "");
+  expect(audioReads).toBe(0);
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    const cost = await hero.locator(".cloud-compute").boundingBox();
+    const audio = await player.boundingBox();
+    const progress = await hero.locator(".progress-root").boundingBox();
+    expect(cost && audio && progress).toBeTruthy();
+    expect(audio!.y).toBeGreaterThanOrEqual(cost!.y + cost!.height);
+    expect(audio!.y + audio!.height).toBeLessThanOrEqual(progress!.y);
+    expect(audio!.x + audio!.width).toBeLessThanOrEqual(width);
+  }
+  await player.click({ position: { x: 18, y: 26 } });
+  await expect(hero.getByRole("alert")).toHaveText(
+    "Voiceover audio could not be loaded. Retry playback",
+  );
+  failAudio = false;
+  await hero.getByRole("button", { name: "Retry playback" }).click();
+  await expect(hero.getByRole("alert")).toHaveCount(0);
+  await player.click({ position: { x: 18, y: 26 } });
+  await expect.poll(() => player.evaluate((audio: HTMLAudioElement) => audio.paused)).toBe(false);
+  await expect.poll(() => player.evaluate((audio: HTMLAudioElement) => audio.duration)).toBe(12);
+  await player.evaluate((audio: HTMLAudioElement) => audio.pause());
+  await expect.poll(() => player.evaluate((audio: HTMLAudioElement) => audio.paused)).toBe(true);
+  await player.evaluate((audio: HTMLAudioElement) => {
+    audio.currentTime = 6;
+  });
+  await expect.poll(() => player.evaluate((audio: HTMLAudioElement) => audio.currentTime)).toBe(6);
+  await expect(page.locator("audio")).toHaveCount(1);
+  expect(audioReads).toBeGreaterThanOrEqual(2);
+  expect(mutations).toEqual([]);
+});
+
 function promptProjectDetail(readCount: number) {
   const acceptedScenes = readCount === 1 ? 0 : readCount === 2 ? 14 : 28;
   const activeBatchOrdinal = acceptedScenes < 14 ? 1 : 2;
