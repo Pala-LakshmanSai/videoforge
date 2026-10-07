@@ -4,7 +4,7 @@ voiceover_queue_2026_10_07:
   selected_task: VF-10-09
   read_profile: v2_09_standalone_voiceovers
   brief: VOICEOVERS_PLAN.md
-  queue_overflow_followup: Implemented_bounded_scroll_pending_browser_and_publication
+  queue_overflow_followup: Production_9fef8e0c_Worker77d47f2e_100percent_24row_desktop_mobile_keyboard_live_styles_37assets_verified
   status: PRODUCTION_VERIFIED
   executable_commit: 6140c6576dca2e68db9b5e8749234740cfb41902
   worker_version: 4a3303d6-db32-4730-844b-7f1aaaefb9eb

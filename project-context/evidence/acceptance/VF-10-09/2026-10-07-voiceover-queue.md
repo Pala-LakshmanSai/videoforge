@@ -51,3 +51,12 @@ The desktop list had a580px ceiling (390px on shorter screens), but the mobile r
 its ceiling entirely. Use one240–360px viewport-responsive limit at every breakpoint, native
 vertical scrolling, stable scrollbar gutter, non-shrinking rows and keyboard focus. Heading,
 counts and Library access remain outside the list. No job/media/database/provider behavior changes.
+
+Published source9fef8e0c / Worker77d47f2e-5c4b-45c6-ba79-e0a0f2f69c0a at100%.
+Parent audited the Luna browser test and fixed its keyboard-animation wait. Installed Chrome
+passes24 rows (20 completed with audio/download controls) at1280x900 and390x844: bounded height,
+keyboard End reaches last row, no horizontal overflow and Library stays outside the scroller.
+Nine studio tests, types/lint, both builds/firewalls, context/secrets and37 deployed asset hashes pass.
+Live Chrome confirms max-height360px, overflow auto, keyboard focus and both existing results.
+Server bundle SHA256 is byte-identical to6140c657; native291, bindings and Workflows unchanged.
+USD0 new generation/compute. Private publication receipts:release-overflow/verified-private.json.
