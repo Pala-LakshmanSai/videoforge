@@ -1,4 +1,4 @@
-Current instruction supersedes paid QA: user wants no extra detection cost. Disable future initial/replacement checks (migration293); retain existing prompt-writer bans and fresh physical-scene formatting. No new paid tests or image generation. Prior qualification remains historical evidence only.
+Current instruction supersedes paid QA: prompt-stage-only prevention, no extra inspection cost. Migration293/source53143e05 is live; both new/replacement defaultsfalse, zero required images/QA receipts, complete historical rows unchanged. Existing prompt bans and physical-scene formatter remain. No further paid QA calls are authorized. Earlier activation/qualification details below are historical only.
 
 # V2-09 image text prevention — 2026-10-07
 

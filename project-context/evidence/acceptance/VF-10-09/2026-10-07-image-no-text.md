@@ -1,3 +1,5 @@
+Current policy supersedes the paid-QA activation recorded below: prompt-only prevention, billed inspection disabled in production by migration293/source53143e05. See the final cost-reversal section.
+
 # Generated image text prevention — 7 October 2026
 
 Checkpoint V2-09 / VF-10-09. Executable `3ce1bbd6816a3dbfcde770df2c78e763ca6ff7ee`, branch `codex/image-no-text`, production Worker `77d7ae03-6ec5-4e8d-93a2-9ce067540014` at 100%, native migration290.
@@ -52,3 +54,13 @@ Migration292, sourcec8007419, was applied once after the successful adopted tick
 Future initial and replacement images must receive a durable exact-checksum PASS. Text/uncertain results are blocked without automatic regeneration; interrupted responses retain the same UUID and cannot re-submit. Qualification used seven calls/2334microUSD of the approved200000microUSD cap; unused finite test authority is retired. User-approved ongoing per-image billing remains. No new media, GPU, video instance, or current-user-job restart was created.
 
 Remaining limits: existing captioned images/films are unchanged; no new full film was purchased for this qualification. A probabilistic detector cannot guarantee every future mark will be found. Account invoice precision, inherited broad CI and unrelated historical cleanup remain separate.
+
+## User cost reversal — prompt-only production
+
+The user revoked all ongoing per-image detection charges and selected prompt-stage prevention. Existing writer instructions already forbid visible text/pseudo-text, captions/logos/overlays and require physical visible scenes; the deployed fresh formatter removes caption-like field labels and adds “Physical scene, never words.” Keeping these avoids changing sealed v39 request identity or purchasing any new writer/model test. Strong prompts reduce risk; generated pixels are no longer inspected automatically and zero-text output is not guaranteed.
+
+Migration293/source53143e05 disables future initial/replacement QA defaults. Production preflight and locked application both verify zero required image jobs and zero QA receipts; no paid job required cancellation or waiver. One native rollback rehearsal and one application preserve every historical job/receipt byte. Independent readback confirms293, both defaultsfalse, QA rows0, SHA `715bf0177984d949ce29cecd11731124a4c2925c847378a6acb1b98646232571`.
+
+Seven focused checks pass: native policy toggling preserves old receipts, new initial and replacement claims return HISTORICAL without dispatch, normal success remains possible, and prompt/hosted no-call regressions pass. Context/diff validation passes. No application code/configuration change, Worker deploy, coordinator restart, paid inference, image regeneration or compute mutation was needed. Existing combined6140c657/Worker4a3303d6 and89fa873a coordinator preserve the prompt repair.
+
+Incremental spendUSD0; earlier approved seven qualification tests remainUSD0.002334 total. No project-image QA receipts were created while the policy was enabled. Ordinary writer/image-generation charges still apply, without a separate inspection fee. Existing images/films remain unchanged.
