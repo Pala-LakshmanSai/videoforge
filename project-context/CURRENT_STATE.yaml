@@ -4,7 +4,7 @@ cloud_status_2026_10_07:
   read_profile: v2_09_cloud_status
   brief: CLOUD_STATUS_PLAN.md
   branch: codex/prompt-output-reliability
-  status: LOCAL_QUALIFIED_PRODUCTION_PENDING
+  status: PRODUCTION_PUBLISHED_BROWSER_RECONNECT_AND_CONTINUATION_APPROVAL_PENDING
   baseline_executable: 3b4ea5550097bfd7172ec659ccab15f3247355cb
   baseline_worker: a259ef3d-2571-4b96-96b5-ca922121069e
   native_migration: 294
@@ -15,7 +15,11 @@ cloud_status_2026_10_07:
   validations: UI283_API241_Fallback157_types_builds_lint_format_PASS
   full_web: 3333pass1skip_four_PGlite_resource_failures_all5_affected_checks_pass_isolated
   evidence: evidence/acceptance/VF-10-09/2026-10-07-cloud-hold-status.md
-  remaining_gates: Production_asset_private_HTTP_Chrome
+  executable: b29facc0676174600c6afb20117d02eda9e06f9f
+  worker: 54e5829c-dd3f-44de-a564-4bac3cde5fb0
+  release_checks: Assets37_private401_bindings55_secrets27_native294_CPU300000_PASS
+  retained_coordinator: d72a382a_source_and_config_unchanged_healthy_new_ticks_no_restart
+  remaining_gates: Browser_connection_lost_owner_HTTP_and_new_USD25_full_video_cap_approval_pending
 
 prompt_output_reliability_2026_10_07:
   checkpoint: V2-09
