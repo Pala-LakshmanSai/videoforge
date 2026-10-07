@@ -32,3 +32,5 @@ Production publication is authorized. Paid pixel QA remains disabled by default 
 ## Published evidence
 
 Production source3ce1bbd6 / Worker77d7ae03 at100%, native290 inactive defaults. See [acceptance](evidence/acceptance/VF-10-09/2026-10-07-image-no-text.md). Existing coordinator adoption, postrelease Chrome and paid QA approval/qualification remain open.
+
+User approved the pending proposal on7October2026: up to8 existing-image vision checks underUSD0.20, then one billed check per future generated/replacement image. Model/rates/reservation as recorded in CURRENT_STATE.yaml; no new image generation, automatic regeneration or GPU. Qualification and safe runtime adoption still precede activation.

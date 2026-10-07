@@ -4,7 +4,7 @@ image_no_text_2026_10_07:
   read_profile: v2_09_image_no_text
   brief: IMAGE_NO_TEXT_PLAN.md
   branch: codex/image-no-text
-  status: PRODUCTION_REGISTERED_QA_DISABLED_ADOPTION_AND_CHROME_PENDING
+  status: PAID_QA_APPROVED_QUALIFICATION_IN_PROGRESS
   baseline_executable: 14c1907b3840b8e80dcc6c37897dbf5d29a0ea65
   executable_commit: 3ce1bbd6816a3dbfcde770df2c78e763ca6ff7ee
   worker_version: 77d7ae03-6ec5-4e8d-93a2-9ce067540014
@@ -12,6 +12,12 @@ image_no_text_2026_10_07:
   evidence: evidence/acceptance/VF-10-09/2026-10-07-image-no-text.md
   cause: Saved_labeled_action_sentence_painted_verbatim_despite_intact_no_text_exclusions_no_pixel_acceptance_gate
   provider_spend_usd: 0
+  qa_authority: User_approved_2026_10_07_up_to8_existing_image_checks_USD0_20_then_one_billed_check_per_future_image
+  qa_model: google_gemini_3_1_flash_lite
+  qa_rates: USD0_25_per_million_input_USD1_50_per_million_output_tokens
+  qa_reservation_per_image_usd: 0.02
+  qa_stop_conditions: Eight_calls_or_USD0_20_unknown_identity_price_or_qualification_failure
+  qa_exclusions: No_new_image_generation_automatic_regeneration_or_GPU_rental
   paid_compute_shutdown: No_new_compute_or_resource_mutation_existing_video_continues
   validation: Web3284pass1skip_types_lint_web_Cloudflare_staging_builds_native290_rollback_tenant_checksum_no_replay_metadata6_context_firewall_secrets_PASS
   native_migration: 290_defaults_false_no_paid_activation
