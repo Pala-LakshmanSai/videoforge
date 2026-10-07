@@ -3295,7 +3295,7 @@ execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
 task_stage: prompt_runtime_cause_reproduced_qualification_in_progress
 application_code_changes_authorized: true
 provider_calls_authorized: true
-read_only_provider_calls_authorized: true
+read_only_provider_calls_authorized: false
 remote_or_cloud_mutations_authorized: true
 credential_access_authorized: true
 gpu_use_authorized: false
