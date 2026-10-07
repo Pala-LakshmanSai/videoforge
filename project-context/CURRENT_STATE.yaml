@@ -4,15 +4,20 @@ prompt_stage_audit_2026_10_07:
   read_profile: v2_09_prompt_stage_audit
   brief: PROMPT_STAGE_AUDIT_PLAN.md
   branch: codex/prompt-stage-audit
-  status: LOCAL_REPAIR_QUALIFICATION_IN_PROGRESS
+  status: QUALIFIED_PRODUCTION_PUBLICATION_PENDING
   baseline_source: 585547acdde0e61e11eb33bc4e8d251faaedb1ce
   baseline_executable: 7cf76e3f69a0c9b36bafc097420c71093c3c5df0
   authority: User_requested_multiagent_rootcause_repair_production_and_USD3_total_new_verification
   new_verification_cap_usd: 3
   canary_cap_usd: 0.5
-  original_recovery_maximum_new_usd: 2.460776
+  original_recovery: USER_PROHIBITED_NO_MUTATION
+  policy: runware_luna_grounded_v6_requestv43_profile13_structure_only_acceptance
   paid_compute_shutdown: No_new_compute_actions_existing_jobs_preserved
-  remaining_gates: Exact_failure_reproduction_repair_regressions_live_prompt_acceptance_and_production
+  validation: Pipeline341_Web3356pass1skip_finalfocused100_native26pass1skip_reclaim7_types_builds_lint_rollback_PASS
+  evidence: evidence/acceptance/VF-10-09/2026-10-08-prompt-flow-continuity.md
+  provider_spend_usd: 0.165680
+  live_qualification: Isolated401scenes41batches41receipts_zero_corrective_calls_one_source_fallback
+  remaining_gates: Safe_idle_production_publication_coordinator_adoption_and_Chrome
 
 cloud_status_2026_10_07:
   checkpoint: V2-09

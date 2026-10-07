@@ -50,6 +50,52 @@ function distinctStyleNegatives(value: string): string[] {
     });
 }
 
+function clipPromptPart(value: string, limit: number): string {
+  const normalized = value.replace(/\s+/gu, " ").trim();
+  if (normalized.length <= limit) return normalized;
+  const clipped = normalized.slice(0, limit).replace(/[\uD800-\uDBFF]$/u, "");
+  const wordEnd = clipped.lastIndexOf(" ");
+  return (wordEnd > limit * 0.7 ? clipped.slice(0, wordEnd) : clipped).trim();
+}
+
+/** Fresh v7 wire adaptation is bounded formatting, never another content acceptance gate. */
+function buildBoundedKieScenePrompt(compiled: CompiledImagePrompt, handAnatomy: boolean): string {
+  const c = compiled.components;
+  const guidance = [
+    "Photorealistic physical scene. No visible text, captions, overlays, graphics, borders or watermarks; blank unlit screens",
+    clipPromptPart(c.cropGuidance, 60),
+    clipPromptPart(c.stylePositiveSuffix, 120),
+    handAnatomy && /\bviewpoint:\s*hands action\b/iu.test(c.continuityAndShotRole)
+      ? KIE_HAND_ANATOMY_GUIDANCE
+      : clipPromptPart(c.continuityAndShotRole, 60),
+    clipPromptPart(c.extraPromptKeywords ?? "", 60),
+  ]
+    .filter(Boolean)
+    .join(". ");
+  const fields = /^subject:\s*(.*?), action:\s*(.*?), environment:\s*(.*)$/su.exec(
+    c.literalContent,
+  );
+  const parts = (fields ? fields.slice(1) : [c.literalContent]).map((part) =>
+    part
+      .replace(/\s+/gu, " ")
+      .trim()
+      .replace(/[.!?]+$/u, ""),
+  );
+  const available = MAX_KIE_PROMPT_LENGTH - guidance.length - 2 - (parts.length - 1) * 2;
+  const budgets = parts.map((part) => Math.min(part.length, Math.floor(available / parts.length)));
+  let remaining = available - budgets.reduce((total, budget) => total + budget, 0);
+  for (let index = 0; index < parts.length; index++) {
+    const extra = Math.min(remaining, parts[index]!.length - budgets[index]!);
+    budgets[index]! += extra;
+    remaining -= extra;
+  }
+  const scene = parts
+    .map((part, index) => clipPromptPart(part, budgets[index]!))
+    .filter(Boolean)
+    .join(", ");
+  return scene ? `${scene}. ${guidance}` : guidance;
+}
+
 /** Map compiled prompt parts into Kie's medium target without cutting scene or style text. */
 export function buildKieScenePrompt(
   compiled: CompiledImagePrompt,
@@ -59,6 +105,8 @@ export function buildKieScenePrompt(
     readonly wirePolicy?: "photographic-v1";
   } = {},
 ): string {
+  if (compiled.promptCompilerVersion === "prompt-compiler-v7")
+    return buildBoundedKieScenePrompt(compiled, options.handAnatomy === true);
   // Opt-in only at fresh binding: saved wire prompts and sealed writer/compiler hashes stay exact.
   if (options.wirePolicy === "photographic-v1") {
     const literal = compiled.components.literalContent.trim();

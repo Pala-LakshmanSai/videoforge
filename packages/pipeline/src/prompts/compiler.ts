@@ -88,7 +88,7 @@ const FORBIDDEN_MENTIONS: readonly {
   },
   {
     kind: "screen",
-    pattern: /\b(?:screen(?:s)?)\b/giu,
+    pattern: /\b(?:touch[- ]?)?screens?\b/giu,
   },
   {
     kind: "brand",
@@ -218,11 +218,24 @@ function isTextualMarkingContext(clause: string, start: number, end: number): bo
   return TEXTUAL_MARKING_CONTEXT.test(context);
 }
 
+function requestsScreenDisplay(value: string): boolean {
+  const predicate =
+    /^\s*[,;]?\s*(?:(?:is|are|was|were|now|still|currently)\s+){0,2}(?:display(?:s|ed|ing)?|show(?:s|ing)?|render(?:s|ed|ing)?|present(?:s|ed|ing)?)\b([\s\S]*)/iu.exec(
+      value,
+    );
+  return (
+    predicate !== null &&
+    !/^\s+no\s+(?:visible\s+)?content\s*(?:[.!?]|$)/iu.test(predicate[1] ?? "")
+  );
+}
+
 function isNonTextMention(
   kind: ForbiddenMentionKind,
   clause: string,
   start: number,
   end: number,
+  wholeValue = clause,
+  physicalScreens = true,
 ): boolean {
   if (kind === "border") {
     const prefix = clause.slice(0, start);
@@ -308,6 +321,46 @@ function isNonTextMention(
     // British automotive screen-wash is a physical cleaning fluid, not a display.
     // Anchor to this exact occurrence so a nearby electronic screen stays forbidden.
     if (/^(?:[-\u2010-\u2015]|\s)+wash\b/iu.test(clause.slice(end))) return true;
+    const prefix = clause.slice(0, start);
+    if (
+      physicalScreens &&
+      /\b(?:blank|unlit|switched[- ]off|powered[- ]off)(?:[\s,-]+(?:blank|unlit|switched[- ]off|powered[- ]off))*\s+$/iu.test(
+        prefix,
+      )
+    ) {
+      // An explicit off/blank device is allowed as a physical surface; its visible content is not.
+      for (const match of wholeValue.matchAll(
+        /\b(?:icons?|menus?|maps?|charts?|graphs?|diagrams?|interface|ui|text|letters?|digits?|numbers?)\b/giu,
+      )) {
+        if (!isNegatedMention(wholeValue, match.index, match.index + match[0].length)) return false;
+      }
+      for (const screen of wholeValue.matchAll(/\b(?:touch[- ]?)?screens?\b/giu)) {
+        const after = wholeValue.slice(screen.index + screen[0].length);
+        if (requestsScreenDisplay(after)) return false;
+        const continuation = /^[^.!?;]*[.!?]\s*It\s+([\s\S]*)/iu.exec(after)?.[1];
+        if (continuation && requestsScreenDisplay(continuation)) return false;
+        const before = wholeValue.slice(0, screen.index);
+        if (
+          /\b(?:displayed|shown|rendered|projected)\s+(?:on|onto|across)\s+(?:(?:a|an|the|blank|unlit|switched[- ]off|powered[- ]off)\s+)*$/iu.test(
+            before,
+          )
+        )
+          return false;
+        if (
+          /^\s+(?:with|bears?|bearing|carries|carrying|containing|featuring)\s+(?:(?:a|an|the|visible|bright|colorful|large|small)\s+){0,3}(?:photos?|photographs?|portraits?|pictures?|images?|imagery)\b/iu.test(
+            after,
+          )
+        )
+          return false;
+        if (
+          /\b(?:photos?|photographs?|portraits?|pictures?|images?|imagery)\b[^.!?,;]{0,60}\b(?:on|onto|across|inside)\s+(?:(?:a|an|the|blank|unlit|switched[- ]off|powered[- ]off)\s+)*$/iu.test(
+            before,
+          )
+        )
+          return false;
+      }
+      return true;
+    }
     const context = `${clause.slice(Math.max(0, start - 24), start)} ${clause.slice(start, end)} ${clause.slice(end, end + 24)}`;
     return NON_TEXT_SCREEN_CONTEXT.test(context);
   }
@@ -322,6 +375,25 @@ function isNonTextMention(
 }
 
 export function assertNoHardPromptConflict(value: string, path: readonly string[]): void {
+  assertPromptConflictWithScreenPolicy(value, path, true);
+}
+
+/** Frozen pre-v42 diagnostic behavior; never used to accept a new scene. */
+export function hasPrePhysicalScreenConflict(value: string): boolean {
+  try {
+    assertPromptConflictWithScreenPolicy(value, ["historicalCorrection"], false);
+    return false;
+  } catch (error) {
+    if (error instanceof PipelineDomainError) return true;
+    throw error;
+  }
+}
+
+function assertPromptConflictWithScreenPolicy(
+  value: string,
+  path: readonly string[],
+  physicalScreens: boolean,
+): void {
   for (const clause of value
     .split(/[;,]/u)
     .map((part) => part.trim())
@@ -333,7 +405,11 @@ export function assertNoHardPromptConflict(value: string, path: readonly string[
         const term = match[0];
         if (start === undefined) continue;
         const end = start + term.length;
-        if (isNonTextMention(kind, clause, start, end) || isNegatedMention(clause, start, end))
+        if (!physicalScreens && kind === "screen" && /^touchscreens?$/iu.test(term)) continue;
+        if (
+          isNonTextMention(kind, clause, start, end, value, physicalScreens) ||
+          isNegatedMention(clause, start, end)
+        )
           continue;
         fail("PROMPT_CONFLICT", "Prompt clause requests a forbidden output or layout.", path);
       }
@@ -605,8 +681,9 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
       "writerOutput",
     ]);
   const style = validatePromptStyleComponents(request.style);
+  const structuralOnly = request.compilerPolicy === "local-evidence-v3";
   const compact =
-    request.compilerPolicy === "local-evidence-v2" &&
+    (request.compilerPolicy === "local-evidence-v2" || structuralOnly) &&
     request.styleProfileHash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH;
   const extra = normalizeExtra(request.extraPromptKeywords, request.applyExtraPromptKeywords);
   const sceneFields = [
@@ -615,12 +692,13 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
     normalize(output.environment, 240, "Environment", ["writerOutput", "environment"]),
     normalize(output.lighting_context, 120, "Lighting", ["writerOutput", "lighting_context"]),
   ];
-  sceneFields.forEach((value, index) =>
-    assertNoHardPromptConflict(value, [
-      "writerOutput",
-      ["literal_subject", "action", "environment", "lighting_context"][index]!,
-    ]),
-  );
+  if (!structuralOnly)
+    sceneFields.forEach((value, index) =>
+      assertNoHardPromptConflict(value, [
+        "writerOutput",
+        ["literal_subject", "action", "environment", "lighting_context"][index]!,
+      ]),
+    );
   // The provider-authored prompt_core is retained in the durable writer shape
   // for compatibility, but it is not trusted at the image-model boundary.
   // Build the literal scene description only from the independently normalized
@@ -643,7 +721,8 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
       "continuity_tags",
       String(index),
     ]);
-    assertNoHardPromptConflict(normalizedTag, ["writerOutput", "continuity_tags", String(index)]);
+    if (!structuralOnly)
+      assertNoHardPromptConflict(normalizedTag, ["writerOutput", "continuity_tags", String(index)]);
   });
   const continuityAndShotRole = join([
     "same subject/setting/state",
@@ -656,7 +735,8 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
     continuityAndShotRole: compact
       ? compactGroundedShotRoleGuidance(expected.inImageShotRole)
       : request.compilerPolicy === "local-evidence-v1" ||
-          request.compilerPolicy === "local-evidence-v2"
+          request.compilerPolicy === "local-evidence-v2" ||
+          structuralOnly
         ? groundedShotRoleGuidance(expected.inImageShotRole)
         : request.styleProfileHash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH
           ? naturalDocumentaryShotRoleGuidance(expected.inImageShotRole)
@@ -692,7 +772,7 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
       "writerOutput",
     ]);
   const natural = request.styleProfileHash === NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH;
-  if (natural) {
+  if (natural && !structuralOnly) {
     try {
       naturalDocumentaryRequiredPrompt(components, { compact });
     } catch (error) {
@@ -704,13 +784,15 @@ export function compileImagePrompt(request: CompilePromptRequest): CompiledImage
     }
   }
   return Object.freeze({
-    promptCompilerVersion: natural
-      ? compact
-        ? "prompt-compiler-v6"
-        : request.compilerPolicy === "local-evidence-v1"
-          ? "prompt-compiler-v5"
-          : "prompt-compiler-v4"
-      : "prompt-compiler-v3",
+    promptCompilerVersion: structuralOnly
+      ? "prompt-compiler-v7"
+      : natural
+        ? compact
+          ? "prompt-compiler-v6"
+          : request.compilerPolicy === "local-evidence-v1"
+            ? "prompt-compiler-v5"
+            : "prompt-compiler-v4"
+        : "prompt-compiler-v3",
     scenePromptWriterVersion: SCENE_PROMPT_WRITER_VERSION,
     sceneId: expected.sceneId,
     components,

@@ -865,6 +865,8 @@ async function validatePlanBeforeDispatch(
       ...(plan.requestPolicy === "runware-luna-grounded-v2" ||
       plan.requestPolicy === "runware-luna-grounded-v3" ||
       plan.requestPolicy === "runware-luna-grounded-v4" ||
+      plan.requestPolicy === "runware-luna-grounded-v5" ||
+      plan.requestPolicy === "runware-luna-grounded-v6" ||
       batch.literalCharacterLimit === undefined
         ? {}
         : { literalCharacterLimit: batch.literalCharacterLimit }),

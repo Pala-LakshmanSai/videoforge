@@ -1,3 +1,19 @@
+const PHYSICAL_SCREEN = /\b(?:touch[- ]?)?screens?\b(?![-\s]+(?:wash|door|porch|window|mesh)\b)/giu;
+
+export function physicalScreensHaveLocalSource(value: string, source: string): boolean {
+  const pattern = new RegExp(PHYSICAL_SCREEN.source, "iu");
+  return !pattern.test(value) || pattern.test(source);
+}
+
+/** v42 only: preserve a locally named device surface while making its display state explicit. */
+export function projectTextFreePhysicalScreens(value: string, source: string): string {
+  if (!new RegExp(PHYSICAL_SCREEN.source, "iu").test(source)) return value;
+  return value.replace(PHYSICAL_SCREEN, (screen, offset: number, whole: string) => {
+    const prefix = whole.slice(0, offset);
+    if (/\bblank\s+unlit\s+$/iu.test(prefix)) return screen;
+    return `blank unlit ${screen}`;
+  });
+}
 /** Project an explicitly text-free surface without deleting its physical relationships. */
 export function projectTextFreePhysicalSurfaces(
   value: string,

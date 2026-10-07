@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH } from "@videoforge/pipeline";
 import { sha256 } from "./crypto";
 import { canonicalJson } from "./submission";
+import * as promptRun from "./hosted-prompt-run";
 import {
   hostedPromptAuthority,
   hostedPromptBatchPlan,
@@ -172,7 +173,7 @@ it("manual Retry submits the exact original repair proof and reaches guarded dis
   const payload = JSON.parse(String(prepareCalls()[0]![1][0]));
   expect(payload).toMatchObject({
     redispatch: true,
-    request_policy: "runware-luna-grounded-v4",
+    request_policy: "runware-luna-grounded-v6",
     input_repair_redispatch: true,
     original_run_id: identity.runId,
     original_input_hash: pinned.input_hash,
@@ -227,6 +228,10 @@ it("native preparation refusal prevents a provider claim and HTTP", async () => 
 it.each([false, true])(
   "recovers saved literal failures with one targeted correction; correction invalid=%s",
   async (invalidCorrection) => {
+    const originalPlanner = promptRun.hostedPromptBatchPlan;
+    vi.spyOn(promptRun, "hostedPromptBatchPlan").mockImplementation((authority, policy) =>
+      originalPlanner(authority, policy ?? "runware-luna-grounded-v5"),
+    );
     const sceneRows = Array.from({ length: 9 }, (_, index) => ({
       scene_id: `scene_${index + 1}`,
       phrase: `Seedlings grow in pot ${index + 1}.`,

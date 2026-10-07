@@ -355,7 +355,7 @@ export const HOSTED_LUNA_PROMPT_BATCH_MAX_OUTPUT_TOKENS = 6_144 as const;
  */
 export function hostedPromptBatchPlan(
   authority: PromptExecutionAuthority,
-  requestPolicy: PromptRequestPolicy = "runware-luna-grounded-v4",
+  requestPolicy: PromptRequestPolicy = "runware-luna-grounded-v6",
 ): PromptBatchPlan {
   let literalCharacterLimit: number | undefined;
   let literalCharacterLimits: Readonly<Record<string, number>> | undefined;
@@ -394,7 +394,7 @@ export function hostedPromptBatchPlan(
     } else if (
       requestPolicy === "runware-luna-grounded-v2" ||
       requestPolicy === "runware-luna-grounded-v3" ||
-      requestPolicy === "runware-luna-grounded-v4"
+      ["runware-luna-grounded-v4", "runware-luna-grounded-v5"].includes(requestPolicy)
     ) {
       literalCharacterLimits = Object.freeze(
         Object.fromEntries(
@@ -402,10 +402,11 @@ export function hostedPromptBatchPlan(
             scene.sceneId,
             kieScenePromptLiteralCharacterLimit(
               compileImagePrompt({
-                compilerPolicy:
-                  requestPolicy === "runware-luna-grounded-v4"
-                    ? "local-evidence-v2"
-                    : "local-evidence-v1",
+                compilerPolicy: ["runware-luna-grounded-v4", "runware-luna-grounded-v5"].includes(
+                  requestPolicy,
+                )
+                  ? "local-evidence-v2"
+                  : "local-evidence-v1",
                 writerOutput: {
                   scene_id: scene.sceneId,
                   literal_subject: "x",
@@ -427,7 +428,7 @@ export function hostedPromptBatchPlan(
           ]),
         ),
       );
-    } else {
+    } else if (requestPolicy !== "runware-luna-grounded-v6") {
       literalCharacterLimit = naturalDocumentaryLiteralCharacterLimit(authority);
     }
     if (
@@ -440,7 +441,7 @@ export function hostedPromptBatchPlan(
     if (
       (requestPolicy === "runware-luna-grounded-v2" ||
         requestPolicy === "runware-luna-grounded-v3" ||
-        requestPolicy === "runware-luna-grounded-v4") &&
+        ["runware-luna-grounded-v4", "runware-luna-grounded-v5"].includes(requestPolicy)) &&
       (!literalCharacterLimits ||
         Object.values(literalCharacterLimits).some(
           (limit) => !Number.isSafeInteger(limit) || limit < 90,
@@ -478,6 +479,8 @@ export async function recoverHostedPromptBatchPlan(
   binding: HostedPromptBatchPlanBinding,
 ): Promise<PromptBatchPlan> {
   for (const policy of [
+    "runware-luna-grounded-v6",
+    "runware-luna-grounded-v5",
     "runware-luna-grounded-v4",
     "runware-luna-grounded-v3",
     "runware-luna-grounded-v2",
@@ -585,12 +588,16 @@ export async function runHostedPromptExecution(input: {
   const authority = {
     ...input.authority,
     compilerPolicy:
-      input.batchPlan.requestPolicy === "runware-luna-grounded-v4"
-        ? ("local-evidence-v2" as const)
-        : input.batchPlan.requestPolicy === "grounded-scenes-v1" ||
-            isRunwareLunaPromptPolicy(input.batchPlan.requestPolicy)
-          ? ("local-evidence-v1" as const)
-          : undefined,
+      input.batchPlan.requestPolicy === "runware-luna-grounded-v6"
+        ? ("local-evidence-v3" as const)
+        : ["runware-luna-grounded-v4", "runware-luna-grounded-v5"].includes(
+              input.batchPlan.requestPolicy ?? "legacy",
+            )
+          ? ("local-evidence-v2" as const)
+          : input.batchPlan.requestPolicy === "grounded-scenes-v1" ||
+              isRunwareLunaPromptPolicy(input.batchPlan.requestPolicy)
+            ? ("local-evidence-v1" as const)
+            : undefined,
   };
   const persistBatch = async (accepted: HostedAcceptedPromptBatch) => {
     await compileAndPersistHostedPromptBatch(authority, accepted, input.persistBatch);

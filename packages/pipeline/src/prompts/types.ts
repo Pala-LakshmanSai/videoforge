@@ -316,7 +316,7 @@ export interface PromptStyleComponents {
 }
 
 export interface CompilePromptRequest {
-  readonly compilerPolicy?: "local-evidence-v1" | "local-evidence-v2";
+  readonly compilerPolicy?: "local-evidence-v1" | "local-evidence-v2" | "local-evidence-v3";
   readonly styleProfileHash?: Sha256Digest;
   readonly writerOutput: PromptWriterSceneOutput;
   readonly expectedScene: PromptSceneInput;
@@ -332,7 +332,8 @@ export interface CompiledImagePrompt {
     | "prompt-compiler-v3"
     | "prompt-compiler-v4"
     | "prompt-compiler-v5"
-    | "prompt-compiler-v6";
+    | "prompt-compiler-v6"
+    | "prompt-compiler-v7";
   readonly scenePromptWriterVersion: typeof SCENE_PROMPT_WRITER_VERSION;
   readonly sceneId: string;
   readonly components: {

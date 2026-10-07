@@ -26,7 +26,7 @@ export interface PromptExecutionCommand {
 
 export interface PromptExecutionAuthority {
   /** Selected by the separately sealed provider batch plan; omitted for legacy execution. */
-  readonly compilerPolicy?: "local-evidence-v1" | "local-evidence-v2";
+  readonly compilerPolicy?: "local-evidence-v1" | "local-evidence-v2" | "local-evidence-v3";
   readonly workspaceId: string;
   readonly projectId: string;
   readonly revisionId: string;

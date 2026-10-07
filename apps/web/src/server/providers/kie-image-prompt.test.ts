@@ -28,6 +28,67 @@ function compiled(subject: string, action: string, environment: string): Compile
   } as CompiledImagePrompt;
 }
 describe("fresh photographic image wire policy", () => {
+  it.each(["hands action", "wide establishing", "face closeup", "object detail"])(
+    "bounds v7 long custom style and scene fields for %s without a second rejection",
+    (role) => {
+      const base = compiled(
+        "Worker " + "subject detail ".repeat(120),
+        "Cleans " + "action detail ".repeat(120),
+        "Garage " + "environment detail ".repeat(120),
+      );
+      const source = {
+        ...base,
+        promptCompilerVersion: "prompt-compiler-v7",
+        components: {
+          ...base.components,
+          cropGuidance: "Wide horizontal view ".repeat(200),
+          stylePositiveSuffix: "Custom photographic style ".repeat(200),
+          continuityAndShotRole: `viewpoint: ${role}; ${"same person ".repeat(200)}`,
+          extraPromptKeywords: "Warm practical light ".repeat(200),
+          styleNegativeSuffix: "undesired style ".repeat(200),
+        },
+      } as CompiledImagePrompt;
+      const snapshot = JSON.stringify(source);
+      const wire = buildKieScenePrompt(source, {
+        handAnatomy: true,
+        wirePolicy: "photographic-v1",
+      });
+      expect(wire.length).toBeLessThanOrEqual(800);
+      for (const part of [
+        "Worker",
+        "Cleans",
+        "Garage",
+        "Custom photographic style",
+        "No visible text",
+      ])
+        expect(wire).toContain(part);
+      expect(wire).not.toMatch(/\b(subject|action|environment):/u);
+      if (role === "hands action") expect(wire).toContain("two hands max");
+      expect(buildKieScenePrompt(source, { handAnatomy: true })).toBe(wire);
+      expect(JSON.stringify(source)).toBe(snapshot);
+    },
+  );
+
+  it("keeps short v7 physical fields exact and leaves content acceptance upstream", () => {
+    const source = {
+      ...compiled("A screen showing a map", "A hand wipes it", "A car interior"),
+      promptCompilerVersion: "prompt-compiler-v7",
+    } as CompiledImagePrompt;
+    const wire = buildKieScenePrompt(source);
+    expect(wire).toContain("A screen showing a map, A hand wipes it, A car interior");
+    expect(wire.length).toBeLessThanOrEqual(800);
+  });
+
+  it("bounds v7 unbroken Unicode fields without splitting surrogate pairs", () => {
+    const source = {
+      ...compiled("😀".repeat(1000), "🛠️".repeat(1000), "🏠".repeat(1000)),
+      promptCompilerVersion: "prompt-compiler-v7",
+    } as CompiledImagePrompt;
+    const wire = buildKieScenePrompt(source);
+    expect(wire.length).toBeLessThanOrEqual(800);
+    expect(() => encodeURIComponent(wire)).not.toThrow();
+  });
+
   it("keeps v4/v5 wire bytes exact and gives v6 its full bounded literal allowance", () => {
     const source = compiled("A worker", "tightens a bolt", "A garage");
     const original = JSON.stringify(source);

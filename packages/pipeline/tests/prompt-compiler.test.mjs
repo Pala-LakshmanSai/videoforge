@@ -49,6 +49,80 @@ test("screen-wash physical compounds never exempt another screen or graphic requ
     PipelineDomainError,
   );
 });
+
+test("only explicit blank or off device surfaces pass the shared screen guard", () => {
+  assert.doesNotThrow(() =>
+    assertNoHardPromptConflict("A blank unlit screen shows no content.", []),
+  );
+  assert.doesNotThrow(() =>
+    assertNoHardPromptConflict("A blank unlit screen. It shows no content.", []),
+  );
+  assert.throws(
+    () => assertNoHardPromptConflict("A blank unlit screen carries a picture of a dog.", []),
+    PipelineDomainError,
+  );
+  assert.throws(
+    () => assertNoHardPromptConflict("A blank unlit screen. It shows a dog.", []),
+    PipelineDomainError,
+  );
+  assert.doesNotThrow(() =>
+    assertNoHardPromptConflict("A person shows the blank unlit screen to a mechanic.", []),
+  );
+  assert.doesNotThrow(() =>
+    assertNoHardPromptConflict("A man is shown cleaning the blank unlit screen.", []),
+  );
+  assert.doesNotThrow(() =>
+    assertNoHardPromptConflict("A child holds a cloth beside an unlit screen.", []),
+  );
+  assert.doesNotThrow(() =>
+    assertNoHardPromptConflict("A blank unlit screen beside a framed photograph.", []),
+  );
+  assert.doesNotThrow(() =>
+    assertNoHardPromptConflict("A framed portrait on a wall beside a blank unlit screen.", []),
+  );
+  for (const screen of ["screen", "touchscreen", "touch screen"]) {
+    for (const qualifier of ["blank unlit", "switched-off", "powered off"])
+      assert.doesNotThrow(() =>
+        assertNoHardPromptConflict(`A cloth touches the ${qualifier} ${screen}.`, []),
+      );
+    assert.throws(
+      () => assertNoHardPromptConflict(`A cloth touches the ${screen}.`, []),
+      PipelineDomainError,
+    );
+    for (const content of [
+      "displaying a route",
+      "showing a dog",
+      "displays a landscape",
+      "showing an image",
+      "with icons",
+      "with a map",
+      "with a chart",
+      ", displaying digits",
+      ", a menu appears",
+      "beside another electronic screen",
+      "with a caption",
+      "with an overlay UI",
+    ]) {
+      assert.throws(
+        () => assertNoHardPromptConflict(`A blank unlit ${screen} ${content}.`, []),
+        PipelineDomainError,
+        content,
+      );
+    }
+  }
+  assert.throws(
+    () => assertNoHardPromptConflict("A landscape projected onto the blank unlit screen.", []),
+    PipelineDomainError,
+  );
+  assert.throws(
+    () => assertNoHardPromptConflict("A photograph on the blank unlit screen.", []),
+    PipelineDomainError,
+  );
+  assert.throws(
+    () => assertNoHardPromptConflict("A blank unlit screen with a portrait.", []),
+    PipelineDomainError,
+  );
+});
 const layouts = ["IMAGE_FULL", "SPLIT_RIGHT_IMAGE"];
 
 function scenes(count) {

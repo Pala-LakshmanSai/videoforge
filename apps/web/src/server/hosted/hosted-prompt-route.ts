@@ -882,12 +882,16 @@ export async function writeProjectPrompts(
                   ? original.claim?.provider_task_uuid
                   : undefined,
               ),
-            batchPlan.requestPolicy === "runware-luna-grounded-v4"
-              ? "local-evidence-v2"
-              : ["grounded-scenes-v1"].includes(batchPlan.requestPolicy ?? "legacy") ||
-                  isRunwareLunaPromptPolicy(batchPlan.requestPolicy)
-                ? "local-evidence-v1"
-                : undefined,
+            batchPlan.requestPolicy === "runware-luna-grounded-v6"
+              ? "local-evidence-v3"
+              : ["runware-luna-grounded-v4", "runware-luna-grounded-v5"].includes(
+                    batchPlan.requestPolicy ?? "legacy",
+                  )
+                ? "local-evidence-v2"
+                : ["grounded-scenes-v1"].includes(batchPlan.requestPolicy ?? "legacy") ||
+                    isRunwareLunaPromptPolicy(batchPlan.requestPolicy)
+                  ? "local-evidence-v1"
+                  : undefined,
           );
         if (acceptedBatch && saved.accepted_batch_count + 1 === saved.planned_batch_count)
           return await completeAcceptedRun();
@@ -1124,12 +1128,16 @@ export async function writeProjectPrompts(
         authority,
         firstBatch,
         (batch) => recordHostedPromptBatch(pool, scope.account_id, persistedRunId, batch),
-        batchPlan.requestPolicy === "runware-luna-grounded-v4"
-          ? "local-evidence-v2"
-          : ["grounded-scenes-v1"].includes(batchPlan.requestPolicy ?? "legacy") ||
-              isRunwareLunaPromptPolicy(batchPlan.requestPolicy)
-            ? "local-evidence-v1"
-            : undefined,
+        batchPlan.requestPolicy === "runware-luna-grounded-v6"
+          ? "local-evidence-v3"
+          : ["runware-luna-grounded-v4", "runware-luna-grounded-v5"].includes(
+                batchPlan.requestPolicy ?? "legacy",
+              )
+            ? "local-evidence-v2"
+            : ["grounded-scenes-v1"].includes(batchPlan.requestPolicy ?? "legacy") ||
+                isRunwareLunaPromptPolicy(batchPlan.requestPolicy)
+              ? "local-evidence-v1"
+              : undefined,
       );
     return response(
       {

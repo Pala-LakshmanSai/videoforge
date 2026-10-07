@@ -14,10 +14,13 @@ import {
   assertNoHardPromptConflict,
   hasLegacyPhysicalBorderConflict,
   hasPreGrammarBorderConflict,
+  hasPrePhysicalScreenConflict,
   plainGeometry,
 } from "./compiler.js";
 import {
   projectRunwareLunaPhysicalProductCategory,
+  projectTextFreePhysicalScreens,
+  physicalScreensHaveLocalSource,
   projectTextFreePhysicalSurfaces,
   removeRunwareLunaNegativeProductSurfaceMentions,
 } from "./physical-surface.js";
@@ -49,6 +52,10 @@ export const RUNWARE_LUNA_PHOTOGRAPHIC_PROMPT_REQUEST_VERSION =
   "runware-gpt-6-luna-prompt-request-v40" as const;
 export const RUNWARE_LUNA_COMPACT_PROMPT_REQUEST_VERSION =
   "runware-gpt-6-luna-prompt-request-v41" as const;
+export const RUNWARE_LUNA_PHYSICAL_SCREEN_PROMPT_REQUEST_VERSION =
+  "runware-gpt-6-luna-prompt-request-v42" as const;
+export const RUNWARE_LUNA_STRUCTURAL_PROMPT_REQUEST_VERSION =
+  "runware-gpt-6-luna-prompt-request-v43" as const;
 export const RUNWARE_LUNA_PROMPT_MAX_OUTPUT_TOKENS = 6_144 as const;
 export type PromptWriterModel = typeof RUNWARE_PROMPT_MODEL | typeof RUNWARE_LUNA_PROMPT_MODEL;
 // v24: compact batch instructions without removing grounding, quality or output constraints.
@@ -67,22 +74,30 @@ export type PromptRequestPolicy =
   | "runware-luna-grounded-v1"
   | "runware-luna-grounded-v2"
   | "runware-luna-grounded-v3"
-  | "runware-luna-grounded-v4";
+  | "runware-luna-grounded-v4"
+  | "runware-luna-grounded-v5"
+  | "runware-luna-grounded-v6";
 export const isRunwareLunaPromptPolicy = (
   policy: PromptRequestPolicy | undefined,
 ): policy is
   | "runware-luna-grounded-v1"
   | "runware-luna-grounded-v2"
   | "runware-luna-grounded-v3"
-  | "runware-luna-grounded-v4" =>
+  | "runware-luna-grounded-v4"
+  | "runware-luna-grounded-v5"
+  | "runware-luna-grounded-v6" =>
   policy === "runware-luna-grounded-v1" ||
   policy === "runware-luna-grounded-v2" ||
   policy === "runware-luna-grounded-v3" ||
-  policy === "runware-luna-grounded-v4";
+  policy === "runware-luna-grounded-v4" ||
+  policy === "runware-luna-grounded-v5" ||
+  policy === "runware-luna-grounded-v6";
 const usesLunaPerSceneBudget = (policy: PromptRequestPolicy): boolean =>
   policy === "runware-luna-grounded-v2" ||
   policy === "runware-luna-grounded-v3" ||
-  policy === "runware-luna-grounded-v4";
+  policy === "runware-luna-grounded-v4" ||
+  policy === "runware-luna-grounded-v5" ||
+  policy === "runware-luna-grounded-v6";
 export const GROUNDED_SCENES_PROMPT_REQUEST_VERSION =
   "runware-gemini-3.5-flash-prompt-request-v32" as const;
 export const VALIDATED_SCENES_PROMPT_REQUEST_VERSION =
@@ -107,6 +122,8 @@ type PromptRequestVersion =
   | typeof RUNWARE_LUNA_SCENE_BUDGET_PROMPT_REQUEST_VERSION
   | typeof RUNWARE_LUNA_PHOTOGRAPHIC_PROMPT_REQUEST_VERSION
   | typeof RUNWARE_LUNA_COMPACT_PROMPT_REQUEST_VERSION
+  | typeof RUNWARE_LUNA_PHYSICAL_SCREEN_PROMPT_REQUEST_VERSION
+  | typeof RUNWARE_LUNA_STRUCTURAL_PROMPT_REQUEST_VERSION
   | typeof VALIDATED_SCENES_PROMPT_REQUEST_VERSION
   | typeof ASYNC_NO_GRAPHICS_PROMPT_REQUEST_VERSION
   | typeof NO_GRAPHICS_V2_PROMPT_REQUEST_VERSION
@@ -252,6 +269,10 @@ const photographicLunaSystemPrompt = (base: string): string =>
       "Fill all three literal fields with concise, complete, positively supported physical facts; each field must be a complete standalone description ending in a period.",
       "Fill all three literal fields with concise, complete physical facts ending in periods; they combine into one photograph, never standalone captions.",
     );
+
+/** v42 only; paid v41 requests retain their original blanket screen instruction. */
+const physicalScreenLunaSystemPrompt = (base: string): string =>
+  `${base.replaceAll("UI/screens", "displayed UI or screen content")} PHYSICAL SCREEN SURFACES: A locally supported real screen or touchscreen may appear as a blank, unlit physical surface, including cleaning or handling it. Preserve the supported person, contact, object and location. Explicitly qualify each screen mention as blank unlit. Never display text, digits, icons, menus, UI, maps, charts, graphs, imagery or other screen content; never invent a device absent from the local narration. A screen used to read information is not permission to show that information.`;
 
 const scopedGroundingContext = (context: string): string =>
   context
@@ -761,6 +782,33 @@ const projectLunaPhysicalField = (value: string): string =>
     includeProductContainerModifiers: true,
   });
 
+const projectLunaRequiredFields = (
+  row: Record<string, JsonValue>,
+  expected: PromptSceneInput,
+  requestPolicy: PromptRequestPolicy,
+): Record<string, JsonValue> => {
+  const source = [
+    expected.phrase,
+    expected.sentenceContext,
+    expected.priorContext ?? "",
+    expected.nextContext ?? "",
+  ].join(" ");
+  return {
+    ...row,
+    ...Object.fromEntries(
+      (["literal_subject", "action", "environment"] as const).map((field) => {
+        const value = projectLunaPhysicalField(row[field] as string);
+        return [
+          field,
+          requestPolicy === "runware-luna-grounded-v5"
+            ? projectTextFreePhysicalScreens(value, source)
+            : value,
+        ];
+      }),
+    ),
+  };
+};
+
 const LUNA_PRODUCT =
   "(?:bottles?|jars?|containers?|packages?|cartons?|cans?|boxes?|products?|goods|items?)";
 const LUNA_GRAPHIC =
@@ -979,6 +1027,8 @@ export function buildRunwarePromptRequest(
       "runware-luna-grounded-v2",
       "runware-luna-grounded-v3",
       "runware-luna-grounded-v4",
+      "runware-luna-grounded-v5",
+      "runware-luna-grounded-v6",
     ].includes(requestPolicy)
   )
     fail("Prompt request policy is invalid.", ["requestPolicy"]);
@@ -1040,37 +1090,41 @@ export function buildRunwarePromptRequest(
   const validatedScenes = requestPolicy === "validated-scenes-v1" || groundedScenes;
   const asyncDelivery = requestPolicy === "no-graphics-async-v1" || validatedScenes;
   const requestVersion: PromptRequestVersion =
-    requestPolicy === "runware-luna-grounded-v4"
-      ? RUNWARE_LUNA_COMPACT_PROMPT_REQUEST_VERSION
-      : requestPolicy === "runware-luna-grounded-v3"
-        ? RUNWARE_LUNA_PHOTOGRAPHIC_PROMPT_REQUEST_VERSION
-        : lunaModel
-          ? usesLunaPerSceneBudget(requestPolicy)
-            ? RUNWARE_LUNA_SCENE_BUDGET_PROMPT_REQUEST_VERSION
-            : RUNWARE_LUNA_PROMPT_REQUEST_VERSION
-          : groundedScenes
-            ? GROUNDED_SCENES_PROMPT_REQUEST_VERSION
-            : validatedScenes
-              ? VALIDATED_SCENES_PROMPT_REQUEST_VERSION
-              : asyncDelivery
-                ? ASYNC_NO_GRAPHICS_PROMPT_REQUEST_VERSION
-                : contentRepair === "no-text-v2" && requestPolicy !== "no-graphics-v2"
-                  ? "runware-prompt-content-repair-v2"
-                  : contentRepair &&
-                      requestPolicy !== "no-graphics-v1" &&
-                      requestPolicy !== "no-graphics-v2"
-                    ? "runware-prompt-content-repair-v1"
-                    : requestPolicy === "no-graphics-v2"
-                      ? NO_GRAPHICS_V2_PROMPT_REQUEST_VERSION
-                      : requestPolicy === "no-graphics-v1"
-                        ? NO_GRAPHICS_PROMPT_REQUEST_VERSION
-                        : requestPolicy === "physical-placement-v2"
-                          ? PHYSICAL_PLACEMENT_V2_PROMPT_REQUEST_VERSION
-                          : requestPolicy === "physical-placement-v1"
-                            ? PHYSICAL_PLACEMENT_PROMPT_REQUEST_VERSION
-                            : natural
-                              ? NATURAL_DOCUMENTARY_PROMPT_REQUEST_VERSION
-                              : RUNWARE_PROMPT_REQUEST_VERSION;
+    requestPolicy === "runware-luna-grounded-v6"
+      ? RUNWARE_LUNA_STRUCTURAL_PROMPT_REQUEST_VERSION
+      : requestPolicy === "runware-luna-grounded-v5"
+        ? RUNWARE_LUNA_PHYSICAL_SCREEN_PROMPT_REQUEST_VERSION
+        : requestPolicy === "runware-luna-grounded-v4"
+          ? RUNWARE_LUNA_COMPACT_PROMPT_REQUEST_VERSION
+          : requestPolicy === "runware-luna-grounded-v3"
+            ? RUNWARE_LUNA_PHOTOGRAPHIC_PROMPT_REQUEST_VERSION
+            : lunaModel
+              ? usesLunaPerSceneBudget(requestPolicy)
+                ? RUNWARE_LUNA_SCENE_BUDGET_PROMPT_REQUEST_VERSION
+                : RUNWARE_LUNA_PROMPT_REQUEST_VERSION
+              : groundedScenes
+                ? GROUNDED_SCENES_PROMPT_REQUEST_VERSION
+                : validatedScenes
+                  ? VALIDATED_SCENES_PROMPT_REQUEST_VERSION
+                  : asyncDelivery
+                    ? ASYNC_NO_GRAPHICS_PROMPT_REQUEST_VERSION
+                    : contentRepair === "no-text-v2" && requestPolicy !== "no-graphics-v2"
+                      ? "runware-prompt-content-repair-v2"
+                      : contentRepair &&
+                          requestPolicy !== "no-graphics-v1" &&
+                          requestPolicy !== "no-graphics-v2"
+                        ? "runware-prompt-content-repair-v1"
+                        : requestPolicy === "no-graphics-v2"
+                          ? NO_GRAPHICS_V2_PROMPT_REQUEST_VERSION
+                          : requestPolicy === "no-graphics-v1"
+                            ? NO_GRAPHICS_PROMPT_REQUEST_VERSION
+                            : requestPolicy === "physical-placement-v2"
+                              ? PHYSICAL_PLACEMENT_V2_PROMPT_REQUEST_VERSION
+                              : requestPolicy === "physical-placement-v1"
+                                ? PHYSICAL_PLACEMENT_PROMPT_REQUEST_VERSION
+                                : natural
+                                  ? NATURAL_DOCUMENTARY_PROMPT_REQUEST_VERSION
+                                  : RUNWARE_PROMPT_REQUEST_VERSION;
   const legacySystemPrompt = natural
     ? naturalDocumentaryWriterSystemPrompt(
         usesLunaPerSceneBudget(requestPolicy) ? 720 : (batch.literalCharacterLimit ?? 0),
@@ -1078,7 +1132,7 @@ export function buildRunwarePromptRequest(
     : SCENE_PROMPT_WRITER_SYSTEM_PROMPT;
   const validatedSystemPrompt = validatedScenesSystemPrompt(legacySystemPrompt);
   const versionedSystemPrompt = validatedScenes
-    ? `${lunaModel ? runwareLunaPrioritySystemPrompt(validatedSystemPrompt) : validatedSystemPrompt}${groundedScenes ? ` ${GROUNDED_SCENES_WRITER_INSTRUCTION}` : ""}${lunaModel ? ` ${RUNWARE_LUNA_UNMARKED_PRODUCT_INSTRUCTION} ${RUNWARE_LUNA_SOURCE_GROUNDING_INSTRUCTION} ${usesLunaPerSceneBudget(requestPolicy) ? lunaPerSceneBudgetInstruction(batch.literalCharacterLimits, batch.scenes) : lunaLiteralBudgetInstruction(batch.literalCharacterLimit)}` : ""}`
+    ? `${lunaModel ? runwareLunaPrioritySystemPrompt(validatedSystemPrompt) : validatedSystemPrompt}${groundedScenes ? ` ${GROUNDED_SCENES_WRITER_INSTRUCTION}` : ""}${lunaModel ? ` ${RUNWARE_LUNA_UNMARKED_PRODUCT_INSTRUCTION} ${RUNWARE_LUNA_SOURCE_GROUNDING_INSTRUCTION} ${requestPolicy === "runware-luna-grounded-v6" ? "Keep scene descriptions concise; preserve the central subject, action and setting." : usesLunaPerSceneBudget(requestPolicy) ? lunaPerSceneBudgetInstruction(batch.literalCharacterLimits, batch.scenes) : lunaLiteralBudgetInstruction(batch.literalCharacterLimit)}` : ""}`
     : requestPolicy === "physical-placement-v2" ||
         requestPolicy === "no-graphics-v1" ||
         requestPolicy === "no-graphics-v2" ||
@@ -1088,9 +1142,11 @@ export function buildRunwarePromptRequest(
         ? `${legacySystemPrompt} ${PHYSICAL_PLACEMENT_WRITER_INSTRUCTION}`
         : legacySystemPrompt;
   const systemPrompt =
-    requestPolicy === "runware-luna-grounded-v3" || requestPolicy === "runware-luna-grounded-v4"
-      ? photographicLunaSystemPrompt(versionedSystemPrompt)
-      : versionedSystemPrompt;
+    requestPolicy === "runware-luna-grounded-v5" || requestPolicy === "runware-luna-grounded-v6"
+      ? physicalScreenLunaSystemPrompt(photographicLunaSystemPrompt(versionedSystemPrompt))
+      : requestPolicy === "runware-luna-grounded-v3" || requestPolicy === "runware-luna-grounded-v4"
+        ? photographicLunaSystemPrompt(versionedSystemPrompt)
+        : versionedSystemPrompt;
   const payload = Object.freeze({
     batch_id: batch.batchId,
     attempt_index: attemptIndex,
@@ -1164,8 +1220,18 @@ export function buildRunwarePromptRequest(
             schema: lunaModel
               ? openAiStrictScenesResponseSchema(
                   batch.batchId,
-                  requestPolicy === "runware-luna-grounded-v4" ? scenes : batch.scenes,
-                  requestPolicy === "runware-luna-grounded-v4",
+                  [
+                    "runware-luna-grounded-v4",
+                    "runware-luna-grounded-v5",
+                    "runware-luna-grounded-v6",
+                  ].includes(requestPolicy)
+                    ? scenes
+                    : batch.scenes,
+                  [
+                    "runware-luna-grounded-v4",
+                    "runware-luna-grounded-v5",
+                    "runware-luna-grounded-v6",
+                  ].includes(requestPolicy),
                 )
               : validatedScenesResponseSchema(batch.batchId, scenes),
           },
@@ -1248,6 +1314,7 @@ const metadataDiagnostic = (
   maximumBatchCostUsd: number,
   requestedSceneCount: number,
   expectedModel: PromptWriterModel,
+  allowCompleteLength = false,
 ): RunwarePromptValidationDiagnostic | null => {
   const diagnostic = (reason: RunwarePromptValidationReason): RunwarePromptValidationDiagnostic =>
     Object.freeze({
@@ -1272,7 +1339,10 @@ const metadataDiagnostic = (
     (result.wireHash !== undefined && !SHA256.test(result.wireHash))
   )
     return diagnostic("usage");
-  if (result.finishReason !== "stop") return diagnostic("finish_reason");
+  // The fresh policy can consume a complete JSON answer at the token boundary.
+  // Exact scene structure is still checked below before any scene is accepted.
+  if (result.finishReason !== "stop" && !(allowCompleteLength && result.finishReason === "length"))
+    return diagnostic("finish_reason");
   if (result.providerModel !== null && result.providerModel !== expectedModel)
     return diagnostic("provider_model");
   return null;
@@ -1334,9 +1404,13 @@ const normalizeReturnedScene = (
   batch: PromptBatch,
   expected: PromptSceneInput,
   candidate: JsonValue,
+  hardConflict = hasHardPromptConflict,
+  structuralOnly = false,
 ): PromptWriterSceneOutput | null => {
   const row = asRecord(candidate);
-  if (!row || !hasSceneOutputShape(candidate)) return null;
+  if (!row || !hasSceneOutputShape(candidate, structuralOnly)) return null;
+  // Fresh structural acceptance keeps the raw answer in the receipt and adapts
+  // strings to the existing durable storage shape without a paid correction.
 
   const lightingFallback = boundedProviderText(
     batch.styleTreatment?.lighting ?? "",
@@ -1345,19 +1419,33 @@ const normalizeReturnedScene = (
   );
   // Required facts have passed validation before normalization. Do not replace a
   // rejected action with filler: the compiler would send that filler to images.
-  const literalSubject = boundedProviderText(row.literal_subject as string, 240, "");
-  const action = boundedProviderText(row.action as string, 240, "");
-  const environment = boundedProviderText(row.environment as string, 240, "");
-  const lightingContext = safeBoundedProviderText(
-    row.lighting_context as string,
-    120,
-    lightingFallback,
-    "lighting consistent with the supplied scene context",
+  const literalSubject = boundedProviderText(
+    row.literal_subject as string,
+    240,
+    structuralOnly ? expected.phrase : "",
   );
+  const action = boundedProviderText(
+    row.action as string,
+    240,
+    structuralOnly ? expected.phrase : "",
+  );
+  const environment = boundedProviderText(
+    row.environment as string,
+    240,
+    structuralOnly ? expected.sentenceContext : "",
+  );
+  const lightingContext = structuralOnly
+    ? boundedProviderText(row.lighting_context as string, 120, lightingFallback)
+    : safeBoundedProviderText(
+        row.lighting_context as string,
+        120,
+        lightingFallback,
+        "lighting consistent with the supplied scene context",
+      );
   const continuityTags: string[] = [];
   const seenTags = new Set<string>();
   for (const rawTag of row.continuity_tags as string[]) {
-    if (hasHardPromptConflict(rawTag)) continue;
+    if (!structuralOnly && hasHardPromptConflict(rawTag)) continue;
     const tag = boundedProviderText(rawTag, 80, "");
     if (tag.length === 0) continue;
     const key = tag.toLocaleLowerCase("en-US");
@@ -1390,16 +1478,19 @@ const normalizeReturnedScene = (
     );
     const scene = validated.scenes[0];
     if (!scene) return null;
-    assertNoHardPromptConflict(
-      [
-        scene.literal_subject,
-        scene.action,
-        scene.environment,
-        scene.lighting_context,
-        ...scene.continuity_tags,
-      ].join(", "),
-      ["scenes", expected.sceneId],
-    );
+    if (
+      !structuralOnly &&
+      hardConflict(
+        [
+          scene.literal_subject,
+          scene.action,
+          scene.environment,
+          scene.lighting_context,
+          ...scene.continuity_tags,
+        ].join(", "),
+      )
+    )
+      return null;
     return scene;
   } catch (error) {
     if (error instanceof PipelineDomainError) return null;
@@ -1413,9 +1504,26 @@ const singleSceneValidation = (
   candidate: JsonValue,
   semanticQualityMode: "advisory" | "enforce",
   requestPolicy: PromptRequestPolicy,
+  hardConflict = hasHardPromptConflict,
 ): PromptWriterSceneOutput | null => {
   let row = asRecord(candidate);
-  if (!row || !hasSceneOutputShape(candidate)) return null;
+  if (!row || !hasSceneOutputShape(candidate, requestPolicy === "runware-luna-grounded-v6"))
+    return null;
+  if (requestPolicy === "runware-luna-grounded-v6")
+    return normalizeReturnedScene(batch, expected, row, hardConflict, true);
+  if (
+    requestPolicy === "runware-luna-grounded-v5" &&
+    !physicalScreensHaveLocalSource(
+      [row.literal_subject, row.action, row.environment].join(" "),
+      [
+        expected.phrase,
+        expected.sentenceContext,
+        expected.priorContext ?? "",
+        expected.nextContext ?? "",
+      ].join(" "),
+    )
+  )
+    return null;
   if (isRunwareLunaPromptPolicy(requestPolicy)) {
     if (lunaProductSurfaceGraphicFields(row).length > 0) return null;
     if (
@@ -1424,12 +1532,7 @@ const singleSceneValidation = (
       )
     )
       return null;
-    row = {
-      ...row,
-      literal_subject: projectLunaPhysicalField(row.literal_subject as string),
-      action: projectLunaPhysicalField(row.action as string),
-      environment: projectLunaPhysicalField(row.environment as string),
-    };
+    row = projectLunaRequiredFields(row, expected, requestPolicy);
   }
   if (semanticQualityMode === "advisory") {
     row = {
@@ -1451,7 +1554,7 @@ const singleSceneValidation = (
       /\b(?:the narration-supported physical (?:subject|environment)|depicting the narration-supported visible moment)\b/iu.test(
         normalized,
       ) ||
-      hasHardPromptConflict(source)
+      hardConflict(source)
     )
       return null;
   }
@@ -1460,7 +1563,8 @@ const singleSceneValidation = (
     !lunaLiteralFieldsWithinLimit(batch, row, requestPolicy)
   )
     return null;
-  if (semanticQualityMode === "advisory") return normalizeReturnedScene(batch, expected, row);
+  if (semanticQualityMode === "advisory")
+    return normalizeReturnedScene(batch, expected, row, hardConflict);
   try {
     const validated = validatePromptWriterOutput(
       Object.freeze({ ...batch, scenes: Object.freeze([expected]) }),
@@ -1471,16 +1575,18 @@ const singleSceneValidation = (
     );
     const scene = validated.scenes[0];
     if (!scene) return null;
-    assertNoHardPromptConflict(
-      [
-        scene.literal_subject,
-        scene.action,
-        scene.environment,
-        scene.lighting_context,
-        ...scene.continuity_tags,
-      ].join(", "),
-      ["scenes", expected.sceneId],
-    );
+    if (
+      hardConflict(
+        [
+          scene.literal_subject,
+          scene.action,
+          scene.environment,
+          scene.lighting_context,
+          ...scene.continuity_tags,
+        ].join(", "),
+      )
+    )
+      return null;
     return scene;
   } catch (error) {
     if (error instanceof PipelineDomainError) return null;
@@ -1503,9 +1609,9 @@ const PROMPT_SCENE_OUTPUT_KEYS = [
  * Check only the provider-wire shape. Content bounds and
  * hard prompt conflicts are intentionally left to the scene-quality check.
  */
-const hasSceneOutputShape = (candidate: JsonValue): boolean => {
+const hasSceneOutputShape = (candidate: JsonValue, structuralOnly = false): boolean => {
   const row = asRecord(candidate);
-  if (!row || !exactKeys(row, PROMPT_SCENE_OUTPUT_KEYS)) return false;
+  if (!row || (!structuralOnly && !exactKeys(row, PROMPT_SCENE_OUTPUT_KEYS))) return false;
   if (
     typeof row.scene_id !== "string" ||
     typeof row.literal_subject !== "string" ||
@@ -1518,7 +1624,7 @@ const hasSceneOutputShape = (candidate: JsonValue): boolean => {
     return false;
   return (
     Array.isArray(row.continuity_tags) &&
-    row.continuity_tags.length <= 12 &&
+    (structuralOnly || row.continuity_tags.length <= 12) &&
     row.continuity_tags.every((tag) => typeof tag === "string")
   );
 };
@@ -2652,6 +2758,7 @@ const evaluateOutput = (
   semanticQualityMode: "advisory" | "enforce",
   allowIncomplete = false,
   requestPolicy: PromptRequestPolicy = "legacy",
+  hardConflict = hasHardPromptConflict,
 ): Omit<AttemptEvaluation, "requestSha256" | "costUsd"> => {
   const requestedSceneCount = requestedScenes.length;
   if (outputText.length === 0 || outputText.length > 2_000_000)
@@ -2679,7 +2786,8 @@ const evaluateOutput = (
     );
   }
   const record = asRecord(parsed);
-  if (!record || !exactKeys(record, ["batch_id", "scenes"]))
+  const structuralOnly = requestPolicy === "runware-luna-grounded-v6";
+  if (!record || (!structuralOnly && !exactKeys(record, ["batch_id", "scenes"])))
     return validationFail(
       "schema_identity",
       "top_level_schema",
@@ -2689,7 +2797,7 @@ const evaluateOutput = (
       requestedSceneCount,
       "Prompt response top-level schema is invalid.",
     );
-  if (record.batch_id !== batch.batchId)
+  if (typeof record.batch_id !== "string" || (!structuralOnly && record.batch_id !== batch.batchId))
     return validationFail(
       "schema_identity",
       "batch_identity",
@@ -2711,7 +2819,43 @@ const evaluateOutput = (
       "Prompt response scene collection is invalid.",
       ["scenes"],
     );
-  const responseScenes = record.scenes;
+  let responseScenes = record.scenes;
+  if (structuralOnly) {
+    // The sealed transport request owns scene identity. Keep only the first
+    // usable row for each owned ID; never assign a duplicate/foreign scene's
+    // content to another scene. Missing facts come from that scene's own source.
+    const ownedIds = new Set(requestedScenes.map((scene) => scene.sceneId));
+    const rows = new Map<string, JsonValue>();
+    for (const candidate of responseScenes) {
+      if (!hasSceneOutputShape(candidate, true))
+        return validationFail(
+          "schema_identity",
+          "scene_schema",
+          requestedSceneCount,
+          responseScenes.length,
+          0,
+          requestedSceneCount,
+          "Prompt response scene shape is invalid.",
+          ["scenes"],
+        );
+      const row = asRecord(candidate)!;
+      const sceneId = row.scene_id as string;
+      if (ownedIds.has(sceneId) && !rows.has(sceneId)) rows.set(sceneId, candidate);
+    }
+    responseScenes = requestedScenes.map(
+      (scene) =>
+        rows.get(scene.sceneId) ?? {
+          scene_id: scene.sceneId,
+          literal_subject: scene.phrase,
+          action: scene.phrase,
+          environment: scene.sentenceContext,
+          in_image_shot_role: scene.inImageShotRole,
+          lighting_context: batch.styleTreatment?.lighting ?? "available practical light",
+          continuity_tags: [],
+          prompt_core: scene.phrase,
+        },
+    );
+  }
   if (responseScenes.length !== requestedSceneCount)
     return validationFail(
       "schema_identity",
@@ -2756,6 +2900,7 @@ const evaluateOutput = (
       );
     seen.add(sceneId);
     if (
+      requestPolicy !== "runware-luna-grounded-v6" &&
       Object.hasOwn(row, "in_image_shot_role") &&
       row.in_image_shot_role !== expectedScene.inImageShotRole
     )
@@ -2769,7 +2914,7 @@ const evaluateOutput = (
         "Prompt response changed a code-assigned shot role.",
         ["scenes", sceneId],
       );
-    if (!hasSceneOutputShape(candidate))
+    if (!hasSceneOutputShape(candidate, requestPolicy === "runware-luna-grounded-v6"))
       return validationFail(
         "schema_identity",
         "scene_schema",
@@ -2786,9 +2931,11 @@ const evaluateOutput = (
       candidate,
       semanticQualityMode,
       requestPolicy,
+      hardConflict,
     );
     if (!valid) continue;
     if (
+      requestPolicy !== "runware-luna-grounded-v6" &&
       (requestPolicy === "grounded-scenes-v1" || isRunwareLunaPromptPolicy(requestPolicy)) &&
       groundedSceneFailures(batch, expectedScene, valid, requestPolicy).length > 0
     )
@@ -2799,7 +2946,7 @@ const evaluateOutput = (
       batch.storyContext.slice(0, 4_000),
     );
     if (relevanceFailure !== null) {
-      if (semanticQualityMode === "enforce")
+      if (semanticQualityMode === "enforce" && requestPolicy !== "runware-luna-grounded-v6")
         return validationFail(
           "scene_quality",
           relevanceFailure,
@@ -2843,7 +2990,7 @@ const evaluateOutput = (
       .toLocaleLowerCase("en-US");
     const previousSceneId = promptCoreOwners.get(normalizedCore);
     if (previousSceneId !== undefined) {
-      if (semanticQualityMode === "enforce")
+      if (semanticQualityMode === "enforce" && requestPolicy !== "runware-luna-grounded-v6")
         return validationFail(
           "scene_quality",
           "duplicate_prompt_core",
@@ -2890,7 +3037,23 @@ export function recoverRunwarePromptCorrection(
 ): RunwarePromptCorrection | null {
   const current = buildRunwarePromptCorrection(batch, outputText, requestPolicy);
   if (current && canonicalizeJson(current) === canonicalizeJson(sealed)) return current;
+  if (requestPolicy === "runware-luna-grounded-v6") return null;
   if (!isRunwareLunaPromptPolicy(requestPolicy)) return null;
+  if (requestPolicy !== "runware-luna-grounded-v5") {
+    const prePhysicalScreen = deriveRunwarePromptCorrection(
+      batch,
+      outputText,
+      requestPolicy,
+      null,
+      (value) =>
+        [
+          stripProviderControls(value.normalize("NFKC")),
+          removeProviderControls(value.normalize("NFKC")),
+        ].some(hasPrePhysicalScreenConflict),
+    );
+    if (prePhysicalScreen && canonicalizeJson(prePhysicalScreen) === canonicalizeJson(sealed))
+      return prePhysicalScreen;
+  }
   const preGrammar = deriveRunwarePromptCorrection(
     batch,
     outputText,
@@ -2914,6 +3077,7 @@ function deriveRunwarePromptCorrection(
   outputText: string,
   requestPolicy: PromptRequestPolicy,
   historicalBorderValidator: ((value: string) => boolean) | null,
+  hardConflict = hasHardPromptConflict,
 ): RunwarePromptCorrection | null {
   try {
     const evaluated = evaluateOutput(
@@ -2923,6 +3087,7 @@ function deriveRunwarePromptCorrection(
       "advisory",
       true,
       requestPolicy,
+      hardConflict,
     );
     const parsed = asRecord(parseJsonStrict(stripCodeFence(outputText)))!;
     const rows = (parsed.scenes as JsonValue[]).map((candidate) => asRecord(candidate)!);
@@ -2952,25 +3117,16 @@ function deriveRunwarePromptCorrection(
         ? new Set(lunaProductSurfaceGraphicFields(row))
         : new Set<"literal_subject" | "action" | "environment">();
       const normalizedRow = isRunwareLunaPromptPolicy(requestPolicy)
-        ? {
-            ...row,
-            literal_subject: projectLunaPhysicalField(row.literal_subject as string),
-            action: projectLunaPhysicalField(row.action as string),
-            environment: projectLunaPhysicalField(row.environment as string),
-          }
+        ? projectLunaRequiredFields(row, scene, requestPolicy)
         : row;
       for (const field of ["literal_subject", "action", "environment"] as const) {
         const value = isRunwareLunaPromptPolicy(requestPolicy)
-          ? projectLunaPhysicalField(row[field] as string)
+          ? (normalizedRow[field] as string)
           : projectTextFreePhysicalSurfaces(row[field] as string);
         const normalized = stripProviderControls(value.normalize("NFKC"))
           .replace(/\s+/gu, " ")
           .trim();
-        if (
-          lunaGraphicFields.has(field) ||
-          hasHardPromptConflict(value) ||
-          historicalBorderConflict(value)
-        )
+        if (lunaGraphicFields.has(field) || hardConflict(value) || historicalBorderConflict(value))
           failures.push(Object.freeze({ sceneId: scene.sceneId, field, reason: "hard_conflict" }));
         else if (
           isRunwareLunaPromptPolicy(requestPolicy) &&
@@ -3161,6 +3317,7 @@ export class RunwarePromptWriter implements PromptWriterPort {
       this.#maximumBatchCostUsd,
       scenes.length,
       request.request.model,
+      this.#requestPolicy === "runware-luna-grounded-v6",
     );
     if (metadataFailure !== null) {
       const costValid = Number.isFinite(result.costUsd) && result.costUsd >= 0;

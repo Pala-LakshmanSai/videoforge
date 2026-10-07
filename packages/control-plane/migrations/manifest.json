@@ -1548,6 +1548,24 @@
       "name": "runware_luna_compact_v4",
       "filename": "0295_runware_luna_compact_v4.sql",
       "sha256": "sha256:c2665e61e8d5ee3b1eb3e40c8a8683cdc5528f84b1b3323284eab0ef16e6dfb6"
+    },
+    {
+      "version": 296,
+      "name": "runware_luna_physical_screens_v5",
+      "filename": "0296_runware_luna_physical_screens_v5.sql",
+      "sha256": "sha256:3df610b47b9255067cf6d512a91f2a549f4e853ff86315cf63f065c4981229db"
+    },
+    {
+      "version": 297,
+      "name": "runware_luna_format_only_v6",
+      "filename": "0297_runware_luna_format_only_v6.sql",
+      "sha256": "sha256:6f05ac962a5f8de38047f5665b3afca87b9cc86aed6d386d8581f5f9c2f70c61"
+    },
+    {
+      "version": 298,
+      "name": "hosted_terminal_prompt_request_settle",
+      "filename": "0298_hosted_terminal_prompt_request_settle.sql",
+      "sha256": "sha256:9cf1e3bb7dbf0f32761f3425b1cd5288193048160c511e119b3d0ab7c85fed01"
     }
   ]
 }

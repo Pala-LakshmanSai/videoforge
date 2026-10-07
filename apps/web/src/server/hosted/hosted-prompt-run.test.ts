@@ -325,6 +325,8 @@ describe("versioned prompt request recovery", () => {
       // Exercises an actual planner budget rejection, not an invented provider error.
       expect(await recoverHostedPromptBatchPlan(authority, binding)).toEqual(legacy);
       expect(seen).toEqual([
+        "runware-luna-grounded-v6",
+        "runware-luna-grounded-v5",
         "runware-luna-grounded-v4",
         "runware-luna-grounded-v3",
         "runware-luna-grounded-v2",
@@ -352,15 +354,14 @@ describe("versioned prompt request recovery", () => {
 
   it("selects Luna for fresh plans with the preserved ten-scene and output ceilings", () => {
     const planned = hostedPromptBatchPlan(authorityFor(true));
-    expect(planned.requestPolicy).toBe("runware-luna-grounded-v4");
+    expect(planned.requestPolicy).toBe("runware-luna-grounded-v6");
     const pinnedV39 = hostedPromptBatchPlan(authorityFor(true), "runware-luna-grounded-v2");
-    for (const [index, entry] of planned.batches.entries()) {
-      for (const scene of entry.batch.scenes) {
-        expect(entry.batch.literalCharacterLimits![scene.sceneId]!).toBeGreaterThan(
-          pinnedV39.batches[index]!.batch.literalCharacterLimits![scene.sceneId]!,
-        );
-      }
-    }
+    expect(planned.batches.every((entry) => entry.batch.literalCharacterLimits === undefined)).toBe(
+      true,
+    );
+    expect(planned.batches.every((entry) => entry.batch.literalCharacterLimit === undefined)).toBe(
+      true,
+    );
     const pinnedV40 = hostedPromptBatchPlan(authorityFor(true), "runware-luna-grounded-v3");
     expect(pinnedV40.batches.map((entry) => entry.batch.literalCharacterLimits)).toEqual(
       pinnedV39.batches.map((entry) => entry.batch.literalCharacterLimits),
@@ -377,6 +378,8 @@ describe("versioned prompt request recovery", () => {
   });
 
   it.each([
+    "runware-luna-grounded-v6",
+    "runware-luna-grounded-v5",
     "runware-luna-grounded-v4",
     "runware-luna-grounded-v3",
     "runware-luna-grounded-v2",
@@ -412,7 +415,8 @@ describe("versioned prompt request recovery", () => {
     if (
       policy !== "runware-luna-grounded-v2" &&
       policy !== "runware-luna-grounded-v3" &&
-      policy !== "runware-luna-grounded-v4"
+      policy !== "runware-luna-grounded-v4" &&
+      policy !== "runware-luna-grounded-v5"
     )
       return;
     const first = planned.batches[0]!;
@@ -497,13 +501,13 @@ describe("versioned prompt request recovery", () => {
       identity,
       reservedCostMicroUsd: 8_000_000,
     });
-    const batchPlan = hostedPromptBatchPlan(authority);
+    const batchPlan = hostedPromptBatchPlan(authority, "runware-luna-grounded-v5");
     const binding = {
       plannedBatchCount: batchPlan.batchCount,
       plannedSceneCount: batchPlan.totalScenes,
       batchPlanHash: await sha256(canonicalJson(hostedPromptBatchPlanDocument(batchPlan))),
     };
-    expect(batchPlan.requestPolicy).toBe("runware-luna-grounded-v4");
+    expect(batchPlan.requestPolicy).toBe("runware-luna-grounded-v5");
     expect(batchPlan.batches).toHaveLength(16);
     expect(
       new Set(
@@ -894,6 +898,121 @@ describe("versioned prompt request recovery", () => {
     expect(noSubmit).not.toHaveBeenCalled();
   }, 30_000);
 
+  it.each([false, true])(
+    "accepts long and visually imperfect fresh responses without paid correction (natural=%s)",
+    async (natural) => {
+      const base = authorityFor(natural);
+      const authority = { ...base, recordedInputHash: promptExecutionInputHash(base) };
+      const batchPlan = hostedPromptBatchPlan(authority);
+      const binding = {
+        plannedBatchCount: batchPlan.batchCount,
+        plannedSceneCount: batchPlan.totalScenes,
+        batchPlanHash: await hostedPromptBatchPlanHash(batchPlan),
+      };
+      const fetcher = vi.fn(async (_url: unknown, init?: RequestInit) => {
+        const request = JSON.parse(String(init?.body));
+        const payload = JSON.parse(
+          request.messages.find((message: { role: string }) => message.role === "user").content,
+        );
+        expect(payload.correction).toBeUndefined();
+        const output = {
+          batch_id: "model-echo-mismatch",
+          scenes: payload.scenes
+            .map((scene: PromptFixtureScene) => ({
+              scene_id: scene.scene_id,
+              literal_subject: "A dashboard screen showing a map beside printed labels. ".repeat(
+                70,
+              ),
+              action: "Shows an unsupported chart and decorative border. ".repeat(70),
+              environment: "An invented room with captioned photographs. ".repeat(70),
+              in_image_shot_role: "REACTION_RESULT",
+              lighting_context: "studio light ".repeat(70),
+              continuity_tags: Array.from({ length: 30 }, () =>
+                "a very long repeated tag ".repeat(10),
+              ),
+              prompt_core: "A mismatched long core with a logo and animation. ".repeat(100),
+            }))
+            .reverse(),
+        };
+        output.scenes[output.scenes.length - 1]!.scene_id = output.scenes[0]!.scene_id;
+        return Response.json({
+          id: `chatcmpl-structure-${fetcher.mock.calls.length}`,
+          model: request.model,
+          choices: [
+            {
+              index: 0,
+              message: { role: "assistant", content: JSON.stringify(output) },
+              finish_reason: "stop",
+            },
+          ],
+          usage: { prompt_tokens: 100, completion_tokens: 200, total_tokens: 300 },
+        });
+      });
+      const persist = vi.fn(async () => undefined);
+      const persistBatch = vi.fn(async () => undefined);
+      const acceptedBatches: HostedRecoveredPromptBatch[] = [];
+      for (const entry of batchPlan.batches) {
+        const result = await dispatchOneHostedPromptBatch({
+          apiKey: "configured-test-key-value",
+          plan: batchPlan,
+          persistedBinding: binding,
+          batchOrdinal: entry.ordinal - 1,
+          remainingReservationMicroUsd: 2_000_000,
+          claim: async () => true,
+          recordResult: async () => {},
+          fetcher,
+        });
+        expect(result).not.toBeNull();
+        acceptedBatches.push({
+          ...result!,
+          scenes: result!.scenes.map((scene) => ({
+            sceneOrdinal: scene.sceneOrdinal,
+            sceneId: scene.scene.sceneId,
+            writerOutput: scene.writerOutput,
+          })),
+        });
+      }
+      const noHttp = vi.fn(async () => {
+        throw new Error("Saved responses must never replay");
+      });
+      const accepted = await runHostedPromptExecution({
+        scope: { workspaceId: authority.workspaceId, actorUserId: ids.workspace },
+        authority,
+        batchPlan,
+        persistedBatchPlanBinding: binding,
+        command: {
+          projectId: authority.projectId,
+          revisionId: authority.revisionId,
+          timelineId: authority.timelineId,
+          taskId: authority.taskId,
+          attemptId: authority.attemptId,
+          outboxId: authority.outboxId,
+          presentedClaimTokenHash: authority.claimTokenHash,
+        },
+        apiKey: "configured-test-key-value",
+        persist,
+        persistBatch,
+        fetcher: noHttp,
+        continuation: {
+          reservationMicroUsd: 2_000_000,
+          acceptedBatches,
+          beforeBatchSubmit: noHttp,
+        },
+      });
+      expect(accepted.compiledPrompts).toHaveLength(authority.scenes.length);
+      expect(fetcher).toHaveBeenCalledTimes(batchPlan.batchCount);
+      expect(persist).toHaveBeenCalledTimes(1);
+      expect(noHttp).not.toHaveBeenCalled();
+      expect(accepted.compiledPrompts[0]!.components.literalContent).toContain(
+        authority.scenes[0]!.phrase,
+      );
+      for (const prompt of accepted.compiledPrompts) {
+        expect(prompt.promptCompilerVersion).toBe("prompt-compiler-v7");
+        expect(buildKieScenePrompt(prompt, { handAnatomy: true }).length).toBeLessThanOrEqual(800);
+      }
+    },
+  );
+
   it("budgets Luna literals against the real Kie builder for custom styles and HANDS_ACTION", () => {
     const base = authorityFor(false);
     const custom = {
@@ -924,7 +1043,7 @@ describe("versioned prompt request recovery", () => {
     });
     expect(() => buildKieScenePrompt(overflowing, { handAnatomy: true })).toThrow("INPUT_INVALID");
 
-    const luna = hostedPromptBatchPlan(custom);
+    const luna = hostedPromptBatchPlan(custom, "runware-luna-grounded-v5");
     expect(luna.batches[0]?.batch.literalCharacterLimit).toBeUndefined();
     const scene = luna.batches[0]!.batch.scenes[0]!;
     const budget = luna.batches[0]?.batch.literalCharacterLimits?.[scene.sceneId];
@@ -1482,7 +1601,7 @@ describe("versioned prompt request recovery", () => {
         };
         const recoveredPlan = await recoverHostedPromptBatchPlan(authority, binding);
         expect(recoveredPlan).toEqual(planned);
-        expect(hostedPromptBatchPlan(authority).requestPolicy).toBe("runware-luna-grounded-v4");
+        expect(hostedPromptBatchPlan(authority).requestPolicy).toBe("runware-luna-grounded-v6");
         const fetcher = successfulPromptFetcher();
         const results: Parameters<
           NonNullable<Parameters<typeof dispatchOneHostedPromptBatch>[0]["recordResult"]>
@@ -1668,7 +1787,7 @@ describe("hosted prompt authority", () => {
       applyExtraPromptKeywords: true,
     };
     try {
-      hostedPromptBatchPlan(authority);
+      hostedPromptBatchPlan(authority, "runware-luna-grounded-v5");
       expect.fail("Budget should reject before a request can be claimed");
     } catch (error) {
       expect(error).toBeInstanceOf(HostedPromptExecutionError);
@@ -1678,7 +1797,11 @@ describe("hosted prompt authority", () => {
         providerMayHaveCharged: false,
       });
     }
-    const planned = hostedPromptBatchPlan({ ...authority, applyExtraPromptKeywords: false });
+    expect(() => hostedPromptBatchPlan(authority)).not.toThrow();
+    const planned = hostedPromptBatchPlan(
+      { ...authority, applyExtraPromptKeywords: false },
+      "runware-luna-grounded-v5",
+    );
     expect(
       Object.values(planned.batches[0]?.batch.literalCharacterLimits ?? {}).every(
         (limit) => limit >= 90,

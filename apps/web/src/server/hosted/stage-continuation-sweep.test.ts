@@ -19,9 +19,9 @@ import {
 const DUE_QUERY = await continuationDueQuery();
 
 it("continues Luna prompt work only when the current unresolved batch has a saved receipt", () => {
-  expect(DUE_QUERY).toContain("prompt_profile_revision NOT IN (8, 9, 10, 11)");
+  expect(DUE_QUERY).toContain("prompt_profile_revision NOT IN (8, 9, 10, 11, 12, 13)");
   expect(DUE_QUERY).toContain(
-    "prompt_profile_revision IS NULL OR prompt_profile_revision NOT IN (8, 9, 10, 11)",
+    "prompt_profile_revision IS NULL OR prompt_profile_revision NOT IN (8, 9, 10, 11, 12, 13)",
   );
   expect(DUE_QUERY).toContain("prompt_current_claim_started_at IS NULL");
   expect(DUE_QUERY).toContain("prompt_current_receipt_available");
@@ -39,17 +39,20 @@ it("requires a saved current-claim receipt before retrying Luna profiles 8 throu
     recoverable: boolean;
   }>(`
     SELECT profile, has_claim, has_receipt,
-      (profile IS NULL OR profile NOT IN (8, 9, 10, 11) OR NOT has_claim OR has_receipt) AS recoverable
+      (profile IS NULL OR profile NOT IN (8, 9, 10, 11, 12, 13) OR NOT has_claim OR has_receipt) AS recoverable
     FROM (VALUES
       (8, true, false), (8, true, true),
       (9, true, false), (9, true, true),
       (10, true, false), (10, true, true),
       (11, true, false), (11, true, true),
+      (12, true, false), (12, true, true),
       (8, false, false), (9, false, false),
       (7, true, false)
     ) AS cases(profile, has_claim, has_receipt)
   `);
   expect(rows.map(({ recoverable }) => recoverable)).toEqual([
+    false,
+    true,
     false,
     true,
     false,
@@ -863,6 +866,8 @@ it.each([
   { name: "Luna v40 without receipt", profileRevision: 10, receipt: false, expected: [] },
   { name: "Luna v41 with receipt", profileRevision: 11, receipt: true, expected: ["prompts"] },
   { name: "Luna v41 without receipt", profileRevision: 11, receipt: false, expected: [] },
+  { name: "Luna v42 with receipt", profileRevision: 12, receipt: true, expected: ["prompts"] },
+  { name: "Luna v42 without receipt", profileRevision: 12, receipt: false, expected: [] },
   {
     name: "Luna with an original receipt but missing latest correction receipt",
     profileRevision: 8,

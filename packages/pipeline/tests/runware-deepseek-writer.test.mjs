@@ -25,11 +25,14 @@ import {
   buildPromptBatch,
   buildRunwarePromptRequest,
   buildRunwarePromptCorrection,
+  recoverRunwarePromptCorrection,
   projectTextFreePhysicalSurfaces,
+  projectTextFreePhysicalScreens,
   projectRunwareLunaPhysicalProductCategory,
   compileImagePrompt,
   naturalDocumentaryLiteralCharacterLimit,
   plainGeometry,
+  validatePromptWriterOutput,
 } from "../dist/src/index.js";
 
 const layouts = ["IMAGE_FULL", "SPLIT_RIGHT_IMAGE"];
@@ -154,6 +157,249 @@ const success = (request, options = {}) => ({
     : {}),
   ...(options.responseId ? { responseId: options.responseId } : {}),
   ...(options.wireHash ? { wireHash: options.wireHash } : {}),
+});
+
+test("v43 accepts quality and length variation once, retaining raw receipt evidence", async () => {
+  const batch = makeBatch(6);
+  const request = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v6",
+  );
+  assert.equal(request.requestVersion, "runware-gpt-6-luna-prompt-request-v43");
+  assert.equal(request.request.jsonSchema.schema.properties.scenes.minItems, 6);
+  assert.doesNotMatch(JSON.stringify(request.request.jsonSchema), /maxLength/);
+  const rows = JSON.parse(output(request)).scenes;
+  for (const row of rows) {
+    row.literal_subject = "A screen shows a map with captions and a portrait ".repeat(120);
+    row.action = "An unrelated person writes a headline ".repeat(120);
+    row.environment = "A laboratory with graphics ".repeat(120);
+    row.lighting_context = "Neon signs and text ".repeat(120);
+    row.prompt_core = "Duplicate ungrounded content without a period ".repeat(120);
+    row.continuity_tags = Array.from({ length: 50 }, (_, index) => `${index} logo `.repeat(80));
+    row.in_image_shot_role = "provider disagreement";
+  }
+  rows[1].literal_subject = "\u0000 \t";
+  rows[1].action = "";
+  rows[1].environment = " ";
+  rows[1].lighting_context = "";
+  rows[1].prompt_core = "";
+  const raw = JSON.stringify({ batch_id: batch.batchId, scenes: rows });
+  let calls = 0;
+  const receipts = [];
+  const writer = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v6",
+    semanticQualityMode: "enforce",
+    maximumBatchCostUsd: 0.25,
+    evidenceSink: {
+      record(value) {
+        receipts.push(value);
+      },
+    },
+    transport: {
+      async dispatch(sent) {
+        calls++;
+        return success(sent, { outputText: raw });
+      },
+    },
+  });
+  const accepted = validatePromptWriterOutput(batch, await writer.write(batch));
+  assert.equal(calls, 1);
+  assert.equal(accepted.scenes.length, 6);
+  assert.equal(
+    receipts[0].responseSha256,
+    `sha256:${createHash("sha256").update(raw).digest("hex")}`,
+  );
+  assert.equal(buildRunwarePromptCorrection(batch, raw, "runware-luna-grounded-v6"), null);
+  assert.equal(accepted.scenes[1].literal_subject, batch.scenes[1].phrase);
+  for (const [index, scene] of accepted.scenes.entries()) {
+    assert.equal(scene.in_image_shot_role, batch.scenes[index].inImageShotRole);
+    assert.ok(scene.literal_subject.length <= 240);
+    assert.ok(scene.action.length <= 240);
+    assert.ok(scene.environment.length <= 240);
+    assert.ok(scene.lighting_context.length <= 120);
+    assert.ok(scene.prompt_core.length <= 600);
+    assert.equal(scene.continuity_tags.length, 12);
+    const compiled = compileImagePrompt({
+      compilerPolicy: "local-evidence-v3",
+      writerOutput: scene,
+      expectedScene: batch.scenes[index],
+      styleProfileHash: NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH,
+      style: {
+        positiveSuffix: "Natural documentary photography",
+        negativeSuffix: "",
+        fullImageGuidance: "16:9 center-safe",
+        splitImageGuidance: "8:9 center-safe right panel",
+      },
+      extraPromptKeywords: null,
+      applyExtraPromptKeywords: false,
+    });
+    assert.equal(compiled.promptCompilerVersion, "prompt-compiler-v7");
+    assert.ok(compiled.components.literalContent.includes(scene.literal_subject));
+  }
+});
+
+test("v43 accepts complete length-finished JSON but retains truncation and refusal gates", async () => {
+  const base = makeBatch(2);
+  const batch = {
+    ...base,
+    literalCharacterLimits: Object.fromEntries(base.scenes.map((scene) => [scene.sceneId, 279])),
+  };
+  for (const [policy, finishReason, truncated, accepted] of [
+    ["runware-luna-grounded-v6", "length", false, true],
+    ["runware-luna-grounded-v6", "length", true, false],
+    ["runware-luna-grounded-v6", "refusal", false, false],
+    ["runware-luna-grounded-v6", "content_filter", false, false],
+    ["runware-luna-grounded-v6", "unknown", false, false],
+    ["runware-luna-grounded-v5", "length", false, false],
+  ]) {
+    let calls = 0;
+    const writer = new RunwarePromptWriter({
+      requestPolicy: policy,
+      maximumBatchCostUsd: 0.25,
+      evidenceSink: { record() {} },
+      transport: {
+        async dispatch(sent) {
+          calls++;
+          const raw = output(sent);
+          return success(sent, { finishReason, outputText: truncated ? raw.slice(0, -3) : raw });
+        },
+      },
+    });
+    if (accepted) assert.equal((await writer.write(batch)).scenes.length, 2);
+    else await assert.rejects(writer.write(batch), PipelineDomainError);
+    assert.equal(calls, 1);
+  }
+});
+
+test("v43 reconciles missing, duplicated and foreign identities from each owned source without calls", async () => {
+  const batch = makeBatch(8);
+  const request = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v6",
+  );
+  const rows = JSON.parse(output(request)).scenes;
+  rows[1].literal_subject = "First valid scene two";
+  const duplicate = {
+    ...rows[1],
+    literal_subject: "Wrong duplicate content never assigned to missing scene",
+  };
+  const foreign = {
+    ...rows[1],
+    scene_id: "foreign-scene",
+    literal_subject: "Foreign content never assigned",
+  };
+  for (const returned of [
+    [rows[0], rows[1], rows[2], rows[3], rows[4], rows[5], rows[7], duplicate],
+    [rows[0], { ...rows[1], extra_provider_field: true }, foreign],
+    [],
+  ]) {
+    const raw = JSON.stringify({
+      batch_id: "foreign-provider-echo",
+      scenes: returned,
+      extra: true,
+    });
+    let calls = 0;
+    const writer = new RunwarePromptWriter({
+      requestPolicy: "runware-luna-grounded-v6",
+      maximumBatchCostUsd: 0.25,
+      evidenceSink: { record() {} },
+      transport: {
+        async dispatch(sent) {
+          calls++;
+          return success(sent, { outputText: raw });
+        },
+      },
+    });
+    const result = await writer.write(batch);
+    assert.equal(calls, 1);
+    assert.equal(result.batch_id, batch.batchId);
+    assert.deepEqual(
+      result.scenes.map((scene) => scene.scene_id),
+      batch.scenes.map((scene) => scene.sceneId),
+    );
+    assert.equal(result.scenes[6].literal_subject, batch.scenes[6].phrase);
+    assert.equal(result.scenes[6].environment, batch.scenes[6].sentenceContext);
+    if (returned.length) assert.equal(result.scenes[1].literal_subject, "First valid scene two");
+    assert.doesNotMatch(JSON.stringify(result), /Wrong duplicate|Foreign content/);
+    assert.equal(buildRunwarePromptCorrection(batch, raw, "runware-luna-grounded-v6"), null);
+  }
+});
+
+test("v43 preserves required types while historical policies retain exact identity gates", async () => {
+  const batch = makeBatch(2);
+  const request = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v6",
+  );
+  for (const change of [
+    (value) => {
+      value.batch_id = 9;
+    },
+    (value) => {
+      value.scenes[0].action = 9;
+    },
+    (value) => {
+      value.scenes[0].continuity_tags = [9];
+    },
+  ]) {
+    const parsed = JSON.parse(output(request));
+    change(parsed);
+    let calls = 0;
+    const writer = new RunwarePromptWriter({
+      requestPolicy: "runware-luna-grounded-v6",
+      maximumBatchCostUsd: 0.25,
+      evidenceSink: { record() {} },
+      transport: {
+        async dispatch(sent) {
+          calls++;
+          return success(sent, { outputText: JSON.stringify(parsed) });
+        },
+      },
+    });
+    await assert.rejects(writer.write(batch), PipelineDomainError);
+    assert.equal(calls, 1);
+  }
+  const historicalBatch = {
+    ...batch,
+    literalCharacterLimits: Object.fromEntries(batch.scenes.map((scene) => [scene.sceneId, 279])),
+  };
+  for (const change of [
+    (value) => {
+      value.scenes.pop();
+    },
+    (value) => {
+      value.scenes[1].scene_id = value.scenes[0].scene_id;
+    },
+    (value) => {
+      value.batch_id = "foreign";
+    },
+  ]) {
+    const parsed = JSON.parse(output(request));
+    change(parsed);
+    const writer = new RunwarePromptWriter({
+      requestPolicy: "runware-luna-grounded-v5",
+      maximumBatchCostUsd: 0.25,
+      evidenceSink: { record() {} },
+      transport: {
+        async dispatch(sent) {
+          return success(sent, { outputText: JSON.stringify(parsed) });
+        },
+      },
+    });
+    await assert.rejects(writer.write(historicalBatch), PipelineDomainError);
+  }
 });
 
 class ScriptedTransport {
@@ -423,6 +669,172 @@ test("Luna projects generic store/name-brand categories only when no physical ma
   assert.match(RUNWARE_LUNA_UNMARKED_PRODUCT_INSTRUCTION, /even when narration describes it/u);
 });
 
+test("v42 keeps source-supported device cleaning physical and v41 request bytes immutable", async () => {
+  const base = makeBatch(3);
+  const batch = {
+    ...base,
+    scenes: base.scenes.map((scene) => ({
+      ...scene,
+      phrase:
+        "Clean the dashboard touchscreen with a soft tissue; keep the surface dry and breathe lightly on it.",
+      sentenceContext:
+        "Clean the dashboard touchscreen with a soft tissue; keep the surface dry and breathe lightly on it.",
+      priorContext: null,
+      nextContext: null,
+    })),
+    literalCharacterLimits: Object.fromEntries(base.scenes.map((scene) => [scene.sceneId, 300])),
+  };
+  const fields = [
+    ["A tissue beside the dashboard touchscreen.", "The tissue touches the dashboard screen."],
+    ["A dashboard touch screen and clear dial covers.", "The dashboard screen stays dry."],
+    ["A person's face near the dashboard touchscreen.", "The person breathes toward the screen."],
+  ];
+  const request = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v5",
+  );
+  assert.equal(request.requestVersion, "runware-gpt-6-luna-prompt-request-v42");
+  assert.doesNotMatch(request.request.settings.systemPrompt, /UI\/screens/u);
+  assert.match(request.request.settings.systemPrompt, /blank, unlit physical surface/u);
+  const raw = output(request, {
+    change: (rows) =>
+      rows.map((row, index) => ({
+        ...row,
+        literal_subject: fields[index][0],
+        action: fields[index][1],
+        environment: "Car dashboard interior.",
+      })),
+  });
+  const writer = new RunwarePromptWriter({
+    requestPolicy: "runware-luna-grounded-v5",
+    maximumBatchCostUsd: 0.25,
+    semanticQualityMode: "advisory",
+    evidenceSink: { record() {} },
+    transport: {
+      async dispatch(sent) {
+        return success(sent, { outputText: raw });
+      },
+    },
+  });
+  const result = await writer.write(batch);
+  for (const [index, scene] of result.scenes.entries()) {
+    assert.equal(
+      scene.literal_subject,
+      projectTextFreePhysicalScreens(fields[index][0], batch.scenes[index].phrase),
+    );
+    assert.equal(
+      scene.action,
+      projectTextFreePhysicalScreens(fields[index][1], batch.scenes[index].phrase),
+    );
+    assert.equal(scene.environment, "Car dashboard interior.");
+    assert.match(scene.literal_subject, /blank unlit/u);
+    assert.match(scene.action, /blank unlit/u);
+  }
+  assert.equal(buildRunwarePromptCorrection(batch, raw, "runware-luna-grounded-v5"), null);
+  for (const action of [
+    "The screen displays a map.",
+    "The screen shows a portrait.",
+    "The screen displays UI.",
+    "The blank unlit screen, displaying icons.",
+    "Reads numbers from the screen.",
+  ]) {
+    const unsafe = JSON.parse(raw);
+    unsafe.scenes[0].action = action;
+    assert.ok(
+      buildRunwarePromptCorrection(
+        batch,
+        JSON.stringify(unsafe),
+        "runware-luna-grounded-v5",
+      )?.failedSceneIds.includes(batch.scenes[0].sceneId),
+      action,
+    );
+    assert.equal(
+      projectTextFreePhysicalScreens(action, batch.scenes[0].phrase).replaceAll("blank unlit ", ""),
+      action.replaceAll("blank unlit ", ""),
+    );
+  }
+  const unsupported = {
+    ...batch,
+    scenes: batch.scenes.map((scene) => ({
+      ...scene,
+      phrase: "Wipe a wooden table.",
+      sentenceContext: "Wipe a wooden table.",
+    })),
+  };
+  assert.equal(
+    buildRunwarePromptCorrection(unsupported, raw, "runware-luna-grounded-v5")?.failedSceneIds
+      .length,
+    3,
+  );
+  assert.equal(
+    projectTextFreePhysicalScreens("A screen displays a chart.", "A wooden table."),
+    "A screen displays a chart.",
+  );
+});
+
+test("sealed v41 screen corrections recover only independently reproducible historical diagnostics", () => {
+  const base = withScenePhrase(makeBatch(1), "Clean the car touchscreen with a cloth.");
+  const batch = { ...base, literalCharacterLimits: { [base.scenes[0].sceneId]: 300 } };
+  const request = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v4",
+  );
+  const source = output(request, {
+    change: (rows) =>
+      rows.map((row) => ({
+        ...row,
+        literal_subject: "A cloth beside the car touchscreen.",
+        action: "The cloth touches the screen.",
+        environment: "Car interior.",
+      })),
+  });
+  const sealed = {
+    sourceResponseSha256: `sha256:${createHash("sha256").update(source).digest("hex")}`,
+    sourceOutputText: source,
+    failedSceneIds: [batch.scenes[0].sceneId],
+    failures: [{ sceneId: batch.scenes[0].sceneId, field: "action", reason: "hard_conflict" }],
+  };
+  assert.deepEqual(
+    recoverRunwarePromptCorrection(batch, source, sealed, "runware-luna-grounded-v4"),
+    sealed,
+  );
+  assert.equal(
+    recoverRunwarePromptCorrection(
+      batch,
+      source,
+      { ...sealed, failures: [{ ...sealed.failures[0], field: "environment" }] },
+      "runware-luna-grounded-v4",
+    ),
+    null,
+  );
+  assert.equal(
+    recoverRunwarePromptCorrection(batch, source, sealed, "runware-luna-grounded-v5"),
+    null,
+  );
+  const rebuilt = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    2,
+    request.requestSha256,
+    1,
+    "runware-luna-grounded-v4",
+    false,
+    sealed,
+  );
+  assert.equal(
+    JSON.parse(rebuilt.request.messages[0].content).correction.failures[0].field,
+    "action",
+  );
+});
+
 test("v41 constrains exact original and corrective scene counts without changing v40 bytes", () => {
   const base = makeBatch(10);
   const batch = {
@@ -446,6 +858,10 @@ test("v41 constrains exact original and corrective scene counts without changing
     "runware-luna-grounded-v4",
   );
   assert.equal(fresh.requestVersion, "runware-gpt-6-luna-prompt-request-v41");
+  assert.equal(
+    fresh.requestSha256,
+    "sha256:b03e5a7de0ab8168e83a795751514c4eccc009b3723b916a62a747e307bd7c4e",
+  );
   assert.notEqual(fresh.request.taskUUID, old.request.taskUUID);
   assert.deepEqual(fresh.request.settings, old.request.settings);
   assert.deepEqual(fresh.request.messages, old.request.messages);

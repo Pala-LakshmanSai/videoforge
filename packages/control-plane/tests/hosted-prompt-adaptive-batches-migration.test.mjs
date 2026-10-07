@@ -1250,13 +1250,15 @@ test("0071 failure settlement sums accepted batches and preserves historical 007
   });
 });
 
-test("0285 through 0295 prepare revision-pinned Runware Luna profiles and binds claims to their request policy", async () => {
+test("0285 through 0297 prepare revision-pinned Runware Luna profiles and binds claims to their request policy", async () => {
   for (const requestPolicy of [
     null,
     "runware-luna-grounded-v1",
     "runware-luna-grounded-v2",
     "runware-luna-grounded-v3",
     "runware-luna-grounded-v4",
+    "runware-luna-grounded-v5",
+    "runware-luna-grounded-v6",
   ]) {
     await withPgcryptoMigratedDatabase(async ({ executor }) => {
       const prepareDefinition = (
@@ -1266,6 +1268,7 @@ test("0285 through 0295 prepare revision-pinned Runware Luna profiles and binds 
       ).rows[0].definition;
       assert.match(prepareDefinition, /runware-luna-grounded-v2/u);
       assert.match(prepareDefinition, /runware-luna-grounded-v3/u);
+      assert.match(prepareDefinition, /runware-luna-grounded-v6/u);
       const qaDefaults = await executor.query(`SELECT column_default FROM information_schema.columns
         WHERE table_schema='public' AND table_name IN ('hosted_api_generation_jobs','hosted_api_image_regeneration_jobs')
           AND column_name='image_text_qa_required'`);
@@ -1320,13 +1323,17 @@ test("0285 through 0295 prepare revision-pinned Runware Luna profiles and binds 
       ).rows[0];
       if (requestPolicy) {
         const version =
-          requestPolicy === "runware-luna-grounded-v4"
-            ? 41
-            : requestPolicy === "runware-luna-grounded-v3"
-              ? 40
-              : requestPolicy === "runware-luna-grounded-v2"
-                ? 39
-                : 38;
+          requestPolicy === "runware-luna-grounded-v6"
+            ? 43
+            : requestPolicy === "runware-luna-grounded-v5"
+              ? 42
+              : requestPolicy === "runware-luna-grounded-v4"
+                ? 41
+                : requestPolicy === "runware-luna-grounded-v3"
+                  ? 40
+                  : requestPolicy === "runware-luna-grounded-v2"
+                    ? 39
+                    : 38;
         assert.equal(row.name, "Hosted Runware GPT-6 Luna scene prompts");
         assert.equal(row.revision, version - 30);
         assert.equal(row.dispatch_target, "RUNWARE");
@@ -1407,7 +1414,7 @@ test("0285 through 0295 prepare revision-pinned Runware Luna profiles and binds 
           responseId: "chatcmpl-283-test",
           wireHash,
           providerModel: "openai:gpt@6-luna",
-          finishReason: "stop",
+          finishReason: requestPolicy === "runware-luna-grounded-v6" ? "length" : "stop",
           latencyMs: 1,
         };
         await assert.rejects(
@@ -1480,6 +1487,192 @@ test("0285 through 0295 prepare revision-pinned Runware Luna profiles and binds 
         assert.equal(row.attempt_model, "google:gemini@3.5-flash");
         assert.equal(row.reservation_model, "google:gemini@3.5-flash");
       }
+    });
+  }
+});
+
+test("0298 releases only settled terminal prompt workloads and preserves their durable work", async () => {
+  for (const mode of [
+    "terminal",
+    "unknown",
+    "missing-receipt",
+    "unsettled",
+    "runtime",
+    "active-cpu",
+    "unclean-cloud",
+  ]) {
+    await withPgcryptoMigratedDatabase(async ({ executor }) => {
+      const authority = await seedAdaptivePromptRun(executor, {
+        sceneCount: 2,
+        plannedBatchCount: 1,
+      });
+      const requestId = id(2_980_001),
+        leaseId = id(2_980_002),
+        providerTaskId = id(2_980_003);
+      await executor.query(
+        `INSERT INTO generation_requests(id,account_id,workspace_id,project_id,
+        project_revision_id,created_by_user_id,state,queue_order,available_at,attempt_ordinal,
+        idempotency_key,admitted_at,created_at,updated_at)
+        VALUES($1,$2,$3,$4,$5,$6,'ACTIVE',1,now(),1,'terminal-prompt-test',now(),now(),now())`,
+        [requestId, IDS.accountA, IDS.workspaceA, IDS.projectA, IDS.revisionA, IDS.userA],
+      );
+      await executor.query(
+        `INSERT INTO provider_workload_leases(id,slot,account_id,workspace_id,
+        request_kind,generation_request_id,owner_token_sha256,state,acquired_at,heartbeat_at,expires_at)
+        VALUES($1,1,$2,$3,'VIDEO',$4,$5,'ACTIVE',now(),now(),now()+interval '1 hour')`,
+        [leaseId, IDS.accountA, IDS.workspaceA, requestId, sha256("terminal-prompt-owner")],
+      );
+      const requestBytes = "request-0-0";
+      await executor.query("SELECT videoforge_claim_hosted_prompt_batch($1,0,$2,$3,$4)", [
+        authority.runId,
+        providerTaskId,
+        requestBytes,
+        sha256(requestBytes),
+      ]);
+      if (mode !== "missing-receipt") {
+        await executor.query(
+          "SELECT videoforge_record_hosted_prompt_response($1,$2,$3,$4::jsonb)",
+          [
+            authority.runId,
+            providerTaskId,
+            sha256(requestBytes),
+            JSON.stringify({
+              status: "succeeded",
+              outputText: "{}",
+              costUsd: 0.0001,
+              finishReason: "stop",
+              latencyMs: 1,
+              usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2, cachedInputTokens: 0 },
+            }),
+          ],
+        );
+      }
+      await recordBatch(executor, authority.runId, 0, 0, 1, 100);
+      await executor.query(
+        "SELECT videoforge_fail_hosted_prompt_run($1,$2,'HOSTED_PROMPT_OUTPUT_INVALID',$3,0)",
+        [authority.runId, mode === "unknown" ? "UNKNOWN" : "FAILED", mode === "unknown"],
+      );
+      if (mode === "unsettled")
+        await executor.query(
+          "UPDATE hosted_prompt_runs SET reported_cost_micro_usd=101 WHERE id=$1",
+          [authority.runId],
+        );
+      if (mode === "runtime") {
+        // A runtime, including a queued CPU/render continuation, is never this pre-provider cleanup lane.
+        await executor.query(
+          `INSERT INTO video_runtime_states(id,account_id,workspace_id,project_id,
+          project_revision_id,generation_request_id,stage,created_at,updated_at)
+          VALUES($1,$2,$3,$4,$5,$6,'QUEUED',now(),now())`,
+          [id(2_980_004), IDS.accountA, IDS.workspaceA, IDS.projectA, IDS.revisionA, requestId],
+        );
+      }
+      if (mode === "active-cpu" || mode === "unclean-cloud") {
+        const cpuId = id(2_980_005),
+          prefix = `tenant/${IDS.accountA}/workspace/${IDS.workspaceA}/project/${IDS.projectA}/revision/${IDS.revisionA}/lane/input/job/${cpuId}/artifact`;
+        await executor.query(
+          `INSERT INTO hosted_cpu_job_attempts(id,account_id,workspace_id,project_id,
+          project_revision_id,kind,state,request_sha256,job_spec_object_key,job_spec_content_length,
+          job_spec_checksum_sha256,result_object_key,result_content_type,result_max_bytes,image_digest,
+          callback_token_sha256,deadline_at,submitted_at,created_at,updated_at)
+          VALUES($1,$2,$3,$4,$5,'ASR','RUNNING',$6,$7,128,$6,$8,'application/json',4096,$6,$6,
+            now()+interval '1 hour',now(),now(),now())`,
+          [
+            cpuId,
+            IDS.accountA,
+            IDS.workspaceA,
+            IDS.projectA,
+            IDS.revisionA,
+            sha256("active-cpu"),
+            `${prefix}/job-spec`,
+            `${prefix}/result-document`,
+          ],
+        );
+      }
+      if (mode === "unclean-cloud") {
+        const cpuId = id(2_980_005),
+          cloudId = id(2_980_006),
+          budgetId = id(2_980_007),
+          hash = sha256("cloud-proof");
+        await executor.query(
+          "UPDATE hosted_cpu_job_attempts SET state='FAILED',terminal_at=now() WHERE id=$1",
+          [cpuId],
+        );
+        await executor.query(
+          `INSERT INTO cloud_media_budget_authorities(id,allowed_account_ids,allowed_project_ids,
+          total_cap_usd,max_reservation_usd,max_hourly_usd,max_rental_seconds,image,source_sha256,runtime_sha256,expires_at)
+          VALUES($1,ARRAY[$2]::uuid[],ARRAY[$3]::uuid[],3,.2,.8,900,'fixture@'||$4,$4,$4,now()+interval '1 hour')`,
+          [budgetId, IDS.accountA, IDS.projectA, hash],
+        );
+        await executor.query(
+          `INSERT INTO cloud_media_reservations(id,account_id,workspace_id,project_id,
+          project_revision_id,attempt_id,leased_attempt_id,fence_id,capability_sha256,pod_name,image,
+          source_sha256,runtime_sha256,tooling,disk_gb,max_hourly_usd,budget_usd,rental_seconds,state,
+          placement_deadline_at,budget_authority_id)
+          VALUES($1,$2,$3,$4,$5,$6,$6,$7,$8,$9,'fixture@'||$8,$8,$8,'{}',100,.8,.2,900,
+            'WAITING_CAPACITY',now()+interval '1 hour',$10)`,
+          [
+            cloudId,
+            IDS.accountA,
+            IDS.workspaceA,
+            IDS.projectA,
+            IDS.revisionA,
+            cpuId,
+            id(2_980_008),
+            hash,
+            `videoforge-media-${cloudId}`,
+            budgetId,
+          ],
+        );
+      }
+      const preserved = async () =>
+        (
+          await executor.query(
+            `SELECT jsonb_build_object(
+        'run',(SELECT to_jsonb(r) FROM hosted_prompt_runs r WHERE id=$1),
+        'scenes',(SELECT jsonb_agg(to_jsonb(s)) FROM hosted_prompt_scene_progress s WHERE run_id=$1),
+        'claims',(SELECT jsonb_agg(to_jsonb(c)) FROM hosted_prompt_batch_claims c WHERE run_id=$1),
+        'receipts',(SELECT jsonb_agg(to_jsonb(r)) FROM repository_mutation_receipts r WHERE result_payload->>'run_id'=$1::text),
+        'costs',(SELECT jsonb_agg(to_jsonb(c) ORDER BY sequence) FROM cost_events c WHERE task_id=$2),
+        'task',(SELECT to_jsonb(t) FROM generation_tasks t WHERE id=$2),
+        'attempt',(SELECT to_jsonb(a) FROM attempts a WHERE id=$3)) value`,
+            [authority.runId, authority.taskId, authority.attemptId],
+          )
+        ).rows[0].value;
+      const before = await preserved();
+      await expectDatabaseError(
+        () =>
+          executor.query("SELECT videoforge_settle_stranded_hosted_v209_requests($1,$2,$3)", [
+            IDS.accountB,
+            IDS.workspaceB,
+            IDS.userB,
+          ]),
+        "42501",
+      );
+      const settle = async () =>
+        (
+          await executor.query(
+            "SELECT videoforge_settle_stranded_hosted_v209_requests($1,$2,$3) settled",
+            [IDS.accountA, IDS.workspaceA, IDS.userA],
+          )
+        ).rows[0].settled;
+      assert.equal(await settle(), mode === "terminal" ? 1 : 0, mode);
+      assert.equal(await settle(), 0, "repeat is a no-op");
+      assert.deepEqual(await preserved(), before, mode);
+      const states = (
+        await executor.query(
+          `SELECT g.state generation,l.state lease,
+        (SELECT count(*)::int FROM generation_queue_audits WHERE request_id=g.id) audits
+        FROM generation_requests g JOIN provider_workload_leases l ON l.generation_request_id=g.id WHERE g.id=$1`,
+          [requestId],
+        )
+      ).rows[0];
+      assert.deepEqual(
+        states,
+        mode === "terminal"
+          ? { generation: "FAILED", lease: "RELEASED", audits: 1 }
+          : { generation: "ACTIVE", lease: "ACTIVE", audits: 0 },
+        mode,
+      );
     });
   }
 });

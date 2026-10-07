@@ -215,6 +215,11 @@ Store `scene_prompt_writer_version`, `prompt_compiler_version`, every component,
 
 ## Permanent output guardrail
 
+User clarification 2026-10-07: a source-supported physical screen may appear blank or switched off. Displayed text, UI, maps/charts, graphics and overlays remain forbidden. Physical cleaning/contact with an empty screen surface is allowed; a screen showing content is not. The historical v24 contract above remains archival. Fresh v42 guidance supersedes its blanket screen exclusion; no historical request bytes are rewritten.
+
+User priority update 2026-10-08: requestv43 keeps these visual constraints as prompt guidance only. Correctly structured provider output is accepted regardless of semantic, wording or length checks. Missing/duplicate scene rows use deterministic fallback from the missing scene narration; unknown IDs cannot introduce content into another scene. Echoed batch/role strings are normalized to the sealed request. Compiler-v7 normalizes locally and the image adapter deterministically clips to the actual provider envelope when necessary, with no extra model/inspection call. Reduced image fidelity is preferable to stopping prompt production. Historical acceptance contracts remain immutable; their rejection rules below do not apply to fresh v43.
+
+
 ### Generated text prevention — 2026-10-07
 
 Fresh initial and regenerated images use the `photographic-v1` provider wire policy: join structured scene facts without caption-like field labels, preserve all scene/style content and no-text exclusions, and retain the 800-character provider bound. Saved wire prompts and immutable style/compiler hashes stay exact; legacy regeneration keys retain their byte-matched replay identity.
