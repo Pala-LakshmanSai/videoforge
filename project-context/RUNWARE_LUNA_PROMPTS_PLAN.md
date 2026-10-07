@@ -5,40 +5,13 @@ use multiple Luna workers, preserve functionality, and publish only a qualified 
 Use the existing Runware connection; no OpenAI key is needed. User authority covers qualification
 and publication of a qualified result; publication remains pending the gates below.
 
-## Current state: v38 partial service qualification; quality and release remain blocked
+## Current state: qualified mixed provenance; Worker/executable publication remains gated
 
-Production remains executable69175135 / Worker453a1c95 / native282. V38 and Runware profile8
-remain unpublished candidates. The first v38 full-stage run made 19 posts and service-accepted
-142/152 rows. Its final batch left nine individually valid rows and one over-limit unresolved
-scene; the approved final-ten one-post USD0.01 cap was consumed. Do not replay the unresolved v34
-HTTP 524 or reuse the consumed final-ten authority.
+Production remains executable69175135 / Worker453a1c95 / native283; native schema283 is applied to production; Worker/executable publication remains pending. Request v38 and Runware profile8 remain unpublished. All 152 scenes are service-accepted under mixed provenance: 135 prior rows were revalidated offline with zero HTTP, seven were regenerated, and the final-scene corrective POST passed at pinned estimate USD0.000893 with nine other final-batch rows retained byte-exactly and recovery making zero HTTP calls. Independent review of all 152 accepted prompt tuples is complete with zero findings. The initial review was bound to sha256:ad411a3e9ed286a630a9b3e9a5cbaad55f9484e6fe9e640f8a301d7440134ad0; final-source review c909e4dff7c945fe8a0bf7c2e2d6a01147dc711540fd47c7cf1c77d6ae1e29f0 binds the same records to ee54 with zero findings.
 
-Independent review found a same-object companion in accepted scene 6. The Luna-only validator
-now compares the primary subject, static action actor and relational companion heads, rejecting
-unsupported self-companions such as a scanner resting beside another scanner. It preserves
-source-supported pairs, human-primary scenes, and object-primary scenes with a distinct human
-actor. The v38 system/user request text and version did not change. With the guard, 135 existing
-rows from batches 2–15 revalidated offline with zero HTTP; 18 eligible wire branches were
-unchanged. A new first-seven service retest accepted all seven in two posts, with pinned estimate
-USD0.001876. Independent review of those seven found zero findings, including the corrected
-scene 6 scanner at the checkout lane. This is not a complete 152-scene review: current service
-acceptance is 142 rows (135 revalidated plus seven regenerated), while batch 16 still has nine
-individually valid rows and one over-limit scene. The all-152 independent review is incomplete.
+The latest 195-file source manifest is sha256:ee54e65cd94a4a7dd223bb5e52506aa898ac7c41a6304f3f793491b119c69cae. Offline compiler/Kie validation passed for all 152 scenes across 16 batches with zero HTTP; independent current-source review c909e4dff7c945fe8a0bf7c2e2d6a01147dc711540fd47c7cf1c77d6ae1e29f0 is complete with zero findings. Candidate native schema283 is applied to production; Worker/executable publication remains pending. Prompt qualification is complete under mixed provenance. The one-post USD0.01 authority is consumed and no further inference is authorized. Latest account usage read at 00:42 UTC showed 122 Luna requests / USD0.123295 and USD3.092264 aggregate account usage; it is not a run-specific invoice and may lag billing. Conservative cumulative bound remains USD3.099707, including unresolved v34 HTTP 524 maximum liability USD0.006429.
 
-The original final-ten approval has been consumed. One additional corrective POST for the
-over-limit final scene is pending explicit human approval, capped at one POST and USD0.01; no
-automatic correction is authorized. V38 is not fully qualified, profile8/native schema is not
-published, and no production/browser acceptance is claimed.
-
-The original v38 full-run source fingerprint was
-`sha256:ab69f26a761fa08b0eef3ecee379987a9966b02c5f45baa1f8c1f596f0f98371`. The current 195-file
-local source manifest after the validator guard is
-`sha256:ad411a3e9ed286a630a9b3e9a5cbaad55f9484e6fe9e640f8a301d7440134ad0`. Earlier v38 dry-run
-hashes predate the guard and are historical only. Current-source pipeline323 tests, build,
-typecheck, lint, formatting and diff checks pass. Earlier web362, native32, and build/secret/graph
-checks are separate prior evidence; broad CI, real-browser acceptance and full-film editorial
-review remain open. No project media, avatar, GPU rental, or full-film generation is part of this
-prompt qualification.
+Latest broad-CI workflow 37524446718 failed: 81 failed, 3,113 passed and one skipped. Known failures are classified: unchanged Python I001, stale or missing fixture/Chrome expectations, timeouts, and 116 baseline format items. The three format findings introduced by this work were fixed. Changed suites passed in focused runs; broad CI remains non-green. Focused checks passed: pipeline323, shared Runware transport26, migration9, hosted-prompt-run89 and stage-continuation-sweep32. Worker/executable publication, production readback, browser acceptance, broad-CI green run and full-film visual/editorial review remain separate gates. Prompt review is not generated-image quality proof. Never replay unresolved v34 HTTP 524.
 
 ## Provider and request contract
 
@@ -67,17 +40,7 @@ the pinned style, layout, and shot role. Natural Documentary also retains its ex
 more-conservative 169-character combined literal cap. The planner uses that per-scene
 budget before any paid claim; legacy policy budgets and hashes remain unchanged.
 
-The v37 source-priority rules compare `literal_subject`, `action`, and `environment`
-together, reject positively requested product-surface imagery, preserve explicit negation,
-and tell the model to omit depicted content rather than recreate it as a physical event.
-The v37 diagnostic rejection means the candidate is not qualified. The v37 none-versus-low
-comparison supporting v38 does not close this gate. Do not claim the guard is qualified until an
-actual v38 full run and independent review of all accepted tuples pass. A package
-picture or conjectural product claim must not be promoted into a real event. Explicitly denied
-actions/actors remain denied; actual cooking/fire and real people remain valid when locally
-narrated.
-The compiler owns no-text/no-graphics and physical framing; safe unmarked surfaces may
-stand in for price/ingredient/label beats.
+The v38 source-priority rules compare `literal_subject`, `action`, and `environment` together, reject positively requested product-surface imagery, preserve explicit negation, and tell the model to omit depicted content rather than recreate it as a physical event. The historical v37 rejection and none-versus-low comparison are superseded. A package picture or conjectural product claim must not be promoted into a real event. Explicitly denied actions/actors remain denied; actual cooking/fire and real people remain valid when locally narrated.
 
 Input planning uses the exact canonical request-byte estimator, with a Luna-specific
 effective ceiling of 20,928 estimated tokens. This ensures the direct UTF-8 system/user
@@ -105,26 +68,11 @@ including rejected original batch 9.
 
 The latest account readback at 19:53 UTC showed 120 Luna requests, USD0.121421 in Luna usage and
 USD3.090390 cumulative provider usage. It predates the two-post guarded retest and is not current,
-run-specific or an invoice. The conservative liability-inclusive cost bound is now USD3.098814;
-it includes the unresolved v34 HTTP 524 maximum liability of USD0.006429 and known qualification
-estimates. Never replay the v34 request. The user total authority remains USD6, but the separate
-one-post final-ten authority was consumed by the first v38 full run.
+run-specific or an invoice. The conservative liability-inclusive cumulative bound is USD3.099707, including the unresolved v34 HTTP 524 maximum liability of USD0.006429 and known qualification estimates. Never replay the v34 request. The user total authority remains USD6. Both the original final-ten authority and the additional final-scene one-POST authority are consumed; no further inference is authorized.
 
-Current source has 195 files with raw-byte manifest
-`sha256:ad411a3e9ed286a630a9b3e9a5cbaad55f9484e6fe9e640f8a301d7440134ad0`. Current-source
-pipeline323 tests, build, typecheck, lint, formatting and diff checks pass. Earlier web362,
-native32, and build/secret/graph checks remain prior scoped evidence, not broad-CI completion.
-These checks do not close the incomplete full-152 independent review, one over-limit final scene,
-native publication, browser acceptance, broad CI, long-form throughput, or whole-film visual/
-editorial review.
+The accepted-record review originally qualified manifest `sha256:ad411a3e9ed286a630a9b3e9a5cbaad55f9484e6fe9e640f8a301d7440134ad0`. The final 195-file raw-byte source manifest is `sha256:ee54e65cd94a4a7dd223bb5e52506aa898ac7c41a6304f3f793491b119c69cae`; offline compiler/Kie validation passed for all 152 scenes across 16 batches with zero HTTP. Independent current-source review c909e4dff7c945fe8a0bf7c2e2d6a01147dc711540fd47c7cf1c77d6ae1e29f0 passed with zero findings and binds accepted records af040be63801ee9808a36efa11a2aba313995cef44568b8f67914612ae85a882 to ee54. Current scoped checks: pipeline323, shared Runware transport26, migration9, hosted-prompt-run89, and stage-continuation-sweep32. The latest broad-CI workflow failed (81 failed, 3,113 passed, one skipped); failure causes are classified; broad CI is still non-green. These checks do not close production schema migration is complete, browser acceptance, long-form throughput, or whole-film visual/editorial review.
 
-One more corrective POST for the over-limit final scene requires explicit human approval, capped
-at one POST and USD0.01; the consumed final-ten approval does not cover it. The service-accepted
-rows are 135 previously accepted scenes revalidated offline plus seven regenerated scenes, whose
-independent review found zero findings. Nine rows in the final batch are individually valid; do
-not call all 152 accepted or reviewed. Stop on cap risk, uncertain submission or response identity
-contradiction. Report account usage, pinned estimates, liability, media/GPU work and production
-state separately.
+The final-scene corrective POST passed and its one-POST USD0.01 authority is consumed. No more inference is authorized. All 152 rows are service-accepted and independently reviewed with zero findings under mixed provenance; the accepted-record and source-manifest hashes are recorded above. The candidate is qualified but unpublished. Native schema283 is live; Worker/executable publication, production readback, broad-CI failure classification, browser acceptance and whole-film visual/editorial review remain open. Stop on any uncertain submission or response identity contradiction. Report account usage, pinned estimates, liability, media/GPU work and production state separately.
 
 Rollback for future plans: select the old provider/profile while retaining accepted Luna
 results and additive schema. Never backfill or rewrite old paid requests. No project media, avatar, GPU rental, or full-film generation occurred in this

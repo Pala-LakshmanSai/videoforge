@@ -1,19 +1,6 @@
 ## Selected prompt-provider transition — 2026-10-06
 
-The user approved replacing fresh image-prompt writing with Runware AIR `openai:gpt@6-luna` through its compatible Chat Completions endpoint.
-The new policy retains the grounded scene contract, immutable style inputs, strict local
-validation and compiler-v5, with request v38, low reasoning and provider strict JSON. The
-original v38 run service-accepted 142/152 scenes in 19 posts; the final batch left nine
-individually valid rows and one over-limit scene, and its approved one-post final-ten cap was
-consumed. Independent review found an unsupported same-object companion in accepted scene 6. A
-Luna-only primary-head guard now catches bottle/scanner self-companions without changing wire
-text. Under the updated guard, 135 prior rows revalidated offline and a separate seven-scene
-service retest accepted all seven in two posts; independent review of those seven found zero
-findings, including corrected scene 6's scanner at the checkout lane. Full 152-scene review and
-the over-limit final scene remain open. Production remains Gemini at
-executable69175135/Worker453a1c95/native282. Existing v24-v32 requests and saved compiled
-outputs retain exact identities. See DEC_LLM_001, CURRENT_STATE.yaml and the selected migration
-brief; neither service acceptance nor pipeline tests prove image quality or publication.
+The user approved replacing fresh image-prompt writing with Runware AIR openai:gpt@6-luna through its compatible Chat Completions endpoint. Request v38 is qualified for all 152 prompt tuples under mixed provenance. Independent current-source review has zero findings and binds accepted-record SHA-256 af040be63801ee9808a36efa11a2aba313995cef44568b8f67914612ae85a882 to final 195-file source manifest ee54e65cd94a4a7dd223bb5e52506aa898ac7c41a6304f3f793491b119c69cae (review c909e4dff7c945fe8a0bf7c2e2d6a01147dc711540fd47c7cf1c77d6ae1e29f0); offline compiler/Kie validation covered all 152 scenes across 16 batches with zero HTTP. The accepted-record review was initially bound to ad411a3e9ed286a630a9b3e9a5cbaad55f9484e6fe9e640f8a301d7440134ad0; final-source review closes that rebind. Worker/executable publication, production readback, browser acceptance, and broad-CI failure classification remain pending. The final-scene POST passed at pinned estimate USD0.000893; the one-post USD0.01 authority is consumed and no further inference is authorized. Production remains Gemini at executable69175135/Worker453a1c95/native283. Existing v24-v32 requests and saved compiled outputs retain exact identities. Prompt review does not prove generated-image or full-film visual quality.
 
 # Visual identity and image prompting
 

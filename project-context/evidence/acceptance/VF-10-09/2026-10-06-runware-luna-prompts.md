@@ -2,35 +2,11 @@
 
 ## Status update — 2026-10-07
 
-Production remains executable69175135 / Worker453a1c95 / native282. The first v38 full-stage
-run made 19 posts and service-accepted 142/152 rows; batch 16 left nine individually valid rows
-and one over-limit scene. The original final-ten one-post approval was consumed. Independent
-review found an unsupported same-object companion in accepted scene 6. A prior first-seven retest
-exposed the scanner case (pinned estimate USD0.001703).
+Production remains executable69175135 / Worker453a1c95 / native283; native schema283 is applied to production; Worker/executable publication remains pending. Request v38/profile8 is qualified for 152 prompt tuples under mixed provenance, not published. All accepted tuples passed independent review with zero findings. Review SHA-256 c909e4dff7c945fe8a0bf7c2e2d6a01147dc711540fd47c7cf1c77d6ae1e29f0 binds accepted-record SHA-256 af040be63801ee9808a36efa11a2aba313995cef44568b8f67914612ae85a882 to final source manifest ee54e65cd94a4a7dd223bb5e52506aa898ac7c41a6304f3f793491b119c69cae; offline compiler/Kie validation passed all 152 scenes across 16 batches with zero HTTP. The accepted-record review was initially bound to ad411a3e9ed286a630a9b3e9a5cbaad55f9484e6fe9e640f8a301d7440134ad0; the final-source review closes that rebind.
 
-The Luna-only static self-companion guard now compares primary subject/action/object heads and
-does not change v38 wire text or request version. Under that guard, 135 prior rows from batches
-2–15 revalidated offline with zero HTTP and 18 eligible wire branches remained unchanged. A new
-first-seven service retest accepted all seven in two posts (pinned estimate USD0.001876). Its
-independent review found zero findings across all seven, including the corrected scene 6 scanner
-at the checkout lane. Current service acceptance is 142 rows (135 revalidated plus seven
-regenerated); nine final-batch rows are individually valid and one over-limit scene remains. The
-full 152-scene independent review is incomplete.
+The final-scene POST passed at pinned estimate USD0.000893; nine other final-batch rows were retained byte-exactly, and recovery made zero HTTP calls. The one-post USD0.01 authority is consumed; no further inference is authorized. Conservative cumulative bound remains USD3.099707, including unresolved v34 HTTP 524 maximum liability USD0.006429. Never replay v34.
 
-The current 195-file source manifest is
-`sha256:ad411a3e9ed286a630a9b3e9a5cbaad55f9484e6fe9e640f8a301d7440134ad0`; the original full-run
-source fingerprint was `sha256:ab69f26a761fa08b0eef3ecee379987a9966b02c5f45baa1f8c1f596f0f98371`.
-Earlier dry-run hashes predate the static self-companion guard. Current-source pipeline323 tests,
-build, typecheck, lint, formatting and diff checks pass. Earlier web362, native32 and
-build/secret/graph checks are scoped prior evidence, not broad-CI completion.
-
-The latest account readback at 19:53 UTC showed 120 Luna requests/USD0.121421 and cumulative
-provider usage USD3.090390; it predates the two-post retest and is not a current readback, invoice
-or run-specific cost. The current conservative liability-inclusive bound is USD3.098814,
-including unresolved v34 HTTP 524 maximum liability USD0.006429. Never replay that request. The
-final-ten cap has been consumed; one further corrective POST for the last scene requires explicit
-human approval, capped at one POST and USD0.01. Full qualification, native publication, browser
-acceptance, broad CI, and full-film review are not claimed.
+Latest account usage read at 00:42 UTC showed 122 Luna requests / USD0.123295 and USD3.092264 aggregate account usage; it is not run-specific or an invoice and may lag billing. Broad-CI workflow 37524446718 failed (81 failed, 3,113 passed, one skipped) with unchanged Python I001, stale/missing fixture or Chrome expectations, and timeouts. Three introduced format findings were fixed; 116 other format items were classified as baseline. Focused checks passed: pipeline323, shared Runware transport26, migration9, hosted-prompt-run89, and stage-continuation-sweep32. Worker/executable publication, production readback, browser acceptance, broad-CI failure classification and full-film review remain open; prompt-text review is not image-quality proof.
 
 ## Historical v34 decision snapshot
 
@@ -38,7 +14,7 @@ The status update above supersedes this snapshot for current candidate, cost and
 
 Status: `RELEASE_VERIFICATION_BLOCKED_PROVIDER_524_142_OF_152`. The v34 candidate has
 partial saved proof only; it is not production-qualified or published. Production stays
-executable69175135 / Worker453a1c95 / native282. Candidate profile8 and migration0283 are
+executable69175135 / Worker453a1c95 / native283. Candidate profile8 and migration0283 are
 not deployed. The candidate source manifest hash was
 `sha256:cd11cc3d209ecee0ef9f141178a62810306bb656a4fcc1a4a5f81b0ab6892ddc`.
 
@@ -95,10 +71,7 @@ second object in the action. The current Luna-only guard compares primary subjec
 and relational object heads using existing token morphology; it does not use a fixed container
 catalog and does not alter request text/version. It rejects unsupported static self-companions,
 while preserving source-supported pairs, human-primary scenes and object-primary scenes with a
-distinct human actor. The first seven replacement outputs passed service validation and
-independent review with zero findings. The other 135 rows in batches 2–15 revalidated locally
-with zero HTTP; this is validator evidence, not an independent visual review. A complete
-all-152 independent review remains open. The policy rejects text-bearing or drawn product
+distinct human actor. The first seven replacement outputs passed service validation and independent review with zero findings. The other 135 rows in batches 2–15 revalidated locally with zero HTTP; this is validator evidence, not an independent visual review. The final review checked all 152 accepted prompt tuples with zero findings under mixed provenance; its accepted-record and source-manifest hashes are listed in the status update above. The policy rejects text-bearing or drawn product
 content and pictured/conjectural events promoted into real events. It preserves explicit
 negation. Literal fields are authoritative; `prompt_core` cannot bypass them.
 
