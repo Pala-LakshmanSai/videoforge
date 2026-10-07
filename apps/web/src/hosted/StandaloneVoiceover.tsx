@@ -547,7 +547,7 @@ export function StandaloneVoiceover() {
               <span>{error}</span>
             </div>
           ) : null}
-          {unconfirmed ? (
+          {unconfirmed && !busy ? (
             <div className="standalone-message standalone-message-warning" role="status">
               <RefreshCcw size={17} aria-hidden="true" />
               <span>Request status is uncertain. Check the saved request before retrying.</span>

@@ -122,6 +122,34 @@ it("loads a text script and submits title, script, voice, filename, and one dura
   );
 });
 
+it("keeps uncertainty hidden while POST is preparing and shows it after failure", async () => {
+  let rejectPost!: (reason: unknown) => void;
+  const pendingPost = new Promise<Response>((_, reject) => {
+    rejectPost = reject;
+  });
+  const fetcher = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+    if (init?.method === "POST") return pendingPost;
+    return Response.json({ voices });
+  });
+  vi.stubGlobal("fetch", fetcher);
+  wrap(<StandaloneVoiceover />);
+  await waitFor(() => expect(screen.getByLabelText("Script voice")).toHaveValue("Alice"));
+  fireEvent.change(screen.getByLabelText("Voiceover script"), {
+    target: { value: "Wait for this request to finish." },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Create voiceover" }));
+
+  await screen.findByRole("button", { name: "Preparing…" });
+  expect(
+    screen.queryByText("Request status is uncertain. Check the saved request before retrying."),
+  ).toBeNull();
+  const saved = JSON.parse(window.sessionStorage.getItem("videoforge.standalone-voiceover.v1")!);
+  expect(saved.unconfirmed).toBe(true);
+
+  rejectPost(new TypeError("fetch failed"));
+  await screen.findByText("Request status is uncertain. Check the saved request before retrying.");
+});
+
 it("keeps the same request id after an uncertain response and checks before resubmitting", async () => {
   const posts: Record<string, string>[] = [];
   let checkCount = 0;
