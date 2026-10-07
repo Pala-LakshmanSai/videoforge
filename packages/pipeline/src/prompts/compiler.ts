@@ -248,22 +248,54 @@ function isNonTextMention(
     )
       return true;
     if (
-      !/\b(?:field|parcel|pasture|meadow|grassland|woodland|forest|garden|flower|land|farmland|river|stream|road|path|farm|hedge|landscape)s?\s+$/iu.test(
-        prefix,
-      )
-    )
-      return false;
-    return (
-      /^\s+(?:(?:a|an|the)\s+)?(?:(?:natural|cultivated|grassy|open|neighboring|adjacent|rural|wild|green)\s+){0,3}(?:field|parcel|pasture|meadow|grassland|woodland|forest|garden|land|farmland|river|stream|road|path|farm|hedge)(?:s)?\b/iu.test(
-        suffix,
-      ) ||
-      (/\b(?:along|beside|across)\s+(?:the\s+)?(?:field|garden|flower|landscape)\s+$/iu.test(
-        prefix,
-      ) &&
-        /^\s*(?:[.!?]|$)/u.test(suffix)) ||
       /^\s+(?:(?:is|are)\s+)?(?:planted|lined|covered)\s+with\s+(?:flowers?|grass|plants?|shrubs?|trees?|stones?)\b/iu.test(
         suffix,
       )
+    )
+      return true;
+    if (
+      /\b(?:along|beside|across)\s+(?:the\s+)?(?:field|garden|flower|landscape)\s+$/iu.test(
+        prefix,
+      ) &&
+      /^\s*(?:[.!?]|$)/u.test(suffix)
+    )
+      return true;
+    // "borders" can be a finite adjacency verb for any real subject/object;
+    // neither the land use nor its adjective vocabulary is a finite list.
+    // A plural decorative noun instead follows a request/possession and is
+    // followed by placement language or its own verb, not an object phrase.
+    const verb = clause.slice(start, end).toLocaleLowerCase("en-US");
+    if (verb !== "border" && verb !== "borders") return false;
+    const subject =
+      prefix
+        .split(/[.!?:]|\b(?:and|but)\b/iu)
+        .at(-1)
+        ?.trim() ?? "";
+    const object = suffix.split(/[.!?:]|\b(?:with|without|and|but)\b/iu)[0]?.trim() ?? "";
+    if (
+      /^(?:(?:a|an|the)\s+)?(?:(?:thin|thick|black|white|red|gold|golden|silver|plain|solid|dashed|dotted|colored|coloured)\s*)+$/iu.test(
+        subject,
+      )
+    )
+      return false;
+    if (
+      verb === "border" &&
+      !/\b(?:[\p{L}]+s|we|they|people|children|men|women|cattle|sheep|deer)$/iu.test(subject)
+    )
+      return false;
+    if (!/[\p{L}\p{N}]$/u.test(subject) || !/^[\p{L}\p{N}]/u.test(object)) return false;
+    const graphic =
+      /\b(?:decorative|graphic(?:s)?|ornamental|borders?|frames?|images?|photos?|photographs?|pictures?|maps?|charts?|diagrams?|overlays?|captions?|logos?|watermarks?|screens?|scenes?|canvases?|layouts?|text)\b/iu;
+    if (graphic.test(subject) || graphic.test(object)) return false;
+    if (
+      /\b(?:add|draw|render|include|place|use|has|have|having)\s*(?:[\p{L}-]+\s*){0,3}$/iu.test(
+        subject,
+      )
+    )
+      return false;
+    if (/\b(?:with|without|of|a|an|the|these|those)\s*$/iu.test(subject)) return false;
+    return !/^(?:of|around|along|across|on|onto|in|into|for|to|from|between|surround(?:s|ing)?|frame(?:s|d)?|appear(?:s)?|decorate(?:s)?|outline(?:s)?|enclose(?:s)?|separate(?:s)?|contain(?:s)?|emphasiz(?:e|es)|highlight(?:s)?|are|is|will|should|must)\b/iu.test(
+      object,
     );
   }
   if (kind === "marking") return !isTextualMarkingContext(clause, start, end);
@@ -301,8 +333,64 @@ export function assertNoHardPromptConflict(value: string, path: readonly string[
   }
 }
 
+// Frozen 71af8de8 diagnostic provenance; never used for current acceptance.
+function preGrammarBorderWasAllowed(clause: string, start: number, end: number): boolean {
+  const prefix = clause.slice(0, start);
+  const suffix = clause.slice(end);
+  // Check this mention's adjacent physical subject/object, never a land word
+  // elsewhere in the clause: a field may border grassland and still request
+  // a forbidden decorative border later in the same sentence.
+  if (
+    /\b(?:decorative|graphic|ornamental)(?:\s+[\p{L}-]+){0,2}\s+$|\b(?:map|chart|diagram)(?:\s+[\p{L}-]+){0,4}\s+$|\b(?:image|photo|picture|frame)\s+$/iu.test(
+      prefix,
+    )
+  )
+    return false;
+  if (/^\s+crossing\s+(?:(?:a|an|the)\s+)?(?:image|photo(?:graph)?|picture|frame)\b/iu.test(suffix))
+    return false;
+  if (/^\s+(?:crossings?|checkpoints?|fences?)\b/iu.test(suffix)) return true;
+  if (
+    /^\s+between\s+(?:(?:the|two|neighboring|adjacent)\s+){0,2}(?:countries|nations|fields|gardens|farms|parcels)\b/iu.test(
+      suffix,
+    )
+  )
+    return true;
+  if (/\b(?:country|national|international)\s+$/iu.test(prefix) && /^\s*(?:[.!?]|$)/u.test(suffix))
+    return true;
+  if (
+    !/\b(?:field|parcel|pasture|meadow|grassland|woodland|forest|garden|flower|land|farmland|river|stream|road|path|farm|hedge|landscape)s?\s+$/iu.test(
+      prefix,
+    )
+  )
+    return false;
+  return (
+    /^\s+(?:(?:a|an|the)\s+)?(?:(?:natural|cultivated|grassy|open|neighboring|adjacent|rural|wild|green)\s+){0,3}(?:field|parcel|pasture|meadow|grassland|woodland|forest|garden|land|farmland|river|stream|road|path|farm|hedge)(?:s)?\b/iu.test(
+      suffix,
+    ) ||
+    (/\b(?:along|beside|across)\s+(?:the\s+)?(?:field|garden|flower|landscape)\s+$/iu.test(
+      prefix,
+    ) &&
+      /^\s*(?:[.!?]|$)/u.test(suffix)) ||
+    /^\s+(?:(?:is|are)\s+)?(?:planted|lined|covered)\s+with\s+(?:flowers?|grass|plants?|shrubs?|trees?|stones?)\b/iu.test(
+      suffix,
+    )
+  );
+}
+
 /** Only reconstruct an already sealed correction for the former physical-border false positive. */
 export function hasLegacyPhysicalBorderConflict(value: string): boolean {
+  return hasHistoricalBorderConflict(value, () => false);
+}
+
+/** Narrowed 71af8de8 eligibility, only for exact sealed corrective diagnostics. */
+export function hasPreGrammarBorderConflict(value: string): boolean {
+  return hasHistoricalBorderConflict(value, preGrammarBorderWasAllowed);
+}
+
+function hasHistoricalBorderConflict(
+  value: string,
+  wasAllowed: (clause: string, start: number, end: number) => boolean,
+): boolean {
   try {
     assertNoHardPromptConflict(value, ["historicalCorrection"]);
   } catch (error) {
@@ -313,7 +401,11 @@ export function hasLegacyPhysicalBorderConflict(value: string): boolean {
     for (const match of clause.matchAll(/\bborders?\b/giu)) {
       const start = match.index;
       const end = start + match[0].length;
-      if (isNonTextMention("border", clause, start, end) && !isNegatedMention(clause, start, end))
+      if (
+        isNonTextMention("border", clause, start, end) &&
+        !wasAllowed(clause, start, end) &&
+        !isNegatedMention(clause, start, end)
+      )
         return true;
     }
   }

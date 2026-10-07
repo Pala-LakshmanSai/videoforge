@@ -32,7 +32,7 @@ const styleTreatment = derivePromptStyleTreatment(
 );
 const sceneId = "scene_004";
 
-async function fixture() {
+async function fixture(preGrammar = false) {
   const scenes = Array.from({ length: 10 }, (_, index) => ({
     sceneId: `scene_${String(index + 1).padStart(3, "0")}`,
     phrase: "Safest places to park money and the government.",
@@ -65,8 +65,12 @@ async function fixture() {
       literal_subject: "Cultivated land beside a natural grassland area.",
       action:
         scene.sceneId === sceneId
-          ? "A field borders a natural grassland area."
-          : "Cultivated land lies beside natural grassland.",
+          ? preGrammar
+            ? "A drainage canal borders reclaimed fields."
+            : "A field borders a natural grassland area."
+          : preGrammar && scene.sceneId === "scene_001"
+            ? "A field borders a natural grassland area."
+            : "Cultivated land lies beside natural grassland.",
       environment: "Dutch countryside fields.",
       lighting_context: "Natural daylight.",
       continuity_tags: [],
@@ -93,7 +97,9 @@ async function fixture() {
   );
   const corrected = {
     ...output.scenes.find((scene) => scene.scene_id === sceneId)!,
-    action: "A cultivated parcel borders natural land.",
+    action: preGrammar
+      ? "A dyke borders reclaimed land."
+      : "A cultivated parcel borders natural land.",
   };
   const result = {
     status: "succeeded" as const,
@@ -299,5 +305,54 @@ it("keeps decorative borders forbidden in the corrected output", async () => {
       fetcher: noHttp,
     }),
   ).rejects.toBeInstanceOf(HostedPromptArchivedOutputInvalidError);
+  expect(noHttp).not.toHaveBeenCalled();
+});
+
+it("recovers the narrow historical validator without reclassifying its already valid field scene", async () => {
+  const f = await fixture(true);
+  expect(
+    buildRunwarePromptCorrection(f.batch, f.sealed.sourceOutputText, f.plan.requestPolicy),
+  ).toBeNull();
+  expect(
+    recoverRunwarePromptCorrection(
+      f.batch,
+      f.sealed.sourceOutputText,
+      f.sealed,
+      f.plan.requestPolicy,
+    ),
+  ).toEqual(f.sealed);
+  const noHttp = vi.fn(async () => {
+    throw new Error("NETWORK_FORBIDDEN");
+  });
+  const accepted = await recoverClaimedHostedPromptBatch({
+    apiKey: "offline-no-credentials",
+    plan: f.plan,
+    persistedBinding: f.binding,
+    batchOrdinal: 0,
+    taskUUID: f.request.request.taskUUID,
+    requestBytes: f.request.requestBytes,
+    requestHash: f.request.requestSha256,
+    retryOfRequestHash: f.original.requestSha256,
+    reservationMicroUsd: 500_000,
+    recordedResult: f.result,
+    sourceRecordedResult: { ...f.result, outputText: f.sealed.sourceOutputText },
+    fetcher: noHttp,
+  });
+  expect(accepted.scenes).toHaveLength(10);
+  expect(accepted.scenes.find((s) => s.scene.sceneId === "scene_001")?.writerOutput.action).toBe(
+    "A field borders a natural grassland area.",
+  );
+  expect(accepted.scenes.find((s) => s.scene.sceneId === sceneId)?.writerOutput.action).toBe(
+    "A dyke borders reclaimed land.",
+  );
+  const tampered = { ...f.sealed, failedSceneIds: ["scene_001"] };
+  expect(
+    recoverRunwarePromptCorrection(
+      f.batch,
+      f.sealed.sourceOutputText,
+      tampered,
+      f.plan.requestPolicy,
+    ),
+  ).toBeNull();
   expect(noHttp).not.toHaveBeenCalled();
 });

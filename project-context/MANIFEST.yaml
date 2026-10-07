@@ -4,8 +4,8 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-10-07"
 source_of_truth: project-context
 
-current_selected_profile: v2_09_voice_import_repair
-current_selected_brief: VOICE_IMPORT_REPAIR_PLAN.md
+current_selected_profile: v2_09_prompt_output_reliability
+current_selected_brief: PROMPT_OUTPUT_RELIABILITY_PLAN.md
 
 mandatory_read:
   - 00_START_HERE.md

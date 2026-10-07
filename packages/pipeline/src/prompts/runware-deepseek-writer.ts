@@ -13,6 +13,7 @@ import { validatePromptStyleTreatment, validatePromptWriterOutput } from "./batc
 import {
   assertNoHardPromptConflict,
   hasLegacyPhysicalBorderConflict,
+  hasPreGrammarBorderConflict,
   plainGeometry,
 } from "./compiler.js";
 import {
@@ -2856,7 +2857,7 @@ export function buildRunwarePromptCorrection(
   outputText: string,
   requestPolicy: PromptRequestPolicy = "legacy",
 ): RunwarePromptCorrection | null {
-  return deriveRunwarePromptCorrection(batch, outputText, requestPolicy, false);
+  return deriveRunwarePromptCorrection(batch, outputText, requestPolicy, null);
 }
 
 /** Recover only an exact previously sealed corrective contract, never fresh correction authority. */
@@ -2869,7 +2870,19 @@ export function recoverRunwarePromptCorrection(
   const current = buildRunwarePromptCorrection(batch, outputText, requestPolicy);
   if (current && canonicalizeJson(current) === canonicalizeJson(sealed)) return current;
   if (!isRunwareLunaPromptPolicy(requestPolicy)) return null;
-  const historical = deriveRunwarePromptCorrection(batch, outputText, requestPolicy, true);
+  const preGrammar = deriveRunwarePromptCorrection(
+    batch,
+    outputText,
+    requestPolicy,
+    hasPreGrammarBorderConflict,
+  );
+  if (preGrammar && canonicalizeJson(preGrammar) === canonicalizeJson(sealed)) return preGrammar;
+  const historical = deriveRunwarePromptCorrection(
+    batch,
+    outputText,
+    requestPolicy,
+    hasLegacyPhysicalBorderConflict,
+  );
   return historical && canonicalizeJson(historical) === canonicalizeJson(sealed)
     ? historical
     : null;
@@ -2879,7 +2892,7 @@ function deriveRunwarePromptCorrection(
   batch: PromptBatch,
   outputText: string,
   requestPolicy: PromptRequestPolicy,
-  legacyPhysicalBorders: boolean,
+  historicalBorderValidator: ((value: string) => boolean) | null,
 ): RunwarePromptCorrection | null {
   try {
     const evaluated = evaluateOutput(
@@ -2893,11 +2906,11 @@ function deriveRunwarePromptCorrection(
     const parsed = asRecord(parseJsonStrict(stripCodeFence(outputText)))!;
     const rows = (parsed.scenes as JsonValue[]).map((candidate) => asRecord(candidate)!);
     const historicalBorderConflict = (value: string) =>
-      legacyPhysicalBorders &&
+      historicalBorderValidator !== null &&
       [
         stripProviderControls(value.normalize("NFKC")),
         removeProviderControls(value.normalize("NFKC")),
-      ].some(hasLegacyPhysicalBorderConflict);
+      ].some(historicalBorderValidator);
     const unresolved = batch.scenes.filter((scene) => {
       if (evaluated.unresolved.some((candidate) => candidate.sceneId === scene.sceneId))
         return true;

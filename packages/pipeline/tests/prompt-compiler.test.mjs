@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
-import { hasLegacyPhysicalBorderConflict } from "../dist/src/prompts/compiler.js";
+import {
+  hasLegacyPhysicalBorderConflict,
+  hasPreGrammarBorderConflict,
+} from "../dist/src/prompts/compiler.js";
 
 import {
   DeterministicFixturePromptWriter,
@@ -467,6 +470,18 @@ test("compiler distinguishes physical boundaries from each decorative border men
     "A cultivated parcel borders natural land.",
     "A meadow borders the forest.",
     "A road borders a field.",
+    "A drainage canal borders reclaimed fields.",
+    "A dyke borders reclaimed land.",
+    "France borders Belgium.",
+    "Rotterdam borders Schiedam.",
+    "The old warehouse borders newly developed waterfront property.",
+    "A rugged coast borders a deep blue sea.",
+    "The coast of reclaimed land borders open water.",
+    "A winding road borders densely wooded hills.",
+    "Canals border reclaimed fields.",
+    "French farms border a road.",
+    "The old warehouses border newly developed properties.",
+    "Gold fields border the farm.",
     "Travelers pass through a border crossing.",
     "A rural border checkpoint stands beside the road.",
     "Workers repair a border fence.",
@@ -505,6 +520,24 @@ test("compiler distinguishes physical boundaries from each decorative border men
     "A map of the national border.",
     "An image border crossing the photograph.",
     "A border crossing the photograph.",
+    "A drainage canal borders reclaimed fields with a decorative border.",
+    "A dyke borders reclaimed land. Add thin black borders.",
+    "France borders Belgium and decorative borders surround the image.",
+    "A decorative frame borders a photograph.",
+    "A map of France borders a map of Belgium.",
+    "The image borders reclaimed land.",
+    "Reclaimed land borders a picture frame.",
+    "Add black borders around the field.",
+    "Thin borders surround a field.",
+    "A field has thin borders.",
+    "The garden borders contain flowers.",
+    "The scene borders a farm.",
+    "Plain borders frame a village.",
+    "We add borders to the image.",
+    "Canals border fields; decorative borders frame a village.",
+    "Canals border fields with no borders, but add an image border.",
+    "Gold borders emphasize the farm.",
+    "Thin black borders surround a rural landscape.",
   ]) {
     expectCode("PROMPT_CONFLICT", () => compileAction(action));
   }
@@ -525,6 +558,27 @@ test("historical correction eligibility is limited to the physical-border false 
     "Add a flower border.",
   ])
     assert.equal(hasLegacyPhysicalBorderConflict(value), false, value);
+});
+
+test("historical border diagnostics distinguish the narrowed and original validators", () => {
+  for (const value of [
+    "A drainage canal borders reclaimed fields.",
+    "A dyke borders reclaimed land.",
+    "Canals border reclaimed fields.",
+  ]) {
+    assert.equal(hasLegacyPhysicalBorderConflict(value), true, value);
+    assert.equal(hasPreGrammarBorderConflict(value), true, value);
+  }
+  assert.equal(hasLegacyPhysicalBorderConflict("A field borders natural land."), true);
+  assert.equal(hasPreGrammarBorderConflict("A field borders natural land."), false);
+  for (const value of [
+    "A field borders land with a decorative border.",
+    "No borders.",
+    "The scene borders a farm.",
+  ]) {
+    assert.equal(hasLegacyPhysicalBorderConflict(value), false, value);
+    assert.equal(hasPreGrammarBorderConflict(value), false, value);
+  }
 });
 
 test("keeps described products relatable without allowing text or branding", () => {
