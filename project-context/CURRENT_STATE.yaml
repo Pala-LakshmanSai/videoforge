@@ -7849,7 +7849,7 @@ repository:
   expected_visibility: public
   remote: "https://github.com/Pala-LakshmanSai/videoforge.git"
   published: true
-  branch: codex/gpt6-luna-prompt-writer
+  branch: codex/prompt-plan-binding
   branch_upstream: none
   branch_published: false
   current_source_head: "69175135c0402ce0fdcbfdbbf12abf5d60c06628"
@@ -7871,10 +7871,10 @@ live_development:
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: fixture
-  provider_calls_authorized: false
-  authorized_spend_usd: 0
-  provider_authority_scope: No_provider_calls_until_explicit_approval_for_one_final_scene_correction;previous_USD6_authority_and_spend_are_historical;ordinary_dev_server_default_fixture_unchanged;no_media_or_GPU
+  provider_mode: production
+  provider_calls_authorized: true
+  authorized_spend_usd: 2
+  provider_authority_scope: Exact_fresh_gardening_project_prompt_recovery_and_controlled_completion_USD2_no_manual_media_retries_or_regeneration
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -10190,15 +10190,30 @@ v2_09_historical_consumed_native_authority:
   note: "Continuing user authorization permits source repairs and fresh exact successor records; it does not replay this consumed click. Retained qualified deployment remains present and idle."
 
 provider_authority: &v2_09_provider_authority_current
-  mode: none
-  provider: null
-  cap_usd: 0
-  paid_generation_authorized: false
+  mode: paid
+  provider: Runware_Kie_Fal_RunPod_Neon_Cloudflare
+  cap_usd: 2
+  paid_generation_authorized: true
+  authorized_by_user_at: "2026-10-07"
   non_transferable: true
-  resources: []
-  authorized_operations: []
-  allowed_operations: []
-  prior_user_authority: USD6_total_prompt_qualification_and_qualified_publication_recorded_2026_10_06;one_final_scene_POST_authorized_2026_10_07_and_consumed_successfully;no_further_inference_authorized
+  resources: ["runware:openai:gpt@6-luna", "kie:z-image", "fal:fal-ai/flashhead/audio-to-video", "runware:bytedance:2@2", "runpod:qualified-cloud-media-0.1.52", "cloudflare:videoforge-production-runtime"]
+  model_id: "openai:gpt@6-luna;z-image;fal-ai/flashhead/audio-to-video;bytedance:2@2;qualified-FFmpeg-media-0.1.52"
+  rate_snapshot:
+    - resource_id: kie_z_image
+      billing_unit: image
+      usd_per_unit: 0.004
+      checked_at: "2026-10-07"
+    - resource_id: fal_flashhead
+      billing_unit: output_second
+      usd_per_unit: 0.005
+      checked_at: "2026-10-07"
+    - resource_id: runware_seedance_720p_16_9
+      billing_unit: output_second
+      usd_per_unit: 0.0134
+      checked_at: "2026-10-07"
+  authorized_operations: [original_prompt_claim_once, remaining_prompt_batches, bounded_original_project_completion, production_publication, receipt_reconciliation, rental_cleanup]
+  allowed_operations: [original_prompt_claim_once, remaining_prompt_batches, bounded_original_project_completion, production_publication, receipt_reconciliation, rental_cleanup]
+  prior_user_authority: Older_gardening_project_remains_paused_no_replay_of_other_historical_UNKNOWN_work
 
 recommended_next_task:
   task_id: VF-10-09
@@ -10207,14 +10222,14 @@ recommended_next_task:
   status: IN_PROGRESS
   dependency_status: Exact_original_request_reproduces_Workerd_fetch_receiver_failure_without_outbound_HTTP
   authorization_status: User2026_10_07_authorized_parallel_audit_fix_production_and_USD2_new_total_spend
-  task_stage: runtime_fix_and_complete_stage_qualification
+  task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current
   read_profile: v2_09_prompt_runtime_fetch
   task_brief: PROMPT_RUNTIME_FETCH_PLAN.md
   goal: Repair_runtime_fetch_receiver_and_prove_actual_complete_prompt_stage
-  provider_mode: fixture
+  provider_mode: production
   provider_calls_authorized: true
-  read_only_provider_calls_authorized: true
+  read_only_provider_calls_authorized: false
   maximum_external_spend_usd: 2
   remote_or_cloud_mutations_authorized: true
   credential_access_authorized: true
@@ -10224,9 +10239,9 @@ recommended_next_task:
   worker_image_publication_authorized: false
   gpu_use_authorized: false
   retained_volume_mutation_authorized: false
-  application_code_changes_authorized: false
+  application_code_changes_authorized: true
   spend_usd: 0
-  spend_basis: current_provider_free_after_worker_publication;no_further_inference_authorized;workflow_activation_completed_remaining_verification_provider_free;fullfilm_review_and_non_green_broad_CI_separate
+  spend_basis: Fresh_user_USD2_cap_original_project_controlled_completion_currently_zero_new_spend
   historical_latest_account_readback_usd: 3.090390
   historical_account_readback_basis: 2026_10_06T19_53Z_predates_guarded_first7_retest_not_current_not_invoice
   conservative_prior_cost_usd: 3.099707
