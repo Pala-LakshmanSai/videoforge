@@ -4,7 +4,7 @@ prompt_output_reliability_2026_10_07:
   read_profile: v2_09_prompt_output_reliability
   brief: PROMPT_OUTPUT_RELIABILITY_PLAN.md
   branch: codex/prompt-output-reliability
-  status: GRAMMAR_FIX_QUALIFIED_PENDING_RELEASE_AND_LAST_BATCH
+  status: GRAMMAR_PUBLISHED_CPU_HEADROOM_QUALIFICATION_PENDING_RECOVERY
   baseline_executable: 327fa6e644c6299cabbc7130f09e6adb2aed636f
   baseline_worker: 8d2f1f98-54fa-48f3-aa95-8c28b245fb4c
   native_migration: 294
@@ -23,6 +23,11 @@ prompt_output_reliability_2026_10_07:
   current_worker_base: a342a0ea-9eb3-42a0-a514-e5af41edf24c
   live_failure: Narrow_allowlist_rejected_canal_borders_reclaimed_fields_and_dyke_borders_reclaimed_land
   saved_prefix: 256
+
+  grammar_executable: e3ab0ad3b739f5c9b9c7253f4d8c83ddcb0318bd
+  grammar_worker: 9bf974ad-fef3-4bfe-b6cc-cb9b76121174
+  coordinator_cpu_headroom_ms: 300000
+  coordinator_cpu_hotspot: Unproven_platform_CPU_exhaustion_confirmed
 
 voice_import_repair_2026_10_07:
   checkpoint: V2-09

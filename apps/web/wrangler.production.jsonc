@@ -8,7 +8,7 @@
   "find_additional_modules": true,
   "rules": [{"type": "ESModule", "globs": ["**/*.js", "**/*.mjs"]}],
   "main": "./worker/production-index.ts",
-  "limits": { "cpu_ms": 30000 },
+  "limits": { "cpu_ms": 300000 },
   "assets": {
     "directory": "./dist-cloudflare/client",
     "binding": "ASSETS",

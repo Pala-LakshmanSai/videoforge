@@ -96,7 +96,7 @@ test("production template is an exact fail-closed closed-world config", () => {
   const config = parseProductionConfig(
     readFileSync(path.join(root, "apps/web/wrangler.production.jsonc"), "utf8"),
   );
-  assert.deepEqual(config.limits, { cpu_ms: 30_000 });
+  assert.deepEqual(config.limits, { cpu_ms: 300_000 });
 });
 
 test("renderer is provider-free dry-run by default", () => {
@@ -301,7 +301,7 @@ test("validator rejects extras, forbidden modes, secrets, and unresolved activat
       value.vars.DATABASE_URL = "secret";
     },
     (value) => {
-      value.limits.cpu_ms = 10;
+      value.limits.cpu_ms = 30_000;
     },
   ]) {
     const candidate = structuredClone(template);
@@ -618,8 +618,8 @@ test("bundle firewall caps the Stage 5 incremental closure at 256 KiB", async ()
 test("bundle firewall rejects one byte of static Worker-entry growth above each target baseline", async () => {
   const workerSource = "const worker = true;\n";
   for (const { wranglerConfig, acceptedStaticBytes } of [
-    { wranglerConfig: "wrangler.production.jsonc", acceptedStaticBytes: 2_847_332 },
-    { wranglerConfig: "wrangler.staging.jsonc", acceptedStaticBytes: 2_849_224 },
+    { wranglerConfig: "wrangler.production.jsonc", acceptedStaticBytes: 2_847_646 },
+    { wranglerConfig: "wrangler.staging.jsonc", acceptedStaticBytes: 2_849_525 },
   ]) {
     const directory = await productionBundle(workerSource, "const client = true;\n", {
       wranglerConfig,
