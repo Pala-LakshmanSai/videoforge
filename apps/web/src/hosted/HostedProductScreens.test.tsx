@@ -1163,6 +1163,90 @@ it.each([
   },
 );
 
+it.each([
+  { held: true, phase: null, expected: "Paused before this stage" },
+  { held: true, phase: "WAITING_CAPACITY", expected: "Paused before this stage" },
+  { held: false, phase: null, expected: "Not started" },
+  { held: false, phase: "WAITING_CAPACITY", expected: "Waiting for capacity" },
+])(
+  "distinguishes a held stage, an unstarted stage and real capacity wait ($held, $phase)",
+  async ({ held, phase, expected }) => {
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        project: {
+          id: "held-cloud",
+          revision_id: "revision",
+          revision_state: "LOCKED",
+          title: "Held cloud",
+          media_execution_backend: "RUNPOD_POD",
+        },
+        generation_provider: "KIE_FAL",
+        voiceover_context: { state: "SUCCEEDED" },
+        generation: { id: "generation", stage: "READY_FOR_GPU_DISPATCH", failed_tasks: 0 },
+        queue: {
+          status: held ? "RETRY_WAIT" : "ACTIVE",
+          position: held ? null : 1,
+          blocked_reason: held ? "HOSTED_GENERATION_HELD" : null,
+        },
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: gpuReadiness,
+        attempts: [
+          {
+            id: "asr",
+            kind: "ASR",
+            state: "SUCCEEDED",
+            execution_backend: "RUNPOD_POD",
+            cloud_gpu: "NVIDIA RTX PRO 4500",
+            cloud_phase: "CLEAN",
+            cloud_machine_active: false,
+          },
+          ...(phase
+            ? [
+                {
+                  id: "span",
+                  kind: "SPAN_AUDIO",
+                  state: "OUTBOXED",
+                  execution_backend: "RUNPOD_POD",
+                  cloud_phase: phase,
+                  cloud_machine_active: false,
+                },
+              ]
+            : []),
+        ],
+        stages: stageList({
+          prepare: "COMPLETE",
+          transcription: "COMPLETE",
+          "voiceover-context": "COMPLETE",
+          planning: "COMPLETE",
+          "prompt-writing": "COMPLETE",
+          "audio-spanning": phase ? "RUNNING" : "PENDING",
+        }),
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    renderHosted(<HostedProjectScreen projectId="held-cloud" />);
+    await screen.findByRole("list", { name: "Project stages" });
+    expect(within(stageRow("Audio spanning")).getByText(expected)).toBeInTheDocument();
+    expect(screen.queryByText("Waiting for cloud status")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Rendering machine")).toHaveTextContent(
+      "No active RunPod compute · Previous rental: NVIDIA RTX PRO 4500",
+    );
+    if (held) {
+      expect(
+        within(screen.getByRole("region", { name: "Live video progress" })).getByText("Paused"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Generation is paused. Saved work is preserved; no new compute or media requests will start.",
+        ),
+      ).toBeInTheDocument();
+      expect(fetchMock.mock.calls.map((call) => (call as unknown[])[0])).not.toContain(
+        "/api/v2/hosted/projects/held-cloud/gpu-dispatch",
+      );
+    }
+  },
+);
+
 it.each(["CLEAN", "COMPLETE"])(
   "retains the recorded GPU after %s cleanup and identifies current API work",
   (phase) => {
@@ -1175,10 +1259,10 @@ it.each(["CLEAN", "COMPLETE"])(
       cloud_machine_active: false,
     };
     expect(hostedMachineLabel("RUNPOD_POD", [asr])).toBe(
-      "Cloud · RunPod · NVIDIA RTX PRO 4500 · Compute released",
+      "Cloud · No active RunPod compute · Previous rental: NVIDIA RTX PRO 4500 · Released",
     );
     expect(hostedMachineLabel("RUNPOD_POD", [asr], true)).toBe(
-      "Cloud · RunPod · NVIDIA RTX PRO 4500 · Compute released · Media APIs running",
+      "Cloud · No active RunPod compute · Previous rental: NVIDIA RTX PRO 4500 · Released · Media APIs running",
     );
     expect(hostedMachineLabel("RUNPOD_POD", [{ ...asr, cloud_phase: "AMBIGUOUS" }], true)).toBe(
       "Cloud · Media APIs · No active RunPod compute",

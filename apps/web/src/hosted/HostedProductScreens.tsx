@@ -691,7 +691,7 @@ export function hostedMachineLabel(
         )
     : undefined;
   const releasedMachine = released
-    ? `Cloud · RunPod · ${released.cloud_gpu ?? released.cloud_cpu} · Compute released`
+    ? `Cloud · No active RunPod compute · Previous rental: ${released.cloud_gpu ?? released.cloud_cpu} · Released`
     : null;
   if (apiActive) {
     if (cloud)
@@ -5800,6 +5800,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     (stage) => stage.id === "prompt-writing",
   )?.status;
   const spanAudio = query.data?.span_audio;
+  const generationHeld = query.data?.queue?.blocked_reason === "HOSTED_GENERATION_HELD";
   const durableGenerationStarted = hostedGenerationHasStarted(query.data?.stages);
   // A clip that failed on the owner's own computer still has automatic retries, so keep the
   // preparation phase open instead of dead-ending Stage 6 the moment one clip fails.
@@ -5821,7 +5822,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
       (spanAudio.running > 0 || spanAudio.materialized > 0),
   );
   const gpuDispatchReady = Boolean(
-    query.data?.generation?.id &&
+    !generationHeld &&
+      query.data?.generation?.id &&
       !spanPreparationActive &&
       !durableGenerationStarted &&
       query.data.generation.stage === "READY_FOR_GPU_DISPATCH" &&
@@ -5836,7 +5838,8 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         )),
   );
   const gpuDispatchResumeReady = Boolean(
-    query.data?.generation?.id &&
+    !generationHeld &&
+      query.data?.generation?.id &&
       !spanPreparationActive &&
       promptStageState === "COMPLETE" &&
       (query.data.generation_provider === "KIE_FAL" ||
@@ -6108,27 +6111,41 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     stages,
     query.data.gpu_lanes ?? [],
     query.data.generation_provider === "KIE_FAL",
-  ).map((stage) => ({
-    ...stage,
-    status:
-      cloudCleanupPending && ["render", "technical-check"].includes(stage.id)
-        ? "RUNNING"
-        : stage.status,
-    detail:
-      stage.id === "audio-spanning" && stage.status === "FAILED"
-        ? stage.detail
-        : isCloudMediaStage(stage.id)
-          ? cloudMediaPhaseLabel(
-              cloudStageAttempts[stage.id]?.cloud_phase,
-              cloudStageAttempts[stage.id]?.state ?? "WAITING",
-              query.data.queue?.position,
-            )
-          : stage.status === "COMPLETE" && stage.id !== "video-generation"
-            ? "Complete"
-            : stage.status === "PENDING" && stage.detail === "Waiting for an authoritative update."
-              ? "Waiting"
-              : stage.detail,
-  }));
+  ).map((stage) => {
+    const stageHeld =
+      generationHeld &&
+      (stage.status === "PENDING" ||
+        (isCloudMediaStage(stage.id) &&
+          ["PLANNED", "OUTBOXED"].includes(cloudStageAttempts[stage.id]?.state ?? "")));
+    return {
+      ...stage,
+      status: stageHeld
+        ? "PENDING"
+        : cloudCleanupPending && ["render", "technical-check"].includes(stage.id)
+          ? "RUNNING"
+          : stage.status,
+      detail: stageHeld
+        ? "Paused before this stage"
+        : stage.id === "audio-spanning" && stage.status === "FAILED"
+          ? stage.detail
+          : isCloudMediaStage(stage.id) &&
+              !cloudStageAttempts[stage.id] &&
+              stage.status === "PENDING"
+            ? "Not started"
+            : isCloudMediaStage(stage.id) && cloudStageAttempts[stage.id]
+              ? cloudMediaPhaseLabel(
+                  cloudStageAttempts[stage.id]?.cloud_phase,
+                  cloudStageAttempts[stage.id]?.state ?? "WAITING",
+                  query.data.queue?.position,
+                )
+              : stage.status === "COMPLETE" && stage.id !== "video-generation"
+                ? "Complete"
+                : stage.status === "PENDING" &&
+                    stage.detail === "Waiting for an authoritative update."
+                  ? "Waiting"
+                  : stage.detail,
+    };
+  });
   // Preparation and final validation remain authoritative internal work, not numbered steps.
   const pipelineStages = uiStages.filter(
     (stage) =>
@@ -6248,8 +6265,10 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
     uiStages.some((stage) =>
       ["STARTING", "RUNNING", "RETRYING", "CANCEL_REQUESTED"].includes(stage.status),
     ) ||
-    query.data.attempts.some((attempt) =>
-      HOSTED_ACTIVE_ATTEMPT_STATES.has(attempt.state.toUpperCase()),
+    query.data.attempts.some(
+      (attempt) =>
+        HOSTED_ACTIVE_ATTEMPT_STATES.has(attempt.state.toUpperCase()) &&
+        !(generationHeld && ["PLANNED", "OUTBOXED"].includes(attempt.state.toUpperCase())),
     );
   const terminalStageStatus = hostedTerminalStageStatus(
     stages,
@@ -6269,16 +6288,25 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         ? "Blocked"
         : terminalCancelled
           ? "Cancelled"
-          : generationWaitingForGpu
-            ? query.data.generation_provider === "KIE_FAL"
-              ? "Waiting for generation"
-              : "Waiting for GPUs"
-            : allComplete
-              ? "Complete"
-              : hasRunning
-                ? "Running"
-                : "Waiting";
-  const workStopped = hasFailed || hasActionRequired || terminalBlocked || terminalCancelled;
+          : generationHeld && !hasRunning && !allComplete
+            ? "Paused"
+            : generationWaitingForGpu
+              ? query.data.generation_provider === "KIE_FAL"
+                ? "Waiting for generation"
+                : "Waiting for GPUs"
+              : allComplete
+                ? "Complete"
+                : hasRunning
+                  ? "Running"
+                  : generationHeld
+                    ? "Paused"
+                    : "Waiting";
+  const workStopped =
+    hasFailed ||
+    hasActionRequired ||
+    terminalBlocked ||
+    terminalCancelled ||
+    (generationHeld && !hasRunning);
   const statusToneValue = hasFailed
     ? "danger"
     : hasActionRequired
@@ -7029,7 +7057,12 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
         </div>
       </section>
 
-      {render?.state === "SUCCEEDED" ? null : spanPreparationActive ? (
+      {render?.state === "SUCCEEDED" ? null : generationHeld && !hasRunning ? (
+        <div className="validation validation-info" role="status" aria-live="polite">
+          Generation is paused. Saved work is preserved; no new compute or media requests will
+          start.
+        </div>
+      ) : spanPreparationActive ? (
         <div className="validation validation-info" role="status" aria-live="polite">
           Preparing exact avatar audio. Generation continues when ready.
         </div>
@@ -7131,12 +7164,14 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
               <span>
                 <small>Queue</small>
                 <strong>
-                  {queue?.position
-                    ? `Position ${queue.position}`
-                    : (render?.execution_backend ?? query.data.project.media_execution_backend) ===
-                        "RUNPOD_POD"
-                      ? "Cloud media execution"
-                      : "Local media execution"}
+                  {generationHeld
+                    ? "Paused"
+                    : queue?.position
+                      ? `Position ${queue.position}`
+                      : (render?.execution_backend ??
+                            query.data.project.media_execution_backend) === "RUNPOD_POD"
+                        ? "Cloud media execution"
+                        : "Local media execution"}
                 </strong>
               </span>
               <span>

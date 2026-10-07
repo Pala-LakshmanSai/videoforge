@@ -1554,6 +1554,51 @@ describe("hosted product route contract", () => {
     }
   });
 
+  it.each([
+    { state: "RETRY_WAIT", held: true, cleanup: false, reason: "HOSTED_GENERATION_HELD" },
+    { state: "RETRY_WAIT", held: true, cleanup: true, reason: "HOSTED_GENERATION_HELD" },
+    { state: "RETRY_WAIT", held: false, cleanup: false, reason: null },
+    { state: "WAITING", held: false, cleanup: true, reason: "HOSTED_CLOUD_CLEANUP_PENDING" },
+    { state: "ACTIVE", held: false, cleanup: false, reason: null },
+  ])("projects held generation separately from finite retry and cleanup: %j", async (fixture) => {
+    const original = testState.query.getMockImplementation()!;
+    testState.cleanup.pending = fixture.cleanup;
+    testState.query.mockImplementation(async (sql, params) => {
+      if (sql.includes("AS prompt_task_state"))
+        return { rows: [{ id: PROJECT_ID, prompt_task_state: "COMPLETE" }], affectedRows: 1 };
+      if (sql.includes("SELECT request.id, request.state, request.queue_order")) {
+        expect(sql).toContain(
+          "(request.state='RETRY_WAIT' AND request.available_at='infinity'::timestamptz) AS generation_held",
+        );
+        return {
+          rows: [{ state: fixture.state, generation_held: fixture.held, ahead: 2, total: 3 }],
+          affectedRows: 1,
+        };
+      }
+      return original(sql, params);
+    });
+    try {
+      const response = await handleHostedProductRequest(
+        request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+        environment,
+        stagingConfig,
+        executionContext,
+      );
+      expect(response?.status).toBe(200);
+      const detail = (await response!.json()) as { queue: Record<string, unknown> };
+      expect(detail.queue).toMatchObject({
+        status: fixture.state,
+        blocked_reason: fixture.reason,
+        position: fixture.held ? null : 3,
+        ahead: fixture.held ? null : 2,
+        total: 3,
+      });
+    } finally {
+      testState.query.mockImplementation(original);
+      testState.cleanup.pending = false;
+    }
+  });
+
   it.each([false, true])(
     "projects waiting admission truthfully and preserves saved spans (cleanup=%s)",
     async (pending) => {

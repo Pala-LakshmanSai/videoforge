@@ -1,4 +1,4 @@
-Current task: finish grammar-level prompt validation and exact held-stage verification under the user USD2 cap. Use `v2_09_prompt_output_reliability` / `PROMPT_OUTPUT_RELIABILITY_PLAN.md`; preserve concurrent voice-import release49f0267f.
+Current task: repair held Cloud stage and historical machine status. Use `v2_09_cloud_status` / `CLOUD_STATUS_PLAN.md`; preserve completed276 prompts, the downstream hold and published CPU headroom.
 
 Current voice import repair: V2-09/VF-10-09. Read `VOICE_IMPORT_REPAIR_PLAN.md` and `voice_import_repair_2026_10_07` in CURRENT_STATE.yaml. Already available provider voices must save privately without another import; uncertain acceptance is reconciled by exact ID. User authorizes repair, functional verification and production release; no new paid generation/compute.
 

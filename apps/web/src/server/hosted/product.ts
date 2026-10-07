@@ -8034,6 +8034,7 @@ async function projectDetail(
       );
       const queue = await transaction.query(
         `SELECT request.id, request.state, request.queue_order, request.available_at,
+                (request.state='RETRY_WAIT' AND request.available_at='infinity'::timestamptz) AS generation_held,
                 request.admitted_at, request.terminal_at,
                 (SELECT count(*) FROM generation_requests AS ahead
                   WHERE ahead.state IN ('WAITING','ADMITTED','ACTIVE','RETRY_WAIT')
@@ -9315,11 +9316,19 @@ async function projectDetail(
     const queueRow = detail.queue as Record<string, unknown> | null;
     const queue = queueRow
       ? {
-          position: numberOrNull(queueRow.ahead) === null ? null : Number(queueRow.ahead) + 1,
-          ahead: numberOrNull(queueRow.ahead),
+          position:
+            queueRow.generation_held === true || numberOrNull(queueRow.ahead) === null
+              ? null
+              : Number(queueRow.ahead) + 1,
+          ahead: queueRow.generation_held === true ? null : numberOrNull(queueRow.ahead),
           total: numberOrNull(queueRow.total),
           status: queueRow.state ?? null,
-          blocked_reason: detail.cleanupPending ? "HOSTED_CLOUD_CLEANUP_PENDING" : null,
+          blocked_reason:
+            queueRow.generation_held === true
+              ? "HOSTED_GENERATION_HELD"
+              : detail.cleanupPending
+                ? "HOSTED_CLOUD_CLEANUP_PENDING"
+                : null,
           estimated_wait_ms: null,
           fair_rotation: "DETERMINISTIC_ACCOUNT_ROTATION",
         }
