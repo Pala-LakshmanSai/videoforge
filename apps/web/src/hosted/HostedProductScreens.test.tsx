@@ -937,55 +937,62 @@ it("reuses signed media URLs until their refresh window and refreshes expired UR
   ).toBe(replacementUrl);
 });
 
-it("keeps an open avatar viewer URL stable across project polling", async () => {
-  vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-09-25T10:00:00.000Z"));
-  const projectId = "33333333-3333-4333-8333-333333333333";
-  const firstUrl =
-    "https://artifacts.example/avatar.mp4?X-Amz-Date=20260925T100000Z&X-Amz-Expires=300&X-Amz-Signature=first";
-  const refreshedUrl =
-    "https://artifacts.example/avatar.mp4?X-Amz-Date=20260925T100001Z&X-Amz-Expires=300&X-Amz-Signature=second";
-  let reads = 0;
-  const detail = () => ({
-    project: {
-      id: projectId,
-      title: "Avatar preview",
-      created_at: "2026-09-25T05:00:00.000Z",
-      revision_id: "44444444-4444-4444-8444-444444444444",
-      revision_state: "LOCKED",
-    },
-    attempts: [],
-    generation: null,
-    gpu_transport: "DISABLED_UNQUALIFIED" as const,
-    gpu_readiness: gpuReadiness,
-    stages: [
-      { id: "avatar-generation", name: "Generate avatar video", status: "COMPLETE" },
-      { id: "render", name: "Assemble final video", status: "RUNNING" },
-    ],
-    avatar_footage: [
-      { id: "avatar-1", video_url: reads === 1 ? firstUrl : refreshedUrl, label: "Avatar clip 1" },
-    ],
-  });
-  const fetchMock = vi.fn(async () => {
-    reads += 1;
-    return Response.json(detail());
-  });
-  vi.stubGlobal("fetch", fetchMock);
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
-    <QueryClientProvider client={client}>
-      <HostedProjectScreen projectId={projectId} />
-    </QueryClientProvider>,
-  );
-  fireEvent.click(await screen.findByRole("button", { name: "View avatar videos/footage" }));
-  const video = screen.getByLabelText("Avatar clip 1");
-  expect(video).toHaveAttribute("src", firstUrl);
+it.each(["RUNNING", "COMPLETE"])(
+  "opens accepted avatar clips while %s and keeps playback stable across polling",
+  async (avatarStatus) => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-09-25T10:00:00.000Z"));
+    const projectId = "33333333-3333-4333-8333-333333333333";
+    const firstUrl =
+      "https://artifacts.example/avatar.mp4?X-Amz-Date=20260925T100000Z&X-Amz-Expires=300&X-Amz-Signature=first";
+    const refreshedUrl =
+      "https://artifacts.example/avatar.mp4?X-Amz-Date=20260925T100001Z&X-Amz-Expires=300&X-Amz-Signature=second";
+    let reads = 0;
+    const detail = () => ({
+      project: {
+        id: projectId,
+        title: "Avatar preview",
+        created_at: "2026-09-25T05:00:00.000Z",
+        revision_id: "44444444-4444-4444-8444-444444444444",
+        revision_state: "LOCKED",
+      },
+      attempts: [],
+      generation: null,
+      gpu_transport: "DISABLED_UNQUALIFIED" as const,
+      gpu_readiness: gpuReadiness,
+      stages: [
+        { id: "avatar-generation", name: "Generate avatar video", status: avatarStatus },
+        { id: "render", name: "Assemble final video", status: "RUNNING" },
+      ],
+      avatar_footage: [
+        {
+          id: "avatar-1",
+          video_url: reads === 1 ? firstUrl : refreshedUrl,
+          label: "Avatar clip 1",
+        },
+      ],
+    });
+    const fetchMock = vi.fn(async () => {
+      reads += 1;
+      return Response.json(detail());
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <HostedProjectScreen projectId={projectId} />
+      </QueryClientProvider>,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "View avatar videos/footage" }));
+    const video = screen.getByLabelText("Avatar clip 1");
+    expect(video).toHaveAttribute("src", firstUrl);
 
-  await act(async () => {
-    await client.invalidateQueries({ queryKey: ["hosted-project", projectId] });
-  });
-  expect(fetchMock).toHaveBeenCalledTimes(2);
-  expect(video).toHaveAttribute("src", firstUrl);
-});
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ["hosted-project", projectId] });
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(video).toHaveAttribute("src", firstUrl);
+  },
+);
 
 it("does not render the previous project while a new project detail is loading", async () => {
   const firstProjectId = "11111111-1111-4111-8111-111111111111";

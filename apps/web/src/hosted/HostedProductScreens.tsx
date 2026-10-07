@@ -6392,7 +6392,7 @@ export function HostedProjectScreen({ projectId }: { projectId: string }) {
           ),
         }
       : {}),
-    ...(avatarStage?.status === "COMPLETE" && avatarVideos.length > 0
+    ...(avatarStage && avatarVideos.length > 0
       ? {
           [avatarStage.id]: (
             <ProjectMediaReview
