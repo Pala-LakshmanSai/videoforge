@@ -22,6 +22,19 @@ invoice. Retain partial totals where actual usage/charges are unavailable. Never
 reprice historical events, alter immutable requests/model pins/budgets, or create
 paid work to test a cost display. Keep output/reasoning tokens counted once.
 
+## Related preclaim failure found during live verification
+
+The user's current35-scene v39 project fails HOSTED_PROMPT_INPUT_INVALID before
+any claim: preparation includes per-scene literal_character_limits in its plan
+hash while a duplicate dispatch document omits them. All scene budgets compile;
+provider claims/reported prompt cost are0. Share the existing canonical document
+between preparation, recovery and dispatch; preserve legacy hashes, requests,
+profile9/model/limits/budgets and the failed project's rows. A preparation-hash
+regression must reach only fake claim(false), reject tampered caps before claim,
+and replay the exact35-scene authority offline with zero HTTP. No paid retry or
+new provider qualification is authorized by this discovery. Register qualified
+Workflow code and adopt only the existing idle singleton under the durable guard.
+
 ## Acceptance and completion
 
 Small fixes in shared calculator/read-only projection, explicit verified-rate

@@ -22,6 +22,27 @@ charges. Small positive text costs stay visible below one cent. Tenant/project
 scope and historical amounts, model profiles, requests, provider guards and Cloud
 rental accounting remain unchanged.
 
+## Live verification found a separate preclaim failure
+
+The current35-scene ordinary v39 project failed HOSTED_PROMPT_INPUT_INVALID with
+0 accepted rows,0 paid claims,0 reported prompt cost and provider_may_have_charged=false.
+Preparation hashed per-batch literal_character_limits; the duplicate dispatcher
+serializer omitted those fields. All scene budgets compiled (minimum173), so
+this was a binding disagreement rather than invalid scene content/provider output.
+The prior qualification computed both sides from the dispatcher helper and missed
+the actual preparation boundary.
+
+The canonical document now lives once in runware-prompt-execution and is re-exported
+by hosted-prompt-run. Route preparation, recovery and dispatch share the document.
+A regression hashes through the real preparation primitives, reaches fake claim(false)
+without HTTP, and rejects a changed scene cap before claim. Legacy hash goldens pass.
+The exact current35-scene authority now reproduces its saved hash and reaches only
+fake claim(false) offline; all original run/task/claim/cost records remain untouched.
+Provider request bytes, model/profile9, budgets and retries are unchanged. No paid
+qualification or failed-project retry occurred. Private input-diagnostic contains
+before/after proof; source changes require matching Workflow registration/runtime
+adoption only under the existing durable idle guard.
+
 ## Rates and limits
 
 See normative 11_COST_SPEED_BUDGET.md for dated official sources. Runware Luna
@@ -39,7 +60,9 @@ separate; Cloud retains recorded actual rates and confirmed uptime.
 ## Qualification
 
 - 509 tests across project-api-cost, product, screens and CloudCompute passed.
-- Web/Worker TypeScript, web ESLint, both builds and bundle quarantine passed.
+- Additional96 prompt route/run/Luna transport checks passed, including legacy
+  goldens and new preparation-binding regression. Final builds/types/lint and
+  bundle quarantine passed again after this source change.
 - Installed Chrome cost regression passed at desktop1440 and mobile390/320,
   including small text visibility, partial projection, total arithmetic and frozen
   stopped-rental cost. No provider dispatch; fixture auth proxy noise is inherited.

@@ -4,7 +4,9 @@ import { NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH } from "@videoforge/pipeline";
 import { promptStyleTreatmentPositiveSuffix } from "@videoforge/pipeline/prompts";
 import * as promptRuntime from "@videoforge/pipeline/prompts";
 import { buildKieScenePrompt } from "../providers/kie-image-prompt";
+import { sha256 } from "./crypto";
 import { describe, expect, it, vi } from "vitest";
+import { canonicalJson } from "./submission";
 
 import {
   buildPromptBatch,
@@ -353,6 +355,64 @@ describe("versioned prompt request recovery", () => {
         (batch) => batch.maxOutputTokens <= HOSTED_LUNA_PROMPT_BATCH_MAX_OUTPUT_TOKENS,
       ),
     ).toBe(true);
+  });
+
+  it("uses the preparation hash for v39 scene budgets before claiming and rejects changed caps", async () => {
+    const planned = hostedPromptBatchPlan(authorityFor(true), "runware-luna-grounded-v2");
+    const preparationHash = await sha256(canonicalJson(hostedPromptBatchPlanDocument(planned)));
+    expect(preparationHash).toBe(await hostedPromptBatchPlanHash(planned));
+    const binding = {
+      plannedBatchCount: planned.batchCount,
+      plannedSceneCount: planned.totalScenes,
+      batchPlanHash: preparationHash,
+    };
+    const claim = vi.fn(async () => false);
+    const fetcher = vi.fn();
+    const result = await dispatchOneHostedPromptBatch({
+      apiKey: "runware-test-key-at-least-twenty-characters",
+      plan: planned,
+      persistedBinding: binding,
+      batchOrdinal: 0,
+      remainingReservationMicroUsd: 2_000_000,
+      claim,
+      recordResult: async () => undefined,
+      fetcher,
+    });
+    expect(result).toBeNull();
+    expect(claim).toHaveBeenCalledTimes(1);
+    expect(fetcher).not.toHaveBeenCalled();
+
+    const first = planned.batches[0]!;
+    const scene = first.batch.scenes[0]!;
+    const originalLimit = first.batch.literalCharacterLimits![scene.sceneId]!;
+    const changedCaps = {
+      ...first.batch.literalCharacterLimits,
+      [scene.sceneId]: originalLimit + 1,
+    };
+    const tampered = {
+      ...planned,
+      batches: planned.batches.map((entry, index) =>
+        index === 0
+          ? { ...entry, batch: { ...entry.batch, literalCharacterLimits: changedCaps } }
+          : entry,
+      ),
+    };
+    const rejectedClaim = vi.fn(async () => false);
+    const rejectedFetch = vi.fn();
+    await expect(
+      dispatchOneHostedPromptBatch({
+        apiKey: "runware-test-key-at-least-twenty-characters",
+        plan: tampered,
+        persistedBinding: binding,
+        batchOrdinal: 0,
+        remainingReservationMicroUsd: 2_000_000,
+        claim: rejectedClaim,
+        recordResult: async () => undefined,
+        fetcher: rejectedFetch,
+      }),
+    ).rejects.toMatchObject({ problemCode: "HOSTED_PROMPT_INPUT_INVALID" });
+    expect(rejectedClaim).not.toHaveBeenCalled();
+    expect(rejectedFetch).not.toHaveBeenCalled();
   });
 
   it("dispatches, repairs, recovers, compiles and hands off a full 152-scene Luna stage without replay", async () => {

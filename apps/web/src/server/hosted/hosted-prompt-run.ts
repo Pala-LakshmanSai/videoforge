@@ -33,6 +33,7 @@ import {
   type HostedPromptBatchPlanBinding,
   type HostedPromptContinuationOptions,
 } from "./runware-prompt-execution";
+export { hostedPromptBatchPlanDocument } from "./runware-prompt-execution";
 
 type RecordValue = Record<string, unknown>;
 
@@ -506,44 +507,6 @@ export async function recoverHostedPromptBatchPlan(
     }
   }
   throw new HostedPromptExecutionError("HOSTED_PROMPT_INPUT_INVALID", "FAILED", false, null);
-}
-
-export function hostedPromptBatchPlanDocument(plan: PromptBatchPlan): Record<string, unknown> {
-  return {
-    ...(plan.requestPolicy === undefined || plan.requestPolicy === "legacy"
-      ? {}
-      : { request_policy: plan.requestPolicy }),
-    schema_version: "videoforge-hosted-prompt-batch-plan/v1",
-    planner_version: plan.planVersion,
-    batch_id_prefix: plan.batchIdPrefix,
-    total_scenes: plan.totalScenes,
-    batch_count: plan.batchCount,
-    max_input_tokens: plan.maxInputTokens,
-    max_output_tokens: plan.maxOutputTokens,
-    total_estimated_request_bytes: plan.totalEstimatedRequestBytes,
-    total_estimated_input_tokens: plan.totalEstimatedInputTokens,
-    total_estimated_output_tokens: plan.totalEstimatedOutputTokens,
-    batches: plan.batches.map((batch) => ({
-      ordinal: batch.ordinal - 1,
-      batch_id: batch.batchId,
-      first_scene_ordinal: batch.sceneStartIndex,
-      scene_end_ordinal_exclusive: batch.sceneEndIndexExclusive,
-      scene_ids: batch.sceneIds,
-      estimated_request_bytes: batch.estimatedRequestBytes,
-      estimated_input_tokens: batch.estimatedInputTokens,
-      estimated_output_tokens: batch.estimatedOutputTokens,
-      max_output_tokens: batch.maxOutputTokens,
-      ...(batch.batch.literalCharacterLimits === undefined
-        ? {}
-        : {
-            literal_character_limits: batch.batch.scenes.map((scene) => ({
-              scene_id: scene.sceneId,
-              limit: batch.batch.literalCharacterLimits![scene.sceneId],
-            })),
-          }),
-      ends_at_natural_boundary: batch.endsAtNaturalBoundary,
-    })),
-  };
 }
 
 class HostedPromptStore implements PromptExecutionStore {

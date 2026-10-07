@@ -684,7 +684,7 @@ function requireLunaCompletion(
  * by `hostedPromptBatchPlanDocument` during preparation. It intentionally
  * includes every grouping and sizing field, not only the flattened scene IDs.
  */
-function hostedPromptBatchPlanDocument(plan: PromptBatchPlan): Record<string, unknown> {
+export function hostedPromptBatchPlanDocument(plan: PromptBatchPlan): Record<string, unknown> {
   return {
     ...(plan.requestPolicy === undefined || plan.requestPolicy === "legacy"
       ? {}
@@ -709,6 +709,14 @@ function hostedPromptBatchPlanDocument(plan: PromptBatchPlan): Record<string, un
       estimated_input_tokens: batch.estimatedInputTokens,
       estimated_output_tokens: batch.estimatedOutputTokens,
       max_output_tokens: batch.maxOutputTokens,
+      ...(batch.batch.literalCharacterLimits === undefined
+        ? {}
+        : {
+            literal_character_limits: batch.batch.scenes.map((scene) => ({
+              scene_id: scene.sceneId,
+              limit: batch.batch.literalCharacterLimits![scene.sceneId],
+            })),
+          }),
       ends_at_natural_boundary: batch.endsAtNaturalBoundary,
     })),
   };
