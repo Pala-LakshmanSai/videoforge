@@ -71,3 +71,14 @@ estimate alone. Keep existing compute cleanup and historical liabilities separat
 External availability and future model compliance cannot be guaranteed. The
 acceptance claim is prevention of this deterministic runtime failure, durable
 recovery and explicit evidence for the complete tested stage.
+
+## Completed acceptance
+
+Executable `8d5fea19` / Worker `5553bfdb` at100percent, native288 and runtime
+continuation `1c001f77` passed. The exact original project completed all34prompts,
+34images,11avatar clips,7scene videos and a180second1080p film. Full decode and
+real Chrome end-of-playback passed. All5rentals are CLEAN and complete provider
+inventory has0Pods. Estimated new spendUSD0.89860483, all-inUSD0.91208433 and
+conservative ceilingUSD1.838055 remain belowUSD2. Unused authority is retired.
+See [acceptance evidence](evidence/acceptance/VF-10-09/2026-10-07-prompt-runtime-fetch.md)
+for exact checks, identities, cause, recovery and remaining unrelated gates.

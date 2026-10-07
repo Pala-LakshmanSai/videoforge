@@ -5,13 +5,20 @@ prompt_runtime_fetch_2026_10_07:
   brief: PROMPT_RUNTIME_FETCH_PLAN.md
   branch: codex/prompt-plan-binding
   baseline_executable: bcc5170869bf84616f6648c32eaef225cc2f6f98
-  status: FULL_ROUTE_CORRECTION_AND_DEFAULT_STYLE_COMPLETION_QUALIFIED_RELEASE_PENDING
+  status: PRODUCTION_FULL_ORIGINAL_FILM_VERIFIED_ALL_COMPUTE_CLEAN
   authority: User_requests_parallel_audit_full_stage_verification_and_production_USD2_new_total_cap
+  executable_commit: 8d5fea19bd9750cd40f7cb5e8842ccb5b93aa1b8
+  worker_version: 5553bfdb-fef8-4cfd-ab60-848c1abd8ccb
+  traffic_percent: 100
+  native_migration: 288
+  continuation_version: 1c001f77-36d6-4658-a599-e523de76b76b
+  final_artifact: 180seconds_1920x1080_30fps_5400frames_AAC_68940477bytes_full_decode_and_Chrome_ended_error_null_PASS
+  final_sha256: 40261c0b597ad150401214fb7ab1e7b2b4277b02de9804dd1d36fb84b305fa77
   cause: Native_fetch_receiver_fixed_then_partial_correction_system_budget_table_changed_sealed_full_batch_envelope
   validation: Web644_pipeline131_native288_headroom2_native_guards6_exact_receipt_native_predicates_types_lint_builds_firewall_context_secrets_review_PASS
-  provider_spend: USD0_002826_known_provider_receipt_estimate_USD2_approved_total_cap
-  paid_compute_shutdown: Fresh_project_ASR_CLEAN_no_new_compute
-  remaining_gates: Full_stage_real_provider_native_receipts_Chrome_release_and_cap_boundary
+  provider_spend: Estimated_new_USD0_89860483_all_in_USD0_91208433_conservative_ceiling_USD1_838055_under_USD2_unused_authority_retired
+  paid_compute_shutdown: All5_ASR_SPAN_RENDER_rentals_CLEAN_complete_provider_inventory0_Pods_at06_46_35UTC
+  remaining_gates: Inherited_broadCI_format_Python_lint_invoices_generated_image_editorial_and_unrelated_historical_liabilities
 
 current_api_pricing_2026_10_07:
   checkpoint: V2-09
@@ -3284,22 +3291,22 @@ image_review_regeneration_request_2026_09_14:
   latest_demo_ui_to_accepted_ms: 34940
   latest_demo_evidence: evidence/acceptance/VF-10-09/2026-09-14-image-regeneration-source/live-demo.json
   final_runpod_balance_usd: 16.7686399735
-updated_at: "2026-10-05T20:20:00Z"
+updated_at: "2026-10-07T06:54:06Z"
 
 phase: serverless_v2_two_track_execution_active
-implementation_authorized_in_current_task: true
-current_milestone: Prompt_Cloudflare_runtime_fetch_and_complete_stage_acceptance
+implementation_authorized_in_current_task: false
+current_milestone: Prompt_runtime_full_original_project_acceptance_complete
 current_task: VF-10-09
 current_wave: v2_09_prompt_runtime_fetch
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
-task_stage: prompt_runtime_cause_reproduced_qualification_in_progress
-application_code_changes_authorized: true
-provider_calls_authorized: true
+task_stage: provider_free_handoff
+application_code_changes_authorized: false
+provider_calls_authorized: false
 read_only_provider_calls_authorized: false
-remote_or_cloud_mutations_authorized: true
-credential_access_authorized: true
+remote_or_cloud_mutations_authorized: false
+credential_access_authorized: false
 gpu_use_authorized: false
-maximum_external_spend_usd: 2
+maximum_external_spend_usd: 0
 
 v2_09_stage6_7_autonomous_mvp_repair_2026_09_13:
   status: "ACCEPTED_DEPLOYED_ZERO_COMPUTE"
@@ -7871,10 +7878,10 @@ live_development:
   chrome_route: null
   fixture_scenario: null
   last_verified_fixture_scenario: v2_00_roadmap_reset_audit
-  provider_mode: production
-  provider_calls_authorized: true
-  authorized_spend_usd: 2
-  provider_authority_scope: Exact_fresh_gardening_project_prompt_recovery_and_controlled_completion_USD2_no_manual_media_retries_or_regeneration
+  provider_mode: fixture
+  provider_calls_authorized: false
+  authorized_spend_usd: 0
+  provider_authority_scope: Completed_original_project_verification_all_compute_CLEAN_no_new_paid_work
 
 v2_destination:
   users: 5_to_10_invited_accounts
@@ -10190,58 +10197,43 @@ v2_09_historical_consumed_native_authority:
   note: "Continuing user authorization permits source repairs and fresh exact successor records; it does not replay this consumed click. Retained qualified deployment remains present and idle."
 
 provider_authority: &v2_09_provider_authority_current
-  mode: paid
-  provider: Runware_Kie_Fal_RunPod_Neon_Cloudflare
-  cap_usd: 2
-  paid_generation_authorized: true
-  authorized_by_user_at: "2026-10-07"
+  mode: none
+  provider: null
+  cap_usd: 0
+  paid_generation_authorized: false
   non_transferable: true
-  resources: ["runware:openai:gpt@6-luna", "kie:z-image", "fal:fal-ai/flashhead/audio-to-video", "runware:bytedance:2@2", "runpod:qualified-cloud-media-0.1.52", "cloudflare:videoforge-production-runtime"]
-  model_id: "openai:gpt@6-luna;z-image;fal-ai/flashhead/audio-to-video;bytedance:2@2;qualified-FFmpeg-media-0.1.52"
-  rate_snapshot:
-    - resource_id: kie_z_image
-      billing_unit: image
-      usd_per_unit: 0.004
-      checked_at: "2026-10-07"
-    - resource_id: fal_flashhead
-      billing_unit: output_second
-      usd_per_unit: 0.005
-      checked_at: "2026-10-07"
-    - resource_id: runware_seedance_720p_16_9
-      billing_unit: output_second
-      usd_per_unit: 0.0134
-      checked_at: "2026-10-07"
-  authorized_operations: [original_prompt_claim_once, remaining_prompt_batches, bounded_original_project_completion, production_publication, receipt_reconciliation, rental_cleanup]
-  allowed_operations: [original_prompt_claim_once, remaining_prompt_batches, bounded_original_project_completion, production_publication, receipt_reconciliation, rental_cleanup]
-  prior_user_authority: Older_gardening_project_remains_paused_no_replay_of_other_historical_UNKNOWN_work
+  resources: []
+  authorized_operations: []
+  allowed_operations: []
+  prior_user_authority: User2026_10_07_USD2_original_fresh_project_recovery_and_full_completion_consumed_successfully_estimated_new_USD0_89860483_all_compute_CLEAN_unused_authority_retired_older_project_not_replayed
 
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: Prompt_Cloudflare_runtime_fetch_and_complete_stage_acceptance
-  status: IN_PROGRESS
-  dependency_status: Exact_original_request_reproduces_Workerd_fetch_receiver_failure_without_outbound_HTTP
-  authorization_status: User2026_10_07_authorized_parallel_audit_fix_production_and_USD2_new_total_spend
-  task_stage: bounded_mutation
+  milestone: Prompt_runtime_full_original_project_acceptance_complete
+  status: COMPLETE
+  dependency_status: Production34prompts_34images_11avatars_7clips_180second_MP4_decode_Chrome_full_playback_and_cleanup_PASS
+  authorization_status: Requested_production_release_and_USD2_verification_completed_no_further_paid_authority
+  task_stage: provider_free_handoff
   provider_authority: *v2_09_provider_authority_current
   read_profile: v2_09_prompt_runtime_fetch
   task_brief: PROMPT_RUNTIME_FETCH_PLAN.md
-  goal: Repair_runtime_fetch_receiver_and_prove_actual_complete_prompt_stage
-  provider_mode: production
-  provider_calls_authorized: true
+  goal: Preserve_verified_production_and_await_next_explicit_user_task
+  provider_mode: fixture
+  provider_calls_authorized: false
   read_only_provider_calls_authorized: false
-  maximum_external_spend_usd: 2
-  remote_or_cloud_mutations_authorized: true
-  credential_access_authorized: true
-  credential_value_read_authorized: true
+  maximum_external_spend_usd: 0
+  remote_or_cloud_mutations_authorized: false
+  credential_access_authorized: false
+  credential_value_read_authorized: false
   model_downloads_authorized: false
   sample_output_publication_authorized: false
   worker_image_publication_authorized: false
   gpu_use_authorized: false
   retained_volume_mutation_authorized: false
-  application_code_changes_authorized: true
-  spend_usd: 0
-  spend_basis: Fresh_user_USD2_cap_original_project_controlled_completion_currently_zero_new_spend
+  application_code_changes_authorized: false
+  spend_usd: 0.89860483
+  spend_basis: Completed_run_pinned_API_and_provider_response_costs_plus_confirmed_rate_rental_interval_estimate_not_invoice_all_in_with_prior_ASR_USD0_91208433_ceiling_USD1_838055_under_USD2
   historical_latest_account_readback_usd: 3.090390
   historical_account_readback_basis: 2026_10_06T19_53Z_predates_guarded_first7_retest_not_current_not_invoice
   conservative_prior_cost_usd: 3.099707

@@ -112,3 +112,88 @@ historical250000reservation cannot expand. No existing paid row is rewritten.
 - Current original ASR rental is CLEAN. The older paused project is untouched.
 - Correction regression, final candidate release, complete34scene production
  acceptance, Chrome and downstream film/cleanup checks are still in progress.
+
+## Production Stage4 acceptance
+
+Final executable8d5fea19bd9750cd40f7cb5e8842ccb5b93aa1b8 is published at100percent
+as Worker5553bfdb-fef8-4cfd-ab60-848c1abd8ccb. Additive native288 committed after
+rollback rehearsal; historical rows/journal/ACL/RLS were preserved.36public asset
+hashes and private401 pass;55bindings/27secret names, all3Workflow resource IDs
+and Cloud/Desktop pins survive. New registered versions: video
+be905fba-95ad-463b-9b00-66002cd3b72f;pairc64333d8-9517-4b5b-8083-ef03bdbd1324;
+continuation1c001f77-36d6-4658-a599-e523de76b76b.
+
+Production completed the original fresh project's34scenes/4batches using4original
+claims,1replacement and5complete receipts. Estimated prompt cost sums6005microUSD,
+including the invalid original response. All34request/response hashes and compiled
+bytes reproduce exactly from durable receipts. Only3failed scenes were corrected;
+5valid originals in that batch remained byte-identical. Final Kie request prompts
+are686–786characters, below800. Independent manual review of all34source/visual
+triples found no critical source contradiction. This verifies prompt text, not
+all generated-image anatomy or editorial quality.
+
+Actual Chrome shows Stage4 COMPLETE,34/34prompts,4/4batches and saved full prompt/
+Avoid text expansion. Production screenshot remains private incident evidence.
+
+A guarded incident coordinator refresh was considered, but its preflight found
+DUE0 because real work had already progressed; it aborted before writing an
+intent or sending any restart. The original singleton still runs version3139ccdc.
+The deployed Worker also has an active scheduled-handler code path; invocation
+attribution is unavailable, so do not claim HTTP ingress or new singleton
+adoption from this success. Adopt the registered coordinator at ordinary idle
+when paid work finishes.
+
+Audio preparation completed all11SPAN jobs in3rentals (up to4jobs per rental).
+At06:35:56UTC all3new audio rentals and the prior ASR rental were CLEAN with
+verified cleanup;45image/avatar jobs and7scene-video jobs were progressing.
+The corrected conservative whole-project ceiling is1.838055USD, including old
+ASR/context,3SPAN+1RENDER at0.20USD each, current media rate bounds and6005microUSD
+prompts. The native Cloud authority is ongoing, not an aggregate2USD gate; enforce
+finite counts and stop on a fourthSPAN, secondRENDER, extra paid attempt or unknown
+liability. The user's2USD cap remains unchanged. Final film acceptance, render
+cleanup and coordinator adoption were still in progress at this intermediate check; both completed as recorded below.
+
+## Complete original film and shutdown
+
+At06:45:52UTC the same generation was SUCCEEDED:34images,11avatars and7scene
+videos all SUCCEEDED, with no extra paid retries. Final runtime is COMPLETE.
+All5rentals (priorASR,3audioSPAN,1render) are CLEAN with verified cleanup.
+Read-only complete provider inventory at06:46:35UTC contains0Pods and confirms
+all5exact project Pod IDs absent. Historical unrelated uncertain liabilities
+remain unchanged.
+
+The authoritative private MP4 contains68940477bytes, SHA256
+`40261c0b597ad150401214fb7ab1e7b2b4277b02de9804dd1d36fb84b305fa77`.
+One bounded private R2GET matched native content type, size and complete checksum.
+FFprobe confirms1920×1080/H264/30fps/5400frames/180seconds and oneAAC audio stream.
+Full FFmpeg video+audio decoding passed with exit0 and no error output. Actual
+Chrome Progress shows100percent and all9stages COMPLETE, with View video and
+Download MP4 links; the final player loads180s/1080p and plays without an error.
+Full natural-speed Chrome playback reached currentTime180/duration180, ended=true, paused=true, readyState4 and error=null at1080p; proof and screenshot are retained privately.
+
+Read-back estimates: prompt0.006005;context0.000118;34Kie images0.136;
+38.07sFal0.19035;7Runware clips provider-reported0.45605359;new rentals at confirmed
+hourly rates over reservation-created-to-cleanup intervals0.11007824;priorASR
+0.01347950. New-work subtotal0.89860483USD conservatively includes the earlier
+context charge; all-in subtotal0.91208433USD. These are response/pinned-rate/
+confirmed-rate interval estimates, not invoices. Conservative finite-action
+ceiling1.838055USD remained below the user's2USD cap. No new resource, inference,
+manual regeneration or media retry is authorized after this accepted run.
+
+
+## Final runtime release and remaining limits
+
+After the finished film and all cleanup were verified, the old coordinator was
+terminal with Cloudflare WorkflowInternalError (provider internal-workflow error,
+not a failed paid job). A guarded readback established0DUE work,0active requests/
+leases/CPU/provider waiters, exact original claims/accepted prefix and unchanged
+archived liabilities. The existing singleton was restarted once with identical
+parameters, using the same supported terminal-driver recovery as the watchdog;
+no user job, paid media request or resource was restarted. Its registered target
+is1c001f77-36d6-4658-a599-e523de76b76b. Final readback confirms this version RUNNING, error=null, and a successful tick (dispatched0, observers0, cloud1, error=null). The cloud1 action belongs to preserved historical cleanup; no new generation was started. Runtime proof is retained privately.
+
+The source/runtime/full-stage/full-film/Chrome/compute-cleanup acceptance is
+complete. Unused USD2 authority is retired. Existing broad CI formatting/Python
+lint failures, provider invoices, universal generated-image/editorial quality,
+external service availability and unrelated historical unknown liabilities are
+not claimed resolved by this repair.
