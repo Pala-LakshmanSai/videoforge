@@ -1500,6 +1500,12 @@
       "name": "hosted_prompt_provider_free_input_repair",
       "filename": "0287_hosted_prompt_provider_free_input_repair.sql",
       "sha256": "sha256:dcad7528cca7995f46c8efbf7db06b855ec6b6c0a5b64edec792316ab0e743fb"
+    },
+    {
+      "version": 288,
+      "name": "hosted_prompt_single_batch_correction_headroom",
+      "filename": "0288_hosted_prompt_single_batch_correction_headroom.sql",
+      "sha256": "sha256:3bc71117f6c46e188c532910fd646a2ec362f6f8d08e2251d3c5d373a4eaa43c"
     }
   ]
 }

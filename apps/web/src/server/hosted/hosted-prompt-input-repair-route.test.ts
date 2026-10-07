@@ -223,3 +223,194 @@ it("native preparation refusal prevents a provider claim and HTTP", async () => 
   ).toBe(false);
   expect(fetcher).not.toHaveBeenCalled();
 });
+
+it.each([false, true])(
+  "recovers saved literal failures with one targeted correction; correction invalid=%s",
+  async (invalidCorrection) => {
+    const sceneRows = Array.from({ length: 9 }, (_, index) => ({
+      scene_id: `scene_${index + 1}`,
+      phrase: `Seedlings grow in pot ${index + 1}.`,
+      in_image_shot_role: "OBJECT_EVIDENCE",
+      layout: "IMAGE_FULL",
+    }));
+    const currentPlan = {
+      ...plan,
+      scenes: sceneRows,
+      all_segments: sceneRows.map((scene, segment_index) => ({ ...scene, segment_index })),
+      existing_run_state: null as string | null,
+      existing_run_problem_code: null as string | null,
+    };
+    let saved: Record<string, unknown> | undefined;
+    let sourceClaim: Record<string, unknown> | undefined;
+    let replacement: Record<string, unknown> | undefined;
+    const receipts = new Map<string, unknown>();
+    const progress: unknown[] = [];
+    let terminal = false;
+    mocks.query.mockImplementation(async (sql: string, parameters: unknown[]) => {
+      if (sql.includes("videoforge_load_hosted_prompt_plan"))
+        return {
+          rows: [
+            {
+              plan: currentPlan,
+              run_started_at: null,
+              run_reserved_cost_micro_usd: saved?.reserved_cost_micro_usd ?? null,
+            },
+          ],
+        };
+      if (sql.includes("videoforge_prepare_hosted_prompt_run")) {
+        const payload = JSON.parse(String(parameters[0]));
+        saved = {
+          ...payload,
+          id: identity.runId,
+          accepted_batch_count: 0,
+          accepted_scene_count: 0,
+          accepted_cost_micro_usd: 0,
+          discarded_cost_micro_usd: 0,
+        };
+        currentPlan.existing_run_state = "DISPATCHING";
+        return { rows: [{ prepared: { ...payload, created: true, run_id: identity.runId } }] };
+      }
+      if (sql.includes("SELECT run.id,run.task_id")) return { rows: [saved] };
+      if (sql.includes("AS source_recorded_result")) {
+        const latest = replacement ?? sourceClaim!;
+        return {
+          rows: [
+            {
+              ...latest,
+              claimed_at: new Date().toISOString(),
+              retry_of_request_hash: replacement ? sourceClaim!.request_hash : null,
+              recorded_result: receipts.get(String(latest.provider_task_uuid)),
+              source_recorded_result: receipts.get(String(sourceClaim!.provider_task_uuid)),
+            },
+          ],
+        };
+      }
+      if (sql.includes("videoforge_claim_next_hosted_prompt_batch")) {
+        sourceClaim = {
+          batch_ordinal: parameters[1],
+          provider_task_uuid: parameters[2],
+          request_bytes: parameters[3],
+          request_hash: parameters[4],
+        };
+        return { rows: [{ claimed: true }] };
+      }
+      if (sql.includes("videoforge_record_hosted_prompt_response")) {
+        receipts.set(String(parameters[1]), JSON.parse(String(parameters[3])));
+        return { rows: [] };
+      }
+      if (sql.includes("videoforge_replace_invalid_hosted_prompt_batch")) {
+        const request = JSON.parse(String(parameters[5]))[0];
+        replacement = {
+          batch_ordinal: parameters[1],
+          provider_task_uuid: request.taskUUID,
+          request_bytes: parameters[5],
+          request_hash: parameters[6],
+        };
+        return { rows: [{ claimed: true }] };
+      }
+      if (sql.includes("videoforge_record_hosted_prompt_batch")) {
+        progress.push(JSON.parse(String(parameters[1])));
+        return { rows: [{ recorded: true }] };
+      }
+      if (sql.includes("SELECT progress.id,progress.batch_ordinal"))
+        return {
+          rows: progress.map((value) => {
+            const batch = value as Record<string, unknown>;
+            return { ...batch, id: id(90), retry_of_request_hash: sourceClaim!.request_hash };
+          }),
+        };
+      if (sql.includes("FROM public.hosted_prompt_scene_progress"))
+        return {
+          rows: progress.flatMap((value) => {
+            const batch = value as { scenes: Record<string, unknown>[] };
+            return batch.scenes.map((scene) => ({ ...scene, batch_progress_id: id(90) }));
+          }),
+        };
+      if (sql.includes("videoforge_complete_hosted_prompt_run"))
+        return { rows: [{ completed: true }] };
+      if (sql.includes("videoforge_adjudicate_invalid_hosted_prompt_batch")) {
+        terminal = true;
+        currentPlan.existing_run_state = "FAILED";
+        currentPlan.existing_run_problem_code = "HOSTED_PROMPT_OUTPUT_INVALID";
+      }
+      if (sql.includes("videoforge_fail_hosted_prompt_run")) {
+        currentPlan.existing_run_state = String(parameters[1]);
+      }
+      return { rows: [] };
+    });
+    const providerSceneCounts: number[] = [];
+    fetcher.mockImplementation(async (_url: unknown, init: RequestInit) => {
+      const wire = JSON.parse(String(init.body));
+      const input = JSON.parse(wire.messages[1].content);
+      providerSceneCounts.push(input.scenes.length);
+      const output = {
+        batch_id: input.batch_id,
+        scenes: input.scenes.map(
+          (
+            scene: { scene_id: string; exact_phrase: string; in_image_shot_role: string },
+            index: number,
+          ) => ({
+            scene_id: scene.scene_id,
+            literal_subject: (input.correction ? invalidCorrection : index < 3)
+              ? "Seedlings in pots. ".repeat(15)
+              : scene.exact_phrase,
+            action: "Growing in pots.",
+            environment: "Home garden.",
+            in_image_shot_role: scene.in_image_shot_role,
+            lighting_context: "Available daylight",
+            continuity_tags: [],
+            prompt_core: `${scene.exact_phrase} Visible garden seedlings.`,
+          }),
+        ),
+      };
+      return Response.json({
+        id: "chatcmpl-lifecycle",
+        model: wire.model,
+        choices: [
+          {
+            index: 0,
+            finish_reason: "stop",
+            message: { role: "assistant", content: JSON.stringify(output) },
+          },
+        ],
+        usage: { prompt_tokens: 400, completion_tokens: 180, total_tokens: 580 },
+      });
+    });
+    const fresh = await run(true);
+    expect(fresh.status).toBe(202);
+    expect(await fresh.json()).toMatchObject({ state: "RUNNING", recovery_pending: true });
+    expect(currentPlan.existing_run_state).toBe("DISPATCHING");
+    expect(receipts.size).toBe(1);
+    expect(progress).toHaveLength(0);
+    expect(
+      mocks.query.mock.calls.some(([sql]) =>
+        String(sql).includes("videoforge_fail_hosted_prompt_run"),
+      ),
+    ).toBe(false);
+    const corrected = await run(true);
+    expect(corrected.status).toBe(202);
+    expect(providerSceneCounts).toEqual([9, 3]);
+    expect(receipts.size).toBe(2);
+    if (invalidCorrection) {
+      const terminalResponse = await run(true);
+      expect(terminalResponse.status).toBe(409);
+      expect(await terminalResponse.json()).toMatchObject({
+        error: { code: "HOSTED_PROMPT_OUTPUT_INVALID" },
+      });
+      expect(terminal).toBe(true);
+      expect(currentPlan.existing_run_state).toBe("FAILED");
+      expect((await run(true)).status).toBe(409);
+      expect(fetcher).toHaveBeenCalledTimes(2);
+      expect(progress).toHaveLength(0);
+    } else {
+      expect(await corrected.json()).toMatchObject({ state: "COMPLETE", scene_count: 9 });
+      expect(progress).toHaveLength(1);
+      expect(fetcher).toHaveBeenCalledTimes(2);
+      expect(
+        mocks.query.mock.calls.filter(([sql]) =>
+          String(sql).includes("videoforge_complete_hosted_prompt_run"),
+        ),
+      ).toHaveLength(1);
+    }
+  },
+);

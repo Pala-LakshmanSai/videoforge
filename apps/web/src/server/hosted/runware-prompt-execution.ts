@@ -42,9 +42,8 @@ import {
   buildRunwareLunaPromptWireRequest,
 } from "../providers/runware-luna-prompt-transport";
 
-// A long plan can contain 32 batches. Reserve at most USD 0.25 per planned batch, with an USD 8
-// absolute ceiling. Unused credit is
-// released on completion, and the writer stops before sending a batch with insufficient headroom.
+// Reserve USD 0.25 per planned batch, with a USD 0.50 minimum for one bounded correction
+// and a USD 8 ceiling. Existing caps stay pinned; unused credit is released on completion.
 export const HOSTED_PROMPT_RESERVATION_MICRO_USD = 8_000_000 as const;
 export const HOSTED_PROMPT_RESERVATION_USD = HOSTED_PROMPT_RESERVATION_MICRO_USD / 1_000_000;
 
@@ -56,7 +55,7 @@ export function hostedPromptReservationMicroUsd(
     throw new RangeError("Invalid batch count.");
   const reservation =
     existingReservationMicroUsd ??
-    Math.min(HOSTED_PROMPT_RESERVATION_MICRO_USD, batchCount * 250_000);
+    Math.max(500_000, Math.min(HOSTED_PROMPT_RESERVATION_MICRO_USD, batchCount * 250_000));
   if (
     !Number.isSafeInteger(reservation) ||
     reservation < 40_000 ||
@@ -150,16 +149,14 @@ export async function recoverClaimedHostedPromptBatch(input: {
     input.requestBytes,
     input.sourceRecordedResult,
   );
-  const expected = buildRunwarePromptRequest(
+  const selected = recoverSealedPromptRequest(
     entry.batch,
-    entry.batch.scenes,
-    input.retryOfRequestHash ? 2 : 1,
-    input.retryOfRequestHash ?? null,
-    1,
-    input.plan.requestPolicy ?? "legacy",
-    usesContentRepair(input.requestBytes, input.retryOfRequestHash),
-    correction ?? undefined,
+    input.plan,
+    input.requestBytes,
+    input.retryOfRequestHash,
+    correction,
   );
+  const expected = selected.request;
   if (
     expected.request.taskUUID !== input.taskUUID ||
     expected.requestBytes !== input.requestBytes ||
@@ -229,7 +226,7 @@ export async function recoverClaimedHostedPromptBatch(input: {
   let evidence: RunwarePromptAttemptEvidence | null = null;
   const writer = new RunwarePromptWriter({
     correction: correction ?? undefined,
-    contentRepair: usesContentRepair(input.requestBytes, input.retryOfRequestHash),
+    contentRepair: selected.contentRepair,
     requestPolicy: input.plan.requestPolicy ?? "legacy",
     transport: {
       async dispatch(request) {
@@ -444,6 +441,27 @@ export async function dispatchOneHostedPromptBatch(input: {
   } catch (error) {
     if (capacityRefusal) throw new HostedPromptCapacityPausedError(capacityRefusal);
     if (transportError) throw transportError;
+    const diagnostic = runwarePromptValidationDiagnostic(error);
+    const received = result as RunwarePromptTransportResult | null;
+    if (
+      isRunwareLunaPromptPolicy(input.plan.requestPolicy) &&
+      received?.status === "succeeded" &&
+      diagnostic
+    )
+      // A successful receipt write precedes local validation. Preserve that exact paid response
+      // for the existing bounded correction path instead of marking its outcome unknown.
+      throw new HostedPromptArchivedOutputInvalidError(
+        await sha256Utf8(received.outputText),
+        actualResultCostMicroUsd(received, input.remainingReservationMicroUsd),
+        diagnostic,
+        input.correction
+          ? null
+          : buildRunwarePromptCorrection(
+              entry.batch,
+              received.outputText,
+              input.plan.requestPolicy,
+            ),
+      );
     throw error;
   }
   const acceptedResult = result as RunwarePromptTransportResult | null;
@@ -752,6 +770,36 @@ function usesContentRepair(
   }
 }
 
+function recoverSealedPromptRequest(
+  batch: PromptBatch,
+  plan: PromptBatchPlan,
+  requestBytes: string,
+  retryOfRequestHash: Sha256Digest | null | undefined,
+  correction: RunwarePromptCorrection | null,
+): { request: RunwarePromptTransportRequest; contentRepair: boolean | "no-text-v2" } {
+  // Luna seals repair policy in its UUID while keeping the system instruction stable.
+  // Select by exact request bytes; a marker-only guess cannot recover those corrections.
+  const candidates =
+    isRunwareLunaPromptPolicy(plan.requestPolicy) && retryOfRequestHash
+      ? ([false, true, "no-text-v2"] as const)
+      : ([usesContentRepair(requestBytes, retryOfRequestHash)] as const);
+  for (const repair of candidates) {
+    const candidate = buildRunwarePromptRequest(
+      batch,
+      batch.scenes,
+      retryOfRequestHash ? 2 : 1,
+      retryOfRequestHash ?? null,
+      1,
+      plan.requestPolicy ?? "legacy",
+      repair,
+      correction ?? undefined,
+    );
+    if (candidate.requestBytes === requestBytes)
+      return { request: candidate, contentRepair: repair };
+  }
+  throw invalidPlanBinding();
+}
+
 function validPositiveInteger(value: number): boolean {
   return Number.isSafeInteger(value) && value > 0;
 }
@@ -777,7 +825,10 @@ async function validatePlanBeforeDispatch(
       projectTitle: batch.sanitizedProjectTitle,
       imageStyleVersionId: batch.imageStyleVersionId,
       styleProfileHash: batch.styleProfileHash,
-      ...(batch.literalCharacterLimit === undefined
+      // The durable authority service retains the historical Natural Documentary scalar.
+      // v39 requests seal per-scene limits instead, including during final acceptance.
+      ...(plan.requestPolicy === "runware-luna-grounded-v2" ||
+      batch.literalCharacterLimit === undefined
         ? {}
         : { literalCharacterLimit: batch.literalCharacterLimit }),
       ...(Object.keys(literalCharacterLimits).length === 0 ? {} : { literalCharacterLimits }),
@@ -903,16 +954,13 @@ export class HostedRunwarePromptWriter implements DurablePromptWriterPort {
           saved.responseHash !== (await sha256Utf8(saved.responseBytes))
         )
           throw invalidPlanBinding();
-        const request = buildRunwarePromptRequest(
+        const request = recoverSealedPromptRequest(
           entry.batch,
-          entry.batch.scenes,
-          saved.retryOfRequestHash ? 2 : 1,
-          saved.retryOfRequestHash ?? null,
-          1,
-          this.plan.requestPolicy ?? "legacy",
-          usesContentRepair(saved.requestBytes, saved.retryOfRequestHash),
-          sealedCorrection(entry.batch, this.plan, saved.requestBytes, null) ?? undefined,
-        );
+          this.plan,
+          saved.requestBytes,
+          saved.retryOfRequestHash,
+          sealedCorrection(entry.batch, this.plan, saved.requestBytes, null),
+        ).request;
         if (
           saved.requestHash !== request.requestSha256 ||
           saved.requestBytes !== request.requestBytes

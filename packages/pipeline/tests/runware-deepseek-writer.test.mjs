@@ -4220,6 +4220,65 @@ test("v31 structured JSON and corrective subset preserve valid original scenes a
   assert.equal(transport.requests.length, 1);
 });
 
+test("Luna v39 partial correction preserves the sealed eight-scene budget table", () => {
+  const base = makeBatch(8);
+  const failedOrdinals = [1, 4, 7];
+  const batch = {
+    ...base,
+    literalCharacterLimits: Object.fromEntries(
+      base.scenes.map((scene, index) => [scene.sceneId, failedOrdinals.includes(index) ? 90 : 300]),
+    ),
+  };
+  const original = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v2",
+  );
+  const source = output(original, {
+    change: (rows) =>
+      rows.map((row, index) =>
+        failedOrdinals.includes(index)
+          ? {
+              ...row,
+              environment:
+                "An irrigation valve on dry farm soil beside the ordinary water channel in the open field.",
+            }
+          : row,
+      ),
+  });
+  const correction = buildRunwarePromptCorrection(batch, source, "runware-luna-grounded-v2");
+  assert.deepEqual(
+    correction.failedSceneIds,
+    failedOrdinals.map((index) => batch.scenes[index].sceneId),
+  );
+  const replacement = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    2,
+    original.requestSha256,
+    1,
+    "runware-luna-grounded-v2",
+    "no-text-v2",
+    correction,
+  );
+  assert.equal(replacement.request.settings.systemPrompt, original.request.settings.systemPrompt);
+  assert.deepEqual(replacement.request.jsonSchema, original.request.jsonSchema);
+  assert.deepEqual(
+    payload(replacement).scenes.map((scene) => scene.scene_id),
+    correction.failedSceneIds,
+  );
+  assert.equal(payload(replacement).scenes.length, 3);
+  for (const scene of batch.scenes)
+    assert.ok(
+      replacement.request.settings.systemPrompt.includes(
+        `${scene.sceneId}: ${batch.literalCharacterLimits[scene.sceneId]} characters`,
+      ),
+    );
+});
+
 test("Luna correction keeps the original strict schema while requesting only failed scenes", async () => {
   const batch = { ...makeBatch(3), literalCharacterLimit: 168 };
   const original = buildRunwarePromptRequest(

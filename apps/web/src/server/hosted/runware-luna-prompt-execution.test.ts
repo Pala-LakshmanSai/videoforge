@@ -285,7 +285,7 @@ describe("Runware Luna hosted prompt execution", () => {
         },
         fetcher,
       }),
-    ).rejects.toMatchObject({ diagnostic: { reason: "json_parse" } });
+    ).rejects.toMatchObject({ validationDiagnostic: { reason: "json_parse" } });
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(receipts).toHaveLength(1);
     expect(receipts[0]!.result).toMatchObject({

@@ -1028,7 +1028,7 @@ export function buildRunwarePromptRequest(
     : SCENE_PROMPT_WRITER_SYSTEM_PROMPT;
   const validatedSystemPrompt = validatedScenesSystemPrompt(legacySystemPrompt);
   const systemPrompt = validatedScenes
-    ? `${lunaModel ? runwareLunaPrioritySystemPrompt(validatedSystemPrompt) : validatedSystemPrompt}${groundedScenes ? ` ${GROUNDED_SCENES_WRITER_INSTRUCTION}` : ""}${lunaModel ? ` ${RUNWARE_LUNA_UNMARKED_PRODUCT_INSTRUCTION} ${RUNWARE_LUNA_SOURCE_GROUNDING_INSTRUCTION} ${requestPolicy === "runware-luna-grounded-v2" ? lunaPerSceneBudgetInstruction(batch.literalCharacterLimits, scenes) : lunaLiteralBudgetInstruction(batch.literalCharacterLimit)}` : ""}`
+    ? `${lunaModel ? runwareLunaPrioritySystemPrompt(validatedSystemPrompt) : validatedSystemPrompt}${groundedScenes ? ` ${GROUNDED_SCENES_WRITER_INSTRUCTION}` : ""}${lunaModel ? ` ${RUNWARE_LUNA_UNMARKED_PRODUCT_INSTRUCTION} ${RUNWARE_LUNA_SOURCE_GROUNDING_INSTRUCTION} ${requestPolicy === "runware-luna-grounded-v2" ? lunaPerSceneBudgetInstruction(batch.literalCharacterLimits, batch.scenes) : lunaLiteralBudgetInstruction(batch.literalCharacterLimit)}` : ""}`
     : requestPolicy === "physical-placement-v2" ||
         requestPolicy === "no-graphics-v1" ||
         requestPolicy === "no-graphics-v2" ||

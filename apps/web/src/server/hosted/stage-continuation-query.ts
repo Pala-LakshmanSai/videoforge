@@ -137,6 +137,10 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
                     WHERE progress.run_id = prompt_run_id) <= prompt_planned_batches
                THEN 'prompts'
              WHEN prompt_state = 'DISPATCHING' AND prompt_accepted_set IS NULL
+               AND prompt_run_id IS NOT NULL AND active_generation_requests = 1
+               AND prompt_current_receipt_available
+               THEN 'prompts'
+             WHEN prompt_state = 'DISPATCHING' AND prompt_accepted_set IS NULL
                AND prompt_run_started_at IS NOT NULL
                AND prompt_run_started_at < now() - make_interval(secs => ${PROMPT_STALE_RUN_SECONDS})
                AND (prompt_profile_revision IS NULL OR prompt_profile_revision NOT IN (8, 9)

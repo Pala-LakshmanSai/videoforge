@@ -54,6 +54,8 @@ const ids = {
 const digest = `sha256:${"a".repeat(64)}` as const;
 
 it("sizes new prompt reservations and preserves an existing run's cap", () => {
+  expect(hostedPromptReservationMicroUsd(1, null)).toBe(500_000);
+  expect(hostedPromptReservationMicroUsd(1, 250_000)).toBe(250_000);
   expect(hostedPromptReservationMicroUsd(2, null)).toBe(500_000);
   expect(hostedPromptReservationMicroUsd(32, null)).toBe(8_000_000);
   expect(hostedPromptReservationMicroUsd(40, null)).toBe(8_000_000);
@@ -702,7 +704,7 @@ describe("versioned prompt request recovery", () => {
           });
           expect.fail("The deliberately marked product should be rejected locally.");
         } catch (error) {
-          expect(promptRuntime.runwarePromptValidationDiagnostic(error)).not.toBeNull();
+          expect(error).toMatchObject({ validationDiagnostic: expect.any(Object) });
           if (claims.length === 0) throw error;
           sourceRecordedResult = receipts.get(claims[0]!.requestHash)!;
           expect(sourceRecordedResult).toBeDefined();

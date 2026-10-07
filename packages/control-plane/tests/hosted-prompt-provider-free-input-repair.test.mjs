@@ -19,7 +19,7 @@ test("0287 permits only an exact provider-free failed input repair and preserves
       sceneCount: 2,
       plannedBatchCount: 1,
       materializeRun: false,
-      reservedMicroUsd: 250000,
+      reservedMicroUsd: 500000,
     });
     await seedSucceededVoiceoverContext(executor, 2870000);
     const initial = {
@@ -39,7 +39,7 @@ test("0287 permits only an exact provider-free failed input repair and preserves
       claim_token_hash: run.claimHash,
       timeline_hash: run.timelineHash,
       batch_plan_hash: run.batchPlanHash,
-      reserved_cost_micro_usd: 250000,
+      reserved_cost_micro_usd: 500000,
       planned_batch_count: 1,
       planned_scene_count: 2,
       request_policy: "runware-luna-grounded-v2",
@@ -66,7 +66,7 @@ test("0287 permits only an exact provider-free failed input repair and preserves
       original_batch_plan_hash: run.batchPlanHash,
       original_planned_batch_count: 1,
       original_planned_scene_count: 2,
-      original_reserved_cost_micro_usd: 250000,
+      original_reserved_cost_micro_usd: 500000,
     };
     await executor.query(
       `INSERT INTO generation_requests(id,account_id,workspace_id,project_id,project_revision_id,created_by_user_id,state,queue_order,available_at,attempt_ordinal,idempotency_key,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,'WAITING',1,transaction_timestamp(),1,'input-repair-owner',transaction_timestamp(),transaction_timestamp())`,
@@ -185,7 +185,7 @@ test("0287 permits only an exact provider-free failed input repair and preserves
     assert.equal(after.state, "DISPATCHING");
     assert.equal(after.task_id, retry.task_id);
     assert.equal(after.redispatch_count, 1);
-    assert.equal(after.reserved_cost_micro_usd, 250000);
+    assert.equal(after.reserved_cost_micro_usd, 500000);
     assert.equal(after.batch_plan_hash, retry.batch_plan_hash);
     assert.deepEqual(
       (

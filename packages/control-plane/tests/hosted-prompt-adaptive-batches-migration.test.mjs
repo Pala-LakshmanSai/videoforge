@@ -773,7 +773,7 @@ test("0194 binds fresh adaptive prompt runs to the v2 operation and scaled reser
       claim_token_hash: authority.claimHash,
       timeline_hash: authority.timelineHash,
       batch_plan_hash: authority.batchPlanHash,
-      reserved_cost_micro_usd: 250_000,
+      reserved_cost_micro_usd: 500_000,
       planned_batch_count: 1,
       planned_scene_count: 2,
     };
@@ -877,7 +877,7 @@ test("0194 fails closed before task or reservation when the v2 profile drifts", 
       claim_token_hash: authority.claimHash,
       timeline_hash: authority.timelineHash,
       batch_plan_hash: authority.batchPlanHash,
-      reserved_cost_micro_usd: 250_000,
+      reserved_cost_micro_usd: 500_000,
       planned_batch_count: 1,
       planned_scene_count: 2,
     };
@@ -1263,7 +1263,7 @@ test("0285 prepares revision-pinned Runware Luna profiles and binds claims to th
         sceneCount: 2,
         plannedBatchCount: 1,
         materializeRun: false,
-        reservedMicroUsd: 250_000,
+        reservedMicroUsd: 500_000,
       });
       await seedSucceededVoiceoverContext(executor, 2_830_000);
       const supplied = {
@@ -1283,7 +1283,7 @@ test("0285 prepares revision-pinned Runware Luna profiles and binds claims to th
         claim_token_hash: authority.claimHash,
         timeline_hash: authority.timelineHash,
         batch_plan_hash: authority.batchPlanHash,
-        reserved_cost_micro_usd: 250_000,
+        reserved_cost_micro_usd: 500_000,
         planned_batch_count: 1,
         planned_scene_count: 2,
         ...(requestPolicy ? { request_policy: requestPolicy } : {}),

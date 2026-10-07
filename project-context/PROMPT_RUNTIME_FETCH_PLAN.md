@@ -33,6 +33,29 @@ incident recovery must prove exact request/source/runtime non-submission, record
 one write-ahead intent, preserve the original task identity/reservation, save the
 response before durable receipt acceptance, and never repeat an ambiguous POST.
 
+## Complete-stage recovery boundaries
+
+Real production submission after the fetch fix exposed a separate correction
+identity mismatch: v39 trimmed its system-prompt budget table to failed scenes,
+violating the immutable original envelope. Keep the full original budget table;
+only failed-scene user content changes. Exact live native predicates provide
+red/green proof without resending the original response.
+
+Exercise the actual route through correction and complete default-style
+finalization, including a failed correction becoming terminal with no third
+POST. Keep saved invalid-quality receipts running while bounded correction is
+pending; select their continuation promptly. Recover Luna repair identities by
+exact sealed bytes, not a legacy system-prompt suffix. Rebuild v39 finalization
+with per-scene budgets only; preserve historical scalar-policy checks.
+
+Fresh one-batch projects need500000microUSD internal reservation to admit a paid
+original plus one250000microUSD bounded correction. Migration288 changes only
+the fresh reservation formula. Existing250000caps remain pinned and cannot be
+expanded; all other new batch counts and the8000000ceiling stay unchanged. This
+internal reservation is not actual API spend or a change to the user's USD2
+verification cap. Roll back live migration rehearsal; verify immutable rows,
+ACLs/RLS and historical journal before the authorized production commit.
+
 ## Acceptance and boundaries
 
 Require red/green actual workerd proof, focused transport and full-stage tests,

@@ -1111,6 +1111,19 @@ export async function writeProjectPrompts(
       202,
     );
   } catch (error) {
+    if (error instanceof HostedPromptArchivedOutputInvalidError && runId) {
+      // The exact billed response is already durable. The next continuation validates it and
+      // either makes one targeted correction or adjudicates the failed correction as terminal.
+      return response(
+        {
+          schema_version: "videoforge-hosted-prompt-response/v1",
+          state: "RUNNING",
+          replayed: false,
+          recovery_pending: true,
+        },
+        202,
+      );
+    }
     if (error instanceof HostedPromptCapacityPausedError) {
       if (runId && settleScope && !(settleScope instanceof Response))
         await pausePromptCapacity(pool, settleScope.account_id, runId, error.refusal);

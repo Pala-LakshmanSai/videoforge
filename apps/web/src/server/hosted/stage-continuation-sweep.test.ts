@@ -896,6 +896,47 @@ it("keeps a fresh current Luna claim in flight even when the run itself is old",
   }
 });
 
+it("continues a fresh saved Luna receipt immediately without borrowing an original correction receipt", async () => {
+  const database = await seededDatabase({
+    state: "SUCCEEDED",
+    hash: "accepted-context",
+    problemCode: null,
+    redispatchCount: 0,
+  });
+  try {
+    const runId = "55555555-5555-4555-8555-555555555555";
+    const claimId = "66666666-6666-4666-8666-666666666666";
+    const requestHash = `sha256:${"0".repeat(64)}`;
+    await database.exec(`
+      INSERT INTO public.timeline_plans VALUES ('44444444-4444-4444-8444-444444444444','${revisionId}');
+      INSERT INTO public.execution_profiles VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',9);
+      INSERT INTO public.hosted_prompt_runs
+        (id,project_revision_id,state,acceptance_fingerprint_hash,created_at,started_at,problem_code,redispatch_count,planned_batch_count,execution_profile_id)
+      VALUES ('${runId}','${revisionId}','DISPATCHING',NULL,now(),now(),NULL,0,1,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+      INSERT INTO public.hosted_prompt_batch_claims (id,run_id,batch_ordinal,provider_task_uuid,request_hash)
+      VALUES ('${claimId}','${runId}',0,'chatcmpl-test','${requestHash}');
+      INSERT INTO public.generation_requests VALUES ('77777777-7777-4777-8777-777777777777','${revisionId}','ACTIVE');
+    `);
+    expect(await nextSteps(database)).toEqual([]);
+    await database.exec(
+      `INSERT INTO public.prompt_response_receipts VALUES ('chatcmpl-test','${requestHash}','{}'::jsonb)`,
+    );
+    expect(await nextSteps(database)).toEqual(["prompts"]);
+    await database.exec(
+      `INSERT INTO public.hosted_prompt_batch_replacements VALUES ('${claimId}','chatcmpl-correction','${requestHash}',1,now())`,
+    );
+    expect(await nextSteps(database)).toEqual([]);
+    await database.exec(
+      `INSERT INTO public.prompt_response_receipts VALUES ('chatcmpl-correction','${requestHash}','{}'::jsonb)`,
+    );
+    expect(await nextSteps(database)).toEqual(["prompts"]);
+    await database.exec("UPDATE public.generation_requests SET state='CANCELLED'");
+    expect(await nextSteps(database)).toEqual([]);
+  } finally {
+    await database.close();
+  }
+});
+
 it("does not borrow an older run's missing-receipt claim when the latest run has no claim", async () => {
   const database = await seededDatabase({
     state: "SUCCEEDED",
