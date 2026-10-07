@@ -1536,6 +1536,12 @@
       "name": "disable_generated_image_text_qa",
       "filename": "0293_disable_generated_image_text_qa.sql",
       "sha256": "sha256:715bf0177984d949ce29cecd11731124a4c2925c847378a6acb1b98646232571"
+    },
+    {
+      "version": 294,
+      "name": "runware_luna_photographic_v3",
+      "filename": "0294_runware_luna_photographic_v3.sql",
+      "sha256": "sha256:a852d7939f9041a44c8ebb4e9de70869d87a24b6ca9f0ec17aabd754bdb52965"
     }
   ]
 }

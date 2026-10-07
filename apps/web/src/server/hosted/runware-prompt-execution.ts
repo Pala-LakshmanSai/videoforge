@@ -826,8 +826,8 @@ async function validatePlanBeforeDispatch(
       imageStyleVersionId: batch.imageStyleVersionId,
       styleProfileHash: batch.styleProfileHash,
       // The durable authority service retains the historical Natural Documentary scalar.
-      // v39 requests seal per-scene limits instead, including during final acceptance.
-      ...(plan.requestPolicy === "runware-luna-grounded-v2" ||
+      // v39 and v40 requests seal per-scene limits instead, including during final acceptance.
+      ...(plan.requestPolicy === "runware-luna-grounded-v2" || plan.requestPolicy === "runware-luna-grounded-v3" ||
       batch.literalCharacterLimit === undefined
         ? {}
         : { literalCharacterLimit: batch.literalCharacterLimit }),

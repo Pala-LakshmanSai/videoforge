@@ -64,3 +64,14 @@ Migration293/source53143e05 disables future initial/replacement QA defaults. Pro
 Seven focused checks pass: native policy toggling preserves old receipts, new initial and replacement claims return HISTORICAL without dispatch, normal success remains possible, and prompt/hosted no-call regressions pass. Context/diff validation passes. No application code/configuration change, Worker deploy, coordinator restart, paid inference, image regeneration or compute mutation was needed. Existing combined6140c657/Worker4a3303d6 and89fa873a coordinator preserve the prompt repair.
 
 Incremental spendUSD0; earlier approved seven qualification tests remainUSD0.002334 total. No project-image QA receipts were created while the policy was enabled. Ordinary writer/image-generation charges still apply, without a separate inspection fee. Existing images/films remain unchanged.
+
+
+## Stronger prompt-only writer follow-up
+
+The user accepts probabilistic prevention and requests the best prompt-stage repair without extra detection cost. Fresh requests use `runware-luna-grounded-v3`/v40/profile10. Existing guidance is replaced with camera-visible posture, contact and physical-condition wording: no abstract headlines, slogans, summaries or quoted narration. The three fields describe one photograph. Existing saved v38/v39 request bytes and hashes remain exact. Same model, one call, schema, 6,144 output-token cap, per-scene limits and correction policy; the representative request is 142 UTF-8 bytes shorter. No exact billable-token or output-quality improvement is claimed from local tests. No tokenizer or new dependency was added.
+
+Migration294 extends existing profile/capability guards without changing durable rows or image-QA defaults. New profile10 has the existing no-replay protections, including Progress and coordinator SQL. Concurrent production9fef8e0c voiceover layout changes are merged and preserved.
+
+Validation: 226 web files, 3,301 passed/one skipped; 134 writer regressions (old request goldens and v39/v40 budgets); native legacy/profile8/9/10 matrix; 15 schema/metadata/migration-hardening checks; web/Worker types; changed-file lint; web/Cloudflare/staging builds; context, dispatch firewall and secret scan pass. Production-native294 rollback rehearsal restores every profile/job/claim/receipt/cost row, migration journal and existing function permissions, with QA defaults still false. The separate legacy V2-05 firewall command still rejects two existing production-entry imports; these imports and the checker are unchanged from9fef8e0c. This is not an all-repository CI-green claim.
+
+Production publication and idle runtime adoption pending. USD0 new inference/compute; no new image generation, pixel inspection, automatic regeneration or replay. Existing media remains unchanged. Private release proofs: primary checkout `.videoforge/image-no-text-writer-20261007/release`.

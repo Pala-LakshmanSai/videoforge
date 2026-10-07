@@ -40,6 +40,8 @@ export const RUNWARE_LUNA_PROMPT_MODEL = "openai:gpt@6-luna" as const;
 export const RUNWARE_LUNA_PROMPT_REQUEST_VERSION = "runware-gpt-6-luna-prompt-request-v38" as const;
 export const RUNWARE_LUNA_SCENE_BUDGET_PROMPT_REQUEST_VERSION =
   "runware-gpt-6-luna-prompt-request-v39" as const;
+export const RUNWARE_LUNA_PHOTOGRAPHIC_PROMPT_REQUEST_VERSION =
+  "runware-gpt-6-luna-prompt-request-v40" as const;
 export const RUNWARE_LUNA_PROMPT_MAX_OUTPUT_TOKENS = 6_144 as const;
 export type PromptWriterModel = typeof RUNWARE_PROMPT_MODEL | typeof RUNWARE_LUNA_PROMPT_MODEL;
 // v24: compact batch instructions without removing grounding, quality or output constraints.
@@ -56,11 +58,16 @@ export type PromptRequestPolicy =
   | "validated-scenes-v1"
   | "grounded-scenes-v1"
   | "runware-luna-grounded-v1"
-  | "runware-luna-grounded-v2";
+  | "runware-luna-grounded-v2"
+  | "runware-luna-grounded-v3";
 export const isRunwareLunaPromptPolicy = (
   policy: PromptRequestPolicy | undefined,
-): policy is "runware-luna-grounded-v1" | "runware-luna-grounded-v2" =>
-  policy === "runware-luna-grounded-v1" || policy === "runware-luna-grounded-v2";
+): policy is "runware-luna-grounded-v1" | "runware-luna-grounded-v2" | "runware-luna-grounded-v3" =>
+  policy === "runware-luna-grounded-v1" ||
+  policy === "runware-luna-grounded-v2" ||
+  policy === "runware-luna-grounded-v3";
+const usesLunaPerSceneBudget = (policy: PromptRequestPolicy): boolean =>
+  policy === "runware-luna-grounded-v2" || policy === "runware-luna-grounded-v3";
 export const GROUNDED_SCENES_PROMPT_REQUEST_VERSION =
   "runware-gemini-3.5-flash-prompt-request-v32" as const;
 export const VALIDATED_SCENES_PROMPT_REQUEST_VERSION =
@@ -83,6 +90,7 @@ type PromptRequestVersion =
   | typeof GROUNDED_SCENES_PROMPT_REQUEST_VERSION
   | typeof RUNWARE_LUNA_PROMPT_REQUEST_VERSION
   | typeof RUNWARE_LUNA_SCENE_BUDGET_PROMPT_REQUEST_VERSION
+  | typeof RUNWARE_LUNA_PHOTOGRAPHIC_PROMPT_REQUEST_VERSION
   | typeof VALIDATED_SCENES_PROMPT_REQUEST_VERSION
   | typeof ASYNC_NO_GRAPHICS_PROMPT_REQUEST_VERSION
   | typeof NO_GRAPHICS_V2_PROMPT_REQUEST_VERSION
@@ -216,6 +224,18 @@ export const RUNWARE_LUNA_UNMARKED_PRODUCT_INSTRUCTION =
 /** Luna-only: keep an unfinished adjacent depiction distinct from physical scene evidence. */
 const RUNWARE_LUNA_SOURCE_GROUNDING_INSTRUCTION =
   "SCOPED SOURCE PRIORITY: When an exact phrase completes an adjacent depiction, or states a denial or conjecture, the contextual interpretation outranks exact-phrase anchoring and shot-role preference. For a depiction_transfer correction, do not reuse concepts from that pictured, denied or conjectural content as physical facts in any field; replace the failed scene with an independently factual local or adjacent physical anchor. A locally named real product/object may be used when nearby narration establishes it as physical and scoped continuity resolves its identity; do not invent a substitute prop, person, place or event. Keep every detail grounded in local evidence. Omit the content of depictions and conjectural product claims entirely; do not recreate them as real scenes or imagery on a product. A nearby supposition such as 'you would think' is not proof of an event. Do not restate prior invalid imagery. Fill all three literal fields with concise, complete, positively supported physical facts; each field must be a complete standalone description ending in a period. Do not use absence statements, imagined-scene descriptions, placeholders or truncated words or clauses. If a field approaches the character budget, shorten optional detail and finish the phrase; do not let a field cap cut it off. Actual cooking, fire, photographers and real people remain valid when narration states them as real. In checkout context, 'my belt' means the conveyor belt receiving the bottle, not a cashier's clothing.";
+
+/** v40 replaces existing guidance, keeping v38/v39 bytes and inference budgets immutable. */
+const photographicLunaSystemPrompt = (base: string): string =>
+  base
+    .replace(
+      /No visible or invented typography: .*? no invented product details, packaging copy or advertising displays\./u,
+      "Camera-visible facts only: action is source-supported visible posture, contact or physical condition, never a headline, slogan, summary or quoted narration. For abstractions show the nearest supported visible state; invent no event/prop. No text/pseudo-text, handwriting, letters/digits, dates/addresses, captions/titles, signs/labels, product/measurement markings, price tags/receipts, logos/branding/watermarks, UI/screens, charts/diagrams, overlays/graphics/borders, motion graphics or decorative transitions. Convey names/quantities physically; supported products/tools/surfaces stay plain, unbranded, unmarked.",
+    )
+    .replace(
+      "Fill all three literal fields with concise, complete, positively supported physical facts; each field must be a complete standalone description ending in a period.",
+      "Fill all three literal fields with concise, complete physical facts ending in periods; they combine into one photograph, never standalone captions.",
+    );
 
 const scopedGroundingContext = (context: string): string =>
   context
@@ -695,12 +715,11 @@ const lunaLiteralFieldsWithinLimit = (
   row: Record<string, JsonValue> | PromptWriterSceneOutput,
   requestPolicy: PromptRequestPolicy,
 ): boolean => {
-  const limit =
-    requestPolicy === "runware-luna-grounded-v2"
-      ? batch.literalCharacterLimits?.[String(row.scene_id)]
-      : batch.literalCharacterLimit;
+  const limit = usesLunaPerSceneBudget(requestPolicy)
+    ? batch.literalCharacterLimits?.[String(row.scene_id)]
+    : batch.literalCharacterLimit;
   if (
-    requestPolicy === "runware-luna-grounded-v2" &&
+    usesLunaPerSceneBudget(requestPolicy) &&
     (!Number.isSafeInteger(limit) || limit! < 3 || limit! > 800)
   )
     return false;
@@ -939,6 +958,7 @@ export function buildRunwarePromptRequest(
       "grounded-scenes-v1",
       "runware-luna-grounded-v1",
       "runware-luna-grounded-v2",
+      "runware-luna-grounded-v3",
     ].includes(requestPolicy)
   )
     fail("Prompt request policy is invalid.", ["requestPolicy"]);
@@ -994,41 +1014,44 @@ export function buildRunwarePromptRequest(
   const groundedScenes = requestPolicy === "grounded-scenes-v1" || lunaModel;
   const validatedScenes = requestPolicy === "validated-scenes-v1" || groundedScenes;
   const asyncDelivery = requestPolicy === "no-graphics-async-v1" || validatedScenes;
-  const requestVersion: PromptRequestVersion = lunaModel
-    ? requestPolicy === "runware-luna-grounded-v2"
-      ? RUNWARE_LUNA_SCENE_BUDGET_PROMPT_REQUEST_VERSION
-      : RUNWARE_LUNA_PROMPT_REQUEST_VERSION
-    : groundedScenes
-      ? GROUNDED_SCENES_PROMPT_REQUEST_VERSION
-      : validatedScenes
-        ? VALIDATED_SCENES_PROMPT_REQUEST_VERSION
-        : asyncDelivery
-          ? ASYNC_NO_GRAPHICS_PROMPT_REQUEST_VERSION
-          : contentRepair === "no-text-v2" && requestPolicy !== "no-graphics-v2"
-            ? "runware-prompt-content-repair-v2"
-            : contentRepair &&
-                requestPolicy !== "no-graphics-v1" &&
-                requestPolicy !== "no-graphics-v2"
-              ? "runware-prompt-content-repair-v1"
-              : requestPolicy === "no-graphics-v2"
-                ? NO_GRAPHICS_V2_PROMPT_REQUEST_VERSION
-                : requestPolicy === "no-graphics-v1"
-                  ? NO_GRAPHICS_PROMPT_REQUEST_VERSION
-                  : requestPolicy === "physical-placement-v2"
-                    ? PHYSICAL_PLACEMENT_V2_PROMPT_REQUEST_VERSION
-                    : requestPolicy === "physical-placement-v1"
-                      ? PHYSICAL_PLACEMENT_PROMPT_REQUEST_VERSION
-                      : natural
-                        ? NATURAL_DOCUMENTARY_PROMPT_REQUEST_VERSION
-                        : RUNWARE_PROMPT_REQUEST_VERSION;
+  const requestVersion: PromptRequestVersion =
+    requestPolicy === "runware-luna-grounded-v3"
+      ? RUNWARE_LUNA_PHOTOGRAPHIC_PROMPT_REQUEST_VERSION
+      : lunaModel
+        ? usesLunaPerSceneBudget(requestPolicy)
+          ? RUNWARE_LUNA_SCENE_BUDGET_PROMPT_REQUEST_VERSION
+          : RUNWARE_LUNA_PROMPT_REQUEST_VERSION
+        : groundedScenes
+          ? GROUNDED_SCENES_PROMPT_REQUEST_VERSION
+          : validatedScenes
+            ? VALIDATED_SCENES_PROMPT_REQUEST_VERSION
+            : asyncDelivery
+              ? ASYNC_NO_GRAPHICS_PROMPT_REQUEST_VERSION
+              : contentRepair === "no-text-v2" && requestPolicy !== "no-graphics-v2"
+                ? "runware-prompt-content-repair-v2"
+                : contentRepair &&
+                    requestPolicy !== "no-graphics-v1" &&
+                    requestPolicy !== "no-graphics-v2"
+                  ? "runware-prompt-content-repair-v1"
+                  : requestPolicy === "no-graphics-v2"
+                    ? NO_GRAPHICS_V2_PROMPT_REQUEST_VERSION
+                    : requestPolicy === "no-graphics-v1"
+                      ? NO_GRAPHICS_PROMPT_REQUEST_VERSION
+                      : requestPolicy === "physical-placement-v2"
+                        ? PHYSICAL_PLACEMENT_V2_PROMPT_REQUEST_VERSION
+                        : requestPolicy === "physical-placement-v1"
+                          ? PHYSICAL_PLACEMENT_PROMPT_REQUEST_VERSION
+                          : natural
+                            ? NATURAL_DOCUMENTARY_PROMPT_REQUEST_VERSION
+                            : RUNWARE_PROMPT_REQUEST_VERSION;
   const legacySystemPrompt = natural
     ? naturalDocumentaryWriterSystemPrompt(
-        requestPolicy === "runware-luna-grounded-v2" ? 720 : (batch.literalCharacterLimit ?? 0),
+        usesLunaPerSceneBudget(requestPolicy) ? 720 : (batch.literalCharacterLimit ?? 0),
       )
     : SCENE_PROMPT_WRITER_SYSTEM_PROMPT;
   const validatedSystemPrompt = validatedScenesSystemPrompt(legacySystemPrompt);
-  const systemPrompt = validatedScenes
-    ? `${lunaModel ? runwareLunaPrioritySystemPrompt(validatedSystemPrompt) : validatedSystemPrompt}${groundedScenes ? ` ${GROUNDED_SCENES_WRITER_INSTRUCTION}` : ""}${lunaModel ? ` ${RUNWARE_LUNA_UNMARKED_PRODUCT_INSTRUCTION} ${RUNWARE_LUNA_SOURCE_GROUNDING_INSTRUCTION} ${requestPolicy === "runware-luna-grounded-v2" ? lunaPerSceneBudgetInstruction(batch.literalCharacterLimits, batch.scenes) : lunaLiteralBudgetInstruction(batch.literalCharacterLimit)}` : ""}`
+  const versionedSystemPrompt = validatedScenes
+    ? `${lunaModel ? runwareLunaPrioritySystemPrompt(validatedSystemPrompt) : validatedSystemPrompt}${groundedScenes ? ` ${GROUNDED_SCENES_WRITER_INSTRUCTION}` : ""}${lunaModel ? ` ${RUNWARE_LUNA_UNMARKED_PRODUCT_INSTRUCTION} ${RUNWARE_LUNA_SOURCE_GROUNDING_INSTRUCTION} ${usesLunaPerSceneBudget(requestPolicy) ? lunaPerSceneBudgetInstruction(batch.literalCharacterLimits, batch.scenes) : lunaLiteralBudgetInstruction(batch.literalCharacterLimit)}` : ""}`
     : requestPolicy === "physical-placement-v2" ||
         requestPolicy === "no-graphics-v1" ||
         requestPolicy === "no-graphics-v2" ||
@@ -1037,6 +1060,10 @@ export function buildRunwarePromptRequest(
       : requestPolicy === "physical-placement-v1"
         ? `${legacySystemPrompt} ${PHYSICAL_PLACEMENT_WRITER_INSTRUCTION}`
         : legacySystemPrompt;
+  const systemPrompt =
+    requestPolicy === "runware-luna-grounded-v3"
+      ? photographicLunaSystemPrompt(versionedSystemPrompt)
+      : versionedSystemPrompt;
   const payload = Object.freeze({
     batch_id: batch.batchId,
     attempt_index: attemptIndex,

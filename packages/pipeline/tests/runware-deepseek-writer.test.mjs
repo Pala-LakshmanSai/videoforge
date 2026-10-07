@@ -423,52 +423,122 @@ test("Luna projects generic store/name-brand categories only when no physical ma
   assert.match(RUNWARE_LUNA_UNMARKED_PRODUCT_INSTRUCTION, /even when narration describes it/u);
 });
 
-test("Luna v39 accepts the reproducible 174-character scene at its exact cap and rejects an absent or tight cap", async () => {
-  const phrase = "Hands demonstrate irrigation valve step 1.";
-  const base = withScenePhrase(makeBatch(1), phrase);
-  const literals = {
-    literal_subject: phrase,
-    action: "The hands demonstrate the irrigation valve.",
-    environment:
-      "The valve rests on dry farm soil beside a water channel in the open field during the day.",
+test("v40 replaces caption-like action guidance without increasing requests or changing sealed v39", () => {
+  const base = makeBatch(10);
+  const batch = {
+    ...base,
+    literalCharacterLimits: Object.fromEntries(base.scenes.map((scene) => [scene.sceneId, 174])),
   };
-  assert.equal(
-    literals.literal_subject.length + literals.action.length + literals.environment.length,
-    174,
+  const legacy = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v2",
   );
-  const run = async (literalCharacterLimits) => {
-    const batch = { ...base, literalCharacterLimits };
-    const transport = new ScriptedTransport([
-      (request) =>
-        success(request, {
-          change: (rows) => [
-            {
-              ...rows[0],
-              ...literals,
-              prompt_core:
-                "Hands demonstrate the irrigation valve on dry farm soil beside a water channel.",
-            },
-          ],
-        }),
-    ]);
-    const writer = new RunwarePromptWriter({
-      requestPolicy: "runware-luna-grounded-v2",
-      semanticQualityMode: "advisory",
-      allowPartialRetry: false,
-      transport,
-      evidenceSink: { record() {} },
-      maximumBatchCostUsd: 0.01,
-    });
-    return { result: await writer.write(batch), transport };
-  };
-
-  const { result, transport } = await run({ [base.scenes[0].sceneId]: 174 });
-  assert.equal(transport.requests.length, 1);
-  assert.equal(result.scenes[0].literal_subject, phrase);
-
-  await expectInvalid(() => run({ [base.scenes[0].sceneId]: 173 }));
-  await expectInvalid(() => run({}));
+  assert.equal(legacy.request.taskUUID, "32de5cd1-f456-4624-ae5e-f076fd35e87c");
+  assert.equal(
+    legacy.requestSha256,
+    "sha256:0308eff41e336891949e78eef1bcbb6fc323aa64081042ee22650979be9ac8b4",
+  );
+  const fresh = buildRunwarePromptRequest(
+    batch,
+    batch.scenes,
+    1,
+    null,
+    1,
+    "runware-luna-grounded-v3",
+  );
+  assert.equal(fresh.requestVersion, "runware-gpt-6-luna-prompt-request-v40");
+  assert.notEqual(fresh.request.taskUUID, legacy.request.taskUUID);
+  assert.equal(fresh.request.model, legacy.request.model);
+  assert.equal(fresh.request.settings.maxTokens, legacy.request.settings.maxTokens);
+  assert.equal(fresh.request.settings.thinkingLevel, legacy.request.settings.thinkingLevel);
+  assert.deepEqual(fresh.request.jsonSchema, legacy.request.jsonSchema);
+  assert.deepEqual(fresh.request.messages, legacy.request.messages);
+  assert.equal(fresh.request.deliveryMethod, legacy.request.deliveryMethod);
+  assert.ok(
+    fresh.request.settings.systemPrompt.length < legacy.request.settings.systemPrompt.length,
+  );
+  assert.match(
+    fresh.request.settings.systemPrompt,
+    /visible posture, contact or physical condition/u,
+  );
+  assert.match(
+    fresh.request.settings.systemPrompt,
+    /never a headline, slogan, summary or quoted narration/u,
+  );
+  assert.doesNotMatch(fresh.request.settings.systemPrompt, /complete standalone description/u);
+  assert.doesNotMatch(
+    fresh.request.settings.systemPrompt,
+    /Offers short-term assistance|Is partly cleared for redevelopment/u,
+  );
+  for (const term of [
+    "pseudo-text",
+    "captions",
+    "logos",
+    "watermarks",
+    "overlays",
+    "motion graphics",
+    "source-supported",
+    "800 characters",
+  ])
+    assert.ok(fresh.request.settings.systemPrompt.includes(term), term);
+  assert.deepEqual(
+    buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, "runware-luna-grounded-v2"),
+    legacy,
+  );
 });
+
+for (const policy of ["runware-luna-grounded-v2", "runware-luna-grounded-v3"]) {
+  test(`Luna ${policy} accepts the reproducible 174-character scene at its exact cap and rejects an absent or tight cap`, async () => {
+    const phrase = "Hands demonstrate irrigation valve step 1.";
+    const base = withScenePhrase(makeBatch(1), phrase);
+    const literals = {
+      literal_subject: phrase,
+      action: "The hands demonstrate the irrigation valve.",
+      environment:
+        "The valve rests on dry farm soil beside a water channel in the open field during the day.",
+    };
+    assert.equal(
+      literals.literal_subject.length + literals.action.length + literals.environment.length,
+      174,
+    );
+    const run = async (literalCharacterLimits) => {
+      const batch = { ...base, literalCharacterLimits };
+      const transport = new ScriptedTransport([
+        (request) =>
+          success(request, {
+            change: (rows) => [
+              {
+                ...rows[0],
+                ...literals,
+                prompt_core:
+                  "Hands demonstrate the irrigation valve on dry farm soil beside a water channel.",
+              },
+            ],
+          }),
+      ]);
+      const writer = new RunwarePromptWriter({
+        requestPolicy: policy,
+        semanticQualityMode: "advisory",
+        allowPartialRetry: false,
+        transport,
+        evidenceSink: { record() {} },
+        maximumBatchCostUsd: 0.01,
+      });
+      return { result: await writer.write(batch), transport };
+    };
+
+    const { result, transport } = await run({ [base.scenes[0].sceneId]: 174 });
+    assert.equal(transport.requests.length, 1);
+    assert.equal(result.scenes[0].literal_subject, phrase);
+
+    await expectInvalid(() => run({ [base.scenes[0].sceneId]: 173 }));
+    await expectInvalid(() => run({}));
+  });
+}
 
 test("Luna accepts generic store-brand category without depicting a product mark", async () => {
   const batch = withScenePhrase(
@@ -4220,64 +4290,62 @@ test("v31 structured JSON and corrective subset preserve valid original scenes a
   assert.equal(transport.requests.length, 1);
 });
 
-test("Luna v39 partial correction preserves the sealed eight-scene budget table", () => {
-  const base = makeBatch(8);
-  const failedOrdinals = [1, 4, 7];
-  const batch = {
-    ...base,
-    literalCharacterLimits: Object.fromEntries(
-      base.scenes.map((scene, index) => [scene.sceneId, failedOrdinals.includes(index) ? 90 : 300]),
-    ),
-  };
-  const original = buildRunwarePromptRequest(
-    batch,
-    batch.scenes,
-    1,
-    null,
-    1,
-    "runware-luna-grounded-v2",
-  );
-  const source = output(original, {
-    change: (rows) =>
-      rows.map((row, index) =>
-        failedOrdinals.includes(index)
-          ? {
-              ...row,
-              environment:
-                "An irrigation valve on dry farm soil beside the ordinary water channel in the open field.",
-            }
-          : row,
+for (const policy of ["runware-luna-grounded-v2", "runware-luna-grounded-v3"]) {
+  test(`Luna ${policy} partial correction preserves the sealed eight-scene budget table`, () => {
+    const base = makeBatch(8);
+    const failedOrdinals = [1, 4, 7];
+    const batch = {
+      ...base,
+      literalCharacterLimits: Object.fromEntries(
+        base.scenes.map((scene, index) => [
+          scene.sceneId,
+          failedOrdinals.includes(index) ? 90 : 300,
+        ]),
       ),
-  });
-  const correction = buildRunwarePromptCorrection(batch, source, "runware-luna-grounded-v2");
-  assert.deepEqual(
-    correction.failedSceneIds,
-    failedOrdinals.map((index) => batch.scenes[index].sceneId),
-  );
-  const replacement = buildRunwarePromptRequest(
-    batch,
-    batch.scenes,
-    2,
-    original.requestSha256,
-    1,
-    "runware-luna-grounded-v2",
-    "no-text-v2",
-    correction,
-  );
-  assert.equal(replacement.request.settings.systemPrompt, original.request.settings.systemPrompt);
-  assert.deepEqual(replacement.request.jsonSchema, original.request.jsonSchema);
-  assert.deepEqual(
-    payload(replacement).scenes.map((scene) => scene.scene_id),
-    correction.failedSceneIds,
-  );
-  assert.equal(payload(replacement).scenes.length, 3);
-  for (const scene of batch.scenes)
-    assert.ok(
-      replacement.request.settings.systemPrompt.includes(
-        `${scene.sceneId}: ${batch.literalCharacterLimits[scene.sceneId]} characters`,
-      ),
+    };
+    const original = buildRunwarePromptRequest(batch, batch.scenes, 1, null, 1, policy);
+    const source = output(original, {
+      change: (rows) =>
+        rows.map((row, index) =>
+          failedOrdinals.includes(index)
+            ? {
+                ...row,
+                environment:
+                  "An irrigation valve on dry farm soil beside the ordinary water channel in the open field.",
+              }
+            : row,
+        ),
+    });
+    const correction = buildRunwarePromptCorrection(batch, source, policy);
+    assert.deepEqual(
+      correction.failedSceneIds,
+      failedOrdinals.map((index) => batch.scenes[index].sceneId),
     );
-});
+    const replacement = buildRunwarePromptRequest(
+      batch,
+      batch.scenes,
+      2,
+      original.requestSha256,
+      1,
+      policy,
+      "no-text-v2",
+      correction,
+    );
+    assert.equal(replacement.request.settings.systemPrompt, original.request.settings.systemPrompt);
+    assert.deepEqual(replacement.request.jsonSchema, original.request.jsonSchema);
+    assert.deepEqual(
+      payload(replacement).scenes.map((scene) => scene.scene_id),
+      correction.failedSceneIds,
+    );
+    assert.equal(payload(replacement).scenes.length, 3);
+    for (const scene of batch.scenes)
+      assert.ok(
+        replacement.request.settings.systemPrompt.includes(
+          `${scene.sceneId}: ${batch.literalCharacterLimits[scene.sceneId]} characters`,
+        ),
+      );
+  });
+}
 
 test("Luna correction keeps the original strict schema while requesting only failed scenes", async () => {
   const batch = { ...makeBatch(3), literalCharacterLimit: 168 };

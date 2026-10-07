@@ -1346,14 +1346,20 @@ describe("hosted product route contract", () => {
     testState.projectRows[0] = { ...previous, generation_provider: "KIE_FAL" };
     testState.query.mockImplementation(async (sql, params) => {
       if (sql.includes("SELECT lane,state,created_at,submitted_at,completed_at"))
-        return { rows: [{ lane: "IMAGE", state: "FAILED", failure_code: "IMAGE_TEXT_QA_REJECTED" }], affectedRows: 1 };
+        return {
+          rows: [{ lane: "IMAGE", state: "FAILED", failure_code: "IMAGE_TEXT_QA_REJECTED" }],
+          affectedRows: 1,
+        };
       return original(sql, params);
     });
     try {
       const response = await handleHostedProductRequest(
-        request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"), environment, stagingConfig, executionContext,
+        request(`/api/v2/hosted/projects/${PROJECT_ID}`, "GET"),
+        environment,
+        stagingConfig,
+        executionContext,
       );
-      const body = await response!.json() as { stages: Array<{ id: string; detail: string }> };
+      const body = (await response!.json()) as { stages: Array<{ id: string; detail: string }> };
       expect(body.stages.find((stage) => stage.id === "image-generation")?.detail).toBe(
         "An image contained text and was blocked. No automatic regeneration was charged.",
       );
@@ -2944,6 +2950,23 @@ describe("hosted product route contract", () => {
   ])("classifies hosted prompt recovery safely: $name", ({ expected, ...input }) => {
     expect(hostedPromptRecoveryDisposition(input)).toBe(expected);
   });
+
+  it.each([9, 10])(
+    "keeps unresolved Luna profile %i claims from automatic replay",
+    (profileRevision) => {
+      const input = {
+        state: "UNKNOWN",
+        problemCode: "HOSTED_PROMPT_EXECUTION_UNKNOWN",
+        profileRevision,
+        hasCurrentClaim: true,
+        automaticRecoveryPending: true,
+      };
+      expect(hostedPromptRecoveryDisposition(input)).toBe("attention");
+      expect(hostedPromptRecoveryDisposition({ ...input, hasCurrentReceipt: true })).toBe(
+        "automatic",
+      );
+    },
+  );
 
   it("shows Luna UNKNOWN without a receipt as manual review, never automatic recovery", () => {
     const projected = hostedPromptProgressForCapacityHold({

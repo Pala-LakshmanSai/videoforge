@@ -1250,8 +1250,8 @@ test("0071 failure settlement sums accepted batches and preserves historical 007
   });
 });
 
-test("0285 prepares revision-pinned Runware Luna profiles and binds claims to their request policy", async () => {
-  for (const requestPolicy of [null, "runware-luna-grounded-v1", "runware-luna-grounded-v2"]) {
+test("0285 and 0294 prepare revision-pinned Runware Luna profiles and binds claims to their request policy", async () => {
+  for (const requestPolicy of [null, "runware-luna-grounded-v1", "runware-luna-grounded-v2", "runware-luna-grounded-v3"]) {
     await withPgcryptoMigratedDatabase(async ({ executor }) => {
       const prepareDefinition = (
         await executor.query(
@@ -1259,6 +1259,12 @@ test("0285 prepares revision-pinned Runware Luna profiles and binds claims to th
         )
       ).rows[0].definition;
       assert.match(prepareDefinition, /runware-luna-grounded-v2/u);
+      assert.match(prepareDefinition, /runware-luna-grounded-v3/u);
+      const qaDefaults = await executor.query(`SELECT column_default FROM information_schema.columns
+        WHERE table_schema='public' AND table_name IN ('hosted_api_generation_jobs','hosted_api_image_regeneration_jobs')
+          AND column_name='image_text_qa_required'`);
+      assert.equal(qaDefaults.rows.length,2);
+      assert.ok(qaDefaults.rows.every((row) => row.column_default==='false'));
       const authority = await seedAdaptivePromptRun(executor, {
         sceneCount: 2,
         plannedBatchCount: 1,
@@ -1307,9 +1313,9 @@ test("0285 prepares revision-pinned Runware Luna profiles and binds claims to th
         )
       ).rows[0];
       if (requestPolicy) {
-        const version = requestPolicy === "runware-luna-grounded-v2" ? 39 : 38;
+        const version = requestPolicy === "runware-luna-grounded-v3" ? 40 : requestPolicy === "runware-luna-grounded-v2" ? 39 : 38;
         assert.equal(row.name, "Hosted Runware GPT-6 Luna scene prompts");
-        assert.equal(row.revision, version === 39 ? 9 : 8);
+        assert.equal(row.revision, version - 30);
         assert.equal(row.dispatch_target, "RUNWARE");
         assert.deepEqual(row.configuration, {
           model: "openai:gpt@6-luna",

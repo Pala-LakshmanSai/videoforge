@@ -355,7 +355,7 @@ export const HOSTED_LUNA_PROMPT_BATCH_MAX_OUTPUT_TOKENS = 6_144 as const;
  */
 export function hostedPromptBatchPlan(
   authority: PromptExecutionAuthority,
-  requestPolicy: PromptRequestPolicy = "runware-luna-grounded-v2",
+  requestPolicy: PromptRequestPolicy = "runware-luna-grounded-v3",
 ): PromptBatchPlan {
   let literalCharacterLimit: number | undefined;
   let literalCharacterLimits: Readonly<Record<string, number>> | undefined;
@@ -391,7 +391,7 @@ export function hostedPromptBatchPlan(
           ),
         ),
       );
-    } else if (requestPolicy === "runware-luna-grounded-v2") {
+    } else if (requestPolicy === "runware-luna-grounded-v2" || requestPolicy === "runware-luna-grounded-v3") {
       literalCharacterLimits = Object.freeze(
         Object.fromEntries(
           authority.scenes.map((scene) => [
@@ -431,7 +431,7 @@ export function hostedPromptBatchPlan(
         "The pinned image style leaves too little Kie prompt room for a grounded scene.",
       );
     if (
-      requestPolicy === "runware-luna-grounded-v2" &&
+      (requestPolicy === "runware-luna-grounded-v2" || requestPolicy === "runware-luna-grounded-v3") &&
       (!literalCharacterLimits ||
         Object.values(literalCharacterLimits).some(
           (limit) => !Number.isSafeInteger(limit) || limit < 90,
@@ -469,6 +469,7 @@ export async function recoverHostedPromptBatchPlan(
   binding: HostedPromptBatchPlanBinding,
 ): Promise<PromptBatchPlan> {
   for (const policy of [
+    "runware-luna-grounded-v3",
     "runware-luna-grounded-v2",
     "runware-luna-grounded-v1",
     "grounded-scenes-v1",

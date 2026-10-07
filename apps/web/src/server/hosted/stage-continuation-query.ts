@@ -143,13 +143,13 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
              WHEN prompt_state = 'DISPATCHING' AND prompt_accepted_set IS NULL
                AND prompt_run_started_at IS NOT NULL
                AND prompt_run_started_at < now() - make_interval(secs => ${PROMPT_STALE_RUN_SECONDS})
-               AND (prompt_profile_revision IS NULL OR prompt_profile_revision NOT IN (8, 9)
+               AND (prompt_profile_revision IS NULL OR prompt_profile_revision NOT IN (8, 9, 10)
                  OR prompt_current_claim_started_at IS NULL
                  OR prompt_current_receipt_available)
                THEN 'prompts'
              WHEN prompt_state = 'UNKNOWN' AND prompt_accepted_set IS NULL
                AND prompt_problem_code IN ('HOSTED_PROMPT_EXECUTION_UNKNOWN','HOSTED_PROMPT_DISPATCH_TIMEOUT','HOSTED_PROMPT_PROVIDER_CREDITS_LOW')
-               AND (prompt_profile_revision IS NULL OR prompt_profile_revision NOT IN (8, 9)
+               AND (prompt_profile_revision IS NULL OR prompt_profile_revision NOT IN (8, 9, 10)
                  OR prompt_current_claim_started_at IS NULL
                  OR prompt_current_receipt_available)
                AND (
@@ -165,7 +165,7 @@ SELECT project_id, account_id, workspace_id, user_id, revision_id, asr_attempt_i
                THEN 'prompts'
              WHEN prompt_state IN ('FAILED', 'UNKNOWN') AND prompt_accepted_set IS NULL
                AND prompt_problem_code = ANY(${PROMPT_REDISPATCHABLE_PROBLEM_CODES_SQL})
-               AND (prompt_profile_revision IS NULL OR prompt_profile_revision NOT IN (8, 9)
+               AND (prompt_profile_revision IS NULL OR prompt_profile_revision NOT IN (8, 9, 10)
                  OR prompt_current_claim_started_at IS NULL
                  OR prompt_current_receipt_available)
                AND COALESCE(prompt_redispatch_count, 0) < 28

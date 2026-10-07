@@ -4,8 +4,8 @@ phase_source: CURRENT_STATE.yaml
 last_updated: "2026-10-07"
 source_of_truth: project-context
 
-current_selected_profile: v2_09_standalone_voiceovers
-current_selected_brief: VOICEOVERS_PLAN.md
+current_selected_profile: v2_09_image_no_text
+current_selected_brief: IMAGE_NO_TEXT_PLAN.md
 
 mandatory_read:
   - 00_START_HERE.md

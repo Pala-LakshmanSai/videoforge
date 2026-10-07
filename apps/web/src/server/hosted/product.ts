@@ -5112,7 +5112,7 @@ export function hostedPromptRecoveryDisposition(input: {
   const staleDispatch = input.state === "DISPATCHING" && input.staleDispatch === true;
   if (!unresolved && !staleDispatch) return "none";
   if (
-    Number(input.profileRevision) === 8 &&
+    [8, 9, 10].includes(Number(input.profileRevision)) &&
     input.hasCurrentClaim === true &&
     input.hasCurrentReceipt !== true
   )
@@ -7943,7 +7943,7 @@ async function projectDetail(
                 (current_claim.recorded_result IS NOT NULL) AS current_batch_receipt_available,
                 coalesce(run.execution_profile_id IS NOT NULL
                   AND (SELECT profile.revision FROM execution_profiles profile
-                    WHERE profile.id=run.execution_profile_id) IN (8,9)
+                    WHERE profile.id=run.execution_profile_id) IN (8,9,10)
                   AND (run.state='UNKNOWN' AND run.problem_code IN
                     ('HOSTED_PROMPT_EXECUTION_UNKNOWN','HOSTED_PROMPT_DISPATCH_TIMEOUT')
                     OR run.state='DISPATCHING' AND current_claim.claimed_at < now()-interval '15 minutes')
@@ -7958,14 +7958,14 @@ async function projectDetail(
                       AND request.state='ACTIVE')=1
                   AND (current_claim.id IS NULL
                     OR coalesce((SELECT profile.revision FROM execution_profiles profile
-                      WHERE profile.id=run.execution_profile_id) NOT IN (8,9),true)
+                      WHERE profile.id=run.execution_profile_id) NOT IN (8,9,10),true)
                     OR current_claim.recorded_result IS NOT NULL),false)
                   AS continuation_driver_eligible,
                 coalesce(run.state='UNKNOWN'
                   AND run.problem_code IN ('HOSTED_PROMPT_EXECUTION_UNKNOWN','HOSTED_PROMPT_DISPATCH_TIMEOUT')
                   AND run.provider_may_have_charged IS TRUE
                   AND (coalesce((SELECT profile.revision FROM execution_profiles profile
-                    WHERE profile.id=run.execution_profile_id) NOT IN (8,9),true)
+                    WHERE profile.id=run.execution_profile_id) NOT IN (8,9,10),true)
                     OR current_claim.id IS NULL OR current_claim.recorded_result IS NOT NULL)
                   AND run.acceptance_fingerprint_hash IS NULL
                   AND EXISTS (SELECT 1 FROM projects project
@@ -9208,10 +9208,10 @@ async function projectDetail(
         completed_at: timestampOrNull(laneState("mage_image")?.terminal_at),
         detail: undispatchedApiBlocked
           ? "Images have not been submitted. Cloud audio preparation must finish first."
-          : (detail.apiJobs as Record<string, unknown>[])
+          : ((detail.apiJobs as Record<string, unknown>[])
               .filter((job) => job.lane === "IMAGE" && job.state === "FAILED")
               .map((job) => imageTextQaMessage(job.failure_code))
-              .find(Boolean) ?? "Generate and verify the planned scene images.",
+              .find(Boolean) ?? "Generate and verify the planned scene images."),
         eta_ms: null,
       },
       ...(videoPlan && (requestedVideoCoverage > 0 || requiredOpening)

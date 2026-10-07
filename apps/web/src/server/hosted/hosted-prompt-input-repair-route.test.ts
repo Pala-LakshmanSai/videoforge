@@ -172,7 +172,7 @@ it("manual Retry submits the exact original repair proof and reaches guarded dis
   const payload = JSON.parse(String(prepareCalls()[0]![1][0]));
   expect(payload).toMatchObject({
     redispatch: true,
-    request_policy: "runware-luna-grounded-v2",
+    request_policy: "runware-luna-grounded-v3",
     input_repair_redispatch: true,
     original_run_id: identity.runId,
     original_input_hash: pinned.input_hash,
