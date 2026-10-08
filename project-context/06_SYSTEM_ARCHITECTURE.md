@@ -11,7 +11,7 @@ workers. Postgres is editorial/operational truth; private R2 is artifact truth; 
 provider observation, not the sole recovery record.
 
 Each admitted account has one default workspace. All user-created data belongs to that
-account/workspace. Only explicit built-ins are global. The server derives ownership from the
+account/workspace. Explicit built-ins are global; `DEC_VOICEOVER_SHARED_001` adds a narrow read-only saved-voice selection catalog for admitted users. Preference writes and generated speech remain tenant-private. The server derives ownership from the
 authenticated session and database relationships on every read/write; client-supplied ownership,
 R2 keys, provider job IDs, or callbacks cannot grant access.
 

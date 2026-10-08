@@ -11,9 +11,7 @@ Pod lifecycle, prompt writing, or model expertise.
 
 Each admitted identity owns one default workspace. All user-created projects, queues, Avatar
 Profiles, Image Styles, uploads, outputs, manifests, costs, and settings are private to that
-account/workspace. Explicitly built-in presets may be global and read-only. There are no shared user
-catalogs or cross-account project controls. A future team-sharing feature requires a new decision;
-it is not inferred from invite-only access.
+account/workspace. Explicitly built-in presets may be global and read-only. `DEC_VOICEOVER_SHARED_001` permits saved voice selections to be browsed by every admitted user, with display-name partitions and private preference writes. Cross-account project controls remain unavailable. Other sharing requires an explicit decision.
 
 ## Required happy path
 
@@ -154,7 +152,7 @@ playable short MP4 alone do not prove this boundary.
 
 ## Voiceover sources — 2026-10-04
 
-DEC_VOICEOVER_001 adds J1TTS script generation alongside the default final-audio upload. Create offers Upload voiceover and Upload script; script mode accepts a UTF-8 .txt file or pasted text and an exact voice ID. Users generate, listen, optionally download the MP3, then create the video. Voiceover Hub provides previews, private saved/starred voices and optional ElevenLabs-ID import. Generated MP3s use the same validated private upload, ASR timing and downstream video path as direct audio. The existing avatar/version, style, Local/Cloud and video-output rules remain binding.
+DEC_VOICEOVER_001 adds J1TTS script generation alongside the default final-audio upload. Create offers Upload voiceover and Upload script; script mode accepts a UTF-8 .txt file or pasted text and an exact voice ID. Users generate, listen, optionally download the MP3, then create the video. Voiceover Hub provides previews, shared saved-voice browsing with user partitions, private saved/starred writes and optional ElevenLabs-ID import. Generated MP3s use the same validated private upload, ASR timing and downstream video path as direct audio. The existing avatar/version, style, Local/Cloud and video-output rules remain binding.
 
 ## Historical short voiceover compatibility — 2026-10-04
 

@@ -56,7 +56,7 @@ Avatars are reusable workspace presets. Ordinary project creation must select an
 
 V2 is tenant-private: one admitted account owns one default workspace; user-created projects,
 presets, media, jobs, costs, and results are private, and only explicit immutable built-ins are
-globally readable. Postgres admits at most one active video/provider workload per account, with no cross-account
+globally readable. `DEC_VOICEOVER_SHARED_001` additionally permits all admitted users to read saved voice selections and display-name partitions; preference writes and generated audio/jobs remain private. Postgres admits at most one active video/provider workload per account, with no cross-account
 concurrency ceiling (`DEC_QUEUE_003`, user decision 2026-10-04). Explicit preset previews retain the per-account lock
 and lower priority than eligible videos. Narration preparation is independent of video admission;
 only another narration for the same account waits. Ordinary users never choose GPUs or

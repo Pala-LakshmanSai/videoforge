@@ -42,6 +42,43 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
+
+it("browses everyone's saved voices and each user's partition without changing their stars", async () => {
+  const items = voices.map((voice) => ({ ...voice }));
+  const collections = [
+    { id: "other", name: "Other user", is_current_user: false, voice_ids: ["bob"] },
+  ];
+  const fetcher = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+    if (init?.method === "POST") {
+      const change = JSON.parse(init.body as string) as { saved: boolean; starred: boolean };
+      Object.assign(items.find((voice) => String(url).endsWith(voice.voice_id))!, change);
+      return Response.json(change);
+    }
+    return Response.json({ voices: items, collections });
+  });
+  vi.stubGlobal("fetch", fetcher);
+  wrap(<VoiceoverHub />);
+  await screen.findByRole("heading", { name: "Bob" });
+  expect(screen.getByRole("heading", { name: "Alice" })).toBeVisible();
+  const select = screen.getByRole("combobox", { name: "Saved by" });
+  fireEvent.click(select);
+  fireEvent.click(screen.getByRole("option", { name: "Other user 1" }));
+  expect(screen.queryByRole("heading", { name: "Alice" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Star Bob" })).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Star Bob" }));
+  await screen.findByRole("button", { name: "Unstar Bob" });
+  expect(collections[0]?.voice_ids).toEqual(["bob"]);
+  fireEvent.click(select);
+  fireEvent.click(screen.getByRole("option", { name: "My saved voices" }));
+  expect(screen.getByRole("heading", { name: "Alice" })).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Bob" })).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Unstar Bob" }));
+  await waitFor(() => expect(screen.queryByRole("heading", { name: "Bob" })).toBeNull());
+  fireEvent.click(select);
+  fireEvent.click(screen.getByRole("option", { name: "Other user 1" }));
+  expect(screen.getByRole("heading", { name: "Bob" })).toBeVisible();
+  expect(fetcher.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(2);
+});
 it("keeps a queued narration locked and observes it without creating another request", async () => {
   const job = {
     id: "queued-voice",

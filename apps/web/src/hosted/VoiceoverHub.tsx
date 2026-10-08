@@ -24,6 +24,7 @@ import {
   voiceFilterLabels,
   voiceTraits,
   type Voice,
+  type VoiceCatalog,
   type VoiceFacet,
   type VoiceFilters,
 } from "./voice-library";
@@ -64,7 +65,7 @@ export async function voiceoverJson<T>(url: string, init?: RequestInit): Promise
 export function useVoices(enabled = true) {
   return useQuery({
     queryKey: ["voiceover-voices"],
-    queryFn: () => voiceoverJson<{ voices: Voice[] }>("/api/v2/voiceovers/voices"),
+    queryFn: () => voiceoverJson<VoiceCatalog>("/api/v2/voiceovers/voices"),
     enabled,
     staleTime: 60_000,
     retry: false,
@@ -76,6 +77,7 @@ export function VoiceoverHub() {
     client = useQueryClient();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"saved" | "all" | null>(null);
+  const [collection, setCollection] = useState("everyone");
   const [limit, setLimit] = useState(60);
   const [traitsFilter, setTraitsFilter] = useState<VoiceFilters>(emptyVoiceFilters);
   const [previewOnly, setPreviewOnly] = useState(false);
@@ -89,13 +91,28 @@ export function VoiceoverHub() {
   const importDetails = useRef<HTMLDetailsElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
   const all = voices.data?.voices ?? [];
-  const savedCount = all.filter((voice) => voice.saved).length;
+  const collections = voices.data?.collections ?? [];
+  const otherCollections = collections.filter((item) => !item.is_current_user);
+  const selectedVoiceIds = new Set(
+    (collection === "everyone"
+      ? otherCollections
+      : otherCollections.filter((item) => item.id === collection)
+    ).flatMap((item) => item.voice_ids),
+  );
+  const isInCollection = (voice: Voice) =>
+    collection === "mine"
+      ? voice.saved
+      : selectedVoiceIds.has(voice.voice_id) || (collection === "everyone" && voice.saved);
+  const savedCount = all.filter(isInCollection).length;
   const selectedFilter = filter ?? (savedCount ? "saved" : "all");
   const selectedSort = sort ?? (selectedFilter === "all" ? "name" : "favorites");
   useEffect(() => {
     if (voices.data && filter === null) setFilter(savedCount ? "saved" : "all");
   }, [voices.data, filter, savedCount]);
-  useEffect(() => setLimit(60), [search, selectedFilter, traitsFilter, previewOnly, sort]);
+  useEffect(
+    () => setLimit(60),
+    [search, selectedFilter, traitsFilter, previewOnly, sort, collection],
+  );
   useEffect(() => {
     if (!notice) return;
     const timeout = window.setTimeout(() => setNotice(""), 4000);
@@ -125,10 +142,11 @@ export function VoiceoverHub() {
         body: JSON.stringify({ saved, starred }),
       }),
     onSuccess: (_result, change) => {
-      client.setQueryData<{ voices: Voice[] }>(
+      client.setQueryData<VoiceCatalog>(
         ["voiceover-voices"],
         (data) =>
           data && {
+            ...data,
             voices: data.voices.map((voice) =>
               voice.voice_id === change.voice.voice_id
                 ? { ...voice, saved: change.saved, starred: change.starred }
@@ -157,6 +175,7 @@ export function VoiceoverHub() {
       setSearch("");
       clearFilters();
       setFilter("saved");
+      setCollection("mine");
       closeImport();
       importDetails.current?.querySelector("summary")?.focus();
       setNotice("Voice imported and saved.");
@@ -166,7 +185,7 @@ export function VoiceoverHub() {
   const catalog = useMemo(() => all.map((voice) => ({ voice, traits: voiceTraits(voice) })), [all]);
   const scoped = catalog.filter(
     ({ voice }) =>
-      (selectedFilter === "all" || voice.saved) &&
+      (selectedFilter === "all" || isInCollection(voice)) &&
       matchesVoiceName(voice, search) &&
       (!previewOnly || Boolean(voice.preview_url)),
   );
@@ -276,7 +295,7 @@ export function VoiceoverHub() {
               }}
             >
               <strong>Import from ElevenLabs</strong>
-              <p>Paste a voice ID to add it to your private library.</p>
+              <p>Paste a voice ID to save it. Saved voices are available to everyone.</p>
               <label className="field">
                 <span className="field-label">Voice ID</span>
                 <input
@@ -395,6 +414,25 @@ export function VoiceoverHub() {
               </button>
             ))}
           </div>
+          {selectedFilter === "saved" && (
+            <div className="voice-saved-collection">
+              <VoiceFilterSelect
+                label="Saved by"
+                value={collection}
+                onChange={setCollection}
+                disabled={voices.isPending || Boolean(voices.error)}
+                options={[
+                  { value: "everyone", label: "Everyone" },
+                  { value: "mine", label: "My saved voices" },
+                  ...otherCollections.map((item) => ({
+                    value: item.id,
+                    label: item.name,
+                    count: item.voice_ids.length,
+                  })),
+                ]}
+              />
+            </div>
+          )}
           <div className="voice-sort">
             <VoiceFilterSelect
               label="Sort"
@@ -495,14 +533,20 @@ export function VoiceoverHub() {
             {search.trim() || activeFilterCount ? <Search size={28} /> : <Bookmark size={28} />}
           </span>
           <h3>
-            {search.trim() || activeFilterCount ? "No matching voices" : "Build your voice library"}
+            {search.trim() || activeFilterCount
+              ? "No matching voices"
+              : selectedFilter === "saved"
+                ? "No saved voices"
+                : "Build your voice library"}
           </h3>
           <p>
             {activeFilterCount
               ? "Try a different filter, or clear filters to see more voices."
               : search.trim()
                 ? "Try the beginning of a voice name, or browse the full library."
-                : "Listen to a few voices, then star the ones you love."}
+                : selectedFilter === "saved" && collection !== "mine"
+                  ? "This collection has no saved voices yet. Choose another user or explore all voices."
+                  : "Listen to a few voices, then star the ones you love."}
           </p>
           <div className="voice-empty-actions">
             {Boolean(activeFilterCount) && (

@@ -8,6 +8,16 @@ export interface Voice {
   starred: boolean;
 }
 
+export interface VoiceCatalog {
+  voices: Voice[];
+  collections?: {
+    id: string;
+    name: string;
+    is_current_user: boolean;
+    voice_ids: string[];
+  }[];
+}
+
 export function normalizeVoiceName(value: string): string {
   return value.normalize("NFKD").replace(/\p{M}/gu, "").trim().replace(/\s+/gu, " ").toLowerCase();
 }

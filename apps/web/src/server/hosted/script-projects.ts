@@ -20,6 +20,7 @@ import {
   resolvedAiVideoOpeningSeconds,
 } from "./product";
 import { voices, j1Fetch, observeJ1Voiceover, type Job } from "./j1tts";
+import { canUseCatalogVoice, type SavedVoiceCollection } from "./voice-catalog-access";
 import { generatedVoiceoverAudio, fixedLengthAudioStream } from "./generated-voiceover-audio";
 import { continuationRequest } from "./stage-continuation";
 import { scheduleHostedAsrSubmission } from "./app";
@@ -197,17 +198,27 @@ export async function createScriptProject(
       }
       const saved =
         (
-          await sql.query<{ value: { voice_id: string; imported: boolean }[] }>(
+          await sql.query<{ value: { voice_id: string; imported: boolean; saved: boolean }[] }>(
             "SELECT public.videoforge_saved_voices($1,$2) AS value",
+            [scope.account_id, scope.workspace_id],
+          )
+        ).rows[0]?.value ?? [];
+      const collections =
+        (
+          await sql.query<{ value: SavedVoiceCollection[] }>(
+            "SELECT public.videoforge_shared_saved_voice_collections($1,$2) AS value",
             [scope.account_id, scope.workspace_id],
           )
         ).rows[0]?.value ?? [];
       const voice = (await voices(env.J1TTS_API_KEY!)).find(
         (v) =>
           v.voice_id === body.voice_id &&
-          (!v.imported ||
-            scope.account_id === env.J1TTS_LIBRARY_OWNER_ACCOUNT_ID ||
-            saved.some((s) => s.voice_id === v.voice_id && s.imported)),
+          canUseCatalogVoice(
+            v,
+            saved,
+            collections,
+            scope.account_id === env.J1TTS_LIBRARY_OWNER_ACCOUNT_ID,
+          ),
       );
       if (!voice) throw new Error("VOICE_NOT_FOUND");
       const pins = await validateScriptProjectPresets(sql, scope, config, options);

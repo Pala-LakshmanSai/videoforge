@@ -63,6 +63,71 @@ async function tokenCall(executor, functionName, args) {
     .rows[0]?.value;
 }
 
+test("saved voice collections share only active users' selected voice IDs and preserve private writes", async () => {
+  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+    const a = await admit(executor, 801, "voice-a@example.test");
+    const b = await admit(executor, 802, "voice-b@example.test");
+    const save = (identity, id, saved) =>
+      tenantCall(executor, "videoforge_save_voice", [
+        identity.account_id,
+        identity.workspace_id,
+        id,
+        saved,
+        saved,
+      ]);
+    const read = (identity) =>
+      tenantCall(executor, "videoforge_shared_saved_voice_collections", [
+        identity.account_id,
+        identity.workspace_id,
+      ]);
+    await save(a, "shared-a", true);
+    await save(b, "shared-b", true);
+    await tenantCall(executor, "videoforge_import_voice", [
+      a.account_id,
+      a.workspace_id,
+      "hidden-import",
+    ]);
+    await save(a, "hidden-import", false);
+    const result = await read(b);
+    assert.equal(result.length, 2);
+    assert.deepEqual(result.find((item) => item.id === a.account_id).voice_ids, ["shared-a"]);
+    assert.equal(result.find((item) => item.id === b.account_id).is_current_user, true);
+    assert.deepEqual(Object.keys(result[0]).sort(), ["id", "is_current_user", "name", "voice_ids"]);
+    await save(b, "shared-a", true);
+    await save(a, "shared-a", false);
+    assert.deepEqual((await read(b)).find((item) => item.id === b.account_id).voice_ids, [
+      "shared-a",
+      "shared-b",
+    ]);
+    assert.deepEqual(
+      await tenantCall(executor, "videoforge_saved_voices", [a.account_id, a.workspace_id]),
+      [{ voice_id: "hidden-import", imported: true, saved: false, starred: false }],
+    );
+    await assert.rejects(
+      executor.query("SELECT videoforge_shared_saved_voice_collections($1,$2)", [
+        a.account_id,
+        a.workspace_id,
+      ]),
+      /voiceover tenant scope invalid/,
+    );
+    await executor.query(
+      "INSERT INTO hosted_access_revocations(hosted_auth_user_id,revoked_by) VALUES($1,$1)",
+      ["voiceover-library-user-0801"],
+    );
+    assert.deepEqual(
+      (await read(b)).map((item) => item.id),
+      [b.account_id],
+    );
+    await assert.rejects(read(a), /voiceover tenant scope invalid/);
+    const grants = (
+      await executor.query(
+        "SELECT has_function_privilege('videoforge_v209_runtime_dc9612d6','videoforge_shared_saved_voice_collections(uuid,uuid)','EXECUTE') AS allowed",
+      )
+    ).rows[0];
+    assert.equal(grants.allowed, true);
+  });
+});
+
 function queueArgs(identity, jobId, suffix = "one") {
   return [
     identity.account_id,

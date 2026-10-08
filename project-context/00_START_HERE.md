@@ -1,3 +1,5 @@
+Shared saved voices are being implemented under DEC_VOICEOVER_SHARED_001. Read `shared_saved_voices_2026_10_08` in CURRENT_STATE.yaml and SHARED_SAVED_VOICES_PLAN.md. Production publication and browser proof remain pending.
+
 Current task: six simultaneous isolated user/project prompt-stage qualification, at most120-second inputs each, fresh USD3 combined prompt-only cap. Read `PROMPT_SIX_CONCURRENCY_PLAN.md` and `prompt_six_concurrency_2026_10_08` in CURRENT_STATE.yaml. No downstream generation or existing-video mutation.
 
 Current task: repair held Cloud stage and historical machine status. Use `v2_09_cloud_status` / `CLOUD_STATUS_PLAN.md`; preserve completed276 prompts, the downstream hold and published CPU headroom.

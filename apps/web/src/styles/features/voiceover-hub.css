@@ -828,12 +828,14 @@
   gap: 8px;
   margin-left: auto;
 }
-.voice-sort .voice-filter-select {
+.voice-sort .voice-filter-select,
+.voice-saved-collection .voice-filter-select {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.voice-sort .voice-filter-trigger {
+.voice-sort .voice-filter-trigger,
+.voice-saved-collection .voice-filter-trigger {
   min-width: 160px;
 }
 @media (max-width: 640px) {

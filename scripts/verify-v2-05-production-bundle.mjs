@@ -101,9 +101,10 @@ const hostedAppPath = path.join(repositoryRoot, "apps/web/src/server/hosted/app.
 // No dependency, provider/fixture/native quarantine or CPU-bound exception is introduced.
 // Standalone voiceover library adds exactly 314 production / 301 staging bytes for lazy
 // routing, migration identity and ARCHIVING workflow state. Provider/archive/UI code stays dynamic.
+// Shared saved-voice migration identity adds 51 production / 17 staging measured bytes; catalog code stays dynamic.
 const staticWorkerEntryAcceptedBytes = Object.freeze({
-  "wrangler.production.jsonc": 2_847_646,
-  "wrangler.staging.jsonc": 2_849_525,
+  "wrangler.production.jsonc": 2_847_697,
+  "wrangler.staging.jsonc": 2_849_542,
 })[wranglerConfig];
 const workerForbidden = [
   "@videoforge/test-fixtures",

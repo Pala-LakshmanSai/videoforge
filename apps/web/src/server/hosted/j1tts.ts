@@ -12,6 +12,7 @@ import { sha256 } from "./crypto";
 import { providerRetryAfterMs } from "../providers/provider-throttle";
 import type { VoiceoverAsset } from "./voiceover-archive";
 import { ensureHostedContinuationDriver } from "./pair-observer-guard";
+import { canUseCatalogVoice, type SavedVoiceCollection } from "./voice-catalog-access";
 
 async function archiveStandaloneVoiceover(
   env: HostedRuntimeEnvironment,
@@ -357,10 +358,18 @@ export async function handleJ1Voiceover(
         owner,
       )) ?? [];
     const savedMap = new Map(saved.map((v) => [v.voice_id, v]));
+    const collections =
+      (await sql<SavedVoiceCollection[]>(
+        "SELECT public.videoforge_shared_saved_voice_collections($1,$2) AS value",
+        owner,
+      )) ?? [];
     const permitted = (voice: J1Voice) =>
-      !voice.imported ||
-      scope.account_id === env.J1TTS_LIBRARY_OWNER_ACCOUNT_ID ||
-      savedMap.get(voice.voice_id)?.imported === true;
+      canUseCatalogVoice(
+        voice,
+        saved,
+        collections,
+        scope.account_id === env.J1TTS_LIBRARY_OWNER_ACCOUNT_ID,
+      );
     if (path === "/api/v2/voiceovers/import" && request.method === "POST") {
       const parsed = await parseHostedJson(request, "VOICE_IMPORT_INVALID", 1024);
       if (parsed instanceof Response) return parsed;
@@ -411,6 +420,12 @@ export async function handleJ1Voiceover(
     if (path === "/api/v2/voiceovers/voices" && request.method === "GET") {
       const all = (await voices(key)).filter(permitted);
       return response({
+        collections: collections.map((collection) => ({
+          ...collection,
+          voice_ids: collection.voice_ids.filter((id) =>
+            all.some((voice) => voice.voice_id === id),
+          ),
+        })),
         voices: all.map((v) => ({
           ...v,
           preview_url: v.preview_url ? `/api/v2/voiceovers/voices/${v.voice_id}/preview` : null,
@@ -673,13 +688,7 @@ export async function handleJ1Voiceover(
             [...owner, job.id],
           );
           if (standalone && !standalone.deleted_at)
-            await ensureVoiceoverObserver(
-              env,
-              scope.account_id,
-              scope.workspace_id,
-              job.id,
-              true,
-            );
+            await ensureVoiceoverObserver(env, scope.account_id, scope.workspace_id, job.id, true);
         }
         await observeJ1Voiceover(
           { ...env, DATABASE_URL: config.neon.databaseUrl },

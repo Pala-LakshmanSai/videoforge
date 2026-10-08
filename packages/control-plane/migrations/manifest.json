@@ -1566,6 +1566,12 @@
       "name": "hosted_terminal_prompt_request_settle",
       "filename": "0298_hosted_terminal_prompt_request_settle.sql",
       "sha256": "sha256:9cf1e3bb7dbf0f32761f3425b1cd5288193048160c511e119b3d0ab7c85fed01"
+    },
+    {
+      "version": 299,
+      "name": "shared_saved_voice_collections",
+      "filename": "0299_shared_saved_voice_collections.sql",
+      "sha256": "sha256:ca6bd3906e2cce1691678110633d345c072f763263a1a7216244f64c502b73e4"
     }
   ]
 }

@@ -4,6 +4,7 @@ const state = vi.hoisted(() => ({
   jobs: new Map<string, Record<string, unknown>>(),
   assets: new Map<string, Record<string, unknown>>(),
   saved: new Map<string, unknown[]>(),
+  collections: [] as { id: string; name: string; is_current_user: boolean; voice_ids: string[] }[],
   account: "account-a",
   authenticated: true,
   query: vi.fn(),
@@ -59,6 +60,7 @@ beforeEach(() => {
   state.jobs.clear();
   state.assets.clear();
   state.saved.clear();
+  state.collections = [];
   state.account = "account-a";
   state.authenticated = true;
   calls = [];
@@ -82,8 +84,14 @@ beforeEach(() => {
     const [a, w, j] = args;
     const standaloneQueue = sql.includes("queue_standalone_voiceover");
     const jobId = standaloneQueue ? args[3] : j;
-    if (sql.includes("saved_voices")) value = state.saved.get(String(a)) ?? [];
-    else if (standaloneQueue || sql.includes("queue_voiceover_job")) {
+    if (sql.includes("shared_saved_voice_collections")) value = state.collections;
+    else if (sql.includes("saved_voices")) value = state.saved.get(String(a)) ?? [];
+    else if (sql.includes("videoforge_save_voice")) {
+      state.saved.set(String(a), [
+        { voice_id: j, saved: args[3], starred: args[4], imported: false },
+      ]);
+      value = true;
+    } else if (standaloneQueue || sql.includes("queue_voiceover_job")) {
       const previous = state.jobs.get(String(jobId));
       const hash = standaloneQueue ? args[4] : args[3];
       const script = standaloneQueue ? args[5] : args[4];
@@ -258,9 +266,7 @@ it("accepts an idempotent observer-create conflict only after confirming its exa
     context,
   );
   expect(result.status).toBe(202);
-  expect(state.workflow.get).toHaveBeenCalledWith(
-    "voiceover-44444444-4444-4444-8444-444444444444",
-  );
+  expect(state.workflow.get).toHaveBeenCalledWith("voiceover-44444444-4444-4444-8444-444444444444");
   expect(calls.filter((path) => path === "/v1/tts")).toHaveLength(0);
 });
 it("surfaces unknown observer scheduling failure while retaining the saved request", async () => {
@@ -339,9 +345,9 @@ it("returns a completed standalone identity without requiring a fresh observer",
     id: "88888888-8888-4888-8888-888888888888",
     title: "Already complete",
   };
-  expect((await handleJ1Voiceover(req("/jobs", standalone), environment, config, context)).status).toBe(
-    202,
-  );
+  expect(
+    (await handleJ1Voiceover(req("/jobs", standalone), environment, config, context)).status,
+  ).toBe(202);
   const job = state.jobs.get(standalone.id);
   expect(job).toBeTruthy();
   job!.state = "COMPLETED";
@@ -369,7 +375,12 @@ it("re-establishes a missing standalone observer on a waiting-job GET", async ()
     created_at: new Date().toISOString(),
   });
   state.assets.set(standaloneId, { deleted_at: null });
-  const result = await handleJ1Voiceover(req("/jobs/" + standaloneId), environment, config, context);
+  const result = await handleJ1Voiceover(
+    req("/jobs/" + standaloneId),
+    environment,
+    config,
+    context,
+  );
   expect(result.status).toBe(200);
   expect(((await result.json()) as { job: { state: string } }).job.state).toBe("WAITING");
   expect(state.workflow.create).toHaveBeenCalledWith(
@@ -494,6 +505,56 @@ it("hides owner imported voices and jobs from other tenants", async () => {
   expect(calls.filter((x) => x === "/v1/tts")).toHaveLength(1);
 });
 
+it("shares explicitly saved imported voices while keeping stars and generated jobs private", async () => {
+  state.account = "account-b";
+  state.collections = [
+    { id: "account-a", name: "User A", is_current_user: false, voice_ids: ["private"] },
+  ];
+  const result = await handleJ1Voiceover(req("/voices"), environment, config, context);
+  const catalog = (await result.json()) as {
+    voices: { voice_id: string; saved: boolean; starred: boolean }[];
+    collections: unknown[];
+  };
+  expect(result.status).toBe(200);
+  expect(catalog.voices.find((voice) => voice.voice_id === "private")).toMatchObject({
+    saved: false,
+    starred: false,
+  });
+  expect(catalog.collections).toEqual(state.collections);
+  expect(calls).not.toContain("/v1/tts");
+  const save = await handleJ1Voiceover(
+    req("/voices/private", { saved: true, starred: true }),
+    environment,
+    config,
+    context,
+  );
+  expect(save.status).toBe(200);
+  expect(state.saved.has("account-a")).toBe(false);
+  // The viewer's own save retains availability after the source removes it.
+  state.collections = [];
+  const retained = await handleJ1Voiceover(req("/voices"), environment, config, context);
+  expect(
+    ((await retained.json()) as { voices: { voice_id: string }[] }).voices.map(
+      (voice) => voice.voice_id,
+    ),
+  ).toContain("private");
+  expect(
+    (
+      await handleJ1Voiceover(
+        req("/jobs", { ...body, voice_id: "private", title: "Shared voice" }),
+        environment,
+        config,
+        context,
+      )
+    ).status,
+  ).toBe(202);
+  expect(calls).not.toContain("/v1/tts");
+  state.account = "account-a";
+  expect((await handleJ1Voiceover(req("/jobs/" + id), environment, config, context)).status).toBe(
+    404,
+  );
+});
+
 it("persists confirmed 429 as waiting and retries only after the saved due time", async () => {
   const original = globalThis.fetch;
   let reject = true;
@@ -601,7 +662,9 @@ it("does not save a failed import or substitute another voice", async () => {
     context,
   );
   expect(result.status).toBe(503);
-  expect(await result.json()).toMatchObject({ error: { message: expect.stringContaining("import") } });
+  expect(await result.json()).toMatchObject({
+    error: { message: expect.stringContaining("import") },
+  });
   expect(calls.filter((path) => path === "/v1/voices/import")).toHaveLength(1);
   expect(state.query.mock.calls.some(([sql]) => sql.includes("videoforge_import_voice"))).toBe(
     false,

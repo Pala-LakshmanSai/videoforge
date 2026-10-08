@@ -7,6 +7,7 @@ const fixture = vi.hoisted(() => ({
   avatarVersionId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
   styleVersionId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
   saved: null as Record<string, unknown> | null,
+  sharedVoiceIds: [] as string[],
   sourceContentType: "image/png",
   sourceState: "VERIFIED",
   voices: vi.fn(),
@@ -32,6 +33,21 @@ const query = vi.hoisted(() =>
     if (sql.includes("SELECT * FROM hosted_script_projects"))
       return { rows: fixture.saved ? [fixture.saved] : [] };
     if (sql.includes("videoforge_saved_voices")) return { rows: [{ value: [] }] };
+    if (sql.includes("videoforge_shared_saved_voice_collections"))
+      return {
+        rows: [
+          {
+            value: [
+              {
+                id: "other",
+                name: "Other user",
+                is_current_user: false,
+                voice_ids: fixture.sharedVoiceIds,
+              },
+            ],
+          },
+        ],
+      };
     if (sql.includes("LEFT JOIN assets AS runtime_source"))
       return {
         rows: [
@@ -153,12 +169,25 @@ function expectNoWrites() {
 }
 beforeEach(() => {
   fixture.saved = null;
+  fixture.sharedVoiceIds = [];
   fixture.sourceContentType = "image/png";
   fixture.sourceState = "VERIFIED";
   vi.clearAllMocks();
   fixture.voices.mockResolvedValue([{ voice_id: "alice", name: "Alice", imported: false }]);
   fixture.voicePost.mockRejectedValue(new Error("Intake must never submit voice generation"));
   fixture.workflowCreate.mockResolvedValue({ id: "fixture-continuation" });
+});
+
+it("accepts another user's saved imported voice for video narration without provider submission", async () => {
+  fixture.voices.mockResolvedValue([{ voice_id: "alice", name: "Alice", imported: true }]);
+  fixture.sharedVoiceIds = ["alice"];
+  expect((await intake(body())).status).toBe(202);
+  expectNoVoiceSpend();
+  fixture.saved = null;
+  fixture.sharedVoiceIds = [];
+  const unavailable = await intake(body());
+  expect(unavailable.status).toBe(400);
+  expect(await unavailable.json()).toMatchObject({ error: { code: "VOICE_NOT_FOUND" } });
 });
 
 it.each(["image/png", "image/jpeg", "image/webp"])(
