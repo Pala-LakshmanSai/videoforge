@@ -2158,6 +2158,89 @@ describe("hosted product route contract", () => {
     ).toBe(false);
   });
 
+  it("returns shared collections separately and authorizes only the database-selected avatar preview", async () => {
+    const original = testState.query.getMockImplementation()!;
+    const sharedAvatar = {
+      profile_id: PRESET_ID,
+      version_id: PRESET_ID,
+      name: "Shared presenter",
+      version_number: 1,
+      state: "READY",
+      scope_kind: "WORKSPACE",
+    };
+    testState.query.mockImplementation(async (sql, params) => {
+      if (sql.includes("videoforge_shared_avatar_collections"))
+        return {
+          rows: [
+            {
+              collections: [
+                {
+                  id: "other-account",
+                  name: "Other user",
+                  email: "other@example.test",
+                  is_current_user: false,
+                  avatars: [sharedAvatar],
+                },
+              ],
+            },
+          ],
+          affectedRows: 1,
+        };
+      if (sql.includes("videoforge_shared_avatar_preview"))
+        return {
+          rows: [{ object_key: "private/shared-avatar.webp", content_type: "image/webp" }],
+          affectedRows: 1,
+        };
+      return original(sql, params);
+    });
+    try {
+      const result = await handleHostedProductRequest(
+        request("/api/v2/hosted/project-catalog", "GET"),
+        {},
+        stagingConfig,
+        executionContext,
+      );
+      const data = (await result!.json()) as {
+        avatars: { version_id: string }[];
+        avatar_collections: { name: string; email: string; avatars: { thumbnail_url: string }[] }[];
+      };
+      expect(data.avatar_collections[0]).toMatchObject({
+        name: "Other user",
+        email: "other@example.test",
+      });
+      expect(data.avatar_collections[0]!.avatars[0]!.thumbnail_url).toBe(
+        `/api/v2/hosted/avatars/${PRESET_ID}/preview`,
+      );
+      expect(
+        data.avatars.some((item: { version_id: string }) => item.version_id === PRESET_ID),
+      ).toBe(false);
+      const get = vi.fn(async () => ({
+        arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+      }));
+      const preview = await handleHostedProductRequest(
+        request(`/api/v2/hosted/avatars/${PRESET_ID}/preview`, "GET"),
+        { PRIVATE_ARTIFACTS: { get } } as unknown as HostedRuntimeEnvironment,
+        stagingConfig,
+        executionContext,
+      );
+      expect(preview!.status).toBe(200);
+      expect(preview!.headers.get("content-type")).toBe("image/webp");
+      expect(preview!.headers.get("cache-control")).toBe("private, no-store");
+      expect(get).toHaveBeenCalledExactlyOnceWith("private/shared-avatar.webp");
+      expect(
+        testState.query.mock.calls.find(([sql]) =>
+          sql.includes("videoforge_shared_avatar_preview"),
+        )?.[1],
+      ).toEqual([
+        "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        PRESET_ID,
+      ]);
+    } finally {
+      testState.query.mockImplementation(original);
+    }
+  });
+
   it("selects an exact published style reference for carousel previews", async () => {
     testState.query.mockClear();
     const previewEnvironment = {

@@ -145,7 +145,7 @@ and tenant ownership rules remain unchanged. Managers cannot revoke either prote
 | `accounts` | Auth-bound private tenant and lifecycle |
 | `workspaces` | Exactly one default workspace owned by one account in V2 |
 | `admissions` / `invites` | Verified-email invite redemption and access state |
-| `avatar_profiles` / `avatar_profile_versions` | Workspace-private reusable avatar identity and immutable versions; system rows are explicit built-ins only |
+| `avatar_profiles` / `avatar_profile_versions` | Workspace-owned immutable avatars; DEC_AVATAR_SHARED_001 adds authenticated ready metadata/previews. Project pins remain owned. |
 | `image_styles` / `image_style_versions` | Workspace-private reusable style identity and immutable versions; system rows are explicit built-ins only |
 | `projects` / `project_revisions` | Workspace-private identity plus immutable voiceover, avatar, style, scheduler, runtime, and render bindings |
 | `assets` | Tenant R2 key, content hash, media metadata, retention, and durable-verification state |

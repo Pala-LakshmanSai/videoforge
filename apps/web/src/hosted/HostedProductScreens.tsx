@@ -60,6 +60,7 @@ import {
   type NormalizedStyleReference,
 } from "../lib/media-validation";
 import { isHostedProviderMode } from "./provider-mode";
+import { VoiceFilterSelect } from "./VoiceFilterSelect";
 import type { ProjectStage } from "../lib/types";
 
 const MAX_VOICEOVER_BYTES = 1_073_741_824;
@@ -174,6 +175,14 @@ export interface CatalogResponse {
   }[];
   /** Workspace-owned versions that still need source upload, review, or approval. */
   readonly avatar_drafts?: readonly HostedAvatarDraft[];
+  /** Shared ready avatars are Hub-only; project creation retains its owned catalog. */
+  readonly avatar_collections?: readonly {
+    id: string;
+    name: string;
+    email: string;
+    is_current_user: boolean;
+    avatars: CatalogResponse["avatars"];
+  }[];
   readonly styles: readonly {
     style_id: string;
     version_id: string;
@@ -4008,12 +4017,15 @@ interface HostedPresetHubItem {
 /** Show ready presets and saved workspace drafts without mixing drafts into project selectors. */
 function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
   const [search, setSearch] = useState("");
+  const [collection, setCollection] = useState("mine");
   const catalog = useQuery({
     queryKey: ["hosted-project-catalog"],
     queryFn: ({ signal }) => readHostedCatalog(signal),
   });
   const isAvatar = kind === "avatars";
-  const publishedItems: readonly HostedPresetCatalogItem[] = catalog.data
+  const collections = catalog.data?.avatar_collections ?? [];
+  const foreignCollections = collections.filter((item) => !item.is_current_user);
+  const ownItems: readonly HostedPresetCatalogItem[] = catalog.data
     ? isAvatar
       ? catalog.data.avatars
       : catalog.data.styles
@@ -4023,9 +4035,47 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
       ? (catalog.data.avatar_drafts ?? [])
       : (catalog.data.style_drafts ?? [])
     : [];
+  const everyone = [
+    ...new Map(
+      [...ownItems, ...foreignCollections.flatMap((item) => item.avatars)].map((item) => [
+        item.version_id,
+        item,
+      ]),
+    ).values(),
+  ];
+  const publishedItems =
+    !isAvatar || collection === "mine"
+      ? ownItems
+      : collection === "everyone"
+        ? everyone
+        : (collections.find((item) => item.id === collection)?.avatars ?? []);
+  const collectionOptions = [
+    {
+      value: "mine",
+      label: "My avatars",
+      description: collections.find((item) => item.is_current_user)?.email,
+      count: ownItems.length,
+    },
+    { value: "everyone", label: "Everyone", count: everyone.length },
+    ...foreignCollections.map((item) => {
+      // ponytail: small invited roster; precompute duplicate-name ranks for larger teams.
+      const namesakes = collections.filter((other) => other.name === item.name);
+      return {
+        value: item.id,
+        label:
+          namesakes.length > 1
+            ? `${item.name} (${namesakes.findIndex((other) => other.id === item.id) + 1})`
+            : item.name,
+        description: item.email,
+        count: item.avatars.length,
+      };
+    }),
+  ];
   const allItems: readonly HostedPresetHubItem[] = [
     ...publishedItems.map((item) => ({ item, draft: false as const })),
-    ...draftItems.map((item) => ({ item, draft: true as const })),
+    ...(!isAvatar || collection === "mine" || collection === "everyone" ? draftItems : []).map(
+      (item) => ({ item, draft: true as const }),
+    ),
   ];
   const title = isAvatar ? "Avatar Hub" : "Image Styles";
   const itemLabel = isAvatar ? "avatar" : "style";
@@ -4050,6 +4100,11 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
   const visiblePublishedItems = visibleItems.filter(({ draft }) => !draft);
 
   function renderCard({ item, draft }: HostedPresetHubItem) {
+    const owner = isAvatar
+      ? foreignCollections.find((entry) =>
+          entry.avatars.some((avatar) => avatar.version_id === item.version_id),
+        )
+      : undefined;
     const state = presetState(item);
     const healthy = !draft && (isAvatar ? state === "READY" : state === "PUBLISHED");
     const resumable =
@@ -4063,7 +4118,8 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
         : !isAvatar && "style_id" in item
           ? item.style_id
           : item.version_id;
-    const systemOwned =
+    const readOnly =
+      Boolean(owner) ||
       item.scope_kind === "SYSTEM" ||
       ("rights_status" in item && item.rights_status === "SYSTEM_OWNED");
     const imageUrl =
@@ -4134,7 +4190,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
                   Continue setup <ArrowRight size={16} aria-hidden="true" />
                 </a>
               ) : null}
-              {!systemOwned ? (
+              {!readOnly ? (
                 <Button
                   className="preset-remove-button"
                   variant="danger"
@@ -4171,6 +4227,12 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
           <div className="entity-title-row">
             <h3>{item.name}</h3>
           </div>
+          {owner && (
+            <p className="muted avatar-collection-owner">
+              {owner.name}
+              <small>{owner.email}</small>
+            </p>
+          )}
         </div>
         <div className="preset-card-actions">
           <DetailsSheet
@@ -4222,7 +4284,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
               />
             )}
           </DetailsSheet>
-          {!systemOwned ? (
+          {!readOnly ? (
             <Button
               className="preset-remove-button"
               variant="danger"
@@ -4287,6 +4349,17 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
         }
       />
       <div className="hub-toolbar">
+        {isAvatar && (
+          <VoiceFilterSelect
+            label="Collection"
+            value={collection}
+            options={collectionOptions}
+            onChange={(value) => {
+              setCollection(value);
+              setSearch("");
+            }}
+          />
+        )}
         <label className="search-field">
           <span className="sr-only">Search {isAvatar ? "avatars" : "image styles"}</span>
           <input
@@ -4301,10 +4374,28 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
         {allItems.length === 0 ? (
           <EmptyState
             icon={<Icon />}
-            title={`No ready ${itemLabel}s yet`}
-            body={`Add a reusable ${itemLabel} to use in a project.`}
+            title={
+              isAvatar && collection !== "mine"
+                ? "No avatars in this collection"
+                : `No ready ${itemLabel}s yet`
+            }
+            body={
+              isAvatar && collection !== "mine"
+                ? "There are no ready avatars to show here yet."
+                : `Add a reusable ${itemLabel} to use in a project.`
+            }
             action={
-              creationAvailable ? (
+              isAvatar && collection !== "mine" ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setCollection("everyone");
+                    setSearch("");
+                  }}
+                >
+                  Browse everyone
+                </Button>
+              ) : creationAvailable ? (
                 <Link
                   className="button button-primary"
                   to={isAvatar ? "/avatars/new" : "/styles/new"}

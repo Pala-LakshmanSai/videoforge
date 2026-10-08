@@ -78,8 +78,7 @@ start/stop Pods, unlock a global session, choose a warm worker, or use RunPod co
 They select creative inputs and **Generate video**. Projects have no maximum-spend input. Automatic scale-to-zero worker
 behavior appears as truthful status/details only.
 
-Every signed-in account has one default workspace. User-created projects, queue, Avatar Hub, Image
-Styles, Library and settings are private. Built-in styles are globally available read-only.
+Every signed-in account has one default workspace. Projects, queue, drafts, Image Styles, Library and settings stay private. Avatar Hub shares ready collections under DEC_AVATAR_SHARED_001. Built-in styles are globally available read-only.
 Do not expose another account's creator, project, queue item, media, preset, cost, provider job, or
 activity through lists, URLs, counts, search, errors, previews, signed URLs, or realtime updates.
 
@@ -245,15 +244,16 @@ opening. Keep uncertain outcomes explicit and automatic status reads intact (DEC
 
 ### 6. Avatar Hub
 
-- Account-private named cards with real authorized thumbnail/name. Healthy version/date/compatibility
-  metadata is in details; show a badge only for an actionable exception.
+- Default My avatars; Collection offers Everyone and each admitted user with small email/count.
+  Search scopes to the collection. Shared ready cards show owner attribution, preview and Details;
+  only the owner sees setup/removal. Version/compatibility metadata stays in Details.
 - Flow: name and one private source upload -> visual/technical review -> add. The final action carries
   one concise inline rights/likeness confirmation; there is no standalone consent page or checkbox
   wall.
 - View, rename, new immutable version, optional test/retest, duplicate, archive. Only active ready
   versions are normal new-project choices; pinned prior versions remain attached to existing work.
-- The source is uploaded once to private R2 and never copied into each project. There is no global
-  user-created catalog or cross-account visibility.
+- Sources stay in private R2; DEC_AVATAR_SHARED_001 authorizes authenticated ready-avatar previews,
+  with private drafts/writes and unchanged owned project pins.
 
 ### 7. Image Styles Hub
 

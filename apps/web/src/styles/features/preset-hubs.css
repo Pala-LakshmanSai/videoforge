@@ -80,6 +80,22 @@
   margin-bottom: 0;
 }
 
+.hub-toolbar .voice-filter-select {
+  width: min(100%, 320px);
+  flex-shrink: 0;
+}
+
+.avatar-collection-owner {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+}
+
+.avatar-collection-owner small {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 0.72rem;
+}
+
 .panel.hub-panel {
   padding: 0;
   border: 0;

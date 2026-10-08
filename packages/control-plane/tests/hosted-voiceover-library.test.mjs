@@ -136,6 +136,141 @@ test("saved voice collections share only active users' emails and selected voice
   });
 });
 
+test("avatar collections expose ready previews only and retain owner-only archival and raw-table isolation", async () => {
+  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+    const a = await admit(executor, 811, "avatar-a@example.test");
+    const b = await admit(executor, 812, "avatar-b@example.test");
+    const c = await admit(executor, 813, "avatar-empty@example.test");
+    const profileId = uuid(88101),
+      versionId = uuid(88102),
+      assetId = uuid(88103);
+    const objectKey = `tenant/${a.account_id}/workspace/${a.workspace_id}/avatar-profile/${profileId}/version/${versionId}/original/source`;
+    await executor.query("SELECT set_config('videoforge.account_id',$1,false)", [a.account_id]);
+    await executor.query(
+      `INSERT INTO assets(id,account_id,workspace_id,kind,state,object_key,binary_sha256,content_type,byte_size,verified_at)
+      VALUES($1,$2,$3,'AVATAR_ORIGINAL','VERIFIED',$4,$5,'image/webp',2048,now())`,
+      [assetId, a.account_id, a.workspace_id, objectKey, sha256("shared-avatar-source")],
+    );
+    await executor.query(
+      `INSERT INTO avatar_profiles(id,account_id,workspace_id,name,normalized_name,created_by_user_id)
+      VALUES($1,$2,$3,'Shared presenter','shared presenter',$4)`,
+      [profileId, a.account_id, a.workspace_id, a.user_id],
+    );
+    await executor.query(
+      `INSERT INTO avatar_profile_versions(id,account_id,workspace_id,profile_id,version_number,state,
+      profile_contract_name,profile_contract_version,profile_payload,profile_hash,original_asset_id,runtime_source_asset_id,
+      runtime_source_binary_sha256,source_preparation_profile,source_validation_profile,rights_attested_by_user_id,
+      likeness_attested_by_user_id,ready_at) VALUES($1,$2,$3,$4,1,'READY','avatar-profile-version','v1',
+      '{"source":"shared-avatar-fixture"}',$5,$6,$6,$7,'hosted-avatar-source-pass-through-v1','owned-validation-v1',$8,$8,now())`,
+      [
+        versionId,
+        a.account_id,
+        a.workspace_id,
+        profileId,
+        sha256("shared-avatar-profile"),
+        assetId,
+        sha256("shared-avatar-source"),
+        a.user_id,
+      ],
+    );
+    await executor.query("UPDATE avatar_profiles SET active_version_id=$1 WHERE id=$2", [
+      versionId,
+      profileId,
+    ]);
+    const read = (identity) =>
+      tenantCall(executor, "videoforge_shared_avatar_collections", [
+        identity.account_id,
+        identity.workspace_id,
+      ]);
+    const preview = async (identity, target = versionId) =>
+      (
+        await executor.query(
+          `WITH bound AS (
+      SELECT set_config('videoforge.account_id',$1,true)
+    ) SELECT p.* FROM bound CROSS JOIN LATERAL videoforge_shared_avatar_preview($1::uuid,$2::uuid,$3::uuid) p`,
+          [identity.account_id, identity.workspace_id, target],
+        )
+      ).rows;
+    const result = await read(b);
+    assert.equal(result.length, 3);
+    assert.deepEqual(result.find((item) => item.id === c.account_id).avatars, []);
+    const shared = result.find((item) => item.id === a.account_id);
+    assert.equal(shared.email, "avatar-a@example.test");
+    assert.equal(shared.avatars[0].version_id, versionId);
+    assert.equal(JSON.stringify(result).includes(objectKey), false);
+    assert.deepEqual(await preview(b), [{ object_key: objectKey, content_type: "image/webp" }]);
+    assert.deepEqual(await preview(b, uuid(88999)), []);
+    assert.deepEqual((await read(a)).find((item) => item.is_current_user).avatars, shared.avatars);
+    await executor.query("SELECT set_config('videoforge.account_id',$1,false)", [b.account_id]);
+    assert.equal(
+      (
+        await executor.query("SELECT * FROM videoforge_archive_hosted_preset($1,$2,'AVATAR',$3)", [
+          b.account_id,
+          b.workspace_id,
+          profileId,
+        ])
+      ).rows.length,
+      0,
+    );
+    await assert.rejects(
+      tenantCall(executor, "videoforge_shared_avatar_collections", [a.account_id, b.workspace_id]),
+      /tenant scope invalid/,
+    );
+    await executor.query("SELECT set_config('videoforge.account_id','',false)");
+    await assert.rejects(
+      executor.query("SELECT videoforge_shared_avatar_collections($1,$2)", [
+        a.account_id,
+        a.workspace_id,
+      ]),
+      /tenant scope invalid/,
+    );
+    for (const table of ["avatar_profiles", "avatar_profile_versions", "assets"]) {
+      assert.equal(
+        (
+          await executor.query("SELECT has_table_privilege('public',$1,'SELECT') AS allowed", [
+            table,
+          ])
+        ).rows[0].allowed,
+        false,
+      );
+      const rls = (
+        await executor.query(
+          "SELECT relrowsecurity,relforcerowsecurity FROM pg_class WHERE oid=$1::regclass",
+          [table],
+        )
+      ).rows[0];
+      assert.deepEqual(rls, { relrowsecurity: true, relforcerowsecurity: true });
+    }
+    await executor.query(
+      "INSERT INTO hosted_access_revocations(hosted_auth_user_id,revoked_by) VALUES($1,$1)",
+      ["voiceover-library-user-0811"],
+    );
+    assert.equal(
+      (await read(b)).some((item) => item.id === a.account_id),
+      false,
+    );
+    assert.deepEqual(await preview(b), []);
+    await assert.rejects(read(a), /tenant scope invalid/);
+    await executor.query("DELETE FROM hosted_access_revocations WHERE hosted_auth_user_id=$1", [
+      "voiceover-library-user-0811",
+    ]);
+    await executor.query("SELECT set_config('videoforge.account_id',$1,false)", [a.account_id]);
+    await executor.query("SELECT * FROM videoforge_archive_hosted_preset($1,$2,'AVATAR',$3)", [
+      a.account_id,
+      a.workspace_id,
+      profileId,
+    ]);
+    assert.deepEqual((await read(b)).find((item) => item.id === a.account_id).avatars, []);
+    assert.deepEqual(await preview(b), []);
+    await executor.query("SELECT set_config('videoforge.account_id',$1,false)", [a.account_id]);
+    assert.equal(
+      (await executor.query("SELECT binary_sha256 FROM assets WHERE id=$1", [assetId])).rows[0]
+        .binary_sha256,
+      sha256("shared-avatar-source"),
+    );
+  });
+});
+
 function queueArgs(identity, jobId, suffix = "one") {
   return [
     identity.account_id,

@@ -4290,6 +4290,10 @@ async function catalog(
           ORDER BY style.name, version.version_number DESC`,
         [scope.account_id, scope.workspace_id],
       );
+      const avatarCollections = await transaction.query<{ collections: unknown }>(
+        "SELECT public.videoforge_shared_avatar_collections($1,$2) AS collections",
+        [scope.account_id, scope.workspace_id],
+      );
       const avatarDrafts = await transaction.query(
         `SELECT profile.id AS profile_id, version.id AS version_id, profile.name,
                 version.version_number, version.state, version.created_at, version.updated_at,
@@ -4402,6 +4406,7 @@ async function catalog(
           ? HOSTED_CLOUD_CLEANUP_PENDING_MESSAGE
           : cloudReady.message,
         avatars: avatars.rows,
+        avatar_collections: avatarCollections.rows[0]?.collections ?? [],
         styles: styles.rows,
         avatar_drafts: avatarDrafts.rows,
         style_drafts: styleDrafts.rows,
@@ -4429,6 +4434,20 @@ async function catalog(
         source_content_type:
           typeof row.source_content_type === "string" ? row.source_content_type : null,
       }),
+    }));
+    const avatarCollections = (
+      Array.isArray(data.avatar_collections) ? data.avatar_collections : []
+    ).map((collection: Record<string, unknown>) => ({
+      id: rowString(collection, "id"),
+      name: rowString(collection, "name"),
+      email: rowString(collection, "email"),
+      is_current_user: collection.is_current_user === true,
+      avatars: (Array.isArray(collection.avatars) ? collection.avatars : []).map(
+        (avatar: Record<string, unknown>) => ({
+          ...avatar,
+          thumbnail_url: `/api/v2/hosted/avatars/${rowString(avatar, "version_id")}/preview`,
+        }),
+      ),
     }));
     const styleRows = (data.styles as Record<string, unknown>[]).map((row) => {
       const referenceCount = Number(row.reference_count ?? 0);
@@ -4508,6 +4527,7 @@ async function catalog(
       styles: styleRows,
       ...(defaultStyle ? { default_image_style_version_id: defaultStyle.version_id } : {}),
       avatar_drafts: avatarDraftRows,
+      avatar_collections: avatarCollections,
       style_drafts: styleDraftRows,
       media_worker_state: data.workers > 0 ? "ONLINE" : "WAITING_FOR_YOUR_COMPUTER",
       local_media_free_bytes: data.availableDiskBytes,
@@ -4608,7 +4628,13 @@ async function hostedPresetPreview(
         versionId,
         ...(kind === "style" ? [referenceOrder] : []),
       ]);
-      return result.rows[0] ?? null;
+      if (result.rows[0]) return result.rows[0];
+      if (kind !== "avatar") return null;
+      const shared = await transaction.query<HostedPresetRow>(
+        "SELECT object_key, content_type FROM public.videoforge_shared_avatar_preview($1,$2,$3)",
+        [scope.account_id, scope.workspace_id, versionId],
+      );
+      return shared.rows[0] ?? null;
     });
     if (!target) return response({ error: { code: "PRESET_NOT_FOUND" } }, 404);
     const object = await bucket.get(rowString(target, "object_key"));

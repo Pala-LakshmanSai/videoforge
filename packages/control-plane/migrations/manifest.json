@@ -1578,6 +1578,12 @@
       "name": "saved_voice_collection_emails",
       "filename": "0300_saved_voice_collection_emails.sql",
       "sha256": "sha256:28a3fcb8801c4e3a090b14cc837640d1d39aea51fe979f8897b952a0ed955ae8"
+    },
+    {
+      "version": 301,
+      "name": "shared_avatar_collections",
+      "filename": "0301_shared_avatar_collections.sql",
+      "sha256": "sha256:fb84f5e8e1a263503f625c8012c1d55f9d83611c7f99ac8c4e187e776b2c96fe"
     }
   ]
 }
