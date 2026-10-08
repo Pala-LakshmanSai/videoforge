@@ -10,7 +10,13 @@ export function VoiceFilterSelect({
 }: {
   label: string;
   value: string;
-  options: { value: string; label: string; count?: number; disabled?: boolean }[];
+  options: {
+    value: string;
+    label: string;
+    description?: string;
+    count?: number;
+    disabled?: boolean;
+  }[];
   disabled?: boolean;
   onChange: (value: string) => void;
 }) {
@@ -78,7 +84,7 @@ export function VoiceFilterSelect({
         onClick={() => (open ? setOpen(false) : openMenu())}
         onKeyDown={(event) => {
           if (event.key === "Escape") {
-            event.preventDefault();
+            if (open) event.preventDefault();
             setOpen(false);
           } else if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
@@ -115,7 +121,10 @@ export function VoiceFilterSelect({
           }
         }}
       >
-        <span>{selected?.label ?? "Choose an option"}</span>
+        <span className="voice-filter-value">
+          <span>{selected?.label ?? "Choose an option"}</span>
+          {selected?.description && <small>{selected.description}</small>}
+        </span>
         <ChevronDown size={16} aria-hidden="true" />
       </button>
       {open && !disabled && (
@@ -140,7 +149,10 @@ export function VoiceFilterSelect({
                 <span className="voice-filter-check">
                   <Check size={15} aria-hidden="true" />
                 </span>
-                <span className="voice-filter-option-label">{option.label}</span>
+                <span className="voice-filter-option-label">
+                  <span>{option.label}</span>
+                  {option.description && <small>{option.description}</small>}
+                </span>
                 {option.count !== undefined && (
                   <span className="voice-filter-option-count">{option.count.toLocaleString()}</span>
                 )}

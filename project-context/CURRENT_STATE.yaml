@@ -2,13 +2,13 @@ shared_voice_picker_2026_10_08:
   checkpoint: V2-09
   selected_task: VF-10-09
   status: LOCAL_QUALIFIED
-  baseline_executable: 057cae940d1b41711908b3fd41a4224ce0dc25c1
-  baseline_worker: 9c5572d5-09e7-4232-880f-1fb961b9d02d
-  native_migration: 299
+  baseline_executable: 0ad3f2414e8b30f36f6d38a37c3ec54a02e4e0e8
+  baseline_worker: d2ebbaf9-677f-43db-abe3-9b525951d96b
+  native_migration: 300
   provider_spend: USD0_new_generation_or_compute
   paid_compute_shutdown: No_new_compute_or_resource_actions
-  validation: Web3361pass1skip_focused76_finalPicker31_types_lint_format_builds_bundle_context_secrets_PASS
-  remaining_gates: Production_publication_and_Chrome_acceptance
+  validation: Web3362pass1skip_focused77_database5_native300Rollback_types_lint_format_builds_bundle_context_secrets_PASS
+  remaining_gates: Native_commit_publication_and_Chrome_acceptance
 
 shared_saved_voices_2026_10_08:
   checkpoint: V2-09

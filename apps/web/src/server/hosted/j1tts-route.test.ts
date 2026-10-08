@@ -4,7 +4,13 @@ const state = vi.hoisted(() => ({
   jobs: new Map<string, Record<string, unknown>>(),
   assets: new Map<string, Record<string, unknown>>(),
   saved: new Map<string, unknown[]>(),
-  collections: [] as { id: string; name: string; is_current_user: boolean; voice_ids: string[] }[],
+  collections: [] as {
+    id: string;
+    name: string;
+    email?: string;
+    is_current_user: boolean;
+    voice_ids: string[];
+  }[],
   account: "account-a",
   authenticated: true,
   query: vi.fn(),
@@ -508,7 +514,13 @@ it("hides owner imported voices and jobs from other tenants", async () => {
 it("shares explicitly saved imported voices while keeping stars and generated jobs private", async () => {
   state.account = "account-b";
   state.collections = [
-    { id: "account-a", name: "User A", is_current_user: false, voice_ids: ["private"] },
+    {
+      id: "account-a",
+      name: "User A",
+      email: "voice-a@example.test",
+      is_current_user: false,
+      voice_ids: ["private"],
+    },
   ];
   const result = await handleJ1Voiceover(req("/voices"), environment, config, context);
   const catalog = (await result.json()) as {

@@ -98,8 +98,7 @@ export function VoiceSelect({
   }, [preview]);
   const selected = voices.find((voice) => voice.voice_id === value);
   const collectionOptions = savedVoiceCollectionOptions(voices, collections ?? []);
-  const scope =
-    collection ?? (collections !== undefined && collectionOptions[0]?.count ? "everyone" : "all");
+  const scope = collection ?? (collections !== undefined ? "mine" : "all");
   const scoped =
     scope === "all" ? voices : savedVoicesInCollection(voices, collections ?? [], scope);
   const visible = scoped.filter((voice) => matchesVoiceName(voice, query)).sort(compareVoices);

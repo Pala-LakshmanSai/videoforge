@@ -13,6 +13,7 @@ export interface VoiceCatalog {
   collections?: {
     id: string;
     name: string;
+    email?: string;
     is_current_user: boolean;
     voice_ids: string[];
   }[];
@@ -49,6 +50,7 @@ export function savedVoiceCollectionOptions(voices: Voice[], collections: SavedV
     {
       value: "mine",
       label: "My saved voices",
+      description: collections.find((item) => item.is_current_user)?.email,
       count: voices.filter((voice) => voice.saved).length,
     },
     ...collections
@@ -63,6 +65,7 @@ export function savedVoiceCollectionOptions(voices: Voice[], collections: SavedV
               ? `${item.name} (${namesakes.findIndex((other) => other.id === item.id) + 1})`
               : item.name,
           count: item.voice_ids.length,
+          description: item.email,
         };
       }),
   ];

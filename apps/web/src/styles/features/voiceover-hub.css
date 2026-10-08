@@ -946,7 +946,7 @@
 .voice-select-toolbar .voice-filter-select {
   gap: 5px;
 }
-.voice-select-toolbar .voice-filter-menu {
+.voice-select-toolbar .voice-filter-menu [role="listbox"] {
   max-height: min(280px, 35vh);
 }
 .voice-select-toolbar .voice-select-hint {
@@ -967,4 +967,24 @@
   color: var(--text);
   font: inherit;
   cursor: pointer;
+}
+
+.voice-filter-value,
+.voice-filter-option-label {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.voice-filter-value small,
+.voice-filter-option-label small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.voice-select-results .voice-select-preview {
+  margin: 6px 0 0;
+  bottom: 0;
 }

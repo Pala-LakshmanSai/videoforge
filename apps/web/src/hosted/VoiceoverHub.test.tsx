@@ -59,9 +59,13 @@ it("browses everyone's saved voices and each user's partition without changing t
   });
   vi.stubGlobal("fetch", fetcher);
   wrap(<VoiceoverHub />);
-  await screen.findByRole("heading", { name: "Bob" });
-  expect(screen.getByRole("heading", { name: "Alice" })).toBeVisible();
+  await screen.findByRole("heading", { name: "Alice" });
+  expect(screen.queryByRole("heading", { name: "Bob" })).toBeNull();
   const select = screen.getByRole("combobox", { name: "Saved by" });
+  expect(select).toHaveTextContent("My saved voices");
+  fireEvent.click(select);
+  fireEvent.click(screen.getByRole("option", { name: "Everyone 2" }));
+  expect(screen.getByRole("heading", { name: "Bob" })).toBeVisible();
   fireEvent.click(select);
   expect(screen.getByRole("option", { name: "Other user (2) 0" })).toBeVisible();
   fireEvent.click(screen.getByRole("option", { name: "Other user (1) 1" }));
@@ -777,8 +781,20 @@ it("browses shared partitions in video creation without changing the script or g
     { ...voices[1], voice_id: "carl", name: "Carl" },
   ];
   const collections = [
-    { id: "mine-id", name: "Alex", is_current_user: true, voice_ids: ["alice"] },
-    { id: "other", name: "Alex", is_current_user: false, voice_ids: ["bob", "alice"] },
+    {
+      id: "mine-id",
+      name: "Alex",
+      email: "mine@example.test",
+      is_current_user: true,
+      voice_ids: ["alice"],
+    },
+    {
+      id: "other",
+      name: "Alex",
+      email: "other@example.test",
+      is_current_user: false,
+      voice_ids: ["bob", "alice"],
+    },
     { id: "empty", name: "Empty user", is_current_user: false, voice_ids: [] },
   ];
   const fetcher = vi.fn(async () => Response.json({ voices: samples, collections }));
@@ -796,13 +812,17 @@ it("browses shared partitions in video creation without changing the script or g
   const picker = screen.getByRole("combobox", { name: "Script voice" });
   await waitFor(() => expect(picker).toHaveValue("Alice"));
   fireEvent.focus(picker);
-  expect(screen.getByRole("grid")).toHaveTextContent("Bob");
+  expect(screen.getByRole("grid")).not.toHaveTextContent("Bob");
   expect(screen.getByRole("grid")).not.toHaveTextContent("Carl");
-  const collection = screen.getByRole("combobox", { name: "Collection" });
-  expect(collection).toHaveTextContent("Everyone");
+  let collection = screen.getByRole("combobox", { name: "Collection" });
+  expect(collection).toHaveTextContent("My saved voices");
+  expect(collection).toHaveTextContent("mine@example.test");
+  fireEvent.click(collection);
+  fireEvent.click(screen.getByRole("option", { name: "Everyone 2" }));
+  expect(screen.getByRole("grid")).toHaveTextContent("Bob");
   fireEvent.change(picker, { target: { value: "Alice" } });
   fireEvent.click(collection);
-  fireEvent.click(screen.getByRole("option", { name: "Alex (2) 2" }));
+  fireEvent.click(screen.getByRole("option", { name: "Alex (2) other@example.test 2" }));
   expect(picker).toHaveValue("");
   fireEvent.click(screen.getByRole("button", { name: "Listen to Bob" }));
   expect(screen.getByLabelText("Bob voice sample")).toBeInTheDocument();
@@ -819,15 +839,47 @@ it("browses shared partitions in video creation without changing the script or g
   fireEvent.keyDown(collection, { key: "Escape" });
   expect(collection).toHaveAttribute("aria-expanded", "false");
   expect(screen.getByRole("grid")).toBeVisible();
+  fireEvent.keyDown(collection, { key: "Escape" });
+  expect(screen.queryByRole("grid")).toBeNull();
+  expect(picker).toHaveValue("Alice");
+  expect(change).not.toHaveBeenCalled();
+  fireEvent.focus(picker);
+  collection = screen.getByRole("combobox", { name: "Collection" });
   fireEvent.click(collection);
-  fireEvent.click(screen.getByRole("option", { name: "My saved voices 1" }));
+  fireEvent.click(screen.getByRole("option", { name: "My saved voices mine@example.test 1" }));
   expect(screen.getByRole("grid")).not.toHaveTextContent("Bob");
   fireEvent.click(collection);
-  fireEvent.click(screen.getByRole("option", { name: "Alex (2) 2" }));
+  fireEvent.click(screen.getByRole("option", { name: "Alex (2) other@example.test 2" }));
   fireEvent.change(picker, { target: { value: "b" } });
   fireEvent.keyDown(picker, { key: "Enter" });
   expect(change).toHaveBeenCalledExactlyOnceWith({ ...draft, voiceId: "bob" });
   expect(screen.queryByRole("grid")).toBeNull();
   expect(submit).not.toHaveBeenCalled();
   expect(fetcher.mock.calls).toHaveLength(1);
+});
+
+it("opens an empty personal collection even when another user has saved voices", () => {
+  render(
+    <VoiceSelect
+      voices={voices.map((voice) => ({ ...voice, saved: false, starred: false }))}
+      collections={[
+        {
+          id: "other",
+          name: "Other",
+          email: "other@example.test",
+          is_current_user: false,
+          voice_ids: ["bob"],
+        },
+      ]}
+      value="alice"
+      disabled={false}
+      onChange={vi.fn()}
+    />,
+  );
+  fireEvent.focus(screen.getByRole("combobox", { name: "Script voice" }));
+  expect(screen.getByRole("combobox", { name: "Collection" })).toHaveTextContent("My saved voices");
+  expect(screen.getByText("No saved voices in this collection yet.")).toBeVisible();
+  expect(screen.getByRole("grid")).not.toHaveTextContent("Bob");
+  fireEvent.click(screen.getByRole("button", { name: "Browse all voices" }));
+  expect(screen.getByRole("grid")).toHaveTextContent("Bob");
 });

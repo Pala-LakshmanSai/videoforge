@@ -1,6 +1,7 @@
 export interface SavedVoiceCollection {
   id: string;
   name: string;
+  email?: string;
   is_current_user: boolean;
   voice_ids: string[];
 }

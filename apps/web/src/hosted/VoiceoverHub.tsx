@@ -79,7 +79,7 @@ export function VoiceoverHub() {
     client = useQueryClient();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"saved" | "all" | null>(null);
-  const [collection, setCollection] = useState("everyone");
+  const [collection, setCollection] = useState("mine");
   const [limit, setLimit] = useState(60);
   const [traitsFilter, setTraitsFilter] = useState<VoiceFilters>(emptyVoiceFilters);
   const [previewOnly, setPreviewOnly] = useState(false);
@@ -97,11 +97,12 @@ export function VoiceoverHub() {
   const collectionVoices = new Set(savedVoicesInCollection(all, collections, collection));
   const isInCollection = (voice: Voice) => collectionVoices.has(voice);
   const savedCount = collectionVoices.size;
-  const selectedFilter = filter ?? (savedCount ? "saved" : "all");
+  const defaultFilter = voices.data?.collections !== undefined || savedCount ? "saved" : "all";
+  const selectedFilter = filter ?? defaultFilter;
   const selectedSort = sort ?? (selectedFilter === "all" ? "name" : "favorites");
   useEffect(() => {
-    if (voices.data && filter === null) setFilter(savedCount ? "saved" : "all");
-  }, [voices.data, filter, savedCount]);
+    if (voices.data && filter === null) setFilter(defaultFilter);
+  }, [voices.data, filter, defaultFilter]);
   useEffect(
     () => setLimit(60),
     [search, selectedFilter, traitsFilter, previewOnly, sort, collection],

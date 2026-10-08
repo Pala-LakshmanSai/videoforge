@@ -63,7 +63,7 @@ async function tokenCall(executor, functionName, args) {
     .rows[0]?.value;
 }
 
-test("saved voice collections share only active users' selected voice IDs and preserve private writes", async () => {
+test("saved voice collections share only active users' emails and selected voice IDs and preserve private writes", async () => {
   await withPgcryptoMigratedDatabase(async ({ executor }) => {
     const a = await admit(executor, 801, "voice-a@example.test");
     const b = await admit(executor, 802, "voice-b@example.test");
@@ -90,9 +90,17 @@ test("saved voice collections share only active users' selected voice IDs and pr
     await save(a, "hidden-import", false);
     const result = await read(b);
     assert.equal(result.length, 2);
+    assert.equal(result.find((item) => item.id === a.account_id).email, "voice-a@example.test");
+    assert.equal(result.find((item) => item.id === b.account_id).email, "voice-b@example.test");
     assert.deepEqual(result.find((item) => item.id === a.account_id).voice_ids, ["shared-a"]);
     assert.equal(result.find((item) => item.id === b.account_id).is_current_user, true);
-    assert.deepEqual(Object.keys(result[0]).sort(), ["id", "is_current_user", "name", "voice_ids"]);
+    assert.deepEqual(Object.keys(result[0]).sort(), [
+      "email",
+      "id",
+      "is_current_user",
+      "name",
+      "voice_ids",
+    ]);
     await save(b, "shared-a", true);
     await save(a, "shared-a", false);
     assert.deepEqual((await read(b)).find((item) => item.id === b.account_id).voice_ids, [

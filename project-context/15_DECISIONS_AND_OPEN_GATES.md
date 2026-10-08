@@ -154,10 +154,10 @@ Only an explicit user decision changes an approved item. Benchmark evidence may 
 
 ## DEC_VOICEOVER_SHARED_001 — shared saved voice collections (2026-10-08)
 
-Creation pickers reuse the same Everyone/My saved voices/user partitions and labels. Browsing never changes the chosen voice or script; only explicit voice selection changes narration input. All voices remains available. This is a UI extension of the existing saved-selection exception, with no wider data sharing.
+The 09:40–09:42 user follow-ups explicitly authorize small email subtitles for each user and make My saved voices the default in both Hub and creation pickers. Everyone and every other user remain selectable. Creation pickers reuse these partitions and labels. Browsing never changes the chosen voice or script; only explicit voice selection changes narration input. All voices remains available. This extends the saved-selection exception with account emails while retaining private generated content.
 
 
-The user requests the same saved voices for everyone, with partitions for each user. Saved defaults to Everyone; My saved voices and every other admitted user's display-name collection are selectable. Saved provider voice IDs are a read-only exception to tenant privacy, including imported voices for preview and narration. Stars and import writes affect only the viewer's own list. Unsaved imported voices retain existing authorization. Generated speech, scripts, jobs, media, other presets and costs remain private. Reuse the existing provider/catalog and themed accessible filters; no new inference, compute or subscription. See SHARED_SAVED_VOICES_PLAN.md.
+The user requests the same saved voices for everyone, with partitions for each user. Saved defaults to My saved voices; Everyone and each admitted user's display-name/email collection remain selectable. Saved provider voice IDs are a read-only exception to tenant privacy, including imported voices for preview and narration. Stars and import writes affect only the viewer's own list. Unsaved imported voices retain existing authorization. Generated speech, scripts, jobs, media, other presets and costs remain private. Reuse the existing provider/catalog and themed accessible filters; no new inference, compute or subscription. See SHARED_SAVED_VOICES_PLAN.md.
 
 ## DEC_VOICEOVER_001 — J1TTS and private Voiceover Hub (2026-10-04)
 
