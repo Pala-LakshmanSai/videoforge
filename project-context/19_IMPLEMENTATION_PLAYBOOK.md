@@ -57,7 +57,8 @@ The dependency order is binding even if exact checkpoint labels change:
 1. Reset/validate V2 context and new task prompts.
 2. Add tenant-private account/default-workspace schema, repositories, authz, and fixture UI.
 3. Add private R2 object reservations, signed URLs, provenance receipts, and isolated scratch.
-4. Add fair durable queue/admission/recovery: one/account and two/global.
+4. Add fair durable queue/admission/recovery: one/account, no cross-account ceiling (`DEC_QUEUE_003`),
+   with separate provider-capacity and cooldown gates.
 5. Add durable Kie/Fal task submission, persisted provider identities, private output acceptance,
    and no-replay recovery; preserve exact reconciliation for historical RunPod attempts.
 6. Cut application/runtime/UI provider-free paths fully to V2; remove manual GPU/Pod controls and
@@ -149,7 +150,8 @@ Keep deterministic two-account fixtures for:
 - invite signup/login and unauthorized/expired/replayed invite;
 - private project/Avatar/Style lists and foreign-ID negatives;
 - tenant R2 upload/download expiry/hash/type/size/prefix failures;
-- one active/account, two active/global, fair waiting, own reorder/cancel, starvation/race recovery;
+- one active/account, independent admission across accounts, fair waiting, own reorder/cancel,
+  starvation/race recovery, and separate provider-capacity gates;
 - Kie image and Fal audio-to-video task submission, provider status/result observation, timeout,
   cancellation, uncertain-response no-replay, and duplicate-output quarantine;
 - worker claim/renew/cancel/result states for the paired personal media worker;

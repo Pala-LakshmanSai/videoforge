@@ -1,4 +1,4 @@
-Current task: audit and repair fresh prompt-stage failures on two accounts. Read `PROMPT_STAGE_AUDIT_PLAN.md` and `prompt_stage_audit_2026_10_07` in CURRENT_STATE.yaml. User authorizes multi-agent investigation, production publication and USD3 combined new verification.
+Current task: six simultaneous isolated user/project prompt-stage qualification, at most120-second inputs each, fresh USD3 combined prompt-only cap. Read `PROMPT_SIX_CONCURRENCY_PLAN.md` and `prompt_six_concurrency_2026_10_08` in CURRENT_STATE.yaml. No downstream generation or existing-video mutation.
 
 Current task: repair held Cloud stage and historical machine status. Use `v2_09_cloud_status` / `CLOUD_STATUS_PLAN.md`; preserve completed276 prompts, the downstream hold and published CPU headroom.
 

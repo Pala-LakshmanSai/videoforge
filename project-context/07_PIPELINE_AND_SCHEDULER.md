@@ -9,7 +9,7 @@ queue details below describe historical attempts only.
 The API coordinator keeps at most eight image and four avatar tasks outstanding. Fal starts
 within those slots concurrently; Kie starts use 1050ms slots. Every submitted result is visited
 on each observation pass, with serial media acceptance and 250ms minimum observation slots.
-Slots include their final interval to preserve pacing across passes and the two admitted accounts.
+Slots include their final interval to preserve pacing across passes and admitted accounts.
 Accepted work advances immediately; a pending-only pass sleeps two seconds. A submission error
 stops queued paid calls while already claimed calls finish recording their exact identities.
 
@@ -25,14 +25,15 @@ Read when: implementing transcript alignment, scheduling, generation, dispatch, 
 
 ## Critical path
 
-A durable database scheduler admits at most one active video per account and two globally. Waiting
+A durable database scheduler admits at most one active video per account, with no cross-account
+ceiling under `DEC_QUEUE_003`. Provider-specific capacity and cooldown gates still apply. Waiting
 projects are private to their account and perform no hosted CPU or GPU work. The RunPod endpoint
 queues receive only already-admitted exact jobs; they do not decide fairness.
 
 ```mermaid
 flowchart TD
     P["Tenant preflight: probe, hash, avatar/style, cap, durable private R2 voiceover"] --> Q["Private durable queue"]
-    Q --> A["Fair DB admission: one/account, two global"]
+    Q --> A["Fair DB admission: one/account, no cross-account ceiling"]
     A --> T["Selected Local or Cloud: whisper.cpp word timing"]
     T --> S["Deterministic scheduler-v2"]
     S --> WM["Immutable generation and render work manifests"]
@@ -81,7 +82,8 @@ Every stage transition requires the exact durable predecessor receipts and tenan
 - Generate is idempotent at the VideoForge command boundary: duplicate browser submission returns the
   existing private queue item. It does not imply provider exactly-once behavior.
 - Enqueue privately. A serializable fair-admission transaction activates it only when the account has
-  no active provider workload and fewer than two different accounts hold global workload leases.
+  no active provider workload. Other accounts do not consume a global video-admission ceiling;
+  provider-specific capacity and cooldown gates remain independent.
 - Before admission, do no ASR, prompt generation, span slicing, Serverless dispatch, or render work.
 - Only after admission may the pipeline make the 16 kHz mono PCM analysis derivative.
 
@@ -411,7 +413,7 @@ DEC_VIDEO_SCENE_001 and DEC_VIDEO_COVERAGE_001 are published in source 89cfe121:
 
 ## Optional script-to-voiceover preparation — 2026-10-04
 
-DEC_VOICEOVER_001 makes J1TTS narration the first durable stage of script-created projects. One Create video action saves the script, voice and exact preset choices before any TTS submission. Queue intake remains accepted while capacity is busy; a revision is written only after real generated audio has a verified checksum and measured duration. A generated MP3 is the final canonical narration and follows the same voiceover validation/upload/timed-ASR stages. TTS shares the global admission lock and one/account, two/global provider-workload ceiling with existing videos/previews. Busy preparation performs no provider POST. Existing fair video admission waits around active TTS, preserving lease counters and reconciliation. Ambiguous TTS submissions retain their capacity and never automatically replay; known provider IDs permit retrieval-only recovery.
+DEC_VOICEOVER_001 saves the script, voice and presets before J1TTS submission. Queue intake remains available while busy. A revision requires checksum-verified audio and measured duration; the canonical MP3 follows ordinary validation/upload/timed-ASR. DEC_QUEUE_003 separates narration preparation from video admission: only another narration for that account waits, subject to J1TTS provider capacity. Busy preparation performs no POST. Video admission retains per-account leases and reconciliation without a cross-account ceiling. Ambiguous TTS submissions retain capacity without automatic replay; known provider IDs permit retrieval-only recovery.
 
 ## Historical short voiceover precursor compatibility — 2026-10-04
 
