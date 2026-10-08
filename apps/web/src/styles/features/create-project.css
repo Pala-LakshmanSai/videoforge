@@ -331,6 +331,42 @@
   cursor: default;
 }
 
+.visual-preset-collections > .visual-preset-menu {
+  position: relative;
+  top: auto;
+  max-height: none;
+  overflow: visible;
+  margin-top: 8px;
+}
+
+.visual-preset-options {
+  display: grid;
+  gap: 5px;
+}
+
+.visual-preset-results {
+  max-height: min(278px, 40dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.visual-preset-option:disabled,
+.visual-preset-summary[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.visual-preset-collection-control {
+  position: relative;
+  z-index: 2;
+  padding: 6px;
+}
+
+.shared-avatar-use-note {
+  margin: 8px 0 0;
+}
+
 .preset-action-disclosure {
   padding: 12px 14px;
   border: 1px solid rgba(126, 139, 190, 0.24);

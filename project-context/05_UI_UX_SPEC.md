@@ -244,16 +244,15 @@ opening. Keep uncertain outcomes explicit and automatic status reads intact (DEC
 
 ### 6. Avatar Hub
 
-- Default My avatars; Collection offers Everyone and each admitted user with small email/count.
-  Search scopes to the collection. Shared ready cards show owner attribution, preview and Details;
-  only the owner sees setup/removal. Version/compatibility metadata stays in Details.
-- Flow: name and one private source upload -> visual/technical review -> add. The final action carries
-  one concise inline rights/likeness confirmation; there is no standalone consent page or checkbox
-  wall.
-- View, rename, new immutable version, optional test/retest, duplicate, archive. Only active ready
-  versions are normal new-project choices; pinned prior versions remain attached to existing work.
-- Sources stay in private R2; DEC_AVATAR_SHARED_001 authorizes authenticated ready-avatar previews,
-  with private drafts/writes and unchanged owned project pins.
+- Hub and creation picker default My avatars. Collection offers Everyone and admitted users with
+  small emails/counts; search scopes to it. Shared ready cards expose owner, preview and Details.
+  Drafts/setup/removal stay owner-only. Browsing preserves selection; Use copies the verified
+  runtime image into an owned durable preset with source/consent provenance before selection.
+- Flow: name/source upload -> review -> add, with concise inline rights/likeness confirmation.
+- View, rename, new immutable version, test/retest, duplicate, archive. New projects select ready
+  versions; prior pins survive archive. Version/compatibility metadata stays in Details.
+- R2 stays private. Authenticated sharing follows DEC_AVATAR_SHARED_001; styles, drafts, writes,
+  jobs/results remain private. Pending/failed copies preserve input and forbid premature Create.
 
 ### 7. Image Styles Hub
 

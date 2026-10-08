@@ -4,11 +4,15 @@ shared_avatar_collections_2026_10_08:
   read_profile: v2_09_shared_avatar_collections
   task_brief: SHARED_AVATAR_COLLECTIONS_PLAN.md
   branch: codex/shared-avatar-collections
-  status: LOCAL_QUALIFIED_PRODUCTION_PENDING
+  status: PRODUCTION_HUB_VERIFIED_PICKER_LOCALLY_QUALIFIED
   production_baseline_source: 30b8cf9708fbd3b50057fe7b01ce4de8fd8c0f77
   production_baseline_worker: 29f4bf7e-81b3-4619-af31-a555ed596201
-  candidate_native_schema: 301
-  behavior: My_avatars_default_Everyone_and_per_user_name_email_collections_ready_previews_Details_owner_only_writes_private_drafts_and_project_pins
+  production_hub_source: d916c3c522ef7ed191860a0506aa1668bd7b2002
+  production_hub_worker: 9156cdaf-e742-4fbb-8569-0be697eed589
+  production_hub_native_schema: 301
+  candidate_native_schema: 302
+  behavior: Hub_and_creation_My_avatars_default_Everyone_and_user_name_email_collections_verified_runtime_private_copy_on_use_owner_only_writes_private_project_pins
+  validation: Web3389pass1skip_focused315_UI263server4DB_types_lint_format_production_staging_builds_bundle_context_secrets_PASS
   paid_generation_or_compute_authorized: false
   provider_or_gpu_mutations: 0
   new_paid_spend_usd: 0
@@ -3634,7 +3638,7 @@ updated_at: "2026-10-07T10:32:45Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: Shared_avatar_collections_in_Avatar_Hub
+current_milestone: Shared_avatar_collections_and_creation_picker
 current_task: VF-10-09
 current_wave: v2_09_cloud_status
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -10548,7 +10552,7 @@ provider_authority: &v2_09_provider_authority_current
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: Shared_avatar_collections_in_Avatar_Hub
+  milestone: Shared_avatar_collections_and_creation_picker
   status: IMPLEMENTING
   dependency_status: Production30b8cf97_native300_baseline
   authorization_status: User_requested_shared_avatar_Hub_collections_with_prior_personal_default_email_and_production_preferences
@@ -10556,7 +10560,7 @@ recommended_next_task:
   provider_authority: *v2_09_provider_authority_current
   read_profile: v2_09_shared_avatar_collections
   task_brief: SHARED_AVATAR_COLLECTIONS_PLAN.md
-  goal: Share_ready_avatar_Hub_collections_with_private_owner_writes_and_verify_production
+  goal: Share_avatar_Hub_and_creation_collections_with_verified_owned_source_copies_and_verify_production
   provider_mode: fixture
   provider_calls_authorized: true
   read_only_provider_calls_authorized: true

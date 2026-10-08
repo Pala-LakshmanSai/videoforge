@@ -61,6 +61,7 @@ import {
 } from "../lib/media-validation";
 import { isHostedProviderMode } from "./provider-mode";
 import { VoiceFilterSelect } from "./VoiceFilterSelect";
+import { avatarCollections } from "./avatar-collections";
 import type { ProjectStage } from "../lib/types";
 
 const MAX_VOICEOVER_BYTES = 1_073_741_824;
@@ -175,7 +176,7 @@ export interface CatalogResponse {
   }[];
   /** Workspace-owned versions that still need source upload, review, or approval. */
   readonly avatar_drafts?: readonly HostedAvatarDraft[];
-  /** Shared ready avatars are Hub-only; project creation retains its owned catalog. */
+  /** Shared ready avatars can be browsed and adopted into an owned project preset. */
   readonly avatar_collections?: readonly {
     id: string;
     name: string;
@@ -2936,6 +2937,12 @@ export function HostedCreateProjectScreen() {
     "PERSONAL_WORKER" | "RUNPOD_POD"
   >("executionBackend", "PERSONAL_WORKER");
   const [avatarVersionId, setAvatarVersionId] = useHostedCreateDraftState("avatarVersionId", "");
+  const [avatarCollection, setAvatarCollection] = useState("mine");
+  const sharedAvatars = avatarCollections(catalog.data);
+  const avatarUseRequest = useHostedCreateDraftRef<{ versionId: string; key: string } | null>(
+    "avatarUseRequest",
+    null,
+  );
   const [avatarEnabled, setAvatarEnabled] = useHostedCreateDraftState("avatarEnabled", true);
   const [styleVersionId, setStyleVersionId] = useHostedCreateDraftState("styleVersionId", "");
   const [voiceover, setVoiceover] = useHostedCreateDraftState<File | null>("voiceover", null);
@@ -2983,6 +2990,53 @@ export function HostedCreateProjectScreen() {
   );
   const [voiceoverDurationMs, setVoiceoverDurationMs] = useState<number | null>(null);
   const [creationLocked, setCreationLocked] = useHostedCreateDraftState("creationLocked", false);
+  const useSharedAvatar = useMutation({
+    mutationFn: async (versionId: string) => {
+      if (creationLocked) throw new Error("This video request is already saved.");
+      if (avatarUseRequest.current?.versionId !== versionId) {
+        avatarUseRequest.current = { versionId, key: `browser-avatar-use-${crypto.randomUUID()}` };
+      }
+      const result = await readJson<{ version_id: string }>(
+        `/api/v2/hosted/avatars/${encodeURIComponent(versionId)}/use`,
+        {
+          method: "POST",
+          headers: { "idempotency-key": avatarUseRequest.current.key },
+          body: JSON.stringify({
+            schema_version: "videoforge-hosted-avatar-approval/v1",
+            rights_attested: true,
+            likeness_animation_consent: true,
+          }),
+        },
+      );
+      const refreshed = await catalog.refetch();
+      if (!refreshed.data?.avatars.some((avatar) => avatar.version_id === result.version_id)) {
+        throw new Error("Your avatar copy is saved. Choose it again to confirm the selection.");
+      }
+      return result.version_id;
+    },
+    onSuccess: (versionId) => {
+      setAvatarVersionId(versionId);
+      setPreflightResult(null);
+      avatarUseRequest.current = null;
+      setAvatarCollection("mine");
+    },
+    onError: (error) => {
+      if ((error as Error & { code?: string }).code === "SHARED_AVATAR_COPY_ARCHIVED")
+        avatarUseRequest.current = null;
+    },
+  });
+  const avatarOptions = (avatars: CatalogResponse["avatars"]) =>
+    avatars.map((avatar) => {
+      const own = catalog.data?.avatars.some((item) => item.version_id === avatar.version_id);
+      const owner = !own ? sharedAvatars.owner(avatar.version_id) : undefined;
+      return {
+        id: avatar.version_id,
+        imageUrl: avatar.thumbnail_url ?? "",
+        name: avatar.name,
+        meta: `${owner ? `${sharedAvatars.label(owner.id)} · ${owner.email} · ` : ""}Version ${avatar.version_number}${avatar.avatar_video_source_ready === false ? " · no avatar video yet" : ""}`,
+        disabled: !own && avatar.avatar_video_source_ready === false,
+      };
+    });
   const videoCoveragePercent = Number(videoCoverageInput);
   const coverageValid =
     /^\d{1,3}$/u.test(videoCoverageInput) &&
@@ -3468,7 +3522,10 @@ export function HostedCreateProjectScreen() {
       <PageHeader title="New project" />
       <div className="layout-main hosted-project-layout">
         <Panel className="create-config-panel hosted-project-form">
-          <fieldset className="hosted-create-inputs" disabled={submit.isPending || creationLocked}>
+          <fieldset
+            className="hosted-create-inputs"
+            disabled={submit.isPending || creationLocked || useSharedAvatar.isPending}
+          >
             <section className="create-section" aria-labelledby="hosted-project-video">
               <header className="create-section-header">
                 <span className="create-section-index">01</span>
@@ -3632,22 +3689,64 @@ export function HostedCreateProjectScreen() {
                       <VisualPresetSelect
                         id="hosted-avatar-select"
                         label="Avatar"
-                        options={catalog.data.avatars.map((avatar) => ({
-                          id: avatar.version_id,
-                          imageUrl: avatar.thumbnail_url ?? "",
-                          meta: `Version ${avatar.version_number}${
-                            avatar.avatar_video_source_ready === false
-                              ? " · no avatar video yet"
-                              : ""
-                          }`,
-                          name: avatar.name,
-                        }))}
+                        options={avatarOptions(sharedAvatars.everyone)}
+                        displayedOptions={avatarOptions(sharedAvatars.items(avatarCollection))}
+                        disabled={
+                          creationLocked ||
+                          submit.isPending ||
+                          preflightMutation.isPending ||
+                          useSharedAvatar.isPending
+                        }
+                        collectionControl={
+                          <>
+                            <VoiceFilterSelect
+                              label="Avatar collection"
+                              value={avatarCollection}
+                              options={sharedAvatars.options}
+                              disabled={
+                                creationLocked ||
+                                useSharedAvatar.isPending ||
+                                preflightMutation.isPending ||
+                                submit.isPending
+                              }
+                              onChange={setAvatarCollection}
+                            />
+                            <p className="helper shared-avatar-use-note">
+                              Choosing a shared avatar saves a private copy with the owner’s
+                              recorded permissions.
+                            </p>
+                          </>
+                        }
                         selectedId={avatarVersionId}
                         onChange={(value) => {
+                          if (
+                            creationLocked ||
+                            submit.isPending ||
+                            preflightMutation.isPending ||
+                            useSharedAvatar.isPending
+                          )
+                            return;
+                          if (catalog.data.avatars.every((avatar) => avatar.version_id !== value)) {
+                            useSharedAvatar.mutate(value);
+                            return;
+                          }
+                          useSharedAvatar.reset();
                           setAvatarVersionId(value);
                           setPreflightResult(null);
                         }}
                       />
+                      {useSharedAvatar.isPending ? (
+                        <p className="helper" role="status">
+                          Saving your avatar copy…
+                        </p>
+                      ) : null}
+                      {useSharedAvatar.error ? (
+                        <div className="notice notice-warning" role="alert">
+                          {useSharedAvatar.error instanceof Error
+                            ? useSharedAvatar.error.message
+                            : "Could not save this avatar. Choose it again to retry."}
+                        </div>
+                      ) : null}
                       <div className="preset-select-actions">
                         <Link
                           className="button button-secondary"
@@ -3746,7 +3845,12 @@ export function HostedCreateProjectScreen() {
           <fieldset
             className="field media-execution-field"
             aria-describedby="media-execution-help"
-            disabled={preflightMutation.isPending || submit.isPending || creationLocked}
+            disabled={
+              preflightMutation.isPending ||
+              submit.isPending ||
+              creationLocked ||
+              useSharedAvatar.isPending
+            }
           >
             <legend>Media execution</legend>
             <div className="media-execution-options">
@@ -3821,7 +3925,10 @@ export function HostedCreateProjectScreen() {
             </p>
           ) : null}
           {openingConfigurable ? (
-            <fieldset className="opening-footage-control" disabled={creationLocked}>
+            <fieldset
+              className="opening-footage-control"
+              disabled={creationLocked || useSharedAvatar.isPending}
+            >
               <legend className="sr-only">Opening footage</legend>
               <div className="opening-footage-header">
                 <div className="opening-footage-copy">
@@ -3873,7 +3980,7 @@ export function HostedCreateProjectScreen() {
           {catalog.data.video_generation ? (
             <fieldset
               className="video-coverage-control"
-              disabled={submit.isPending || creationLocked}
+              disabled={submit.isPending || creationLocked || useSharedAvatar.isPending}
               aria-describedby="video-coverage-help"
             >
               <legend>{openingEnabled ? "Remaining footage" : "Video footage coverage"}</legend>
@@ -3978,6 +4085,7 @@ export function HostedCreateProjectScreen() {
               (!creationLocked && (!coverageValid || !coverageSupported || !canPreflight)) ||
               preflightMutation.isPending ||
               submit.isPending ||
+              useSharedAvatar.isPending ||
               (!creationLocked && !executionReady)
             }
             onClick={() => submit.mutate()}
@@ -4023,8 +4131,7 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
     queryFn: ({ signal }) => readHostedCatalog(signal),
   });
   const isAvatar = kind === "avatars";
-  const collections = catalog.data?.avatar_collections ?? [];
-  const foreignCollections = collections.filter((item) => !item.is_current_user);
+  const sharedAvatars = avatarCollections(catalog.data);
   const ownItems: readonly HostedPresetCatalogItem[] = catalog.data
     ? isAvatar
       ? catalog.data.avatars
@@ -4035,42 +4142,8 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
       ? (catalog.data.avatar_drafts ?? [])
       : (catalog.data.style_drafts ?? [])
     : [];
-  const everyone = [
-    ...new Map(
-      [...ownItems, ...foreignCollections.flatMap((item) => item.avatars)].map((item) => [
-        item.version_id,
-        item,
-      ]),
-    ).values(),
-  ];
-  const publishedItems =
-    !isAvatar || collection === "mine"
-      ? ownItems
-      : collection === "everyone"
-        ? everyone
-        : (collections.find((item) => item.id === collection)?.avatars ?? []);
-  const collectionOptions = [
-    {
-      value: "mine",
-      label: "My avatars",
-      description: collections.find((item) => item.is_current_user)?.email,
-      count: ownItems.length,
-    },
-    { value: "everyone", label: "Everyone", count: everyone.length },
-    ...foreignCollections.map((item) => {
-      // ponytail: small invited roster; precompute duplicate-name ranks for larger teams.
-      const namesakes = collections.filter((other) => other.name === item.name);
-      return {
-        value: item.id,
-        label:
-          namesakes.length > 1
-            ? `${item.name} (${namesakes.findIndex((other) => other.id === item.id) + 1})`
-            : item.name,
-        description: item.email,
-        count: item.avatars.length,
-      };
-    }),
-  ];
+  const publishedItems = isAvatar ? sharedAvatars.items(collection) : ownItems;
+  const collectionOptions = sharedAvatars.options;
   const allItems: readonly HostedPresetHubItem[] = [
     ...publishedItems.map((item) => ({ item, draft: false as const })),
     ...(!isAvatar || collection === "mine" || collection === "everyone" ? draftItems : []).map(
@@ -4100,11 +4173,8 @@ function HostedPresetHubScreen({ kind }: { kind: HostedPresetHubKind }) {
   const visiblePublishedItems = visibleItems.filter(({ draft }) => !draft);
 
   function renderCard({ item, draft }: HostedPresetHubItem) {
-    const owner = isAvatar
-      ? foreignCollections.find((entry) =>
-          entry.avatars.some((avatar) => avatar.version_id === item.version_id),
-        )
-      : undefined;
+    const candidateOwner = isAvatar ? sharedAvatars.owner(item.version_id) : undefined;
+    const owner = candidateOwner?.is_current_user ? undefined : candidateOwner;
     const state = presetState(item);
     const healthy = !draft && (isAvatar ? state === "READY" : state === "PUBLISHED");
     const resumable =

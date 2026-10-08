@@ -3009,6 +3009,155 @@ const gpuReadiness = {
   ] as const,
 };
 
+it.each([
+  { failure: "unknown response", ownCount: 0 },
+  { failure: "unknown response", ownCount: 1 },
+  { failure: "catalog confirmation", ownCount: 1 },
+])(
+  "adopts a shared avatar after $failure retry with $ownCount owned avatars without changing inputs or replaying with a new key",
+  async ({ failure, ownCount }) => {
+    const own = {
+      profile_id: "own",
+      version_id: "own-v1",
+      name: "Own presenter",
+      version_number: 1,
+      avatar_video_source_ready: true,
+    };
+    const shared = {
+      profile_id: "other",
+      version_id: "other-v1",
+      name: "Other presenter",
+      version_number: 1,
+      avatar_video_source_ready: true,
+    };
+    const copied = {
+      ...own,
+      profile_id: "copy",
+      version_id: "copy-v1",
+      name: "Other presenter · Taylor",
+    };
+    const ownAvatars = ownCount ? [own] : [];
+    const previousSelection = ownCount ? "Own presenter" : "Select avatar";
+    let attempts = 0;
+    let copiedReady = false;
+    let finishCopy: (() => void) | undefined;
+    const fetcher = vi.fn(async (path: string, init?: RequestInit) => {
+      if (path.endsWith("/voiceovers/voices"))
+        return Response.json({
+          voices: [
+            {
+              voice_id: "alice",
+              name: "Alice",
+              saved: true,
+              starred: true,
+              preview_url: null,
+              tags: "Warm",
+              languages: "en",
+            },
+          ],
+        });
+      if (path.endsWith("/use")) {
+        attempts++;
+        if (attempts === 1 && failure === "unknown response")
+          throw new TypeError("Network response unknown. Choose the avatar again to confirm.");
+        if (attempts === 1) return Response.json({ version_id: copied.version_id });
+        await new Promise<void>((resolve) => {
+          finishCopy = resolve;
+        });
+        copiedReady = true;
+        return Response.json({ version_id: copied.version_id });
+      }
+      expect(init?.method ?? "GET").toBe("GET");
+      return Response.json({
+        avatars: copiedReady ? [...ownAvatars, copied] : ownAvatars,
+        avatar_collections: [
+          {
+            id: "me",
+            name: "Taylor",
+            email: "me@example.com",
+            is_current_user: true,
+            avatars: ownAvatars,
+          },
+          {
+            id: "other",
+            name: "Taylor",
+            email: "other@example.com",
+            is_current_user: false,
+            avatars: [shared],
+          },
+          {
+            id: "empty",
+            name: "Empty",
+            email: "empty@example.com",
+            is_current_user: false,
+            avatars: [],
+          },
+        ],
+        styles: [{ style_id: "style", version_id: "style-v1", name: "Natural", version_number: 1 }],
+        media_worker_state: "ONLINE",
+        cloud_media: { available: true },
+        generation_provider: "KIE_FAL",
+        gpu_transport: "DISABLED_UNQUALIFIED",
+        gpu_readiness: gpuReadiness,
+      });
+    });
+    vi.stubGlobal("fetch", fetcher);
+    renderHosted(<HostedCreateProjectScreen />);
+    fireEvent.change(await screen.findByLabelText("Video title"), {
+      target: { value: "Keep this title" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Upload script" }));
+    await waitFor(() => expect(screen.getByLabelText("Script voice")).toHaveValue("Alice"));
+    fireEvent.change(screen.getByLabelText("Voiceover script"), {
+      target: { value: "Keep this saved narration." },
+    });
+    const selector = document.querySelector("#hosted-avatar-select")!;
+    const trigger = selector.querySelector("summary")!;
+    fireEvent.click(trigger);
+    expect(screen.getByRole("combobox", { name: "Avatar collection" })).toHaveTextContent(
+      "My avatars",
+    );
+    expect(within(selector as HTMLElement).queryAllByRole("radio")).toHaveLength(ownCount);
+    fireEvent.click(screen.getByRole("combobox", { name: "Avatar collection" }));
+    fireEvent.click(screen.getByRole("option", { name: /Taylor \(2\).*other@example.com/ }));
+    expect(trigger).toHaveTextContent(previousSelection);
+    expect(fetcher.mock.calls.filter(([path]) => path.endsWith("/use"))).toHaveLength(0);
+    fireEvent.click(screen.getByRole("radio", { name: /Other presenter/ }));
+    await screen.findByRole("alert");
+    expect(trigger).toHaveTextContent(previousSelection);
+    expect(screen.getByLabelText("Video title")).toHaveValue("Keep this title");
+    expect(screen.getByLabelText("Voiceover script")).toHaveValue("Keep this saved narration.");
+    expect(screen.getByLabelText("Script voice")).toHaveValue("Alice");
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("radio", { name: /Other presenter/ }));
+    await waitFor(() => expect(finishCopy).toBeDefined());
+    expect(screen.getByRole("button", { name: "Create video" })).toBeDisabled();
+    expect(screen.getByLabelText("Video title")).toBeDisabled();
+    expect(trigger).toHaveTextContent(previousSelection);
+    finishCopy!();
+    await waitFor(() => expect(trigger).toHaveTextContent("Other presenter · Taylor"));
+    await waitFor(() => expect(screen.getByLabelText("Video title")).toBeEnabled());
+    expect(screen.getByLabelText("Video title")).toHaveValue("Keep this title");
+    expect(screen.getByLabelText("Voiceover script")).toHaveValue("Keep this saved narration.");
+    expect(screen.getByLabelText("Script voice")).toHaveValue("Alice");
+    fireEvent.click(trigger);
+    expect(screen.getByRole("combobox", { name: "Avatar collection" })).toHaveTextContent(
+      "My avatars",
+    );
+    const copies = fetcher.mock.calls.filter(([path]) => path.endsWith("/use"));
+    expect(copies).toHaveLength(2);
+    expect(new Headers(copies[0]?.[1]?.headers).get("idempotency-key")).toBe(
+      new Headers(copies[1]?.[1]?.headers).get("idempotency-key"),
+    );
+    expect(JSON.parse(String(copies[1]?.[1]?.body))).toEqual({
+      schema_version: "videoforge-hosted-avatar-approval/v1",
+      rights_attested: true,
+      likeness_animation_consent: true,
+    });
+    expect(routerState.navigate).not.toHaveBeenCalled();
+  },
+);
+
 const qualifiedGpuReadiness = {
   ...gpuReadiness,
   gpu_transport: "QUALIFIED_EXACT" as const,
@@ -9176,7 +9325,7 @@ it("shows accepted uploaded voiceover after progress refresh and retries playbac
   expect(within(hero).queryByRole("group", { name: "Listen to voiceover" })).toBeNull();
   snapshot.voiceover_audio = { audio_url: "/api/v2/hosted/projects/audio-progress/voiceover" };
   await act(() => client.invalidateQueries({ queryKey: ["hosted-project", "audio-progress"] }));
-  const player = within(hero).getByLabelText("Voiceover audio");
+  const player = await within(hero).findByLabelText("Voiceover audio");
   expect(player).toHaveAttribute("src", snapshot.voiceover_audio.audio_url);
   expect(player).toHaveAttribute("controls");
   expect(player).toHaveAttribute("preload", "none");

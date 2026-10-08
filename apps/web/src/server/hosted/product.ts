@@ -1,3 +1,4 @@
+import { inspectRaster } from "../domain/style-reference-validation";
 import { serveHostedVideo } from "./serve-video";
 import { readProjectVoiceover } from "./project-voiceover";
 import { HOSTED_COMPLETED_RENDER_SQL } from "./completed-render";
@@ -1596,6 +1597,227 @@ async function lockActiveStyleParent(
     [scope.account_id, scope.workspace_id, styleOrVersionId],
   );
   return result.rows.length > 0;
+}
+
+/** Reuse the ordinary durable upload/commit/approval path for an owned copy of the exact runtime image. */
+async function avatarUseShared(
+  request: Request,
+  sourceVersionId: string,
+  environment: HostedRuntimeEnvironment,
+  config: HostedRuntimeConfiguration,
+  executionContext: HostedExecutionContext,
+): Promise<Response> {
+  if (!UUID.test(sourceVersionId)) return response({ error: { code: "AVATAR_NOT_FOUND" } }, 404);
+  if (!sameOrigin(request, config))
+    return response({ error: { code: "HOSTED_BROWSER_ORIGIN_REJECTED" } }, 403);
+  if (!hostedProviderFreePresetCreationEnabled(config))
+    return unavailableHostedCapability("PRESET_CREATION_NOT_QUALIFIED");
+  const key = request.headers.get("idempotency-key") ?? "";
+  if (!IDEMPOTENCY.test(key))
+    return response({ error: { code: "AVATAR_IDEMPOTENCY_REQUIRED" } }, 400);
+  const input = await parseHostedJson(request, "AVATAR_APPROVAL_REJECTED");
+  if (input instanceof Response) return input;
+  if (!parseAvatarApproval(input))
+    return response({ error: { code: "AVATAR_APPROVAL_REJECTED" } }, 400);
+  const bucket = environment.PRIVATE_ARTIFACTS;
+  if (!bucket) return response({ error: { code: "HOSTED_ARTIFACTS_UNAVAILABLE" } }, 503);
+  const pool = createNeonPool(config.neon.databaseUrl);
+  const scoped = async <T>(
+    work: (tx: SqlExecutor, scope: HostedScope) => Promise<T>,
+    scope: HostedScope,
+  ) =>
+    createNeonExecutor(pool).transaction(async (tx) => {
+      await tx.query("SELECT set_config($1,$2,true)", ["videoforge.account_id", scope.account_id]);
+      return work(tx, scope);
+    });
+  try {
+    const scope = await sessionScope(request, config, pool, executionContext);
+    if (scope instanceof Response) return scope;
+    const result = await scoped(async (tx) => {
+      const cached = await tx.query<HostedPresetRow>(
+        `SELECT profile.id AS profile_id,version.id AS version_id,version.profile_hash
+        FROM avatar_profiles profile JOIN avatar_profile_versions version ON version.account_id=profile.account_id AND version.workspace_id=profile.workspace_id AND version.profile_id=profile.id
+        JOIN assets asset ON asset.account_id=version.account_id AND asset.workspace_id=version.workspace_id AND asset.id=version.original_asset_id
+        WHERE profile.account_id=$1 AND profile.workspace_id=$2 AND profile.status='ACTIVE' AND version.state='READY'
+          AND asset.metadata->>'shared_source_version_id'=$3 LIMIT 1`,
+        [scope.account_id, scope.workspace_id, sourceVersionId],
+      );
+      if (cached.rows[0]) return { cached: cached.rows[0], source: null };
+      const read = await tx.query<{ source: HostedPresetRow | null }>(
+        "SELECT public.videoforge_shared_avatar_source($1,$2,$3) AS source",
+        [scope.account_id, scope.workspace_id, sourceVersionId],
+      );
+      return { cached: null, source: read.rows[0]?.source ?? null };
+    }, scope);
+    const useResponse = (row: HostedPresetRow) =>
+      response({
+        schema_version: "videoforge-hosted-shared-avatar-use/v1",
+        profile_id: rowString(row, "profile_id"),
+        version_id: rowString(row, "version_id"),
+        profile_hash: rowString(row, "profile_hash"),
+        state: "READY",
+        provider_calls_authorized: false,
+      });
+    if (result.cached) return useResponse(result.cached);
+    const source = result.source;
+    if (!source)
+      return response(
+        {
+          error: {
+            code: "AVATAR_NOT_FOUND",
+            message: "This shared avatar is no longer available.",
+          },
+        },
+        404,
+      );
+    if (source.account_id === scope.account_id) return useResponse(source);
+    const runtime = plainRecord(source.runtime);
+    if (!runtime) throw new Error("SHARED_AVATAR_SOURCE_NOT_VERIFIED");
+    const checksum = rowString(runtime, "binary_sha256"),
+      type = rowString(runtime, "content_type"),
+      size = Number(runtime.byte_size);
+    if (
+      !SHA256.test(checksum) ||
+      !IMAGE_TYPES.has(type) ||
+      !Number.isSafeInteger(size) ||
+      size < 1 ||
+      size > 20 * 1024 * 1024
+    )
+      throw new Error("SHARED_AVATAR_SOURCE_NOT_VERIFIED");
+    const object = await bucket.get(rowString(runtime, "object_key"));
+    if (
+      !object ||
+      object.size !== size ||
+      (object.httpMetadata?.contentType && object.httpMetadata.contentType !== type)
+    )
+      throw new Error("SHARED_AVATAR_SOURCE_NOT_VERIFIED");
+    const bytes = await object.arrayBuffer();
+    if (bytes.byteLength !== size || (await sha256Bytes(bytes)) !== checksum)
+      throw new Error("SHARED_AVATAR_SOURCE_NOT_VERIFIED");
+    const raster = inspectRaster(new Uint8Array(bytes));
+    if (!raster || raster.mediaType !== type) throw new Error("SHARED_AVATAR_SOURCE_NOT_VERIFIED");
+    const baseName = `${rowString(source, "name").slice(0, 100)} · ${rowString(source, "owner_name").slice(0, 40)}`;
+    const names = await scoped(
+      (tx) =>
+        tx.query<{ name: string }>(
+          "SELECT name FROM avatar_profiles WHERE account_id=$1 AND workspace_id=$2 AND status='ACTIVE'",
+          [scope.account_id, scope.workspace_id],
+        ),
+      scope,
+    );
+    const taken = new Set(names.rows.map((row) => row.name.toLowerCase()));
+    let name = baseName;
+    for (let suffix = 2; taken.has(name.toLowerCase()); suffix++) name = `${baseName} (${suffix})`;
+    const internal = (body: unknown) =>
+      new Request(request.url, {
+        method: "POST",
+        headers: request.headers,
+        body: JSON.stringify(body),
+      });
+    const draft = await avatarCreate(
+      internal({
+        schema_version: "videoforge-hosted-avatar-create/v1",
+        name,
+        parent_profile_id: null,
+        source: {
+          filename: "shared-avatar",
+          content_type: type,
+          content_length: size,
+          checksum_sha256: checksum,
+          width: raster.width,
+          height: raster.height,
+        },
+        rights_attested: true,
+        likeness_animation_consent: true,
+      }),
+      environment,
+      config,
+      executionContext,
+    );
+    if (!draft.ok) return draft;
+    const created = (await draft.json()) as HostedPresetRow;
+    const profileId = rowString(created, "profile_id"),
+      versionId = rowString(created, "version_id");
+    const targetKey = hostedUploadKey(scope, "avatar", profileId, versionId, "original/source");
+    const recorded = await scoped(async (tx) => {
+      const row = await tx.query<HostedPresetRow>(
+        `UPDATE assets asset SET metadata=metadata||$4::jsonb
+        FROM avatar_profile_versions version JOIN avatar_profiles profile ON profile.account_id=version.account_id AND profile.workspace_id=version.workspace_id AND profile.id=version.profile_id
+        WHERE asset.account_id=$1 AND asset.workspace_id=$2 AND version.account_id=asset.account_id AND version.workspace_id=asset.workspace_id
+          AND version.id=$3 AND asset.id=version.original_asset_id AND profile.status='ACTIVE'
+          AND asset.object_key=$5 AND asset.binary_sha256=$6 AND asset.content_type=$7 AND asset.byte_size=$8
+          AND (asset.metadata->>'shared_source_version_id' IS NULL OR asset.metadata->>'shared_source_version_id'=$9)
+        RETURNING asset.id`,
+        [
+          scope.account_id,
+          scope.workspace_id,
+          versionId,
+          JSON.stringify({
+            shared_source_version_id: sourceVersionId,
+            shared_source_profile_hash: source.profile_hash,
+            shared_source_runtime_sha256: checksum,
+            shared_source_account_id: source.account_id,
+            shared_source_rights_attested_by_user_id: source.rights_attested_by_user_id,
+            shared_source_likeness_attested_by_user_id: source.likeness_attested_by_user_id,
+            shared_use_accepted_by_user_id: scope.user_id,
+          }),
+          targetKey,
+          checksum,
+          type,
+          size,
+          sourceVersionId,
+        ],
+      );
+      return row.rows.length === 1;
+    }, scope);
+    if (!recorded) throw new Error("SHARED_AVATAR_COPY_ARCHIVED");
+    // Every destination is already recorded in a durable owned draft before writing bytes.
+    const head = await bucket.head(targetKey);
+    if (head) {
+      if (
+        head.size !== size ||
+        head.httpMetadata?.contentType !== type ||
+        !(await verifyHostedPreviewChecksum(bucket, targetKey, head, checksum))
+      )
+        throw new Error("SHARED_AVATAR_SOURCE_NOT_VERIFIED");
+    } else
+      await bucket.put(targetKey, bytes, {
+        httpMetadata: { contentType: type },
+        sha256: checksum.slice(7),
+        customMetadata: { shared_avatar_source_version_id: sourceVersionId },
+      });
+    const committed = await avatarCommit(
+      internal({}),
+      versionId,
+      environment,
+      config,
+      executionContext,
+    );
+    if (!committed.ok) return committed;
+    const approved = await avatarApprove(internal(input), versionId, config, executionContext);
+    if (!approved.ok) return approved;
+    return useResponse((await approved.json()) as HostedPresetRow);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      ["SHARED_AVATAR_SOURCE_NOT_VERIFIED", "SHARED_AVATAR_COPY_ARCHIVED"].includes(error.message)
+    )
+      return response(
+        {
+          error: {
+            code: error.message,
+            message:
+              error.message === "SHARED_AVATAR_COPY_ARCHIVED"
+                ? "This private copy is unavailable. Choose the avatar again."
+                : "The shared avatar source could not be verified. Your selection was kept.",
+          },
+        },
+        409,
+      );
+    throw error;
+  } finally {
+    await pool.end();
+  }
 }
 
 async function avatarCreate(
@@ -9917,6 +10139,9 @@ export async function handleHostedProductRequest(
     );
   if (request.method === "POST" && url.pathname === "/api/v2/hosted/avatars")
     return avatarCreate(request, environment, config, executionContext);
+  const avatarUsePath = /^\/api\/v2\/hosted\/avatars\/([0-9a-f-]+)\/use$/u.exec(url.pathname);
+  if (request.method === "POST" && avatarUsePath)
+    return avatarUseShared(request, avatarUsePath[1]!, environment, config, executionContext);
   const avatarCommitPath = /^\/api\/v2\/hosted\/avatars\/([0-9a-f-]+)\/commit$/u.exec(url.pathname);
   if (request.method === "POST" && avatarCommitPath)
     return avatarCommit(request, avatarCommitPath[1]!, environment, config, executionContext);

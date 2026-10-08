@@ -1584,6 +1584,12 @@
       "name": "shared_avatar_collections",
       "filename": "0301_shared_avatar_collections.sql",
       "sha256": "sha256:fb84f5e8e1a263503f625c8012c1d55f9d83611c7f99ac8c4e187e776b2c96fe"
+    },
+    {
+      "version": 302,
+      "name": "shared_avatar_source_snapshot",
+      "filename": "0302_shared_avatar_source_snapshot.sql",
+      "sha256": "sha256:24f7ba4d668fd1ac703e30ed1652c0299ea846578ce460a4a56ce9d1a7d99b64"
     }
   ]
 }

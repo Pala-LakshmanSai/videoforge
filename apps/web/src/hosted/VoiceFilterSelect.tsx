@@ -28,10 +28,20 @@ export function VoiceFilterSelect({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [above, setAbove] = useState(false);
+  const [menuHeight, setMenuHeight] = useState(300);
   const selected = options.find((option) => option.value === value);
   function openMenu() {
     const bounds = trigger.current?.getBoundingClientRect();
-    setAbove(Boolean(bounds && window.innerHeight - bounds.bottom < 300 && bounds.top > 300));
+    if (bounds) {
+      const navigation = document
+        .querySelector('[aria-label="Primary navigation"]')
+        ?.getBoundingClientRect();
+      const below =
+        Math.min(window.innerHeight, navigation?.top ?? window.innerHeight) - bounds.bottom;
+      const opensAbove = below < 300 && bounds.top > below;
+      setAbove(opensAbove);
+      setMenuHeight(Math.max(0, Math.min(300, (opensAbove ? bounds.top : below) - 23)));
+    }
     setActive(
       Math.max(
         0,
@@ -129,7 +139,12 @@ export function VoiceFilterSelect({
       </button>
       {open && !disabled && (
         <div className={`voice-filter-menu ${above ? "is-above" : ""}`}>
-          <div role="listbox" id={`${id}-list`} aria-labelledby={`${id}-label`}>
+          <div
+            role="listbox"
+            id={`${id}-list`}
+            aria-labelledby={`${id}-label`}
+            style={{ maxHeight: `${menuHeight}px` }}
+          >
             {options.map((option, index) => (
               <div
                 key={option.value}

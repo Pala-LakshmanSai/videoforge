@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { PresetImage } from "../presets/PresetImage";
 
 interface VisualPresetOption {
@@ -7,6 +7,7 @@ interface VisualPresetOption {
   imageUrl: string;
   meta?: string;
   name: string;
+  disabled?: boolean;
 }
 
 export function VisualPresetSelect({
@@ -15,12 +16,19 @@ export function VisualPresetSelect({
   options,
   selectedId,
   onChange,
+  displayedOptions = options,
+  collectionControl,
+  disabled = false,
 }: {
   id?: string;
   label: string;
   options: VisualPresetOption[];
   selectedId: string;
   onChange: (id: string) => void;
+  /** Browse a collection without changing the selected preset. */
+  displayedOptions?: VisualPresetOption[];
+  collectionControl?: ReactNode;
+  disabled?: boolean;
 }) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -28,6 +36,12 @@ export function VisualPresetSelect({
   const typeaheadTimerRef = useRef<number | null>(null);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (disabled && detailsRef.current) {
+      detailsRef.current.open = false;
+      setOpen(false);
+    }
+  }, [disabled]);
   useEffect(() => {
     if (!open) return;
     const dismiss = (event: PointerEvent | FocusEvent) => {
@@ -48,10 +62,10 @@ export function VisualPresetSelect({
   const selected = options.find((option) => option.id === selectedId);
   const normalizedQuery = query.trim().toLowerCase();
   const visibleOptions = normalizedQuery
-    ? options.filter((option) =>
+    ? displayedOptions.filter((option) =>
         `${option.name} ${option.meta ?? ""}`.toLowerCase().includes(normalizedQuery),
       )
-    : options;
+    : displayedOptions;
 
   useEffect(
     () => () => {
@@ -60,7 +74,7 @@ export function VisualPresetSelect({
     [],
   );
 
-  if (options.length === 0 || (options.length === 1 && selected)) {
+  if (!collectionControl && (options.length === 0 || (options.length === 1 && selected))) {
     return (
       <div className="visual-preset-select" id={id}>
         <span className="field-label">{label}</span>
@@ -95,14 +109,21 @@ export function VisualPresetSelect({
   }
 
   function focusOption(index: number) {
-    window.requestAnimationFrame(() => optionRefs.current[index]?.focus());
+    const available = visibleOptions.flatMap((option, optionIndex) =>
+      option.disabled ? [] : [optionIndex],
+    );
+    const enabledIndex = available.find((optionIndex) => optionIndex >= index) ?? available.at(-1);
+    if (enabledIndex !== undefined)
+      window.requestAnimationFrame(() => optionRefs.current[enabledIndex]?.focus());
   }
 
   function focusRelative(direction: -1 | 1) {
     if (!visibleOptions.length) return;
     const current = optionRefs.current.findIndex((element) => element === document.activeElement);
-    const next = (Math.max(0, current) + direction + visibleOptions.length) % visibleOptions.length;
-    focusOption(next);
+    const available = visibleOptions.flatMap((option, index) => (option.disabled ? [] : [index]));
+    const position = available.indexOf(current);
+    const next = available[(position + direction + available.length) % available.length];
+    if (next !== undefined) focusOption(next);
   }
 
   function focusByTypeahead(key: string) {
@@ -115,8 +136,10 @@ export function VisualPresetSelect({
     const current = optionRefs.current.findIndex((element) => element === document.activeElement);
     const indexes = visibleOptions.map((_, index) => index);
     const ordered = [...indexes.slice(current + 1), ...indexes.slice(0, current + 1)];
-    const match = ordered.find((index) =>
-      visibleOptions[index]?.name.toLocaleLowerCase().startsWith(typeaheadRef.current),
+    const match = ordered.find(
+      (index) =>
+        !visibleOptions[index]?.disabled &&
+        visibleOptions[index]?.name.toLocaleLowerCase().startsWith(typeaheadRef.current),
     );
     if (match !== undefined) focusOption(match);
   }
@@ -125,13 +148,24 @@ export function VisualPresetSelect({
     <div className="visual-preset-select" id={id}>
       <span className="field-label">{label}</span>
       <details
-        className="visual-preset-details"
+        className={`visual-preset-details ${collectionControl ? "visual-preset-collections" : ""}`}
         ref={detailsRef}
         onToggle={(event) => {
           setOpen(event.currentTarget.open);
           if (!event.currentTarget.open) setQuery("");
         }}
         onKeyDown={(event) => {
+          if (disabled) {
+            event.preventDefault();
+            return;
+          }
+          if (event.defaultPrevented) return;
+          if (
+            event.target instanceof HTMLElement &&
+            event.target.closest(".visual-preset-collection-control") &&
+            event.key !== "Escape"
+          )
+            return;
           if (event.key === "Escape" && detailsRef.current?.open) {
             event.preventDefault();
             closeAndFocus();
@@ -170,7 +204,15 @@ export function VisualPresetSelect({
           }
         }}
       >
-        <summary className="visual-preset-summary" aria-expanded={open}>
+        <summary
+          className="visual-preset-summary"
+          aria-expanded={open}
+          aria-disabled={disabled}
+          onClick={(event) => {
+            if (disabled) event.preventDefault();
+            else setOpen(!detailsRef.current?.open);
+          }}
+        >
           {selected ? (
             <>
               <PresetImage src={selected.imageUrl} alt={`${selected.name} selected preset`} />
@@ -186,51 +228,74 @@ export function VisualPresetSelect({
           )}
           <span className="visual-preset-chevron" aria-hidden="true" />
         </summary>
-        <div className="visual-preset-menu" role="radiogroup" aria-label={`${label} options`}>
-          {options.length > 4 ? (
-            <label className="visual-preset-search">
-              <span className="sr-only">Search {label.toLowerCase()}</span>
-              <input
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={`Search ${label.toLowerCase()}`}
-              />
-            </label>
-          ) : null}
-          {visibleOptions.map((option, optionIndex) => {
-            const checked = option.id === selectedId;
-            return (
-              <button
-                type="button"
-                role="radio"
-                aria-checked={checked}
-                className={`visual-preset-option ${checked ? "selected" : ""}`}
-                key={option.id}
-                ref={(element) => {
-                  optionRefs.current[optionIndex] = element;
-                }}
-                tabIndex={checked || (!selected && optionIndex === 0) ? 0 : -1}
-                onClick={() => {
-                  onChange(option.id);
-                  closeAndFocus();
-                }}
-              >
-                <PresetImage src={option.imageUrl} alt={`${option.name} preset`} />
-                <span className="visual-preset-copy">
-                  <strong>{option.name}</strong>
-                  {option.meta ? <small>{option.meta}</small> : null}
+        {!collectionControl || open ? (
+          <div className="visual-preset-menu">
+            {collectionControl ? (
+              <div className="visual-preset-collection-control">{collectionControl}</div>
+            ) : null}
+            {collectionControl || options.length > 4 ? (
+              <label className="visual-preset-search">
+                <span className="sr-only">Search {label.toLowerCase()}</span>
+                <input
+                  type="search"
+                  disabled={disabled}
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder={`Search ${label.toLowerCase()}`}
+                />
+              </label>
+            ) : null}
+            <div
+              className={`visual-preset-options ${collectionControl ? "visual-preset-results" : ""}`}
+              role="radiogroup"
+              aria-label={`${label} options`}
+            >
+              {visibleOptions.map((option, optionIndex) => {
+                const checked = option.id === selectedId;
+                return (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={checked}
+                    disabled={disabled || option.disabled}
+                    className={`visual-preset-option ${checked ? "selected" : ""}`}
+                    key={option.id}
+                    ref={(element) => {
+                      optionRefs.current[optionIndex] = element;
+                    }}
+                    tabIndex={
+                      checked ||
+                      (optionIndex === visibleOptions.findIndex((item) => !item.disabled) &&
+                        !visibleOptions.some((item) => item.id === selectedId))
+                        ? 0
+                        : -1
+                    }
+                    onClick={() => {
+                      onChange(option.id);
+                      closeAndFocus();
+                    }}
+                  >
+                    <PresetImage src={option.imageUrl} alt={`${option.name} preset`} />
+                    <span className="visual-preset-copy">
+                      <strong>{option.name}</strong>
+                      {option.meta ? <small>{option.meta}</small> : null}
+                    </span>
+                    {checked ? <Check size={18} aria-hidden="true" /> : null}
+                  </button>
+                );
+              })}
+              {visibleOptions.length === 0 ? (
+                <span className="visual-preset-empty">
+                  {collectionControl && !normalizedQuery
+                    ? "No avatars in this collection."
+                    : options.length === 0
+                      ? "No ready presets"
+                      : "No matching presets"}
                 </span>
-                {checked ? <Check size={18} aria-hidden="true" /> : null}
-              </button>
-            );
-          })}
-          {visibleOptions.length === 0 ? (
-            <span className="visual-preset-empty">
-              {options.length === 0 ? "No ready presets" : "No matching presets"}
-            </span>
-          ) : null}
-        </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </details>
     </div>
   );

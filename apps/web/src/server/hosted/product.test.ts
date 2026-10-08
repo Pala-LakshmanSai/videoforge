@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { NATURAL_DOCUMENTARY_STYLE_PROFILE_HASH } from "@videoforge/pipeline";
@@ -723,6 +724,360 @@ const stagingConfig = {
 } as HostedRuntimeConfiguration;
 const environment = {} as HostedRuntimeEnvironment;
 const executionContext = { waitUntil: vi.fn() };
+
+describe("provider-free shared avatar use", () => {
+  const sourceId = "55555555-5555-4555-8555-555555555555";
+  const path = `/api/v2/hosted/avatars/${sourceId}/use`;
+  const approval = {
+    schema_version: "videoforge-hosted-avatar-approval/v1",
+    rights_attested: true,
+    likeness_animation_consent: true,
+  };
+  const useRequest = (
+    body: unknown = approval,
+    headers: Record<string, string> = { "idempotency-key": "shared-avatar-use-test-0001" },
+  ) => request(path, "POST", body, true, headers);
+
+  // Structural raster fixtures exercise the existing magic/dimension inspector; the source reader
+  // represents an already qualified runtime image, not a fresh image-decoding qualification.
+  const raster = (type: string) => {
+    const bytes = new Uint8Array(type === "image/png" ? 36 : 30);
+    const view = new DataView(bytes.buffer);
+    const text = (value: string, at: number) => bytes.set(new TextEncoder().encode(value), at);
+    if (type === "image/png") {
+      bytes[0] = 0x89;
+      text("PNG", 1);
+      view.setUint32(8, 13);
+      text("IHDR", 12);
+      view.setUint32(16, 512);
+      view.setUint32(20, 512);
+      text("IEND", 28);
+    } else if (type === "image/webp") {
+      text("RIFF", 0);
+      view.setUint32(4, 22, true);
+      text("WEBPVP8X", 8);
+      bytes[24] = 255;
+      bytes[25] = 1;
+      bytes[27] = 255;
+      bytes[28] = 1;
+    } else {
+      bytes.set([0xff, 0xd8, 0xff, 0xc0, 0, 17, 8, 2, 0, 2, 0]);
+    }
+    return bytes;
+  };
+
+  async function withCopyModel(
+    type: string,
+    work: (model: {
+      source: Record<string, unknown> | null;
+      runtime: Record<string, unknown>;
+      bytes: Uint8Array;
+      metadata: Record<string, unknown>;
+      asset: Record<string, unknown>;
+      ready: boolean;
+      destinationActive: boolean;
+      corruptDestination: boolean;
+      bucket: {
+        get: ReturnType<typeof vi.fn>;
+        head: ReturnType<typeof vi.fn>;
+        put: ReturnType<typeof vi.fn>;
+      };
+      call: (req?: Request) => Promise<Response | null>;
+    }) => Promise<void>,
+  ) {
+    const bytes = raster(type);
+    const checksum = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+    const runtime = {
+      object_key:
+        "tenant/foreign/workspace/foreign/avatar-profile/foreign/version/foreign/canonical/avatar.png",
+      binary_sha256: checksum,
+      content_type: type,
+      byte_size: bytes.length,
+    };
+    const previous = testState.query.getMockImplementation()!;
+    let profileId = "",
+      versionId = "",
+      profileName = "",
+      profileHash = `sha256:${"c".repeat(64)}`;
+    const stored = new Map<string, ArrayBuffer>();
+    const model = {
+      source: {
+        profile_id: PRESET_ID,
+        version_id: sourceId,
+        account_id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+        name: "Shared speaker",
+        owner_name: "Other user",
+        profile_hash: `sha256:${"b".repeat(64)}`,
+        runtime,
+      } as Record<string, unknown> | null,
+      runtime,
+      bytes,
+      metadata: {} as Record<string, unknown>,
+      asset: {} as Record<string, unknown>,
+      ready: false,
+      destinationActive: true,
+      corruptDestination: false,
+      bucket: { get: vi.fn(), head: vi.fn(), put: vi.fn() },
+      call: (req = useRequest()) =>
+        handleHostedProductRequest(
+          req,
+          { PRIVATE_ARTIFACTS: model.bucket } as unknown as HostedRuntimeEnvironment,
+          stagingConfig,
+          executionContext,
+        ),
+    };
+    const ownedRow = () => ({
+      profile_id: profileId,
+      profile_name: profileName,
+      version_id: versionId,
+      version_number: 1,
+      state: model.ready ? "READY" : "NEEDS_REVIEW",
+      profile_hash: profileHash,
+      ...model.asset,
+    });
+    testState.query.mockImplementation(async (sql, params = []) => {
+      const rows = (values: Record<string, unknown>[]) => ({
+        rows: values,
+        affectedRows: values.length,
+      });
+      if (sql.includes("videoforge_shared_avatar_source")) return rows([{ source: model.source }]);
+      if (sql.includes("asset.metadata->>'shared_source_version_id'=$3"))
+        return rows(model.ready ? [ownedRow()] : []);
+      if (sql.includes("UPDATE assets asset SET metadata")) {
+        if (!model.destinationActive) return rows([]);
+        expect(params.slice(0, 3)).toEqual([
+          testState.scopeRows[0]!.account_id,
+          testState.scopeRows[0]!.workspace_id,
+          versionId,
+        ]);
+        expect(params[4]).toBe(model.asset.object_key);
+        expect(params.slice(5, 9)).toEqual([checksum, type, bytes.length, sourceId]);
+        Object.assign(model.metadata, JSON.parse(String(params[3])));
+        return rows([{ id: model.asset.asset_id }]);
+      }
+      if (sql.includes("hosted_request_idempotency_key' = $3"))
+        return rows(profileId ? [ownedRow()] : []);
+      if (sql.includes("INSERT INTO avatar_profiles")) {
+        profileId = String(params[0]);
+        profileName = String(params[3]);
+        return rows([]);
+      }
+      if (sql.includes("INSERT INTO assets")) {
+        model.asset = {
+          asset_id: params[0],
+          object_key: params[3],
+          binary_sha256: params[4],
+          checksum_sha256: params[4],
+          content_type: params[5],
+          byte_size: params[6],
+          content_length: params[6],
+          width_px: params[7],
+          height_px: params[8],
+        };
+        return rows([]);
+      }
+      if (sql.includes("INSERT INTO avatar_profile_versions")) {
+        versionId = String(params[0]);
+        return rows([]);
+      }
+      if (sql.includes("FOR UPDATE") && sql.includes("FROM avatar_profiles AS profile"))
+        return rows(model.destinationActive ? [ownedRow()] : []);
+      if (sql.includes("FROM avatar_profiles AS profile") && sql.includes("link.role = 'ORIGINAL'"))
+        return rows([ownedRow()]);
+      if (
+        sql.includes("UPDATE avatar_profile_versions AS version") &&
+        sql.includes("SET state = 'READY'")
+      ) {
+        model.ready = true;
+        profileHash = String(params[4]);
+        return rows([]);
+      }
+      if (sql.includes("UPDATE avatar_profile_versions AS version")) return rows([ownedRow()]);
+      return previous(sql, params);
+    });
+    model.bucket.get.mockImplementation(async (key: string) => {
+      const data = key === runtime.object_key ? model.bytes.buffer : stored.get(key);
+      return data
+        ? {
+            size: data.byteLength,
+            httpMetadata: { contentType: String(runtime.content_type) },
+            arrayBuffer: async () => data,
+          }
+        : null;
+    });
+    model.bucket.head.mockImplementation(async (key: string) => {
+      const data = stored.get(key);
+      return data
+        ? {
+            size: data.byteLength,
+            httpMetadata: { contentType: type },
+            checksums: { sha256: Uint8Array.from(Buffer.from(checksum.slice(7), "hex")).buffer },
+          }
+        : null;
+    });
+    model.bucket.put.mockImplementation(async (key: string, data: ArrayBuffer) => {
+      expect(model.metadata.shared_source_version_id).toBe(sourceId);
+      expect(key).toMatch(
+        /^tenant\/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\/workspace\/cccccccc-cccc-4ccc-8ccc-cccccccccccc\/avatar-profile\//u,
+      );
+      stored.set(key, data);
+      if (model.corruptDestination) stored.set(key, new ArrayBuffer(data.byteLength + 1));
+    });
+    try {
+      await work(model);
+    } finally {
+      testState.query.mockImplementation(previous);
+    }
+  }
+
+  it.each(["image/png", "image/jpeg", "image/webp"])(
+    "copies exact %s runtime bytes into an owned ready avatar and reuses it without another write",
+    async (type) => {
+      await withCopyModel(type, async (model) => {
+        const result = await model.call();
+        expect(result?.status).toBe(200);
+        const value = (await result!.json()) as Record<string, unknown>;
+        expect(value).toMatchObject({
+          schema_version: "videoforge-hosted-shared-avatar-use/v1",
+          state: "READY",
+          provider_calls_authorized: false,
+        });
+        expect(value.version_id).not.toBe(sourceId);
+        expect(Object.keys(value).sort()).toEqual(
+          [
+            "schema_version",
+            "profile_id",
+            "version_id",
+            "profile_hash",
+            "state",
+            "provider_calls_authorized",
+          ].sort(),
+        );
+        expect(model.bucket.get).toHaveBeenCalledWith(model.runtime.object_key);
+        expect(model.bucket.put).toHaveBeenCalledTimes(1);
+        expect(new Uint8Array(model.bucket.put.mock.calls[0]![1])).toEqual(model.bytes);
+        model.bucket.get.mockClear();
+        model.bucket.head.mockClear();
+        model.bucket.put.mockClear();
+        model.source = null; // The durable owned copy survives removal of the source preset.
+        const replay = await model.call();
+        expect(await replay!.json()).toEqual(value);
+        expect(model.bucket.get).not.toHaveBeenCalled();
+        expect(model.bucket.head).not.toHaveBeenCalled();
+        expect(model.bucket.put).not.toHaveBeenCalled();
+      });
+    },
+  );
+
+  it("rejects origin, missing idempotency, extra/false attestations, and an unadmitted session before reading source bytes", async () => {
+    await withCopyModel("image/png", async (model) => {
+      const denied = await model.call(
+        request(path, "POST", approval, false, {
+          "idempotency-key": "shared-avatar-use-test-0001",
+        }),
+      );
+      expect(denied?.status).toBe(403);
+      expect(await errorCode(await model.call(useRequest(approval, {})))).toBe(
+        "AVATAR_IDEMPOTENCY_REQUIRED",
+      );
+      for (const body of [
+        { ...approval, object_key: "foreign/key" },
+        { ...approval, rights_attested: false },
+      ])
+        expect(await errorCode(await model.call(useRequest(body)))).toBe(
+          "AVATAR_APPROVAL_REJECTED",
+        );
+      const scope = testState.scopeRows.splice(0);
+      try {
+        expect((await model.call())?.status).toBe(403);
+      } finally {
+        testState.scopeRows.push(...scope);
+      }
+      expect(model.bucket.get).not.toHaveBeenCalled();
+      expect(model.bucket.put).not.toHaveBeenCalled();
+    });
+  });
+
+  it("recovers the exact owned draft after an unknown byte-write outcome without writing again", async () => {
+    await withCopyModel("image/png", async (model) => {
+      const write = model.bucket.put.getMockImplementation() as (
+        key: string,
+        data: ArrayBuffer,
+      ) => Promise<void>;
+      model.bucket.put.mockImplementationOnce(async (key: string, data: ArrayBuffer) => {
+        await write(key, data);
+        throw new Error("fixture unknown transport outcome after persisted bytes");
+      });
+      await expect(model.call()).rejects.toThrow("fixture unknown transport outcome");
+      expect(model.metadata.shared_source_version_id).toBe(sourceId);
+      const originalOwnedKey = model.asset.object_key;
+      expect(model.ready).toBe(false);
+      const recovered = await model.call();
+      expect(recovered?.status).toBe(200);
+      expect(model.asset.object_key).toBe(originalOwnedKey);
+      expect(model.ready).toBe(true);
+      expect(model.bucket.put).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("keeps an already owned selection without creating or fetching a copy", async () => {
+    await withCopyModel("image/png", async (model) => {
+      model.source!.account_id = testState.scopeRows[0]!.account_id;
+      const result = await model.call();
+      expect(await result!.json()).toMatchObject({
+        profile_id: PRESET_ID,
+        version_id: sourceId,
+        state: "READY",
+        provider_calls_authorized: false,
+      });
+      expect(model.bucket.get).not.toHaveBeenCalled();
+      expect(model.bucket.put).not.toHaveBeenCalled();
+      expect(model.asset).toEqual({});
+    });
+  });
+
+  it.each([
+    "missing",
+    "runtime",
+    "missing bytes",
+    "checksum",
+    "mime",
+    "size",
+    "oversize",
+    "magic",
+    "archived destination",
+    "destination drift",
+  ])("fails closed for %s without accepting a ready copy", async (issue) => {
+    await withCopyModel("image/png", async (model) => {
+      if (issue === "missing") model.source = null;
+      if (issue === "runtime") model.source!.runtime = null;
+      if (issue === "missing bytes") model.bucket.get.mockResolvedValue(null);
+      if (issue === "checksum") model.runtime.binary_sha256 = `sha256:${"0".repeat(64)}`;
+      if (issue === "mime") model.runtime.content_type = "image/jpeg";
+      if (issue === "size") model.runtime.byte_size = model.bytes.length + 1;
+      if (issue === "oversize") model.runtime.byte_size = 20 * 1024 * 1024 + 1;
+      if (issue === "magic") {
+        model.bytes[0] = 0;
+        model.runtime.binary_sha256 = `sha256:${createHash("sha256").update(model.bytes).digest("hex")}`;
+      }
+      if (issue === "archived destination") model.destinationActive = false;
+      if (issue === "destination drift") model.corruptDestination = true;
+      const result = await model.call();
+      expect(result?.status).toBe(issue === "missing" ? 404 : 409);
+      expect(model.ready).toBe(false);
+      expect(await errorCode(result)).toBe(
+        issue === "missing"
+          ? "AVATAR_NOT_FOUND"
+          : issue === "archived destination"
+            ? "SHARED_AVATAR_COPY_ARCHIVED"
+            : issue === "destination drift"
+              ? "AVATAR_SOURCE_NOT_VERIFIED"
+              : "SHARED_AVATAR_SOURCE_NOT_VERIFIED",
+      );
+      if (issue !== "destination drift") expect(model.bucket.put).not.toHaveBeenCalled();
+    });
+  });
+});
 
 describe("hosted project title conflicts", () => {
   it("maps only the active-project title constraint to a user-facing conflict", () => {
@@ -2283,6 +2638,7 @@ describe("hosted product route contract", () => {
     "/api/v2/hosted/avatars",
     `/api/v2/hosted/avatars/${PRESET_ID}/commit`,
     `/api/v2/hosted/avatars/${PRESET_ID}/approve`,
+    `/api/v2/hosted/avatars/${PRESET_ID}/use`,
     "/api/v2/hosted/styles",
     `/api/v2/hosted/styles/${PRESET_ID}/references/retry`,
     `/api/v2/hosted/styles/${PRESET_ID}/commit`,
@@ -2304,6 +2660,7 @@ describe("hosted product route contract", () => {
     "/api/v2/hosted/avatars",
     `/api/v2/hosted/avatars/${PRESET_ID}/commit`,
     `/api/v2/hosted/avatars/${PRESET_ID}/approve`,
+    `/api/v2/hosted/avatars/${PRESET_ID}/use`,
     "/api/v2/hosted/styles",
     `/api/v2/hosted/styles/${PRESET_ID}/references/retry`,
     `/api/v2/hosted/styles/${PRESET_ID}/commit`,
@@ -2342,6 +2699,7 @@ describe("hosted product route contract", () => {
         "/api/v2/hosted/avatars",
         `/api/v2/hosted/avatars/${PRESET_ID}/commit`,
         `/api/v2/hosted/avatars/${PRESET_ID}/approve`,
+        `/api/v2/hosted/avatars/${PRESET_ID}/use`,
         "/api/v2/hosted/styles",
         `/api/v2/hosted/styles/${PRESET_ID}/references/retry`,
         `/api/v2/hosted/styles/${PRESET_ID}/commit`,
