@@ -47,6 +47,7 @@ it("browses everyone's saved voices and each user's partition without changing t
   const items = voices.map((voice) => ({ ...voice }));
   const collections = [
     { id: "other", name: "Other user", is_current_user: false, voice_ids: ["bob"] },
+    { id: "other-empty", name: "Other user", is_current_user: false, voice_ids: [] },
   ];
   const fetcher = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
     if (init?.method === "POST") {
@@ -62,7 +63,8 @@ it("browses everyone's saved voices and each user's partition without changing t
   expect(screen.getByRole("heading", { name: "Alice" })).toBeVisible();
   const select = screen.getByRole("combobox", { name: "Saved by" });
   fireEvent.click(select);
-  fireEvent.click(screen.getByRole("option", { name: "Other user 1" }));
+  expect(screen.getByRole("option", { name: "Other user (2) 0" })).toBeVisible();
+  fireEvent.click(screen.getByRole("option", { name: "Other user (1) 1" }));
   expect(screen.queryByRole("heading", { name: "Alice" })).toBeNull();
   expect(screen.getByRole("button", { name: "Star Bob" })).toBeVisible();
   fireEvent.click(screen.getByRole("button", { name: "Star Bob" }));
@@ -75,7 +77,7 @@ it("browses everyone's saved voices and each user's partition without changing t
   fireEvent.click(screen.getByRole("button", { name: "Unstar Bob" }));
   await waitFor(() => expect(screen.queryByRole("heading", { name: "Bob" })).toBeNull());
   fireEvent.click(select);
-  fireEvent.click(screen.getByRole("option", { name: "Other user 1" }));
+  fireEvent.click(screen.getByRole("option", { name: "Other user (1) 1" }));
   expect(screen.getByRole("heading", { name: "Bob" })).toBeVisible();
   expect(fetcher.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(2);
 });

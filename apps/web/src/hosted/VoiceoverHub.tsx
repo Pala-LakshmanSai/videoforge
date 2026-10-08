@@ -424,11 +424,18 @@ export function VoiceoverHub() {
                 options={[
                   { value: "everyone", label: "Everyone" },
                   { value: "mine", label: "My saved voices" },
-                  ...otherCollections.map((item) => ({
-                    value: item.id,
-                    label: item.name,
-                    count: item.voice_ids.length,
-                  })),
+                  ...otherCollections.map((item) => {
+                    // ponytail: small invited roster; precompute name ranks for larger teams.
+                    const namesakes = collections.filter((other) => other.name === item.name);
+                    return {
+                      value: item.id,
+                      label:
+                        namesakes.length > 1
+                          ? `${item.name} (${namesakes.findIndex((other) => other.id === item.id) + 1})`
+                          : item.name,
+                      count: item.voice_ids.length,
+                    };
+                  }),
                 ]}
               />
             </div>
