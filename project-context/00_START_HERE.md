@@ -1,4 +1,4 @@
-Shared saved voices are being implemented under DEC_VOICEOVER_SHARED_001. Read `shared_saved_voices_2026_10_08` in CURRENT_STATE.yaml and SHARED_SAVED_VOICES_PLAN.md. Production publication and browser proof remain pending.
+Shared saved voices are live under DEC_VOICEOVER_SHARED_001 at source057cae94 / Worker9c5572d5, native299. All9 users read the same13 saved selections; two-account Chrome, preview, personal star restoration and mobile/keyboard proof pass. Read `shared_saved_voices_2026_10_08` in CURRENT_STATE.yaml and SHARED_SAVED_VOICES_PLAN.md.
 
 Current task: six simultaneous isolated user/project prompt-stage qualification, at most120-second inputs each, fresh USD3 combined prompt-only cap. Read `PROMPT_SIX_CONCURRENCY_PLAN.md` and `prompt_six_concurrency_2026_10_08` in CURRENT_STATE.yaml. No downstream generation or existing-video mutation.
 

@@ -4,16 +4,22 @@ shared_saved_voices_2026_10_08:
   read_profile: v2_09_shared_saved_voices
   brief: SHARED_SAVED_VOICES_PLAN.md
   branch: codex/shared-saved-voices
-  status: LOCAL_VERIFIED_RELEASE_PENDING
+  status: PRODUCTION_VERIFIED
   baseline_executable: e9c8146730bc6f5bb58957741df640fbb0f5eb83
   baseline_worker: 2e14f1a4-3f6c-4c76-bda5-1835f376c67d
-  candidate_native_migration: 299
+  native_migration: 299
+  executable: 057cae940d1b41711908b3fd41a4224ce0dc25c1
+  worker: 9c5572d5-09e7-4232-880f-1fb961b9d02d
+  traffic_percent: 100
+  production_roster: Nine_users_same13saved_voices
+  browser: Two_signed_in_accounts_partitions_preview_personal_stars_exact_restore_mobile_keyboard_PASS
+  publication: Assets37_bindings55_secrets27_CPU300000_threeWorkflowIDs_and_registrations_preserved
   decision: DEC_VOICEOVER_SHARED_001
   provider_spend: USD0_new_generation_or_compute
   paid_compute_shutdown: No_compute_started_stopped_or_reaudited_existing_jobs_preserved
   validation: Web3360pass1skip_focused82_database8_nativeRollback_types_lint_builds_quarantine_context_secrets_PASS
   evidence: evidence/acceptance/VF-10-09/2026-10-08-shared-saved-voices.md
-  remaining_gates: Native_commit_runtime_reads_Chrome_and_production_release
+  remaining_gates: No_fresh_paid_synthesis_fullfilm_invoice_or_broadCI_claim
 
 prompt_six_concurrency_2026_10_08:
   checkpoint: V2-09
@@ -10504,8 +10510,8 @@ recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
   milestone: Share_saved_voice_collections_for_every_admitted_user
-  status: IN_PROGRESS
-  dependency_status: Productione9c81467_native298_verified
+  status: COMPLETE
+  dependency_status: Production057cae94_native299_verified
   authorization_status: User_requested_universal_saved_voices_with_user_partitions
   task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current

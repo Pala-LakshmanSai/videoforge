@@ -4,7 +4,7 @@ Checkpoint V2-09 / VF-10-09; profile `v2_09_shared_saved_voices`. The user reque
 
 ## Behavior and ownership
 
-Saved defaults to Everyone, a deduplicated union of saved voices. A themed Saved by selector offers My saved voices and every other admitted user's display-name collection, including empty lists. Existing name search, metadata filters, sort, pagination and previews operate within the chosen collection. Stars modify only the viewer's preferences. Import saves into the viewer's list and opens My saved voices; its shared visibility is stated before import.
+Saved defaults to Everyone, a deduplicated union of saved voices. A themed Saved by selector offers My saved voices and every other admitted user's display-name collection, including empty lists. Repeated display names receive stable numbered labels. Existing name search, metadata filters, sort, pagination and previews operate within the chosen collection. Stars modify only the viewer's preferences. Import saves into the viewer's list and opens My saved voices; its shared visibility is stated before import.
 
 The read-only database exception exposes only display names, account identifiers and saved voice IDs for admitted, verified, non-revoked identities. No emails, scripts, jobs, audio outputs, avatars, styles, costs or credentials enter the shared catalog. Unsaved imported voices retain their existing owner/import authorization. Shared imported voices are available to preview, save, video narration and standalone narration; a viewer's own save preserves availability after the source unstars it.
 
