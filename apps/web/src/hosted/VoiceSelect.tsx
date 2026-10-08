@@ -122,7 +122,11 @@ export function VoiceSelect({
   function openMenu() {
     const bounds = input.current?.getBoundingClientRect();
     if (bounds) {
-      const below = window.innerHeight - bounds.bottom;
+      const navigation = document
+        .querySelector('[aria-label="Primary navigation"]')
+        ?.getBoundingClientRect();
+      const below =
+        Math.min(window.innerHeight, navigation?.top ?? window.innerHeight) - bounds.bottom;
       const opensAbove = below < 360 && bounds.top > below;
       setAbove(opensAbove);
       setMenuHeight(Math.max(0, Math.min(440, (opensAbove ? bounds.top : below) - 16)));

@@ -883,3 +883,31 @@ it("opens an empty personal collection even when another user has saved voices",
   fireEvent.click(screen.getByRole("button", { name: "Browse all voices" }));
   expect(screen.getByRole("grid")).toHaveTextContent("Bob");
 });
+
+it("keeps the creation voice popup above the floating navigation", () => {
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+    this: HTMLElement,
+  ) {
+    const nav = this.getAttribute("aria-label") === "Primary navigation";
+    return {
+      top: nav ? 640 : 200,
+      bottom: nav ? 730 : 246,
+      left: 0,
+      right: 300,
+      width: 300,
+      height: nav ? 90 : 46,
+      x: 0,
+      y: nav ? 640 : 200,
+      toJSON: () => ({}),
+    };
+  });
+  const { container } = render(
+    <>
+      <VoiceSelect voices={voices} value="alice" disabled={false} onChange={vi.fn()} />
+      <nav aria-label="Primary navigation" />
+    </>,
+  );
+  fireEvent.focus(screen.getByRole("combobox", { name: "Script voice" }));
+  const popup = container.querySelector<HTMLElement>(".voice-select-menu")!;
+  expect(Number.parseFloat(popup.style.maxHeight) + 246 + 8).toBeLessThanOrEqual(640);
+});
