@@ -1,3 +1,15 @@
+shared_voice_picker_2026_10_08:
+  checkpoint: V2-09
+  selected_task: VF-10-09
+  status: LOCAL_QUALIFIED
+  baseline_executable: 057cae940d1b41711908b3fd41a4224ce0dc25c1
+  baseline_worker: 9c5572d5-09e7-4232-880f-1fb961b9d02d
+  native_migration: 299
+  provider_spend: USD0_new_generation_or_compute
+  paid_compute_shutdown: No_new_compute_or_resource_actions
+  validation: Web3361pass1skip_focused76_finalPicker31_types_lint_format_builds_bundle_context_secrets_PASS
+  remaining_gates: Production_publication_and_Chrome_acceptance
+
 shared_saved_voices_2026_10_08:
   checkpoint: V2-09
   selected_task: VF-10-09
@@ -3595,7 +3607,7 @@ updated_at: "2026-10-07T10:32:45Z"
 
 phase: serverless_v2_two_track_execution_active
 implementation_authorized_in_current_task: true
-current_milestone: Share_saved_voice_collections_for_every_admitted_user
+current_milestone: Shared_saved_voice_partitions_in_creation_picker
 current_task: VF-10-09
 current_wave: v2_09_cloud_status
 execution_plan: 21_IMPLEMENTATION_EXECUTION_PLAN.md
@@ -10509,15 +10521,15 @@ provider_authority: &v2_09_provider_authority_current
 recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
-  milestone: Share_saved_voice_collections_for_every_admitted_user
-  status: COMPLETE
+  milestone: Shared_saved_voice_partitions_in_creation_picker
+  status: IMPLEMENTING
   dependency_status: Production057cae94_native299_verified
   authorization_status: User_requested_universal_saved_voices_with_user_partitions
   task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current
   read_profile: v2_09_shared_saved_voices
   task_brief: SHARED_SAVED_VOICES_PLAN.md
-  goal: Verify_shared_catalog_private_writes_and_production_browser_acceptance
+  goal: Share_voice_collection_browsing_in_all_creation_pickers_and_verify_production
   provider_mode: fixture
   provider_calls_authorized: true
   read_only_provider_calls_authorized: true

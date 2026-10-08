@@ -476,6 +476,7 @@ export function StandaloneVoiceover() {
             <div className="standalone-voice-select">
               <VoiceSelect
                 voices={voices.data?.voices ?? []}
+                collections={voices.data?.collections}
                 value={voiceId}
                 disabled={locked || voices.isPending || Boolean(voices.error)}
                 onChange={changeVoice}

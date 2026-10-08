@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: ReactNode }) => <a href="/voiceovers">{children}</a>,
 }));
-import { VoiceoverHub, ScriptVoiceover } from "./VoiceoverHub";
+import { VoiceoverHub, ScriptVoiceover, ScriptProjectFields } from "./VoiceoverHub";
 import { VoiceSelect } from "./VoiceSelect";
 import { VoiceFilterSelect } from "./VoiceFilterSelect";
 const voices = [
@@ -71,7 +71,7 @@ it("browses everyone's saved voices and each user's partition without changing t
   await screen.findByRole("button", { name: "Unstar Bob" });
   expect(collections[0]?.voice_ids).toEqual(["bob"]);
   fireEvent.click(select);
-  fireEvent.click(screen.getByRole("option", { name: "My saved voices" }));
+  fireEvent.click(screen.getByRole("option", { name: /^My saved voices/ }));
   expect(screen.getByRole("heading", { name: "Alice" })).toBeVisible();
   expect(screen.getByRole("heading", { name: "Bob" })).toBeVisible();
   fireEvent.click(screen.getByRole("button", { name: "Unstar Bob" }));
@@ -769,4 +769,65 @@ it("navigates styled filter menus with keyboard, skips unavailable options and d
   expect(screen.queryByRole("listbox")).toBeNull();
   expect(trigger).toBeDisabled();
   expect(change).toHaveBeenCalledTimes(1);
+});
+
+it("browses shared partitions in video creation without changing the script or generating", async () => {
+  const samples = [
+    ...voices.map((v) => ({ ...v, preview_url: `/${v.voice_id}.mp3` })),
+    { ...voices[1], voice_id: "carl", name: "Carl" },
+  ];
+  const collections = [
+    { id: "mine-id", name: "Alex", is_current_user: true, voice_ids: ["alice"] },
+    { id: "other", name: "Alex", is_current_user: false, voice_ids: ["bob", "alice"] },
+    { id: "empty", name: "Empty user", is_current_user: false, voice_ids: [] },
+  ];
+  const fetcher = vi.fn(async () => Response.json({ voices: samples, collections }));
+  vi.stubGlobal("fetch", fetcher);
+  vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+  vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+  const change = vi.fn();
+  const submit = vi.fn((event: React.FormEvent) => event.preventDefault());
+  const draft = { voiceId: "alice", script: "Keep this exact video narration." };
+  wrap(
+    <form onSubmit={submit}>
+      <ScriptProjectFields value={draft} onChange={change} disabled={false} />
+    </form>,
+  );
+  const picker = screen.getByRole("combobox", { name: "Script voice" });
+  await waitFor(() => expect(picker).toHaveValue("Alice"));
+  fireEvent.focus(picker);
+  expect(screen.getByRole("grid")).toHaveTextContent("Bob");
+  expect(screen.getByRole("grid")).not.toHaveTextContent("Carl");
+  const collection = screen.getByRole("combobox", { name: "Collection" });
+  expect(collection).toHaveTextContent("Everyone");
+  fireEvent.change(picker, { target: { value: "Alice" } });
+  fireEvent.click(collection);
+  fireEvent.click(screen.getByRole("option", { name: "Alex (2) 2" }));
+  expect(picker).toHaveValue("");
+  fireEvent.click(screen.getByRole("button", { name: "Listen to Bob" }));
+  expect(screen.getByLabelText("Bob voice sample")).toBeInTheDocument();
+  fireEvent.click(collection);
+  fireEvent.click(screen.getByRole("option", { name: "Empty user 0" }));
+  expect(screen.queryByLabelText("Bob voice sample")).toBeNull();
+  expect(screen.getByText("No saved voices in this collection yet.")).toBeVisible();
+  expect(screen.getByLabelText("Voiceover script")).toHaveValue(draft.script);
+  expect(change).not.toHaveBeenCalled();
+  expect(submit).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Browse all voices" }));
+  expect(screen.getByRole("grid")).toHaveTextContent("Carl");
+  fireEvent.click(collection);
+  fireEvent.keyDown(collection, { key: "Escape" });
+  expect(collection).toHaveAttribute("aria-expanded", "false");
+  expect(screen.getByRole("grid")).toBeVisible();
+  fireEvent.click(collection);
+  fireEvent.click(screen.getByRole("option", { name: "My saved voices 1" }));
+  expect(screen.getByRole("grid")).not.toHaveTextContent("Bob");
+  fireEvent.click(collection);
+  fireEvent.click(screen.getByRole("option", { name: "Alex (2) 2" }));
+  fireEvent.change(picker, { target: { value: "b" } });
+  fireEvent.keyDown(picker, { key: "Enter" });
+  expect(change).toHaveBeenCalledExactlyOnceWith({ ...draft, voiceId: "bob" });
+  expect(screen.queryByRole("grid")).toBeNull();
+  expect(submit).not.toHaveBeenCalled();
+  expect(fetcher.mock.calls).toHaveLength(1);
 });

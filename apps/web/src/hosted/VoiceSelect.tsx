@@ -10,15 +10,25 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
-import { compareVoices, matchesVoiceName, type Voice } from "./voice-library";
+import {
+  compareVoices,
+  matchesVoiceName,
+  savedVoicesInCollection,
+  savedVoiceCollectionOptions,
+  type Voice,
+  type SavedVoiceCollection,
+} from "./voice-library";
+import { VoiceFilterSelect } from "./VoiceFilterSelect";
 
 export function VoiceSelect({
   voices,
+  collections,
   value,
   disabled,
   onChange,
 }: {
   voices: Voice[];
+  collections?: SavedVoiceCollection[];
   value: string;
   disabled: boolean;
   onChange: (id: string) => void;
@@ -28,9 +38,11 @@ export function VoiceSelect({
   const input = useRef<HTMLInputElement>(null);
   const activeOption = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const [collection, setCollection] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const [above, setAbove] = useState(false);
+  const [menuHeight, setMenuHeight] = useState(440);
   const audio = useRef<HTMLAudioElement>(null);
   const playbackRequest = useRef(0);
   const [preview, setPreview] = useState<Voice | null>(null);
@@ -85,7 +97,18 @@ export function VoiceSelect({
     };
   }, [preview]);
   const selected = voices.find((voice) => voice.voice_id === value);
-  const visible = voices.filter((voice) => matchesVoiceName(voice, query)).sort(compareVoices);
+  const collectionOptions = savedVoiceCollectionOptions(voices, collections ?? []);
+  const scope =
+    collection ?? (collections !== undefined && collectionOptions[0]?.count ? "everyone" : "all");
+  const scoped =
+    scope === "all" ? voices : savedVoicesInCollection(voices, collections ?? [], scope);
+  const visible = scoped.filter((voice) => matchesVoiceName(voice, query)).sort(compareVoices);
+  function browse(next: string) {
+    stopPreview();
+    setCollection(next);
+    setQuery("");
+    setActive(0);
+  }
   const activeIndex = Math.min(active, Math.max(0, visible.length - 1));
   function close() {
     stopPreview();
@@ -99,7 +122,12 @@ export function VoiceSelect({
   }
   function openMenu() {
     const bounds = input.current?.getBoundingClientRect();
-    setAbove(Boolean(bounds && window.innerHeight - bounds.bottom < 360 && bounds.top > 260));
+    if (bounds) {
+      const below = window.innerHeight - bounds.bottom;
+      const opensAbove = below < 360 && bounds.top > below;
+      setAbove(opensAbove);
+      setMenuHeight(Math.max(0, Math.min(440, (opensAbove ? bounds.top : below) - 16)));
+    }
     setOpen(true);
   }
   useEffect(() => {
@@ -115,13 +143,13 @@ export function VoiceSelect({
   }, [open]);
   useEffect(() => {
     if (open) activeOption.current?.scrollIntoView?.({ block: "nearest" });
-  }, [activeIndex, open, query]);
+  }, [activeIndex, open, query, scope]);
   return (
     <div
       className="voice-select"
       ref={root}
       onKeyDown={(event) => {
-        if (event.key === "Escape") {
+        if (event.key === "Escape" && !event.defaultPrevented) {
           event.preventDefault();
           input.current?.focus();
           close();
@@ -228,94 +256,121 @@ export function VoiceSelect({
         />
       )}
       {open && !disabled && (
-        <div className={`voice-select-menu ${above ? "voice-select-menu-above" : ""}`}>
-          <p className="voice-select-hint">
-            {query.trim()
-              ? `${visible.length} matching voices`
-              : "Your favorites first · Listen before choosing"}
-          </p>
-          <div role="grid" id={`${id}-list`} aria-label="Voice options">
-            {visible.map((voice, index) => (
-              <div
-                key={voice.voice_id}
-                id={`${id}-option-${index}`}
-                role="row"
-                ref={index === activeIndex ? activeOption : undefined}
-                aria-selected={voice.voice_id === value}
-                className={`voice-select-option ${index === activeIndex ? "is-active" : ""}`}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => choose(voice)}
-              >
-                <span role="gridcell" className="voice-select-name">
-                  <strong>{voice.name}</strong>
-                  <small>{voice.tags || "Narration voice"}</small>
-                </span>
-                <span role="gridcell" className="voice-select-actions">
-                  {voice.starred ? (
-                    <Star size={15} fill="currentColor" aria-label="Starred" />
-                  ) : voice.saved ? (
-                    <small>Saved</small>
-                  ) : null}
-                  {voice.voice_id === value && <Check size={16} aria-label="Selected" />}
-                  <button
-                    type="button"
-                    className={`voice-select-listen ${preview?.voice_id === voice.voice_id ? "is-previewing" : ""}`}
-                    tabIndex={index === activeIndex ? 0 : -1}
-                    disabled={!voice.preview_url}
-                    aria-label={
-                      !voice.preview_url
-                        ? `Preview unavailable for ${voice.name}`
-                        : `${preview?.voice_id === voice.voice_id && (playing || loading) ? "Pause" : "Listen to"} ${voice.name}`
-                    }
-                    title={
-                      voice.preview_url
-                        ? "Listen to sample · Alt+P for highlighted voice"
-                        : "No sample available"
-                    }
-                    onFocus={() => setActive(index)}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setActive(index);
-                      listen(voice);
-                    }}
-                  >
-                    {preview?.voice_id === voice.voice_id && loading ? (
-                      <LoaderCircle size={17} className="voice-select-loading" aria-hidden="true" />
-                    ) : preview?.voice_id === voice.voice_id && playing ? (
-                      <Pause size={17} aria-hidden="true" />
-                    ) : (
-                      <Play size={17} aria-hidden="true" />
-                    )}
-                  </button>
-                </span>
-              </div>
-            ))}
-          </div>
-          {preview && (
-            <div className="voice-select-preview" role="status">
-              <Headphones size={16} aria-hidden="true" />
-              <span>
-                <strong>{preview.name}</strong>
-                <small>
-                  {previewError
-                    ? "Couldn't play sample. Try again."
-                    : loading
-                      ? "Loading sample…"
-                      : playing
-                        ? "Playing sample · Your selection is unchanged"
-                        : "Sample ready · Listen again anytime"}
-                </small>
-              </span>
-              <button type="button" aria-label="Stop voice sample" onClick={stopPreview}>
-                <X size={16} aria-hidden="true" />
-              </button>
-            </div>
-          )}
-          {!visible.length && (
-            <p className="voice-select-empty" role="status">
-              No matching voices. Try the start of a name.
+        <div
+          className={`voice-select-menu ${above ? "voice-select-menu-above" : ""}`}
+          style={{ maxHeight: menuHeight }}
+        >
+          <div className="voice-select-toolbar">
+            <VoiceFilterSelect
+              label="Collection"
+              value={scope}
+              options={[
+                ...collectionOptions,
+                { value: "all", label: "All voices", count: voices.length },
+              ]}
+              onChange={browse}
+            />
+            <p className="voice-select-hint">
+              {query.trim()
+                ? `${visible.length} matching voices`
+                : `${scoped.length} voices · Listen before choosing`}
             </p>
-          )}
+          </div>
+          <div className="voice-select-results">
+            <div role="grid" id={`${id}-list`} aria-label="Voice options">
+              {visible.map((voice, index) => (
+                <div
+                  key={voice.voice_id}
+                  id={`${id}-option-${index}`}
+                  role="row"
+                  ref={index === activeIndex ? activeOption : undefined}
+                  aria-selected={voice.voice_id === value}
+                  className={`voice-select-option ${index === activeIndex ? "is-active" : ""}`}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => choose(voice)}
+                >
+                  <span role="gridcell" className="voice-select-name">
+                    <strong>{voice.name}</strong>
+                    <small>{voice.tags || "Narration voice"}</small>
+                  </span>
+                  <span role="gridcell" className="voice-select-actions">
+                    {voice.starred ? (
+                      <Star size={15} fill="currentColor" aria-label="Starred" />
+                    ) : voice.saved ? (
+                      <small>Saved</small>
+                    ) : null}
+                    {voice.voice_id === value && <Check size={16} aria-label="Selected" />}
+                    <button
+                      type="button"
+                      className={`voice-select-listen ${preview?.voice_id === voice.voice_id ? "is-previewing" : ""}`}
+                      tabIndex={index === activeIndex ? 0 : -1}
+                      disabled={!voice.preview_url}
+                      aria-label={
+                        !voice.preview_url
+                          ? `Preview unavailable for ${voice.name}`
+                          : `${preview?.voice_id === voice.voice_id && (playing || loading) ? "Pause" : "Listen to"} ${voice.name}`
+                      }
+                      title={
+                        voice.preview_url
+                          ? "Listen to sample · Alt+P for highlighted voice"
+                          : "No sample available"
+                      }
+                      onFocus={() => setActive(index)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setActive(index);
+                        listen(voice);
+                      }}
+                    >
+                      {preview?.voice_id === voice.voice_id && loading ? (
+                        <LoaderCircle
+                          size={17}
+                          className="voice-select-loading"
+                          aria-hidden="true"
+                        />
+                      ) : preview?.voice_id === voice.voice_id && playing ? (
+                        <Pause size={17} aria-hidden="true" />
+                      ) : (
+                        <Play size={17} aria-hidden="true" />
+                      )}
+                    </button>
+                  </span>
+                </div>
+              ))}
+            </div>
+            {preview && (
+              <div className="voice-select-preview" role="status">
+                <Headphones size={16} aria-hidden="true" />
+                <span>
+                  <strong>{preview.name}</strong>
+                  <small>
+                    {previewError
+                      ? "Couldn't play sample. Try again."
+                      : loading
+                        ? "Loading sample…"
+                        : playing
+                          ? "Playing sample · Your selection is unchanged"
+                          : "Sample ready · Listen again anytime"}
+                  </small>
+                </span>
+                <button type="button" aria-label="Stop voice sample" onClick={stopPreview}>
+                  <X size={16} aria-hidden="true" />
+                </button>
+              </div>
+            )}
+            {!visible.length && (
+              <p className="voice-select-empty" role="status">
+                {query.trim()
+                  ? "No matching voices. Try the start of a name."
+                  : "No saved voices in this collection yet."}
+                {scope !== "all" && (
+                  <button type="button" onClick={() => browse("all")}>
+                    Browse all voices
+                  </button>
+                )}
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>

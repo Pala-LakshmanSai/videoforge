@@ -18,6 +18,56 @@ export interface VoiceCatalog {
   }[];
 }
 
+export type SavedVoiceCollection = NonNullable<VoiceCatalog["collections"]>[number];
+
+export function savedVoicesInCollection(
+  voices: Voice[],
+  collections: SavedVoiceCollection[],
+  collection: string,
+): Voice[] {
+  const ids = new Set(
+    collections
+      .filter(
+        (item) => !item.is_current_user && (collection === "everyone" || item.id === collection),
+      )
+      .flatMap((item) => item.voice_ids),
+  );
+  return voices.filter((voice) =>
+    collection === "mine"
+      ? voice.saved
+      : ids.has(voice.voice_id) || (collection === "everyone" && voice.saved),
+  );
+}
+
+export function savedVoiceCollectionOptions(voices: Voice[], collections: SavedVoiceCollection[]) {
+  return [
+    {
+      value: "everyone",
+      label: "Everyone",
+      count: savedVoicesInCollection(voices, collections, "everyone").length,
+    },
+    {
+      value: "mine",
+      label: "My saved voices",
+      count: voices.filter((voice) => voice.saved).length,
+    },
+    ...collections
+      .filter((item) => !item.is_current_user)
+      .map((item) => {
+        // ponytail: small invited roster; precompute name ranks for larger teams.
+        const namesakes = collections.filter((other) => other.name === item.name);
+        return {
+          value: item.id,
+          label:
+            namesakes.length > 1
+              ? `${item.name} (${namesakes.findIndex((other) => other.id === item.id) + 1})`
+              : item.name,
+          count: item.voice_ids.length,
+        };
+      }),
+  ];
+}
+
 export function normalizeVoiceName(value: string): string {
   return value.normalize("NFKD").replace(/\p{M}/gu, "").trim().replace(/\s+/gu, " ").toLowerCase();
 }

@@ -23,6 +23,8 @@ import {
   voiceFacetLabel,
   voiceFilterLabels,
   voiceTraits,
+  savedVoicesInCollection,
+  savedVoiceCollectionOptions,
   type Voice,
   type VoiceCatalog,
   type VoiceFacet,
@@ -92,18 +94,9 @@ export function VoiceoverHub() {
   const searchInput = useRef<HTMLInputElement>(null);
   const all = voices.data?.voices ?? [];
   const collections = voices.data?.collections ?? [];
-  const otherCollections = collections.filter((item) => !item.is_current_user);
-  const selectedVoiceIds = new Set(
-    (collection === "everyone"
-      ? otherCollections
-      : otherCollections.filter((item) => item.id === collection)
-    ).flatMap((item) => item.voice_ids),
-  );
-  const isInCollection = (voice: Voice) =>
-    collection === "mine"
-      ? voice.saved
-      : selectedVoiceIds.has(voice.voice_id) || (collection === "everyone" && voice.saved);
-  const savedCount = all.filter(isInCollection).length;
+  const collectionVoices = new Set(savedVoicesInCollection(all, collections, collection));
+  const isInCollection = (voice: Voice) => collectionVoices.has(voice);
+  const savedCount = collectionVoices.size;
   const selectedFilter = filter ?? (savedCount ? "saved" : "all");
   const selectedSort = sort ?? (selectedFilter === "all" ? "name" : "favorites");
   useEffect(() => {
@@ -421,22 +414,7 @@ export function VoiceoverHub() {
                 value={collection}
                 onChange={setCollection}
                 disabled={voices.isPending || Boolean(voices.error)}
-                options={[
-                  { value: "everyone", label: "Everyone" },
-                  { value: "mine", label: "My saved voices" },
-                  ...otherCollections.map((item) => {
-                    // ponytail: small invited roster; precompute name ranks for larger teams.
-                    const namesakes = collections.filter((other) => other.name === item.name);
-                    return {
-                      value: item.id,
-                      label:
-                        namesakes.length > 1
-                          ? `${item.name} (${namesakes.findIndex((other) => other.id === item.id) + 1})`
-                          : item.name,
-                      count: item.voice_ids.length,
-                    };
-                  }),
-                ]}
+                options={savedVoiceCollectionOptions(all, collections)}
               />
             </div>
           )}
@@ -729,6 +707,7 @@ export function ScriptProjectFields({
         <div className="field">
           <VoiceSelect
             voices={voices.data?.voices ?? []}
+            collections={voices.data?.collections}
             value={value.voiceId}
             disabled={disabled || voices.isPending}
             onChange={(voiceId) => onChange({ ...value, voiceId })}
@@ -982,6 +961,7 @@ export function ScriptVoiceover({
         <div className="field">
           <VoiceSelect
             voices={voices.data?.voices ?? []}
+            collections={voices.data?.collections}
             value={voiceId}
             disabled={inputLocked || voices.isPending}
             onChange={(id) => {
