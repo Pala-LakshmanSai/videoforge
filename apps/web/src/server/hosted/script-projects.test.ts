@@ -1,4 +1,9 @@
+// @vitest-environment node
 import { beforeEach, expect, it, vi } from "vitest";
+vi.mock("./voiceover-decoder", async () => {
+  const { MPEGDecoder } = await import("mpg123-decoder");
+  return { createVoiceoverDecoder: () => new MPEGDecoder({ enableGapless: false }) };
+});
 const fixture = vi.hoisted(() => ({
   intake: {} as Record<string, unknown>,
   job: null as Record<string, unknown> | null,

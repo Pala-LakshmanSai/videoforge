@@ -1,5 +1,7 @@
 # Pipeline and deterministic scheduler
 
+Narration: `VOICEOVER_LOUDNESS_PLAN.md` (DEC_VOICEOVER_001).
+
 Fresh ordinary generation uses the same fair DB admission, transcript, scheduler, prompt writer,
 selected-span audio, and revision-selected Local/Cloud render. After those stages, migration 0188 materializes
 Kie image and Fal audio-to-video jobs; the API Workflow claims each before submission, verifies

@@ -165,6 +165,8 @@ The user requests the same saved voices for everyone, with partitions for each u
 
 ## DEC_VOICEOVER_001 — J1TTS and private Voiceover Hub (2026-10-04)
 
+2026-10-14 user extension: diagnose and repair generated voiceover fades through production. New standalone and script-generated audio receives shared bounded speech-level correction before acceptance; preserve compressed speech/timing, guard source identity and peaks, and record processing provenance. No provider/model change, fresh generation or paid media worker is required. Existing accepted/uploaded audio remains immutable. Provider-internal synthesis cause and universally perfect future delivery are not claimed; verify concrete retained samples and runtime behavior.
+
 2026-10-06 user extension: add catalog Age filtering and visible card age details; consolidate card Save/Star into the star, toggling both existing private preference flags without data migration. Preserve existing saved-only voices. Use explicit age labels and Not specified, never numeric age inference.
 
 2026-10-05 user extension: implement useful gender/accent and metadata filters through production. Reuse the authorized catalog and themed accessible controls; the 17:14 follow-up requires polished dropdown interiors, superseding native selects; preserve prefix search and preference/privacy behavior. Regions and explicit accent descriptions remain separate; do not infer age or quality. See VOICE_FILTERS_PLAN.md and the UI specification.

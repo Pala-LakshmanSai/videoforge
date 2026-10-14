@@ -1,9 +1,14 @@
+// @vitest-environment node
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import type { HostedRuntimeEnvironment } from "./configuration";
 const mocks = vi.hoisted(() => ({ query: vi.fn(), download: vi.fn() }));
 vi.mock("./neon", () => ({ createNeonPool: () => ({ query: mocks.query, end: vi.fn() }) }));
 vi.mock("./j1tts", () => ({ j1Fetch: mocks.download }));
+vi.mock("./voiceover-decoder", async () => {
+  const { MPEGDecoder } = await import("mpg123-decoder");
+  return { createVoiceoverDecoder: () => new MPEGDecoder({ enableGapless: false }) };
+});
 import { archiveStandaloneVoiceover } from "./voiceover-archive";
 const target = {
   accountId: "11111111-1111-4111-8111-111111111111",
@@ -108,7 +113,7 @@ it("archives verified short MP3 once from the saved provider identity without ge
     1045,
   ]);
   await archiveStandaloneVoiceover(env, target);
-  expect(mocks.download).toHaveBeenCalledTimes(1);
+  expect(mocks.download).toHaveBeenCalledTimes(2);
 });
 it("keeps committed bytes after a lost database response", async () => {
   failure = "after";
@@ -143,7 +148,7 @@ it("sweeps every expired claim object before download and retries after cleanup 
 
   failDelete = false;
   await archiveStandaloneVoiceover(env, target);
-  expect(mocks.download).toHaveBeenCalledTimes(1);
+  expect(mocks.download).toHaveBeenCalledTimes(2);
   expect(objects.has(staleKey)).toBe(false);
   expect(objects.has(secondStaleKey)).toBe(false);
   expect(objects.has(foreignKey)).toBe(true);

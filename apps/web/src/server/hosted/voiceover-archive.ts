@@ -76,25 +76,21 @@ export async function archiveStandaloneVoiceover(
         `/v1/tts/${encodeURIComponent(asset.provider_job_id!)}/download`,
         { signal: AbortSignal.timeout(120_000) },
       );
-    let audio = await download();
-    let length = Number(audio.headers.get("content-length"));
-    if (!Number.isSafeInteger(length) || length <= 0) {
-      if (!audio.body) throw new Error("GENERATED_VOICEOVER_DOWNLOAD_PENDING");
-      const probe = generatedVoiceoverAudio(0.01);
-      await audio.body
-        .pipeThrough(probe.stream)
-        .pipeTo(new WritableStream({ write() {} }), { signal: AbortSignal.timeout(120_000) });
-      length = probe.receipt().content_length;
-      audio = await download();
-    }
-    if (!audio.body || length > 1_073_741_824) throw new Error("VOICEOVER_CONTENT_LENGTH_INVALID");
+    const { leveledVoiceover } = await import("./leveled-voiceover");
+    const audio = await leveledVoiceover(download, 0.01);
     const measured = generatedVoiceoverAudio(0.01);
     await bucket.put(
       objectKey,
       audio.body
         .pipeThrough(measured.stream, { signal: AbortSignal.timeout(120_000) })
-        .pipeThrough(fixedLengthAudioStream(length)),
-      { httpMetadata: { contentType: "audio/mpeg" } },
+        .pipeThrough(fixedLengthAudioStream(audio.length)),
+      {
+        httpMetadata: { contentType: "audio/mpeg" },
+        customMetadata: {
+          source_sha256: audio.sourceChecksum,
+          audio_processing: "speech-level-v1",
+        },
+      },
     );
     const receipt = measured.receipt();
     const head = await bucket.head(objectKey);

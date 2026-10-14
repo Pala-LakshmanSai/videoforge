@@ -1,0 +1,14 @@
+diff --git a/index.js b/index.js
+index 3b05df9d1d5fec3e71131ae81f20b1c8aa9a2858..e03a7ce61125451db097ca78876d3dbb47387fe2 100644
+--- a/index.js
++++ b/index.js
+@@ -1,8 +1,6 @@
+ import MPEGDecoder from "./src/MPEGDecoder.js";
+-import MPEGDecoderWebWorker from "./src/MPEGDecoderWebWorker.js";
+ import { assignNames } from "@wasm-audio-decoders/common";
+ 
+ assignNames(MPEGDecoder, "MPEGDecoder");
+-assignNames(MPEGDecoderWebWorker, "MPEGDecoderWebWorker");
+ 
+-export { MPEGDecoder, MPEGDecoderWebWorker };
++export { MPEGDecoder };

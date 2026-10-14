@@ -39,6 +39,7 @@
     "better-auth": "1.6.29",
     "hono": "4.13.7",
     "lucide-react": "0.542.0",
+    "mpg123-decoder": "1.0.3",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "zod": "4.1.5"

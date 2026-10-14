@@ -1,3 +1,5 @@
+Current task: generated voiceover loudness repair, V2-09/VF-10-09. Read `voiceover_loudness_2026_10_14` in CURRENT_STATE.yaml and the selected `v2_09_voiceover_loudness` profile. Shared standalone/script intake levels sustained provider MP3 attenuation before accepting new audio, with byte-identity and peak guards. Existing accepted/uploaded audio remains unchanged; release proof is recorded in CURRENT_STATE.yaml.
+
 Shared saved voices are live at source30b8cf97 / Worker29f4bf7e, native300. The Hub and video/standalone creation selectors default to My saved voices, with Everyone, each user and small email subtitles. Nine runtime principals, two-account Chrome, draft/sample/keyboard/mobile and exact saved-row preservation pass. Read `shared_voice_picker_2026_10_08` in CURRENT_STATE.yaml and SHARED_SAVED_VOICES_PLAN.md.
 
 

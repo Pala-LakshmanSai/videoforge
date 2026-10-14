@@ -1,0 +1,11 @@
+diff --git a/index.js b/index.js
+index e8453deaf5038f52802fb9bec1c52d7a86d4061a..37423a123091e41924724487acd87ec4e08ffef2 100644
+--- a/index.js
++++ b/index.js
+@@ -1,5 +1,4 @@
+ import WASMAudioDecoderCommon from "./src/WASMAudioDecoderCommon.js";
+-import WASMAudioDecoderWorker from "./src/WASMAudioDecoderWorker.js";
+ import { assignNames } from "./src/utilities.js";
+ 
+-export { WASMAudioDecoderCommon, WASMAudioDecoderWorker, assignNames };
++export { WASMAudioDecoderCommon, assignNames };

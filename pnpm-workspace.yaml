@@ -15,3 +15,7 @@ overrides:
 allowBuilds:
   esbuild: true
   workerd: true
+
+patchedDependencies:
+  '@wasm-audio-decoders/common@9.0.7': patches/@wasm-audio-decoders__common@9.0.7.patch
+  mpg123-decoder@1.0.3: patches/mpg123-decoder@1.0.3.patch

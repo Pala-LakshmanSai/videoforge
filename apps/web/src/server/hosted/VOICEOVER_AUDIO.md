@@ -1,0 +1,11 @@
+# Generated voiceover leveling
+
+Both standalone archival and script-project intake use `leveled-voiceover.ts` before accepting new audio. Uploaded narration and already accepted outputs remain immutable. The first retrieval validates the MP3 and decodes bounded chunks to half-second RMS/peak measurements. The second retrieval must match the original SHA-256 and length. Only MPEG Layer III gain fields (and CRC when present) change; compressed speech data, frame count, sample rate and duration remain unchanged. The accepted object records the source checksum and `speech-level-v1` in private metadata.
+
+The slow speech envelope uses a five-second neighborhood, avoids raising pauses in isolation, caps correction at 27 dB, and reserves 2 dB of sampled peak headroom with a one-second neighboring-peak guard. MPEG gain steps are 1.50515 dB. This is a bounded correction for sustained TTS attenuation, not a guarantee of artistic consistency, true-peak compliance for every possible waveform, or repair of missing/distorted speech. Final video loudness checks remain separate. No provider submission, model change or paid media worker is involved.
+
+`mpg123.wasm` is the unmodified 99,479-byte module distributed inside pinned `mpg123-decoder@1.0.3`. Run `node scripts/prepare-voiceover-decoder.mjs --check` to verify it, or omit `--check` to reproduce it. Cloudflare requires the compiled module as a static import. The two pnpm patches only remove unused browser Web Worker exports, which otherwise access unavailable `Worker`, `vm` and `worker_threads` APIs; decoding code is unchanged.
+
+Upstream source and notices: https://github.com/eshaz/wasm-audio-decoders (MIT JavaScript wrapper); https://www.mpg123.de/ (libmpg123, LGPL 2.1). The independent WebAssembly module can be replaced and rebuilt from upstream source. MPEG frame layout and gain semantics were cross-checked against https://github.com/M-Igashi/mp3rgain/blob/master/src/frame.rs; no code was copied from that project.
+
+The test MP3 is a generated two-tone signal with pauses, a 20 dB fade and a loud reset. It contains no customer speech. Runtime and decoder regression checks live in `voiceover-levels.test.ts` and `scripts/tests/voiceover-levels-worker.test.mjs`.

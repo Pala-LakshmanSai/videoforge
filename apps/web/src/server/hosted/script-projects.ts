@@ -411,24 +411,21 @@ export async function advanceScriptProject(
     ).rows[0]?.job;
     if (!job?.provider_job_id) throw new Error("GENERATED_VOICEOVER_ID_MISSING");
     const downloadPath = `/v1/tts/${encodeURIComponent(job.provider_job_id)}/download`;
-    let audio = await j1Fetch(env.J1TTS_API_KEY!, downloadPath);
-    let length = Number(audio.headers.get("content-length"));
-    if (!Number.isSafeInteger(length) || length <= 0) {
-      if (!audio.body) throw new Error("GENERATED_VOICEOVER_DOWNLOAD_PENDING");
-      const probe = generatedVoiceoverAudio();
-      await audio.body.pipeThrough(probe.stream).pipeTo(new WritableStream({ write() {} }));
-      length = probe.receipt().content_length;
-      audio = await j1Fetch(env.J1TTS_API_KEY!, downloadPath);
-    }
-    if (length > 1_073_741_824) throw new Error("VOICEOVER_CONTENT_LENGTH_INVALID");
-    if (!audio.body) throw new Error("GENERATED_VOICEOVER_DOWNLOAD_PENDING");
+    const { leveledVoiceover } = await import("./leveled-voiceover");
+    const audio = await leveledVoiceover(() => j1Fetch(env.J1TTS_API_KEY!, downloadPath));
     const key = `tenant/${target.accountId}/workspace/${target.workspaceId}/project/${target.projectId}/narration/${crypto.randomUUID()}.mp3`;
     const measured = generatedVoiceoverAudio();
     try {
       await bucket.put(
         key,
-        audio.body.pipeThrough(measured.stream).pipeThrough(fixedLengthAudioStream(length)),
-        { httpMetadata: { contentType: "audio/mpeg" } },
+        audio.body.pipeThrough(measured.stream).pipeThrough(fixedLengthAudioStream(audio.length)),
+        {
+          httpMetadata: { contentType: "audio/mpeg" },
+          customMetadata: {
+            source_sha256: audio.sourceChecksum,
+            audio_processing: "speech-level-v1",
+          },
+        },
       );
       const saved = { object_key: key, metadata: measured.receipt() };
       const updated = await sqlRun((sql) =>
