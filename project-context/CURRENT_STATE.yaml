@@ -3,15 +3,22 @@ voiceover_loudness_2026_10_14:
   selected_task: VF-10-09
   read_profile: v2_09_voiceover_loudness
   branch: codex/voiceover-loudness
-  status: LOCALLY_QUALIFIED_PRODUCTION_PENDING
+  status: PUBLISHED_AND_VERIFIED
   production_baseline_source: d72220c3c73c73c79cad1ccbe273bf4cacd9d3f1
+  deployed_source_commit: f894305ebfaff4263cc87947a21fdf7b4c883fb8
+  worker_version_id: ed08cc3d-39be-46c9-bb36-bb4f0206be9a
+  production_traffic_percent: 100
+  native_schema_version: 302
+  live_validation: Exact37assets_55bindings27secrets_CPU300s;owner200_range206_foreign404_anonymous401;retained_source_hashes_and_providerIDs;Chrome55voiceovers_play11s_pause
+  runtime_registration: Three_existing_workflow_IDs_preserved_with_new_versions;no_instances_started_or_restarted
+  existing_coordinator_gate: Preexisting46133fd0_errored_instance_already_exists;three_active_requests_two_leases_and_archived_unknown_work_preserved;idle_adoption_unsafe_and_deferred
   user_authority: Diagnose_repair_test_and_push_generated_voiceover_loudness_to_production
   cause: Provider_MP3_contains_sustained_attenuation_and_resets;both_intake_paths_previously_preserved_bytes_without_level_inspection
   repair: Shared_bounded_two_pass_decoding_and_MP3_gain_adjustment;source_hash_guard;unchanged_samples_timing_and_compressed_speech;private_source_provenance
   validation: 78_focused_tests;3392_broad_pass_and4_timeouts;108_isolated_rerun_pass;Workerd20m24m1h;decode_levels_duration;types_lint_build_context_secret_pass
   provider_spend: USD0_new_TTS_generation_or_paid_compute
   paid_compute_shutdown: No_resources_started_stopped_or_reaudited;existing_jobs_preserved
-  remaining_gates: Production_publication_Chrome_readback_and_final_checks;provider_internal_cause_and_universal_audio_quality_unproven
+  remaining_gates: Fresh_paid_TTS_end_to_end_unrun;provider_internal_cause_and_universal_audio_quality_unproven;existing_coordinator_recovery_separate
   evidence: evidence/acceptance/VF-10-09/2026-10-14-voiceover-loudness.md
 
 shared_avatar_collections_2026_10_08:
@@ -10569,10 +10576,10 @@ recommended_next_task:
   task_id: VF-10-09
   checkpoint: V2-09
   milestone: Generated_voiceover_loudness
-  status: IMPLEMENTING
+  status: COMPLETE
   dependency_status: Productiond72220c3_native302_baseline
   authorization_status: User2026_10_14_requested_exact_cause_repair_and_production
-  task_stage: bounded_mutation
+  task_stage: verified_handoff
   provider_authority: *v2_09_provider_authority_current
   read_profile: v2_09_voiceover_loudness
   task_brief: VOICEOVER_LOUDNESS_PLAN.md
