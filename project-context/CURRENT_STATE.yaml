@@ -10579,7 +10579,7 @@ recommended_next_task:
   status: COMPLETE
   dependency_status: Productiond72220c3_native302_baseline
   authorization_status: User2026_10_14_requested_exact_cause_repair_and_production
-  task_stage: verified_handoff
+  task_stage: bounded_mutation
   provider_authority: *v2_09_provider_authority_current
   read_profile: v2_09_voiceover_loudness
   task_brief: VOICEOVER_LOUDNESS_PLAN.md
