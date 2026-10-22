@@ -74,7 +74,7 @@ export async function archiveStandaloneVoiceover(
       j1Fetch(
         env.J1TTS_API_KEY!,
         `/v1/tts/${encodeURIComponent(asset.provider_job_id!)}/download`,
-        { signal: AbortSignal.timeout(120_000) },
+        { signal: AbortSignal.timeout(300_000) },
       );
     const { leveledVoiceover } = await import("./leveled-voiceover");
     const audio = await leveledVoiceover(download, 0.01);
@@ -111,6 +111,7 @@ export async function archiveStandaloneVoiceover(
       receipt.duration_ms,
     ]);
   } catch (error) {
+    let cleanupConfirmed = false;
     // A lost commit response is not proof of rollback. Keep bytes until a scoped read confirms it.
     if (objectKey && committing) {
       try {
@@ -126,6 +127,7 @@ export async function archiveStandaloneVoiceover(
     } else if (objectKey) {
       await bucket.delete(objectKey);
       if (await bucket.head(objectKey)) throw new Error("VOICEOVER_ARCHIVE_CLEANUP_PENDING");
+      cleanupConfirmed = true;
     }
     if (
       !committing &&
@@ -138,6 +140,10 @@ export async function archiveStandaloneVoiceover(
         claim,
         "VOICEOVER_LIBRARY_AUDIO_INVALID",
       ]);
+    } else if (cleanupConfirmed) {
+      // Only confirmed failures with verified cleanup shorten the crash lease. A lost final
+      // commit or cleanup response keeps its original fence and cannot replay accepted work.
+      await sql("videoforge_defer_voiceover_library_archive($1,$2,$3,$4)", [...args, claim]);
     }
     throw error;
   } finally {

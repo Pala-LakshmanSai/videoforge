@@ -793,6 +793,105 @@ async function completeArchive(executor, identity, jobId, suffix, claimId) {
   return { providerJobId, queued, claimed, finalized, objectKey };
 }
 
+test("0303 confirmed archive failures retry within a minute while preserving tenant and claim fences", async () => {
+  await withPgcryptoMigratedDatabase(async ({ executor }) => {
+    const member = await admit(executor, 3031, "archive-retry@example.test");
+    const foreign = await admit(executor, 3032, "archive-foreign@example.test");
+    const job = uuid(3_030_001),
+      claim = uuid(3_030_002),
+      replacement = uuid(3_030_003);
+    await queue(executor, member, job, "retry");
+    await tenantCall(executor, "videoforge_claim_voiceover_submission", [
+      member.account_id,
+      member.workspace_id,
+      job,
+      uuid(3_030_004),
+    ]);
+    for (const state of ["PROCESSING", "COMPLETED"])
+      await tenantCall(executor, "videoforge_record_voiceover_job", [
+        member.account_id,
+        member.workspace_id,
+        job,
+        state,
+        "saved-provider-retry",
+        null,
+      ]);
+    const args = [member.account_id, member.workspace_id, job];
+    const original = await tenantCall(executor, "videoforge_claim_voiceover_library_archive", [
+      ...args,
+      claim,
+    ]);
+    assert.equal(original.provider_job_id, "saved-provider-retry");
+    assert.equal(
+      await tenantCall(executor, "videoforge_defer_voiceover_library_archive", [
+        ...args,
+        replacement,
+      ]),
+      false,
+    );
+    assert.equal(
+      await tenantCall(executor, "videoforge_defer_voiceover_library_archive", [
+        foreign.account_id,
+        foreign.workspace_id,
+        job,
+        claim,
+      ]),
+      false,
+    );
+    assert.equal(
+      await tenantCall(executor, "videoforge_defer_voiceover_library_archive", [...args, claim]),
+      true,
+    );
+    assert.equal(
+      await tenantCall(executor, "videoforge_claim_voiceover_library_archive", [
+        ...args,
+        replacement,
+      ]),
+      null,
+    );
+    const remaining = (
+      await executor.query(
+        "SELECT extract(epoch FROM archive_claimed_at+interval '15 minutes'-now())::float8 remaining FROM hosted_voiceover_library_assets WHERE voiceover_job_id=$1",
+        [job],
+      )
+    ).rows[0].remaining;
+    assert.ok(remaining > 0 && remaining <= 60);
+    await executor.query(
+      "UPDATE hosted_voiceover_library_assets SET archive_claimed_at=archive_claimed_at-interval '61 seconds' WHERE voiceover_job_id=$1",
+      [job],
+    );
+    const next = await tenantCall(executor, "videoforge_claim_voiceover_library_archive", [
+      ...args,
+      replacement,
+    ]);
+    assert.equal(next.previous_claim_id, claim);
+    assert.equal(next.provider_job_id, original.provider_job_id);
+    assert.equal(
+      await tenantCall(executor, "videoforge_defer_voiceover_library_archive", [...args, claim]),
+      false,
+    );
+    const key = `${next.object_prefix}${replacement}.mp3`;
+    await tenantCall(executor, "videoforge_finalize_voiceover_library_archive", [
+      ...args,
+      replacement,
+      key,
+      "audio/mpeg",
+      42,
+      sha256("retry-audio"),
+      1045,
+    ]);
+    assert.equal(
+      await tenantCall(executor, "videoforge_defer_voiceover_library_archive", [
+        ...args,
+        replacement,
+      ]),
+      false,
+    );
+    const saved = await tenantCall(executor, "videoforge_read_voiceover_library_asset", args);
+    assert.equal(saved.object_key, key);
+  });
+});
+
 test("0289 standalone voiceover library preserves identity, tenancy, archive fencing, and no-video admission", async () => {
   await withPgcryptoMigratedDatabase(async ({ executor }) => {
     const owner = await admit(executor, 1, "demo9gss@gmail.com");

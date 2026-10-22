@@ -162,3 +162,47 @@ it("rejects corrupt provider output before publishing an audio receipt", async (
   expect(savedKey).toBeNull();
   expect(objects.size).toBe(0);
 });
+it("gives slow downloads five minutes and defers confirmed failures only after verified cleanup", async () => {
+  vi.useFakeTimers();
+  const timeout = vi.spyOn(AbortSignal, "timeout").mockImplementation((ms) => {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), ms);
+    return controller.signal;
+  });
+  try {
+    mocks.download.mockImplementationOnce(async (_key, _path, init) => {
+      await vi.advanceTimersByTimeAsync(120_001);
+      expect(init.signal.aborted).toBe(false);
+      await vi.advanceTimersByTimeAsync(180_000);
+      expect(init.signal.aborted).toBe(true);
+      throw new Error("download timed out");
+    });
+    await expect(archiveStandaloneVoiceover(env, target)).rejects.toThrow("download timed out");
+    expect(savedKey).toBeNull();
+    expect(objects.size).toBe(0);
+    expect(
+      mocks.query.mock.calls.some(([sql]) =>
+        String(sql).includes("defer_voiceover_library_archive"),
+      ),
+    ).toBe(true);
+  } finally {
+    timeout.mockRestore();
+    vi.useRealTimers();
+  }
+});
+it("retains the crash fence when cleanup or final commit is uncertain", async () => {
+  mocks.download.mockRejectedValue(new Error("download failed"));
+  failDelete = true;
+  await expect(archiveStandaloneVoiceover(env, target)).rejects.toThrow("R2 delete failed");
+  expect(
+    mocks.query.mock.calls.some(([sql]) => String(sql).includes("defer_voiceover_library_archive")),
+  ).toBe(false);
+  mocks.download.mockReset();
+  mocks.download.mockImplementation(async () => new Response(Uint8Array.from(bytes)));
+  failDelete = false;
+  failure = "before";
+  await expect(archiveStandaloneVoiceover(env, target)).rejects.toThrow("connection lost");
+  expect(
+    mocks.query.mock.calls.some(([sql]) => String(sql).includes("defer_voiceover_library_archive")),
+  ).toBe(false);
+});
